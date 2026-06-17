@@ -83,10 +83,19 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     func testHomeLayoutIsNativeIPhoneFirstWithBottomCenteredCaptureButton() {
         XCTAssertEqual(RootHomeLayout.leverageGridColumnCount, 2)
         XCTAssertEqual(RootHomeLayout.floatingCaptureAlignment, .bottom)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.crimson)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.deepNavy)
         XCTAssertEqual(RootHomeLayout.floatingCaptureSize, 72)
-        XCTAssertEqual(RootHomeLayout.heroTopPadding, 92)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureBottomPadding, 70)
+        XCTAssertEqual(RootHomeLayout.heroTopPadding, 0)
+        XCTAssertEqual(RootHomeLayout.heroDividerHeight, 3)
+        XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
+        XCTAssertEqual(RootHomeLayout.carouselCardHeight, 236)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 92)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 34)
+        XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 66)
+        XCTAssertEqual(RootHomeLayout.radialMenuIconSize, 29)
         XCTAssertEqual(RootHomeLayout.latestSectionBandHeight, 80)
+        XCTAssertEqual(SavyHapticFeedback.primaryImpactIntensity, 1.0)
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.title), [
             "News\nChannel",
             "Field\nEssays",
@@ -99,6 +108,74 @@ final class SAVYNativeBoundaryTests: XCTestCase {
             "ontology",
             "beliefs"
         ])
+    }
+
+    func testMetadataEntryNormalizesRequiredFieldsAndStartsPendingSync() {
+        let scheduledAt = Date(timeIntervalSince1970: 1_800)
+        let entry = MetadataEntry(
+            kind: .reminder,
+            title: "  Text Noah  ",
+            notes: "  Confirm dinner  ",
+            scheduledAt: scheduledAt,
+            tags: ["  friend  ", " ", "dinner"],
+            context: "  personal  ",
+            priority: .high,
+            cadence: "  weekly  "
+        )
+
+        XCTAssertEqual(entry.kind, .reminder)
+        XCTAssertEqual(entry.title, "Text Noah")
+        XCTAssertEqual(entry.notes, "Confirm dinner")
+        XCTAssertEqual(entry.scheduledAt, scheduledAt)
+        XCTAssertEqual(entry.tags, ["friend", "dinner"])
+        XCTAssertEqual(entry.context, "personal")
+        XCTAssertEqual(entry.priority, .high)
+        XCTAssertEqual(entry.cadence, "weekly")
+        XCTAssertEqual(entry.syncState, .pendingSync)
+    }
+
+    func testMetadataStoreSavesAndReloadsEntriesFromJSON() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let fileURL = directory.appendingPathComponent("metadata-entries.json")
+
+        let store = try MetadataEntryStore(fileURL: fileURL)
+        let entry = MetadataEntry(kind: .action, title: "Draft leverage note", notes: "Use the field essay frame.")
+        try store.save(entry)
+
+        let reloadedStore = try MetadataEntryStore(fileURL: fileURL)
+
+        XCTAssertEqual(reloadedStore.entries, [entry])
+    }
+
+    func testNavigationStateDeclaresLeverageSectionsInsteadOfProductivityTabs() {
+        XCTAssertEqual(SavyNavigationSection.allCases.map(\.title), [
+            "Now",
+            "Essays",
+            "Beliefs",
+            "News"
+        ])
+        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Reminders"))
+        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Actions"))
+        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Calendar"))
+    }
+
+    func testRadialFabMenuExposesBehaviorAndTimeMetadataOptions() {
+        XCTAssertEqual(MetadataEntryKind.allCases.map(\.menuTitle), [
+            "Reminder",
+            "Action",
+            "Calendar"
+        ])
+    }
+
+    func testNativeBoundaryRejectsWebAndJavaScriptAppRuntimes() {
+        XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.webViewShell))
+        XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.progressiveWebApp))
+        XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.reactNative))
+        XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.capacitor))
+        XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.expo))
+        XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.typeScriptFrontend))
     }
 
     func testWebsiteContentSeedsEveryNativeLeveragePage() {
