@@ -16,9 +16,14 @@ enum RootHomeLayout {
 }
 
 struct RootView: View {
+    let onSignOut: (() -> Void)?
     @StateObject private var store = CaptureStore()
     @StateObject private var leverageStore = LeverageDataStore()
     @State private var isCapturing = false
+
+    init(onSignOut: (() -> Void)? = nil) {
+        self.onSignOut = onSignOut
+    }
 
     var body: some View {
         NavigationStack {
@@ -57,6 +62,18 @@ struct RootView: View {
                 .padding(.bottom, RootHomeLayout.floatingCaptureBottomPadding)
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if let onSignOut {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            onSignOut()
+                        } label: {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                        }
+                        .accessibilityLabel("Sign out")
+                    }
+                }
+            }
             .task {
                 await leverageStore.refresh()
             }

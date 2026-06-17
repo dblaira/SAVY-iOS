@@ -20,16 +20,11 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.adamblair.savy
-        GENERATE_INFOPLIST_FILE: YES
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: SAVY/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        INFOPLIST_KEY_CFBundleDisplayName: SAVY
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIUserInterfaceStyle: Light
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "SAVY uses location only when a native entry needs place context."
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "SAVY lets you attach chosen images to native entries."
   SAVYTests:
     type: bundle.unit-test
     platform: iOS

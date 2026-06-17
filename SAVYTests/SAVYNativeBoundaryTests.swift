@@ -23,6 +23,63 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertNotNil(SupabaseConfiguration(urlString: "https://example.supabase.co", anonKey: "anon"))
     }
 
+    func testAuthSessionBuildsBearerAuthorizationHeader() {
+        let session = AuthSession(
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            tokenType: "bearer",
+            expiresIn: 3600,
+            user: AuthUser(id: "user-id", email: "adam@example.com")
+        )
+
+        XCTAssertEqual(session.authorizationHeader, "Bearer access-token")
+    }
+
+    func testSupabaseAuthSessionDecodesSnakeCaseResponse() throws {
+        let data = """
+        {
+          "access_token": "access-token",
+          "refresh_token": "refresh-token",
+          "token_type": "bearer",
+          "expires_in": 3600,
+          "user": {
+            "id": "user-id",
+            "email": "adam@example.com"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let session = try JSONDecoder.supabase.decode(AuthSession.self, from: data)
+
+        XCTAssertEqual(session.accessToken, "access-token")
+        XCTAssertEqual(session.refreshToken, "refresh-token")
+        XCTAssertEqual(session.authorizationHeader, "Bearer access-token")
+    }
+
+    func testSupabaseDiagnosticNamesMissingFieldWithoutSecrets() {
+        let diagnostic = SupabaseDiagnostic(
+            stage: "auth decode",
+            endpoint: "auth/v1/token",
+            statusCode: 200,
+            requestID: "request-id",
+            errorCode: nil,
+            missingField: "access_token",
+            responseKeys: ["expires_in", "token_type", "user"],
+            underlyingMessage: "No value associated with key."
+        )
+
+        let displayText = diagnostic.displayText
+
+        XCTAssertTrue(displayText.contains("Trace: auth decode"))
+        XCTAssertTrue(displayText.contains("Missing field: access_token"))
+        XCTAssertFalse(displayText.contains("Bearer "))
+    }
+
+    func testAuthenticationModesExposeNativeActions() {
+        XCTAssertEqual(AuthenticationMode.signIn.actionTitle, "Sign In")
+        XCTAssertEqual(AuthenticationMode.signUp.actionTitle, "Create Account")
+    }
+
     func testHomeLayoutIsNativeIPhoneFirstWithBottomCenteredCaptureButton() {
         XCTAssertEqual(RootHomeLayout.leverageGridColumnCount, 2)
         XCTAssertEqual(RootHomeLayout.floatingCaptureAlignment, .bottom)
