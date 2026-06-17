@@ -49,7 +49,7 @@ struct SavyBottomNavigationBar: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 18)
+            .padding(.top, RootHomeLayout.bottomNavigationTopPadding)
 
             Rectangle()
                 .fill(Color.white.opacity(0.22))
@@ -78,7 +78,7 @@ struct SavyBottomNavigationBar: View {
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: RootHomeLayout.bottomNavigationHeight - 18)
+            .frame(height: RootHomeLayout.bottomNavigationHeight - RootHomeLayout.bottomNavigationTopPadding)
             .foregroundStyle(navigationState.activeSection == section ? SavyTheme.crimson : inactiveColor)
             .contentShape(Rectangle())
         }

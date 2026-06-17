@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import SAVY
 
 final class SAVYNativeBoundaryTests: XCTestCase {
@@ -85,17 +86,36 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.floatingCaptureAlignment, .bottom)
         XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.deepNavy)
         XCTAssertEqual(RootHomeLayout.floatingCaptureSize, 72)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureBottomPadding, 70)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureBottomPadding, 90)
         XCTAssertEqual(RootHomeLayout.heroTopPadding, 0)
+        XCTAssertEqual(RootHomeLayout.heroHeight, 230)
+        XCTAssertEqual(RootHomeLayout.heroContentTopPadding, 34)
+        XCTAssertEqual(RootHomeLayout.heroWordmarkEyebrowSpacing, 12)
         XCTAssertEqual(RootHomeLayout.heroDividerHeight, 3)
+        XCTAssertEqual(RootHomeLayout.heroWordmarkFontName, "BodoniSvtyTwoOSITCTT-Book")
+        XCTAssertEqual(RootHomeLayout.heroWordmarkFontSize, 48)
+        XCTAssertNotNil(UIFont(name: RootHomeLayout.heroWordmarkFontName, size: RootHomeLayout.heroWordmarkFontSize))
+        XCTAssertEqual(RootHomeLayout.carouselTopPadding, 20)
+        XCTAssertEqual(RootHomeLayout.carouselHorizontalPadding, 2)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
         XCTAssertEqual(RootHomeLayout.carouselCardHeight, 236)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 92)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 112)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 28)
         XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 34)
+        XCTAssertEqual(RootHomeLayout.accountMenuSymbolName, "line.3.horizontal")
+        XCTAssertEqual(RootHomeLayout.accountMenuTopPadding, 88)
         XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 66)
         XCTAssertEqual(RootHomeLayout.radialMenuIconSize, 29)
-        XCTAssertEqual(RootHomeLayout.latestSectionBandHeight, 80)
+        XCTAssertEqual(RootHomeLayout.latestSectionBandHeight, 92)
+        XCTAssertEqual(RootHomeLayout.pinnedEntryRowHeight, 81)
+        XCTAssertEqual(RootHomeLayout.pinnedEntryTrailingInset, 17)
+        XCTAssertEqual(RootHomeLayout.pinnedEntryFontName, "Crushed-Regular")
+        XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 32)
         XCTAssertEqual(SavyHapticFeedback.primaryImpactIntensity, 1.0)
+        XCTAssertEqual(HomePinnedEntry.referenceRows.map(\.title), [
+            "Top Pinned entry",
+            "2nd top Pinned entry"
+        ])
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.title), [
             "News\nChannel",
             "Field\nEssays",
@@ -151,7 +171,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
 
     func testNavigationStateDeclaresLeverageSectionsInsteadOfProductivityTabs() {
         XCTAssertEqual(SavyNavigationSection.allCases.map(\.title), [
-            "Now",
+            "ACTION",
             "Essays",
             "Beliefs",
             "News"

@@ -8,21 +8,34 @@ enum RootHomeLayout {
     )
     static let horizontalPadding: CGFloat = 24
     static let heroTopPadding: CGFloat = 0
-    static let heroContentTopPadding: CGFloat = 112
+    static let heroHeight: CGFloat = 230
+    static let heroContentTopPadding: CGFloat = 34
+    static let heroWordmarkEyebrowSpacing: CGFloat = 12
     static let heroDividerHeight: CGFloat = 3
+    static let heroWordmarkFontName = "BodoniSvtyTwoOSITCTT-Book"
+    static let heroWordmarkFontSize: CGFloat = 48
+    static let carouselTopPadding: CGFloat = 20
+    static let carouselHorizontalPadding: CGFloat = 2
     static let carouselCardWidth: CGFloat = 282
     static let carouselCardHeight: CGFloat = 236
-    static let latestSectionBandHeight: CGFloat = 80
-    static let bottomNavigationHeight: CGFloat = 92
+    static let latestSectionBandHeight: CGFloat = 92
+    static let pinnedEntryRowHeight: CGFloat = 81
+    static let pinnedEntryTrailingInset: CGFloat = 17
+    static let pinnedEntryFontName = "Crushed-Regular"
+    static let pinnedEntryFontSize: CGFloat = 32
+    static let bottomNavigationHeight: CGFloat = 112
+    static let bottomNavigationTopPadding: CGFloat = 28
     static let bottomNavigationIconSize: CGFloat = 34
     static let bottomNavigationLabelSize: CGFloat = 14
     static let floatingCaptureAlignment: Alignment = .bottom
-    static let floatingCaptureBottomPadding: CGFloat = 70
+    static let floatingCaptureBottomPadding: CGFloat = 90
     static let floatingCaptureSize: CGFloat = 72
     static let floatingCaptureBackground = SavyTheme.deepNavy
     static let radialMenuButtonSize: CGFloat = 66
     static let radialMenuIconSize: CGFloat = 29
     static let radialMenuLabelSize: CGFloat = 14
+    static let accountMenuSymbolName = "line.3.horizontal"
+    static let accountMenuTopPadding: CGFloat = 88
 }
 
 struct RootView: View {
@@ -52,7 +65,7 @@ struct RootView: View {
                         EditorialHomeView(leverageStore: leverageStore)
                     }
                 }
-                .padding(.bottom, 94)
+                .padding(.bottom, RootHomeLayout.bottomNavigationHeight + 8)
 
                 SavyRadialFabMenu(
                     isPresented: navigationState.isRadialMenuPresented,
@@ -76,7 +89,7 @@ struct RootView: View {
                 }
                 .padding(.bottom, RootHomeLayout.floatingCaptureBottomPadding)
 
-                signOutButton
+                accountMenuButton
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
@@ -92,30 +105,32 @@ struct RootView: View {
     }
 
     @ViewBuilder
-    private var signOutButton: some View {
+    private var accountMenuButton: some View {
         if let onSignOut {
             VStack {
                 HStack {
                     Spacer()
 
-                    Button {
-                        onSignOut()
+                    Menu {
+                        Button("Sign Out", role: .destructive) {
+                            onSignOut()
+                        }
                     } label: {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 25, weight: .heavy))
-                            .foregroundStyle(SavyTheme.deepNavy)
-                            .frame(width: 64, height: 64)
-                            .background(.white.opacity(0.94), in: Circle())
+                        Image(systemName: RootHomeLayout.accountMenuSymbolName)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.78))
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.08), in: Circle())
                             .overlay(
                                 Circle()
-                                    .stroke(.white.opacity(0.35), lineWidth: 1)
+                                    .stroke(.white.opacity(0.12), lineWidth: 1)
                             )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Sign out")
+                    .accessibilityLabel("Account menu")
                 }
-                .padding(.horizontal, 28)
-                .padding(.top, 58)
+                .padding(.horizontal, 24)
+                .padding(.top, RootHomeLayout.accountMenuTopPadding)
 
                 Spacer()
             }
@@ -134,7 +149,7 @@ struct EditorialHomeView: View {
                     header(topInset: proxy.safeAreaInsets.top)
 
                     leverageCarousel
-                        .padding(.top, 22)
+                        .padding(.top, RootHomeLayout.carouselTopPadding)
 
                     latestSection
                 }
@@ -146,28 +161,28 @@ struct EditorialHomeView: View {
     }
 
     private func header(topInset: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: RootHomeLayout.heroWordmarkEyebrowSpacing) {
             Text("SAVY")
-                .font(.system(size: 52, weight: .regular, design: .serif))
-                .italic()
+                .font(.custom(
+                    RootHomeLayout.heroWordmarkFontName,
+                    fixedSize: RootHomeLayout.heroWordmarkFontSize
+                ))
                 .foregroundStyle(.white)
+                .lineLimit(1)
 
-            VStack(alignment: .leading, spacing: 9) {
-                Text("A STUDY IN LEVERAGE")
-                    .font(.system(size: 12, weight: .heavy))
-                    .tracking(2.2)
-                    .foregroundStyle(SavyTheme.crimson)
-
-                Text("Now is where the strongest signal gets turned into a next move.")
-                    .font(.system(size: 26, weight: .regular, design: .serif))
-                    .lineSpacing(3)
-                    .foregroundStyle(.white.opacity(0.9))
-            }
+            Text("The Adam Pattern")
+                .font(.system(size: 12, weight: .heavy))
+                .tracking(3)
+                .foregroundStyle(SavyTheme.crimson)
         }
-        .frame(maxWidth: .infinity, minHeight: 236, alignment: .bottomLeading)
         .padding(.horizontal, RootHomeLayout.horizontalPadding)
         .padding(.top, topInset + RootHomeLayout.heroContentTopPadding)
-        .padding(.bottom, 26)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: RootHomeLayout.heroHeight,
+            maxHeight: RootHomeLayout.heroHeight,
+            alignment: .topLeading
+        )
         .background(SavyTheme.deepNavy)
         .overlay(alignment: .bottom) {
             Rectangle()
@@ -204,36 +219,23 @@ struct EditorialHomeView: View {
                     }
                 }
             }
-            .padding(.horizontal, RootHomeLayout.horizontalPadding)
+            .padding(.horizontal, RootHomeLayout.carouselHorizontalPadding)
         }
     }
 
     private var latestSection: some View {
-        VStack(alignment: .leading, spacing: 30) {
-            Text("LATEST LEVERAGE")
+        VStack(alignment: .leading, spacing: 0) {
+            Text("GREATEST LEVERAGE")
                 .font(.system(size: 20, weight: .heavy))
                 .foregroundStyle(SavyTheme.ink)
                 .frame(maxWidth: .infinity, minHeight: RootHomeLayout.latestSectionBandHeight, alignment: .leading)
-                .padding(.horizontal, RootHomeLayout.horizontalPadding)
+                .padding(.horizontal, 18)
                 .background(SavyTheme.sectionBand)
 
-            LazyVGrid(columns: RootHomeLayout.leverageGridColumns, spacing: 27) {
-                ForEach(HomeLeverageCard.referenceCards) { card in
-                    if let section = leverageStore.section(id: card.sectionID) {
-                        NavigationLink {
-                            LeverageSectionView(section: section)
-                        } label: {
-                            HomeLeverageCardView(card: card, count: section.items.count)
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        HomeLeverageCardView(card: card, count: 0)
-                    }
-                }
+            ForEach(HomePinnedEntry.referenceRows) { entry in
+                HomePinnedEntryRow(entry: entry)
             }
-            .padding(.horizontal, RootHomeLayout.horizontalPadding)
         }
-        .padding(.top, 41)
     }
 
     private func principleCard(quote: LeverageItem) -> some View {
@@ -264,6 +266,45 @@ struct EditorialHomeView: View {
         )
         .background(.white, in: RoundedRectangle(cornerRadius: 8))
         .shadow(color: .black.opacity(0.06), radius: 12, y: 5)
+    }
+}
+
+struct HomePinnedEntry: Identifiable {
+    let id: String
+    let title: String
+    let alignment: Alignment
+
+    static let referenceRows: [HomePinnedEntry] = [
+        HomePinnedEntry(id: "top-pinned-entry", title: "Top Pinned entry", alignment: .leading),
+        HomePinnedEntry(id: "second-top-pinned-entry", title: "2nd top Pinned entry", alignment: .center)
+    ]
+}
+
+private struct HomePinnedEntryRow: View {
+    let entry: HomePinnedEntry
+
+    var body: some View {
+        Text(entry.title)
+            .font(.custom(
+                RootHomeLayout.pinnedEntryFontName,
+                fixedSize: RootHomeLayout.pinnedEntryFontSize
+            ))
+            .foregroundStyle(.black)
+            .lineLimit(1)
+            .minimumScaleFactor(0.74)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: RootHomeLayout.pinnedEntryRowHeight,
+                alignment: entry.alignment
+            )
+            .padding(.leading, entry.alignment == .leading ? 11 : 0)
+            .background(SavyTheme.pinnedEntry)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(.white.opacity(0.72))
+                    .frame(height: 1)
+            }
+            .padding(.trailing, RootHomeLayout.pinnedEntryTrailingInset)
     }
 }
 
@@ -548,6 +589,7 @@ enum SavyTheme {
     static let paper = Color(red: 248 / 255, green: 244 / 255, blue: 237 / 255)
     static let paperAccent = Color(red: 239 / 255, green: 235 / 255, blue: 228 / 255)
     static let sectionBand = Color(red: 244 / 255, green: 239 / 255, blue: 231 / 255)
+    static let pinnedEntry = Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
     static let ink = Color(red: 26 / 255, green: 26 / 255, blue: 26 / 255)
 }
 
