@@ -1,0 +1,454 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		09B7E4626804496E1984EDFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 78F623BD250D3308A5C58730 /* Assets.xcassets */; };
+		0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */; };
+		1B367673938BEF897C285682 /* SAVYApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE63B27DF6EFB1D75DC8FB0A /* SAVYApp.swift */; };
+		1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA56611B45F0D0FC844211C /* CaptureEntry.swift */; };
+		5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E869D9555384C4E876A5056 /* CaptureStore.swift */; };
+		75CFCED8B79BC2D6C61D4BDC /* SAVYNativeBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */; };
+		8419E87B1E58414B0831145A /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83DA92150647884566C45623 /* SupabaseClient.swift */; };
+		8BC975E4F41657E0093670AB /* NativeNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826F7F00C571ECDD018421A2 /* NativeNotificationScheduler.swift */; };
+		91BDC3FB046133C9C67A83DA /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA02A326CF8327C0B2833F07 /* RootView.swift */; };
+		D4978EC1F20F344B087862B3 /* SavyLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CD74063706864F16360321 /* SavyLocationProvider.swift */; };
+		D61B4B5A269C82E5F5EC389D /* SavyAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62DA7C4B8E5D8D83D423DF22 /* SavyAppShortcuts.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BAC460F0FEADEE8458061E9E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3DA3A1EAB03B2D0873868AC9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F9770833D9C90E9EA5883D75;
+			remoteInfo = SAVY;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0DA56611B45F0D0FC844211C /* CaptureEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEntry.swift; sourceTree = "<group>"; };
+		13CD74063706864F16360321 /* SavyLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyLocationProvider.swift; sourceTree = "<group>"; };
+		62DA7C4B8E5D8D83D423DF22 /* SavyAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyAppShortcuts.swift; sourceTree = "<group>"; };
+		664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYNativeBoundaryTests.swift; sourceTree = "<group>"; };
+		78F623BD250D3308A5C58730 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		7E869D9555384C4E876A5056 /* CaptureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureStore.swift; sourceTree = "<group>"; };
+		81B8D9162176E51C28F60467 /* SAVY.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SAVY.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		826F7F00C571ECDD018421A2 /* NativeNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNotificationScheduler.swift; sourceTree = "<group>"; };
+		83DA92150647884566C45623 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
+		901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeBoundary.swift; sourceTree = "<group>"; };
+		BA02A326CF8327C0B2833F07 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		BB21E7E709F5315C8570F028 /* SAVYTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SAVYTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BE63B27DF6EFB1D75DC8FB0A /* SAVYApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2B1FBB9014C427ADF4F73315 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				81B8D9162176E51C28F60467 /* SAVY.app */,
+				BB21E7E709F5315C8570F028 /* SAVYTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4E1C7663B69B585EFDC6C123 = {
+			isa = PBXGroup;
+			children = (
+				98F24F8E60B5F6D6B4417B74 /* SAVY */,
+				54384D66314DE9A7C58CAF7D /* SAVYTests */,
+				2B1FBB9014C427ADF4F73315 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		54384D66314DE9A7C58CAF7D /* SAVYTests */ = {
+			isa = PBXGroup;
+			children = (
+				664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */,
+			);
+			path = SAVYTests;
+			sourceTree = "<group>";
+		};
+		98F24F8E60B5F6D6B4417B74 /* SAVY */ = {
+			isa = PBXGroup;
+			children = (
+				901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */,
+				78F623BD250D3308A5C58730 /* Assets.xcassets */,
+				0DA56611B45F0D0FC844211C /* CaptureEntry.swift */,
+				7E869D9555384C4E876A5056 /* CaptureStore.swift */,
+				826F7F00C571ECDD018421A2 /* NativeNotificationScheduler.swift */,
+				BA02A326CF8327C0B2833F07 /* RootView.swift */,
+				BE63B27DF6EFB1D75DC8FB0A /* SAVYApp.swift */,
+				62DA7C4B8E5D8D83D423DF22 /* SavyAppShortcuts.swift */,
+				13CD74063706864F16360321 /* SavyLocationProvider.swift */,
+				83DA92150647884566C45623 /* SupabaseClient.swift */,
+			);
+			path = SAVY;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C5F0F32DCB930F81E2318BB8 /* SAVYTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3CC78B103A1AA4097AC2D70A /* Build configuration list for PBXNativeTarget "SAVYTests" */;
+			buildPhases = (
+				B7BBAFF9B8A1CC4C99E7403E /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B5B3D720466DA4678875063A /* PBXTargetDependency */,
+			);
+			name = SAVYTests;
+			packageProductDependencies = (
+			);
+			productName = SAVYTests;
+			productReference = BB21E7E709F5315C8570F028 /* SAVYTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		F9770833D9C90E9EA5883D75 /* SAVY */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5015091B840EA212AC21733E /* Build configuration list for PBXNativeTarget "SAVY" */;
+			buildPhases = (
+				D55E3BE5696C587E1340EAAF /* Sources */,
+				57FEF98F7A73F4A097EFBCE3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SAVY;
+			packageProductDependencies = (
+			);
+			productName = SAVY;
+			productReference = 81B8D9162176E51C28F60467 /* SAVY.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		3DA3A1EAB03B2D0873868AC9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					C5F0F32DCB930F81E2318BB8 = {
+						DevelopmentTeam = 7FKUS5M5QS;
+						ProvisioningStyle = Automatic;
+					};
+					F9770833D9C90E9EA5883D75 = {
+						DevelopmentTeam = 7FKUS5M5QS;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1EFCF4CEB870700C869A72C2 /* Build configuration list for PBXProject "SAVY" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4E1C7663B69B585EFDC6C123;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2B1FBB9014C427ADF4F73315 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F9770833D9C90E9EA5883D75 /* SAVY */,
+				C5F0F32DCB930F81E2318BB8 /* SAVYTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		57FEF98F7A73F4A097EFBCE3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				09B7E4626804496E1984EDFF /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B7BBAFF9B8A1CC4C99E7403E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				75CFCED8B79BC2D6C61D4BDC /* SAVYNativeBoundaryTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D55E3BE5696C587E1340EAAF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */,
+				1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */,
+				5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */,
+				8BC975E4F41657E0093670AB /* NativeNotificationScheduler.swift in Sources */,
+				91BDC3FB046133C9C67A83DA /* RootView.swift in Sources */,
+				1B367673938BEF897C285682 /* SAVYApp.swift in Sources */,
+				D61B4B5A269C82E5F5EC389D /* SavyAppShortcuts.swift in Sources */,
+				D4978EC1F20F344B087862B3 /* SavyLocationProvider.swift in Sources */,
+				8419E87B1E58414B0831145A /* SupabaseClient.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B5B3D720466DA4678875063A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F9770833D9C90E9EA5883D75 /* SAVY */;
+			targetProxy = BAC460F0FEADEE8458061E9E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		377CFB8BE2AD3D588F9A36E1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SAVY;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SAVY uses location only when a native entry needs place context.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "SAVY lets you attach chosen images to native entries.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.adamblair.savy;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		61E8E854BDC7A9E96CC7D5D5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7FKUS5M5QS;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		8ED946932197A99F1C4A62E8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.adamblair.savy.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SAVY.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SAVY";
+			};
+			name = Release;
+		};
+		E94300B44DE7602F47E219CF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.adamblair.savy.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SAVY.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SAVY";
+			};
+			name = Debug;
+		};
+		EEF21691D2CC21239BA5B2DC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SAVY;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SAVY uses location only when a native entry needs place context.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "SAVY lets you attach chosen images to native entries.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.adamblair.savy;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		FEA86A4A676C183A7C3CED56 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7FKUS5M5QS;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1EFCF4CEB870700C869A72C2 /* Build configuration list for PBXProject "SAVY" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				61E8E854BDC7A9E96CC7D5D5 /* Debug */,
+				FEA86A4A676C183A7C3CED56 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3CC78B103A1AA4097AC2D70A /* Build configuration list for PBXNativeTarget "SAVYTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E94300B44DE7602F47E219CF /* Debug */,
+				8ED946932197A99F1C4A62E8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5015091B840EA212AC21733E /* Build configuration list for PBXNativeTarget "SAVY" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				377CFB8BE2AD3D588F9A36E1 /* Debug */,
+				EEF21691D2CC21239BA5B2DC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 3DA3A1EAB03B2D0873868AC9 /* Project object */;
+}
