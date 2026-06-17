@@ -24,6 +24,7 @@ final class AuthenticationStore: ObservableObject {
     ) {
         self.client = client
         self.biometricUnlocker = biometricUnlocker
+        bootstrap()
     }
 
     func bootstrap() {

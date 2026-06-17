@@ -12,7 +12,6 @@ enum RootHomeLayout {
     static let heroContentTopPadding: CGFloat = 34
     static let heroWordmarkEyebrowSpacing: CGFloat = 12
     static let heroDividerHeight: CGFloat = 3
-    static let heroWordmarkFontName = "BodoniSvtyTwoOSITCTT-Book"
     static let heroWordmarkFontSize: CGFloat = 48
     static let carouselTopPadding: CGFloat = 20
     static let carouselHorizontalPadding: CGFloat = 2
@@ -21,7 +20,6 @@ enum RootHomeLayout {
     static let latestSectionBandHeight: CGFloat = 92
     static let pinnedEntryRowHeight: CGFloat = 81
     static let pinnedEntryTrailingInset: CGFloat = 17
-    static let pinnedEntryFontName = "Crushed-Regular"
     static let pinnedEntryFontSize: CGFloat = 32
     static let bottomNavigationHeight: CGFloat = 112
     static let bottomNavigationTopPadding: CGFloat = 28
@@ -163,10 +161,12 @@ struct EditorialHomeView: View {
     private func header(topInset: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: RootHomeLayout.heroWordmarkEyebrowSpacing) {
             Text("SAVY")
-                .font(.custom(
-                    RootHomeLayout.heroWordmarkFontName,
-                    fixedSize: RootHomeLayout.heroWordmarkFontSize
+                .font(.system(
+                    size: RootHomeLayout.heroWordmarkFontSize,
+                    weight: .regular,
+                    design: .serif
                 ))
+                .italic()
                 .foregroundStyle(.white)
                 .lineLimit(1)
 
@@ -285,9 +285,10 @@ private struct HomePinnedEntryRow: View {
 
     var body: some View {
         Text(entry.title)
-            .font(.custom(
-                RootHomeLayout.pinnedEntryFontName,
-                fixedSize: RootHomeLayout.pinnedEntryFontSize
+            .font(.system(
+                size: RootHomeLayout.pinnedEntryFontSize,
+                weight: .regular,
+                design: .serif
             ))
             .foregroundStyle(.black)
             .lineLimit(1)

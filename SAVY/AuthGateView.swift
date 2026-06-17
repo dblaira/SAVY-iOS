@@ -7,10 +7,7 @@ struct AuthGateView: View {
         Group {
             switch authStore.state {
             case .checking:
-                ProgressView()
-                    .tint(SavyTheme.crimson)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(SavyTheme.paper.ignoresSafeArea())
+                StartupView()
             case .signedOut:
                 LoginView(store: authStore)
             case .locked(let session):
@@ -23,9 +20,33 @@ struct AuthGateView: View {
                 }
             }
         }
-        .task {
-            authStore.bootstrap()
+    }
+}
+
+private struct StartupView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Spacer()
+
+            Text("SAVY")
+                .font(.system(size: 54, weight: .regular, design: .serif))
+                .italic()
+                .foregroundStyle(SavyTheme.crimson)
+
+            Text("Opening workspace")
+                .font(.system(size: 14, weight: .bold))
+                .tracking(2)
+                .foregroundStyle(.black.opacity(0.42))
+
+            ProgressView()
+                .tint(SavyTheme.crimson)
+                .padding(.top, 10)
+
+            Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 28)
+        .background(SavyTheme.paper.ignoresSafeArea())
     }
 }
 
