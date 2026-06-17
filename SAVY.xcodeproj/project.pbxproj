@@ -11,11 +11,14 @@
 		0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */; };
 		1B367673938BEF897C285682 /* SAVYApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE63B27DF6EFB1D75DC8FB0A /* SAVYApp.swift */; };
 		1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA56611B45F0D0FC844211C /* CaptureEntry.swift */; };
+		248A9C5F73ABF9BB58FDD8AF /* LeverageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451BB5DA28F4CB244411B091 /* LeverageModels.swift */; };
+		57E78791EDB9525E26984968 /* LeverageContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD761F7DE8C3F6784C607CC /* LeverageContent.swift */; };
 		5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E869D9555384C4E876A5056 /* CaptureStore.swift */; };
 		75CFCED8B79BC2D6C61D4BDC /* SAVYNativeBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */; };
 		8419E87B1E58414B0831145A /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83DA92150647884566C45623 /* SupabaseClient.swift */; };
 		8BC975E4F41657E0093670AB /* NativeNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826F7F00C571ECDD018421A2 /* NativeNotificationScheduler.swift */; };
 		91BDC3FB046133C9C67A83DA /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA02A326CF8327C0B2833F07 /* RootView.swift */; };
+		BB70759B7D2FF0F8C19F5641 /* LeverageDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C6C144C69E4ECE420740763 /* LeverageDataStore.swift */; };
 		D4978EC1F20F344B087862B3 /* SavyLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CD74063706864F16360321 /* SavyLocationProvider.swift */; };
 		D61B4B5A269C82E5F5EC389D /* SavyAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62DA7C4B8E5D8D83D423DF22 /* SavyAppShortcuts.swift */; };
 /* End PBXBuildFile section */
@@ -33,8 +36,11 @@
 /* Begin PBXFileReference section */
 		0DA56611B45F0D0FC844211C /* CaptureEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEntry.swift; sourceTree = "<group>"; };
 		13CD74063706864F16360321 /* SavyLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyLocationProvider.swift; sourceTree = "<group>"; };
+		1BD761F7DE8C3F6784C607CC /* LeverageContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeverageContent.swift; sourceTree = "<group>"; };
+		451BB5DA28F4CB244411B091 /* LeverageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeverageModels.swift; sourceTree = "<group>"; };
 		62DA7C4B8E5D8D83D423DF22 /* SavyAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyAppShortcuts.swift; sourceTree = "<group>"; };
 		664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYNativeBoundaryTests.swift; sourceTree = "<group>"; };
+		6C6C144C69E4ECE420740763 /* LeverageDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeverageDataStore.swift; sourceTree = "<group>"; };
 		78F623BD250D3308A5C58730 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7E869D9555384C4E876A5056 /* CaptureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureStore.swift; sourceTree = "<group>"; };
 		81B8D9162176E51C28F60467 /* SAVY.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SAVY.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -80,6 +86,9 @@
 				78F623BD250D3308A5C58730 /* Assets.xcassets */,
 				0DA56611B45F0D0FC844211C /* CaptureEntry.swift */,
 				7E869D9555384C4E876A5056 /* CaptureStore.swift */,
+				1BD761F7DE8C3F6784C607CC /* LeverageContent.swift */,
+				6C6C144C69E4ECE420740763 /* LeverageDataStore.swift */,
+				451BB5DA28F4CB244411B091 /* LeverageModels.swift */,
 				826F7F00C571ECDD018421A2 /* NativeNotificationScheduler.swift */,
 				BA02A326CF8327C0B2833F07 /* RootView.swift */,
 				BE63B27DF6EFB1D75DC8FB0A /* SAVYApp.swift */,
@@ -195,6 +204,9 @@
 				0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */,
 				1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */,
 				5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */,
+				57E78791EDB9525E26984968 /* LeverageContent.swift in Sources */,
+				BB70759B7D2FF0F8C19F5641 /* LeverageDataStore.swift in Sources */,
+				248A9C5F73ABF9BB58FDD8AF /* LeverageModels.swift in Sources */,
 				8BC975E4F41657E0093670AB /* NativeNotificationScheduler.swift in Sources */,
 				91BDC3FB046133C9C67A83DA /* RootView.swift in Sources */,
 				1B367673938BEF897C285682 /* SAVYApp.swift in Sources */,

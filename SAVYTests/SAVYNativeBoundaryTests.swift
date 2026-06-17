@@ -36,5 +36,22 @@ final class SAVYNativeBoundaryTests: XCTestCase {
             "Adam's\nOntology",
             "Belief\nLibrary"
         ])
+        XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.sectionID), [
+            "news-channel",
+            "field-essays",
+            "ontology",
+            "beliefs"
+        ])
+    }
+
+    func testWebsiteContentSeedsEveryNativeLeveragePage() {
+        let sections = LeverageContent.seed
+
+        XCTAssertEqual(sections.map(\.id), ["news-channel", "field-essays", "ontology", "beliefs"])
+        XCTAssertTrue(sections.allSatisfy { !$0.items.isEmpty })
+        XCTAssertTrue(sections.first { $0.id == "news-channel" }?.items.contains { $0.title == "AI is becoming infrastructure" } == true)
+        XCTAssertTrue(sections.first { $0.id == "field-essays" }?.items.contains { $0.id == "the-lesson-is-in-the-eye-of-the-beholder" } == true)
+        XCTAssertTrue(sections.first { $0.id == "ontology" }?.items.contains { $0.title.contains("13 categories") } == true)
+        XCTAssertTrue(sections.first { $0.id == "beliefs" }?.items.contains { $0.title == "Focus on What's in Your Control" } == true)
     }
 }
