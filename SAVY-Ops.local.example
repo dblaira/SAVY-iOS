@@ -1,0 +1,24 @@
+# Local ops notes — copy to SAVY-Ops.local.md (gitignored)
+
+## AWS
+- Email: blair.ai.ops@gmail.com
+- IAM username: blair.ai.ops
+- Note: different user id than other accounts — use this identity for Aurora/Cognito/S3
+
+## Neo4j
+- Logged in (Aura or self-hosted — record URI in gateway .env.local when provisioned)
+
+## Apple Developer
+- Team ID in Xcode: 7FKUS5M5QS
+- Bundle: com.adamblair.savy
+
+## Supabase
+- Bridge phase: gateway reads via service role until Aurora is live
+- Migrate entries + correlation_analyses → Aurora when cluster is up
+
+## Gateway deploy checklist
+1. `cd gateway && npm install`
+2. Set Vercel env: SAVY_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+3. `npx vercel --prod`
+4. Copy deploy URL + API key into SAVY-Secrets.xcconfig
+5. Rebuild iOS → status should flip to "Live AWS graph content"

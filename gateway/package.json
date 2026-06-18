@@ -1,0 +1,19 @@
+{
+  "name": "savy-gateway",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.0.4",
+    "typescript": "^5.7.3",
+    "vercel": "^41.1.4"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}

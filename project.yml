@@ -15,6 +15,9 @@ targets:
   SAVY:
     type: application
     platform: iOS
+    configFiles:
+      Debug: SAVY.xcconfig
+      Release: SAVY.xcconfig
     sources:
       - path: SAVY
     settings:
@@ -25,6 +28,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_DEBUG_DYLIB: NO
   SAVYTests:
     type: bundle.unit-test
     platform: iOS
@@ -47,7 +51,9 @@ schemes:
         SAVYTests: [test]
     run:
       config: Debug
+      debugEnabled: false
     test:
       config: Debug
+      debugEnabled: false
       targets:
         - SAVYTests

@@ -114,7 +114,7 @@ enum LeverageContent {
                 kicker: "92 WEEKS",
                 title: "13 categories, 4,873 extractions",
                 summary: "The website's ontology view compresses lived data into category relationships.",
-                body: "The latest Supabase correlation analysis spans 92 weeks, 4,873 extractions, 13 categories, and 23 relationships."
+                body: "The latest Aurora correlation analysis spans 92 weeks, 4,873 extractions, 13 categories, and 23 relationships."
             ),
             LeverageItem(
                 id: "affect-learning",

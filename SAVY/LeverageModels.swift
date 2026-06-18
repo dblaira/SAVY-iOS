@@ -34,6 +34,14 @@ struct OntologyCorrelation: Codable, Equatable {
     let coefficient: Double
     let lag: Int
     let type: String
+
+    enum CodingKeys: String, CodingKey {
+        case categoryA = "category_a"
+        case categoryB = "category_b"
+        case coefficient
+        case lag
+        case type
+    }
 }
 
 struct OntologyCategoryStat: Codable, Equatable {
@@ -43,6 +51,15 @@ struct OntologyCategoryStat: Codable, Equatable {
     let weeksWithData: Int
     let totalCount: Int
     let coveragePercent: Double
+
+    enum CodingKeys: String, CodingKey {
+        case category
+        case mean
+        case stdDev = "std_dev"
+        case weeksWithData = "weeks_with_data"
+        case totalCount = "total_count"
+        case coveragePercent = "coverage_percent"
+    }
 }
 
 struct OntologySnapshot: Codable, Equatable {
@@ -50,4 +67,11 @@ struct OntologySnapshot: Codable, Equatable {
     let totalExtractions: Int
     let correlations: [OntologyCorrelation]
     let categoryStats: [OntologyCategoryStat]
+
+    enum CodingKeys: String, CodingKey {
+        case totalWeeks = "total_weeks"
+        case totalExtractions = "total_extractions"
+        case correlations
+        case categoryStats = "category_stats"
+    }
 }

@@ -5,6 +5,15 @@ enum CaptureStatus: String, Codable, Equatable {
     case archived
 }
 
+enum CaptureSeed {
+    static let entries: [CaptureEntry] = [
+        CaptureEntry(
+            title: "Momentum is information",
+            meaning: "Anything that creates forward motion deserves a native surface."
+        )
+    ]
+}
+
 struct CaptureEntry: Identifiable, Codable, Equatable {
     var id: UUID
     var title: String

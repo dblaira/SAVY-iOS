@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SAVY — Where We Are</title>
+  <style>
+    :root {
+      --navy: #08172d;
+      --navy-deep: #050c18;
+      --cream: #f8f4ed;
+      --cream-dim: #d9d2c6;
+      --red: #9b1b1b;
+      --red-bright: #e60e44;
+      --gold-box: #b8a07a;
+      --green: #2ab860;
+      --muted: rgba(248, 244, 237, 0.45);
+      --line: rgba(248, 244, 237, 0.2);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: var(--navy-deep);
+      color: var(--cream);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 20px 20px;
+    }
+
+    .top {
+      flex-shrink: 0;
+      margin-bottom: 20px;
+    }
+
+    .top .eyebrow {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: var(--red-bright);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .top h1 {
+      font-family: Georgia, serif;
+      font-size: 1.6rem;
+      font-weight: 400;
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+
+    .you-are-here {
+      background: var(--red);
+      color: var(--cream);
+      padding: 12px 18px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    /* ── HORIZONTAL TRACK ── */
+    .track-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      min-height: 0;
+      padding: 0 8px;
+    }
+
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      width: 100%;
+      justify-content: space-between;
+      gap: 0;
+      position: relative;
+    }
+
+    /* horizontal spine behind circles */
+    .checklist::before {
+      content: "";
+      position: absolute;
+      top: 22px;
+      left: 5%;
+      right: 5%;
+      height: 3px;
+      background: var(--line);
+      z-index: 0;
+    }
+
+    .checklist li {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+      padding: 0 2px;
+    }
+
+    .mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      flex-shrink: 0;
+      margin-bottom: 10px;
+    }
+
+    .done .mark {
+      background: var(--green);
+      color: var(--navy-deep);
+    }
+
+    .here .mark {
+      background: var(--red-bright);
+      color: var(--cream);
+      width: 52px;
+      height: 52px;
+      font-size: 20px;
+      margin-top: -4px;
+      margin-bottom: 6px;
+      box-shadow: 0 0 0 5px rgba(230, 14, 68, 0.4);
+      animation: glow 2s ease-in-out infinite;
+    }
+
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 0 5px rgba(230, 14, 68, 0.4); }
+      50% { box-shadow: 0 0 0 12px rgba(230, 14, 68, 0.12); }
+    }
+
+    .todo .mark {
+      background: var(--navy-deep);
+      border: 2px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .step-num {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .here .step-num { color: var(--red-bright); }
+
+    .item-title {
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.25;
+      hyphens: auto;
+    }
+
+    .done .item-title { color: var(--green); }
+    .here .item-title { color: var(--cream); font-size: 12px; }
+    .todo .item-title { color: var(--muted); }
+
+    .here-tag {
+      display: block;
+      margin-top: 6px;
+      background: var(--gold-box);
+      color: var(--navy-deep);
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      padding: 3px 6px;
+      border-radius: 2px;
+    }
+
+    .bottom {
+      flex-shrink: 0;
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+
+    .bottom strong { color: var(--cream-dim); }
+
+    .next-move {
+      background: rgba(201, 176, 138, 0.15);
+      border-left: 3px solid var(--gold-box);
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--cream-dim);
+      flex: 1;
+    }
+
+    .next-move strong { color: var(--gold-box); }
+  </style>
+</head>
+<body>
+
+  <div class="top">
+    <div class="eyebrow">SAVY iOS</div>
+    <h1>Where We Are</h1>
+    <div class="you-are-here">Step 7 of 9 — Gateway live. Rebuild iOS in Xcode → live beliefs on phone.</div>
+  </div>
+
+  <div class="track-wrap">
+    <ol class="checklist">
+      <li class="done">
+        <div class="mark">✓</div>
+        <div class="step-num">1</div>
+        <div class="item-title">iPhone app</div>
+      </li>
+      <li class="done">
+        <div class="mark">✓</div>
+        <div class="step-num">2</div>
+        <div class="item-title">AWSGraphClient</div>
+      </li>
+      <li class="done">
+        <div class="mark">✓</div>
+        <div class="step-num">3</div>
+        <div class="item-title">Seed fallback</div>
+      </li>
+      <li class="done">
+        <div class="mark">✓</div>
+        <div class="step-num">4</div>
+        <div class="item-title">Vercel API</div>
+      </li>
+      <li class="todo">
+        <div class="mark">5</div>
+        <div class="step-num">5</div>
+        <div class="item-title">Aurora live</div>
+      </li>
+      <li class="todo">
+        <div class="mark">6</div>
+        <div class="step-num">6</div>
+        <div class="item-title">Neo4j live</div>
+      </li>
+      <li class="here">
+        <div class="mark">●</div>
+        <div class="step-num">7</div>
+        <div class="item-title">Credentials</div>
+        <span class="here-tag">HERE</span>
+      </li>
+      <li class="todo">
+        <div class="mark">8</div>
+        <div class="step-num">8</div>
+        <div class="item-title">Auth back</div>
+      </li>
+      <li class="todo">
+        <div class="mark">9</div>
+        <div class="step-num">9</div>
+        <div class="item-title">Live on phone</div>
+      </li>
+    </ol>
+  </div>
+
+  <div class="bottom">
+    <div class="next-move"><strong>Next:</strong> Rebuild SAVY in Xcode on your iPhone → check status says "Live AWS graph content"</div>
+    <span>savy-gateway.vercel.app · Supabase bridge active</span>
+  </div>
+
+</body>
+</html>

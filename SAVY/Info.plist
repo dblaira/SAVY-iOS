@@ -28,10 +28,10 @@
 	<string>SAVY uses location only when a native entry needs place context.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SAVY lets you attach chosen images to native entries.</string>
-	<key>SUPABASE_ANON_KEY</key>
-	<string>$(SUPABASE_ANON_KEY)</string>
-	<key>SUPABASE_URL</key>
-	<string>$(SUPABASE_URL)</string>
+	<key>AWS_API_BASE_URL</key>
+	<string>$(AWS_API_BASE_URL)</string>
+	<key>AWS_API_KEY</key>
+	<string>$(AWS_API_KEY)</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

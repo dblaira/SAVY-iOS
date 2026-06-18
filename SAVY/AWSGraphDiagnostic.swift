@@ -1,6 +1,6 @@
 import Foundation
 
-struct SupabaseDiagnostic: Equatable {
+struct AWSGraphDiagnostic: Equatable {
     let stage: String
     let endpoint: String?
     let statusCode: Int?
@@ -22,7 +22,7 @@ struct SupabaseDiagnostic: Equatable {
         }
 
         if let errorCode {
-            lines.append("Supabase code: \(errorCode)")
+            lines.append("API code: \(errorCode)")
         }
 
         if let requestID {

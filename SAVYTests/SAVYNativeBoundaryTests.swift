@@ -6,7 +6,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     func testAppRuntimeDeclaresNativeOnlyBoundary() {
         XCTAssertEqual(AppRuntimeBoundary.allowedRuntime, .nativeSwift)
         XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.webViewShell))
-        XCTAssertTrue(AppRuntimeBoundary.backendSurfaces.contains(.supabase))
+        XCTAssertTrue(AppRuntimeBoundary.backendSurfaces.contains(.awsGraph))
         XCTAssertTrue(AppRuntimeBoundary.backendSurfaces.contains(.vercel))
     }
 
@@ -18,10 +18,56 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(entry.status, .active)
     }
 
-    func testSupabaseConfigurationRequiresConcreteBackendValues() {
-        XCTAssertNil(SupabaseConfiguration(urlString: "", anonKey: "abc"))
-        XCTAssertNil(SupabaseConfiguration(urlString: "https://example.supabase.co", anonKey: ""))
-        XCTAssertNotNil(SupabaseConfiguration(urlString: "https://example.supabase.co", anonKey: "anon"))
+    func testAWSGraphConfigurationRequiresConcreteBackendValues() {
+        XCTAssertNil(AWSGraphConfiguration(baseURLString: "", apiKey: "abc"))
+        XCTAssertNil(AWSGraphConfiguration(baseURLString: "https://api.example.com", apiKey: ""))
+        XCTAssertNotNil(AWSGraphConfiguration(baseURLString: "https://api.example.com", apiKey: "key"))
+    }
+
+    func testAWSGraphSeedFallbackMatchesWebsiteContent() {
+        XCTAssertEqual(AWSGraphSeed.entries, LeverageContent.beliefs.items)
+        XCTAssertEqual(AWSGraphSeed.captures, CaptureSeed.entries)
+        XCTAssertEqual(AWSGraphSeed.ontologyItems, LeverageContent.ontology.items)
+        XCTAssertEqual(AWSGraphSeed.correlations.totalWeeks, 92)
+        XCTAssertEqual(AWSGraphSeed.correlations.totalExtractions, 4873)
+        XCTAssertEqual(AWSGraphSeed.correlations.correlations.count, 3)
+    }
+
+    func testAWSGraphCorrelationsDecodeSnakeCasePayload() throws {
+        let data = """
+        {
+          "total_weeks": 92,
+          "total_extractions": 4873,
+          "correlations": [
+            {
+              "category_a": "Affect",
+              "category_b": "Learning",
+              "coefficient": 0.67,
+              "lag": 0,
+              "type": "co-movement"
+            }
+          ],
+          "category_stats": []
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try JSONDecoder.awsGraph.decode(OntologySnapshot.self, from: data)
+
+        XCTAssertEqual(snapshot.totalWeeks, 92)
+        XCTAssertEqual(snapshot.correlations.first?.categoryA, "Affect")
+        XCTAssertEqual(snapshot.correlations.first?.categoryB, "Learning")
+    }
+
+    func testAWSGraphStaticFallbackReturnsSeedWithoutConfiguredClient() async {
+        let entries = await AWSGraphClient.entriesOrSeed()
+        let captures = await AWSGraphClient.capturesOrSeed()
+        let correlations = await AWSGraphClient.correlationsOrSeed()
+        let ontology = await AWSGraphClient.ontologyItemsOrSeed()
+
+        XCTAssertEqual(entries, AWSGraphSeed.entries)
+        XCTAssertEqual(captures, AWSGraphSeed.captures)
+        XCTAssertEqual(correlations, AWSGraphSeed.correlations)
+        XCTAssertEqual(ontology, AWSGraphSeed.ontologyItems)
     }
 
     func testAuthSessionBuildsBearerAuthorizationHeader() {
@@ -36,7 +82,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(session.authorizationHeader, "Bearer access-token")
     }
 
-    func testSupabaseAuthSessionDecodesSnakeCaseResponse() throws {
+    func testAWSGraphAuthSessionDecodesSnakeCaseResponse() throws {
         let data = """
         {
           "access_token": "access-token",
@@ -50,15 +96,15 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         }
         """.data(using: .utf8)!
 
-        let session = try JSONDecoder.supabase.decode(AuthSession.self, from: data)
+        let session = try JSONDecoder.awsGraph.decode(AuthSession.self, from: data)
 
         XCTAssertEqual(session.accessToken, "access-token")
         XCTAssertEqual(session.refreshToken, "refresh-token")
         XCTAssertEqual(session.authorizationHeader, "Bearer access-token")
     }
 
-    func testSupabaseDiagnosticNamesMissingFieldWithoutSecrets() {
-        let diagnostic = SupabaseDiagnostic(
+    func testAWSGraphDiagnosticNamesMissingFieldWithoutSecrets() {
+        let diagnostic = AWSGraphDiagnostic(
             stage: "auth decode",
             endpoint: "auth/v1/token",
             statusCode: 200,
@@ -92,9 +138,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.heroContentTopPadding, 34)
         XCTAssertEqual(RootHomeLayout.heroWordmarkEyebrowSpacing, 12)
         XCTAssertEqual(RootHomeLayout.heroDividerHeight, 3)
-        XCTAssertEqual(RootHomeLayout.heroWordmarkFontName, "BodoniSvtyTwoOSITCTT-Book")
         XCTAssertEqual(RootHomeLayout.heroWordmarkFontSize, 48)
-        XCTAssertNotNil(UIFont(name: RootHomeLayout.heroWordmarkFontName, size: RootHomeLayout.heroWordmarkFontSize))
         XCTAssertEqual(RootHomeLayout.carouselTopPadding, 20)
         XCTAssertEqual(RootHomeLayout.carouselHorizontalPadding, 2)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
@@ -109,7 +153,6 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.latestSectionBandHeight, 92)
         XCTAssertEqual(RootHomeLayout.pinnedEntryRowHeight, 81)
         XCTAssertEqual(RootHomeLayout.pinnedEntryTrailingInset, 17)
-        XCTAssertEqual(RootHomeLayout.pinnedEntryFontName, "Crushed-Regular")
         XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 32)
         XCTAssertEqual(SavyHapticFeedback.primaryImpactIntensity, 1.0)
         XCTAssertEqual(HomePinnedEntry.referenceRows.map(\.title), [

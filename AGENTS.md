@@ -12,6 +12,12 @@ Product UI/UX source of truth may be explored in the Figma macOS app and impleme
 
 Acceptance criteria: if it is part of the shipped iPhone app experience, it should feel, behave, and integrate like a real App Store iOS app with direct access to Apple platform capabilities.
 
+## Plan Overview Rule
+
+Adam keeps `docs/savy-migration-map.html` on screen as the living status board.
+
+When sharing multi-step plans or migration status: **overview first** — one sentence, horizontal progress track (all steps on one screen), "HERE" on current step, one-line next move. Details below or collapsed. Update the HTML when milestones change. See `.cursor/rules/plan-overview.mdc`.
+
 ## Product Rule
 
 This app is being built for Adam first. Adam's taste, language, understanding, and natural reaction are the acceptance criteria. Do not optimize for a hypothetical average user before Adam has reacted.

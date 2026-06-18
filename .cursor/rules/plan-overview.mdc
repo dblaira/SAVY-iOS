@@ -1,0 +1,39 @@
+---
+description: Lead multi-step plans with a simple one-screen overview Adam can read fast
+alwaysApply: true
+---
+
+# Plan Overview First
+
+When sharing a detailed or multi-step plan, migration status, or architecture breakdown:
+
+## Lead with "where we are"
+
+1. **One sentence** — current step and blocker (e.g. "Step 3 of 9 — seed works, no live backend").
+2. **Horizontal progress track** — all steps visible on one screen; no vertical scroll wall.
+3. **Mark current step** — pulsing/highlighted "HERE" on the active item only.
+4. **Next move** — one line at the bottom; the single highest-leverage action.
+
+Details, tables, and diagrams go **below** or behind a collapse — never first.
+
+## Text responses
+
+- First 3 lines = overview only (status, step number, next move).
+- No mermaid or long prose before the overview.
+- Short labels on steps; save explanations for follow-up.
+
+## HTML / visual artifact
+
+Use `docs/savy-migration-map.html` as the template. Adam keeps this on screen.
+
+- Horizontal checklist, full viewport, no scroll
+- Colors: navy `#050c18`, cream `#f8f4ed`, red `#9b1b1b` / `#e60e44`, gold `#b8a07a`, green `#2ab860`
+- Open via `file:///…/docs/savy-migration-map.html` (no server required)
+
+**Update that file** when a migration milestone completes — don't leave stale step numbers.
+
+## Anti-patterns
+
+- Vertical 9-item lists that require scrolling
+- Architecture essays before "you are here"
+- Assuming Adam will read every service name — he needs the checklist, not the wiring diagram

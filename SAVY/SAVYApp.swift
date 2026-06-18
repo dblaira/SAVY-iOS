@@ -4,7 +4,7 @@ import SwiftUI
 struct SAVYApp: App {
     var body: some Scene {
         WindowGroup {
-            AuthGateView()
+            RootView()
         }
     }
 }

@@ -14,7 +14,7 @@ enum DisallowedTechnology: Equatable {
 }
 
 enum BackendSurface: Equatable {
-    case supabase
+    case awsGraph
     case vercel
 }
 
@@ -31,7 +31,7 @@ enum AppRuntimeBoundary {
     ]
 
     static let backendSurfaces: [BackendSurface] = [
-        .supabase,
+        .awsGraph,
         .vercel
     ]
 }

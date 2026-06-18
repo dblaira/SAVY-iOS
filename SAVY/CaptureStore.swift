@@ -4,7 +4,7 @@ import Foundation
 final class CaptureStore: ObservableObject {
     @Published private(set) var entries: [CaptureEntry]
 
-    init(entries: [CaptureEntry] = CaptureStore.seedEntries) {
+    init(entries: [CaptureEntry] = CaptureSeed.entries) {
         self.entries = entries
     }
 
@@ -14,10 +14,4 @@ final class CaptureStore: ObservableObject {
         entries.insert(entry, at: 0)
     }
 
-    private static let seedEntries: [CaptureEntry] = [
-        CaptureEntry(
-            title: "Momentum is information",
-            meaning: "Anything that creates forward motion deserves a native surface."
-        )
-    ]
 }

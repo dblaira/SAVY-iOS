@@ -15,34 +15,27 @@ final class LeverageDataStore: ObservableObject {
     }
 
     func refresh() async {
-        guard let client = SupabaseClient.fromBundleConfiguration() else {
-            status = "Website seed content"
-            return
-        }
-
         isLoading = true
         defer { isLoading = false }
 
-        do {
-            async let liveBeliefs = client.fetchBeliefItems(limit: 24)
-            async let liveOntology = client.fetchOntologyItems()
+        async let liveEntries = AWSGraphClient.entriesOrSeed(limit: 24)
+        async let liveOntology = AWSGraphClient.ontologyItemsOrSeed()
 
-            var nextSections = LeverageContent.seed
-            let beliefs = try await liveBeliefs
-            if !beliefs.isEmpty {
-                nextSections.replaceSection(id: "beliefs", items: beliefs)
-            }
-
-            let ontology = try await liveOntology
-            if !ontology.isEmpty {
-                nextSections.replaceSection(id: "ontology", items: ontology)
-            }
-
-            sections = nextSections
-            status = "Live Supabase content"
-        } catch {
-            status = "Website seed content"
+        var nextSections = LeverageContent.seed
+        let entries = await liveEntries
+        if entries != AWSGraphSeed.entries {
+            nextSections.replaceSection(id: "beliefs", items: entries)
         }
+
+        let ontology = await liveOntology
+        if ontology != AWSGraphSeed.ontologyItems {
+            nextSections.replaceSection(id: "ontology", items: ontology)
+        }
+
+        sections = nextSections
+        status = entries == AWSGraphSeed.entries && ontology == AWSGraphSeed.ontologyItems
+            ? "Website seed content"
+            : "Live AWS graph content"
     }
 }
 

@@ -41,6 +41,7 @@ struct RootView: View {
     @StateObject private var navigationState = SavyNavigationState()
     @StateObject private var leverageStore = LeverageDataStore()
     @StateObject private var metadataStore = MetadataEntryStore.live()
+    @StateObject private var reminderStore = ReminderStore()
 
     init(onSignOut: (() -> Void)? = nil) {
         self.onSignOut = onSignOut
@@ -95,10 +96,28 @@ struct RootView: View {
                 await leverageStore.refresh()
             }
             .sheet(item: $navigationState.activeComposerKind) { kind in
-                MetadataComposerSheet(kind: kind) { entry in
-                    try metadataStore.save(entry)
-                }
+                reminderEntrySheet(for: kind)
             }
+        }
+    }
+
+    /// Routes the radial "+" menu to the Re_Call entry forms and calendar, all backed by the
+    /// shared `reminderStore`. Reminder/Action open the three-face form; Calendar opens the
+    /// day-timeline calendar (which opens the form to edit an item).
+    @ViewBuilder
+    private func reminderEntrySheet(for kind: MetadataEntryKind) -> some View {
+        switch kind {
+        case .reminder:
+            ReminderFormView(initialKind: .reminder, existing: nil, existingTags: reminderStore.recentTags) { reminder in
+                reminderStore.save(reminder)
+            }
+        case .action:
+            ReminderFormView(initialKind: .action, existing: nil, existingTags: reminderStore.recentTags) { reminder in
+                reminderStore.save(reminder)
+            }
+        case .calendar:
+            SavyCalendarScreen()
+                .environmentObject(reminderStore)
         }
     }
 

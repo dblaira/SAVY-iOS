@@ -1,0 +1,11 @@
+// AWS Graph API gateway (Vercel → Aurora + Neo4j)
+// Leave blank for website seed fallback. Copy SAVY-Secrets.xcconfig.example for local values.
+// xcconfig treats // as a comment — use https:/$()/host/... for URLs (see example secrets file).
+
+AWS_API_BASE_URL =
+AWS_API_KEY =
+
+// Debug dylib split crashes some device launches (__abort_with_payload). Ship one binary on phone.
+ENABLE_DEBUG_DYLIB = NO
+
+#include? "SAVY-Secrets.xcconfig"
