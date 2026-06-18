@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { cors, requireApiKey } from "../../../lib/http";
-import { fetchLatestCorrelations } from "../../../lib/supabase-bridge";
+import { cors, requireApiKey } from "../../../lib/http.js";
+import { fetchLatestCorrelations } from "../../../lib/supabase-bridge.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;
@@ -13,7 +13,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const snapshot = await fetchLatestCorrelations();
     if (!snapshot) {
-      res.status(404).json({ error: "No correlation analysis found" });
+      res.status(200).json({
+        total_weeks: 0,
+        total_extractions: 0,
+        correlations: [],
+        category_stats: [],
+      });
       return;
     }
     res.status(200).json(snapshot);

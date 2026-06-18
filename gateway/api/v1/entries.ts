@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { cors, parseLimit, requireApiKey } from "../../lib/http";
-import { fetchBeliefEntries } from "../../lib/supabase-bridge";
+import { cors, parseLimit, requireApiKey } from "../../lib/http.js";
+import { fetchBeliefEntries } from "../../lib/supabase-bridge.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;

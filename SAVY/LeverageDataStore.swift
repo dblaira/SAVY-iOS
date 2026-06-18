@@ -4,7 +4,10 @@ import Foundation
 final class LeverageDataStore: ObservableObject {
     @Published private(set) var sections = LeverageContent.seed
     @Published private(set) var status = "Website seed content"
+    @Published private(set) var statusDetail = "Checking gateway…"
     @Published private(set) var isLoading = false
+
+    private var refreshGeneration = 0
 
     var featuredQuote: LeverageItem {
         section(id: "beliefs")?.items.dropFirst().first ?? LeverageContent.beliefs.items[1]
@@ -14,28 +17,68 @@ final class LeverageDataStore: ObservableObject {
         sections.first { $0.id == id }
     }
 
-    func refresh() async {
-        isLoading = true
-        defer { isLoading = false }
+    var isLiveContent: Bool {
+        status == "Live AWS graph content"
+    }
 
-        async let liveEntries = AWSGraphClient.entriesOrSeed(limit: 24)
-        async let liveOntology = AWSGraphClient.ontologyItemsOrSeed()
+    func refresh() async {
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        isLoading = true
+        defer {
+            if generation == refreshGeneration {
+                isLoading = false
+            }
+        }
+
+        // Network calls run detached so SwiftUI view-task cancellation cannot abort URLSession mid-flight.
+        async let beliefsReport = Task.detached(priority: .utility) {
+            await AWSGraphClient.fetchBeliefsReport(limit: 24)
+        }.value
+        async let ontologyReport = Task.detached(priority: .utility) {
+            await AWSGraphClient.fetchOntologyReport()
+        }.value
+
+        let beliefs = await beliefsReport
+        let ontology = await ontologyReport
+
+        guard generation == refreshGeneration else { return }
 
         var nextSections = LeverageContent.seed
-        let entries = await liveEntries
-        if entries != AWSGraphSeed.entries {
-            nextSections.replaceSection(id: "beliefs", items: entries)
-        }
-
-        let ontology = await liveOntology
-        if ontology != AWSGraphSeed.ontologyItems {
-            nextSections.replaceSection(id: "ontology", items: ontology)
-        }
-
+        nextSections.replaceSection(id: "beliefs", items: beliefs.items)
+        nextSections.replaceSection(id: "ontology", items: ontology.items)
         sections = nextSections
-        status = entries == AWSGraphSeed.entries && ontology == AWSGraphSeed.ontologyItems
-            ? "Website seed content"
-            : "Live AWS graph content"
+
+        let beliefsLive = isLive(beliefs.source)
+        let ontologyLive = isLive(ontology.source)
+
+        status = beliefsLive || ontologyLive ? "Live AWS graph content" : "Website seed content"
+        statusDetail = detailLine(beliefs: beliefs.source, ontology: ontology.source)
+    }
+
+    private func isLive(_ source: AWSGraphClient.ContentLineSource) -> Bool {
+        if case .live = source { return true }
+        return false
+    }
+
+    private func detailLine(
+        beliefs: AWSGraphClient.ContentLineSource,
+        ontology: AWSGraphClient.ContentLineSource
+    ) -> String {
+        "Beliefs: \(label(for: beliefs)) · Ontology: \(label(for: ontology))"
+    }
+
+    private func label(for source: AWSGraphClient.ContentLineSource) -> String {
+        switch source {
+        case .unconfigured:
+            return "no API config in build"
+        case let .live(itemCount):
+            return "live (\(itemCount))"
+        case .seedBecauseEmpty:
+            return "empty response"
+        case let .seedBecauseFailed(message):
+            return "failed (\(message))"
+        }
     }
 }
 

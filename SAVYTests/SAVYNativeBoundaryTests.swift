@@ -58,6 +58,30 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(snapshot.correlations.first?.categoryB, "Learning")
     }
 
+    func testAWSGraphCorrelationsDecodeCamelCasePayload() throws {
+        let data = """
+        {
+          "total_weeks": 92,
+          "total_extractions": 4873,
+          "correlations": [
+            {
+              "categoryA": "Affect",
+              "categoryB": "Learning",
+              "coefficient": 0.67,
+              "lag": 0,
+              "type": "co-movement"
+            }
+          ],
+          "category_stats": []
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try JSONDecoder.awsGraph.decode(OntologySnapshot.self, from: data)
+
+        XCTAssertEqual(snapshot.correlations.first?.categoryA, "Affect")
+        XCTAssertEqual(snapshot.correlations.first?.categoryB, "Learning")
+    }
+
     func testAWSGraphStaticFallbackReturnsSeedWithoutConfiguredClient() async {
         let entries = await AWSGraphClient.entriesOrSeed()
         let captures = await AWSGraphClient.capturesOrSeed()

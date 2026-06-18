@@ -145,6 +145,75 @@ actor AWSGraphClient {
         return await client.ontologyItemsOrSeed(accessToken: accessToken)
     }
 
+    // MARK: - Fetch diagnostics (for visible status on device)
+
+    enum ContentLineSource: Equatable {
+        case unconfigured
+        case live(itemCount: Int)
+        case seedBecauseEmpty
+        case seedBecauseFailed(String)
+    }
+
+    struct BeliefsFetchReport: Equatable {
+        let items: [LeverageItem]
+        let source: ContentLineSource
+    }
+
+    struct OntologyFetchReport: Equatable {
+        let items: [LeverageItem]
+        let source: ContentLineSource
+    }
+
+    static func fetchBeliefsReport(limit: Int = 24) async -> BeliefsFetchReport {
+        guard let client = fromBundleConfiguration() else {
+            return BeliefsFetchReport(items: AWSGraphSeed.entries, source: .unconfigured)
+        }
+        do {
+            let live = try await client.fetchEntries(limit: limit)
+            if live.isEmpty {
+                return BeliefsFetchReport(items: AWSGraphSeed.entries, source: .seedBecauseEmpty)
+            }
+            return BeliefsFetchReport(items: live, source: .live(itemCount: live.count))
+        } catch {
+            return BeliefsFetchReport(items: AWSGraphSeed.entries, source: .seedBecauseFailed(compactFetchError(error)))
+        }
+    }
+
+    static func fetchOntologyReport() async -> OntologyFetchReport {
+        guard let client = fromBundleConfiguration() else {
+            return OntologyFetchReport(items: AWSGraphSeed.ontologyItems, source: .unconfigured)
+        }
+        do {
+            let snapshot = try await client.fetchCorrelations()
+            if snapshot.correlations.isEmpty {
+                return OntologyFetchReport(items: AWSGraphSeed.ontologyItems, source: .seedBecauseEmpty)
+            }
+            let items = leverageItems(from: snapshot)
+            if items.isEmpty {
+                return OntologyFetchReport(items: AWSGraphSeed.ontologyItems, source: .seedBecauseEmpty)
+            }
+            return OntologyFetchReport(items: items, source: .live(itemCount: items.count))
+        } catch {
+            return OntologyFetchReport(items: AWSGraphSeed.ontologyItems, source: .seedBecauseFailed(compactFetchError(error)))
+        }
+    }
+
+    private static func compactFetchError(_ error: Error) -> String {
+        if error is CancellationError {
+            return "cancelled"
+        }
+        if let urlError = error as? URLError, urlError.code == .cancelled {
+            return "cancelled"
+        }
+        if let urlError = error as? URLError {
+            return urlError.localizedDescription
+        }
+        if let awsError = error as? AWSGraphClientError {
+            return awsError.localizedDescription ?? "request failed"
+        }
+        return error.localizedDescription
+    }
+
     private static func leverageItems(from snapshot: OntologySnapshot) -> [LeverageItem] {
         let summary = LeverageItem(
             id: "live-ontology-summary",
@@ -229,8 +298,12 @@ actor AWSGraphClient {
         }
 
         let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
+        guard let http = response as? HTTPURLResponse else {
+            throw AWSGraphClientError.requestFailed
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8)
+            throw AWSGraphClientError.httpError(statusCode: http.statusCode, body: body)
         }
 
         return try JSONDecoder.awsGraph.decode(T.self, from: data)
@@ -310,6 +383,7 @@ actor AWSGraphClient {
 enum AWSGraphClientError: LocalizedError {
     case authFailed(message: String, diagnostic: AWSGraphDiagnostic?)
     case requestFailed
+    case httpError(statusCode: Int, body: String?)
 
     var errorDescription: String? {
         switch self {
@@ -317,6 +391,12 @@ enum AWSGraphClientError: LocalizedError {
             return message
         case .requestFailed:
             return "AWS graph request failed."
+        case .httpError(let statusCode, let body):
+            if let body, !body.isEmpty {
+                let trimmed = body.prefix(120)
+                return "HTTP \(statusCode): \(trimmed)"
+            }
+            return "HTTP \(statusCode)"
         }
     }
 
@@ -325,6 +405,8 @@ enum AWSGraphClientError: LocalizedError {
         case .authFailed(_, let diagnostic):
             return diagnostic
         case .requestFailed:
+            return nil
+        case .httpError:
             return nil
         }
     }

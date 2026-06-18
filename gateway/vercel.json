@@ -1,8 +1,9 @@
 {
   "functions": {
-    "api/**/*.ts": {
+    "api/v1/**/*.ts": {
       "memory": 256,
-      "maxDuration": 10
+      "maxDuration": 10,
+      "includeFiles": "lib/**"
     }
   },
   "headers": [

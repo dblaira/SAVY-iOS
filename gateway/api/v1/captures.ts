@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { cors, parseLimit, requireApiKey } from "../../lib/http";
+import { cors, parseLimit, requireApiKey } from "../../lib/http.js";
 
 // Maps to savy.metadata_entries once Aurora is live.
 // Bridge phase returns an empty list — iOS falls back to CaptureSeed.

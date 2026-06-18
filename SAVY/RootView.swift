@@ -92,9 +92,6 @@ struct RootView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
-            .task {
-                await leverageStore.refresh()
-            }
             .sheet(item: $navigationState.activeComposerKind) { kind in
                 reminderEntrySheet(for: kind)
             }
@@ -165,6 +162,10 @@ struct EditorialHomeView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header(topInset: proxy.safeAreaInsets.top)
 
+                    contentSourceBand
+                        .padding(.horizontal, RootHomeLayout.horizontalPadding)
+                        .padding(.top, 12)
+
                     leverageCarousel
                         .padding(.top, RootHomeLayout.carouselTopPadding)
 
@@ -173,8 +174,53 @@ struct EditorialHomeView: View {
                 .padding(.bottom, 40)
             }
             .ignoresSafeArea(edges: .top)
+            .refreshable {
+                await leverageStore.refresh()
+            }
+            .task(id: "gateway-sync") {
+                await leverageStore.refresh()
+            }
         }
         .background(SavyTheme.paper.ignoresSafeArea())
+    }
+
+    private var contentSourceBand: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(leverageStore.isLiveContent ? Color(red: 0.16, green: 0.72, blue: 0.35) : Color(red: 0.86, green: 0.45, blue: 0.12))
+                    .frame(width: 8, height: 8)
+
+                Text(leverageStore.status)
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(leverageStore.isLiveContent ? SavyTheme.ink : SavyTheme.crimson)
+
+                if leverageStore.isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(SavyTheme.crimson)
+                }
+
+                Spacer()
+            }
+
+            Text(leverageStore.statusDetail)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.black.opacity(0.48))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(leverageStore.isLiveContent ? Color(red: 0.16, green: 0.72, blue: 0.35).opacity(0.12) : Color(red: 0.86, green: 0.45, blue: 0.12).opacity(0.14))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(leverageStore.status). \(leverageStore.statusDetail)")
     }
 
     private func header(topInset: CGFloat) -> some View {
