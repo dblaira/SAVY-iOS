@@ -9,9 +9,12 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "@vercel/node": "^5.0.4",
+    "pg": "^8.14.1",
+    "@aws-sdk/rds-signer": "^3.758.0",
     "ws": "^8.18.1"
   },
   "devDependencies": {
+    "@types/pg": "^8.11.11",
     "@types/ws": "^8.18.1",
     "typescript": "^5.7.3",
     "vercel": "^41.1.4"

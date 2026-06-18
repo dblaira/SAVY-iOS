@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import ws from "ws";
+import type { CaptureRow, CorrelationSnapshot, EntryRow } from "./types.js";
+import { normalizeCategoryStats, normalizeCorrelations } from "./normalize.js";
 
 let client: SupabaseClient | null = null;
 
@@ -15,60 +17,10 @@ export function getSupabaseBridge(): SupabaseClient {
 
   client = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    realtime: { transport: ws },
+    realtime: { transport: ws as never },
   });
 
   return client;
-}
-
-export type EntryRow = {
-  id: string;
-  headline: string;
-  content: string;
-  connection_type: string | null;
-  entry_type: string | null;
-};
-
-export type CorrelationSnapshot = {
-  total_weeks: number;
-  total_extractions: number;
-  correlations: unknown[];
-  category_stats: unknown[];
-};
-
-type JsonRecord = Record<string, unknown>;
-
-function normalizeCorrelation(raw: unknown): JsonRecord {
-  const row = (raw ?? {}) as JsonRecord;
-  return {
-    category_a: row.category_a ?? row.categoryA,
-    category_b: row.category_b ?? row.categoryB,
-    coefficient: row.coefficient,
-    lag: row.lag,
-    type: row.type,
-  };
-}
-
-function normalizeCategoryStat(raw: unknown): JsonRecord {
-  const row = (raw ?? {}) as JsonRecord;
-  return {
-    category: row.category,
-    mean: row.mean,
-    std_dev: row.std_dev ?? row.stdDev,
-    weeks_with_data: row.weeks_with_data ?? row.weeksWithData,
-    total_count: row.total_count ?? row.totalCount,
-    coverage_percent: row.coverage_percent ?? row.coveragePercent,
-  };
-}
-
-function normalizeCorrelations(rows: unknown): unknown[] {
-  if (!Array.isArray(rows)) return [];
-  return rows.map(normalizeCorrelation);
-}
-
-function normalizeCategoryStats(rows: unknown): unknown[] {
-  if (!Array.isArray(rows)) return [];
-  return rows.map(normalizeCategoryStat);
 }
 
 export async function fetchBeliefEntries(limit: number): Promise<EntryRow[]> {
@@ -83,6 +35,10 @@ export async function fetchBeliefEntries(limit: number): Promise<EntryRow[]> {
 
   if (error) throw error;
   return (data ?? []) as EntryRow[];
+}
+
+export async function fetchCaptures(_limit: number): Promise<CaptureRow[]> {
+  return [];
 }
 
 export async function fetchLatestCorrelations(): Promise<CorrelationSnapshot | null> {

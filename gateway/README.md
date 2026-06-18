@@ -26,11 +26,25 @@ Note the trailing `/api/` — paths append as `v1/entries`, `v1/correlations/lat
 
 ## Phases
 
-| Phase | Data source | Status |
-|-------|-------------|--------|
-| Bridge | Supabase service role | **Now** — gets live beliefs + ontology on phone fast |
-| Aurora | `DATABASE_URL` | Replace bridge queries in `lib/` |
-| Neo4j | Graph enrichment | Optional layer on correlations |
+| Phase | Trigger | Data source |
+|-------|---------|-------------|
+| Bridge | `DATABASE_URL` unset | Supabase service role |
+| Aurora | `DATABASE_URL` set on Vercel | `savy.*` Postgres tables |
+
+Gateway picks the phase automatically via `lib/content-store.ts`. Health reports `phase: "aurora"` or `"supabase-bridge"`.
+
+### Aurora cutover
+
+1. Provision Aurora Serverless v2 (PostgreSQL 15+).
+2. Apply schema: `psql $DATABASE_URL -f docs/schema/aurora.sql`
+3. Migrate data: `node scripts/migrate-supabase-to-aurora.mjs`
+4. Add `DATABASE_URL` to Vercel production env.
+5. Redeploy gateway — health flips to `aurora`.
+
+Optional env for migration script:
+
+- `SAVY_OWNER_USER_ID` (default `adam`)
+- `SAVY_OWNER_EMAIL` (default `adam@savy.app`)
 
 ## Routes
 
