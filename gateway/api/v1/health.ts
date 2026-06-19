@@ -12,6 +12,7 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
       pool: Boolean(process.env.COGNITO_USER_POOL_ID),
       client: Boolean(process.env.COGNITO_CLIENT_ID),
       region: process.env.COGNITO_REGION ?? process.env.AWS_REGION ?? null,
+      git: true,
     },
     routes: [
       "v1/entries",
