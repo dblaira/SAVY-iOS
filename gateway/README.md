@@ -28,23 +28,19 @@ Note the trailing `/api/` — paths append as `v1/entries`, `v1/correlations/lat
 
 | Phase | Trigger | Data source |
 |-------|---------|-------------|
-| Bridge | `DATABASE_URL` unset | Supabase service role |
-| Aurora | `DATABASE_URL` set on Vercel | `savy.*` Postgres tables |
+| Bridge | `AURORA_HOST` unset | Supabase service role |
+| Aurora | `AURORA_HOST` set | `savy.*` Postgres (beliefs + stats) |
+| Aurora + Neo4j | `AURORA_HOST` + `NEO4J_URI` | Beliefs from Aurora, ontology edges from Neo4j |
 
-Gateway picks the phase automatically via `lib/content-store.ts`. Health reports `phase: "aurora"` or `"supabase-bridge"`.
+Gateway picks the phase automatically via `lib/content-store.ts`. Health reports `phase: "supabase-bridge"`, `"aurora"`, or `"aurora+neo4j"`.
 
-### Aurora cutover
+### Neo4j cutover
 
-1. Provision Aurora Serverless v2 (PostgreSQL 15+).
-2. Apply schema: `psql $DATABASE_URL -f docs/schema/aurora.sql`
-3. Migrate data: `node scripts/migrate-supabase-to-aurora.mjs`
-4. Add `DATABASE_URL` to Vercel production env.
-5. Redeploy gateway — health flips to `aurora`.
-
-Optional env for migration script:
-
-- `SAVY_OWNER_USER_ID` (default `adam`)
-- `SAVY_OWNER_EMAIL` (default `adam@savy.app`)
+1. Create AuraDB instance in Neo4j console.
+2. Add `NEO4J_URI`, `NEO4J_USER`, `NEO4J_DATABASE`, `NEO4J_PASSWORD` to `gateway/.env.local`.
+3. Apply schema: `node scripts/apply-neo4j-schema.mjs`
+4. Hydrate graph: `node scripts/migrate-aurora-to-neo4j.mjs`
+5. Add Neo4j env vars to Vercel production and redeploy.
 
 ## Routes
 

@@ -20,4 +20,4 @@ export type CorrelationSnapshot = {
   category_stats: unknown[];
 };
 
-export type GatewayPhase = "aurora" | "supabase-bridge";
+export type GatewayPhase = "aurora" | "aurora+neo4j" | "supabase-bridge";

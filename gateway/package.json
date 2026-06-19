@@ -7,10 +7,11 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
+    "@aws-sdk/rds-signer": "^3.758.0",
     "@supabase/supabase-js": "^2.49.1",
     "@vercel/node": "^5.0.4",
+    "neo4j-driver": "^5.28.3",
     "pg": "^8.14.1",
-    "@aws-sdk/rds-signer": "^3.758.0",
     "ws": "^8.18.1"
   },
   "devDependencies": {
