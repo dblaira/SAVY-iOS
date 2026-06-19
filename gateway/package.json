@@ -7,7 +7,8 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-    "@aws-sdk/rds-signer": "^3.758.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1072.0",
+    "@aws-sdk/rds-signer": "^3.1072.0",
     "@supabase/supabase-js": "^2.49.1",
     "@vercel/node": "^5.0.4",
     "neo4j-driver": "^5.28.3",

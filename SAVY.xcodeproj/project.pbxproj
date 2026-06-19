@@ -35,7 +35,11 @@
 		CA1D59D86BCA442507A85B23 /* LocalImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D2C98AAE037C6FD17F3D409 /* LocalImageStore.swift */; };
 		D4978EC1F20F344B087862B3 /* SavyLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CD74063706864F16360321 /* SavyLocationProvider.swift */; };
 		DA958E6153EFC6478AD8DCDA /* SavyReminderScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA30048EC8E5615CFB651053 /* SavyReminderScreens.swift */; };
+		2F99A401D34AE9874D9DC0C1 /* AuthenticationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE0950195FA99739FEAC0D6 /* AuthenticationStore.swift */; };
+		3F2B98948BEA2C1E3D499561 /* AuthGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B2DF20B40B53767A8A8656D /* AuthGateView.swift */; };
+		B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */; };
 		F6F01445457DD9AD6544F48D /* AWSGraphDiagnostic.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E7E8BF9260C3CE66E04A7B /* AWSGraphDiagnostic.swift */; };
+		FF94BAD45782F70A66588AAB /* BiometricUnlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +83,10 @@
 		DA7BB7AA8C7BCE337E18D90E /* ReminderLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderLocationProvider.swift; sourceTree = "<group>"; };
 		DBF301632E7B7DDBCB4E2E96 /* ReminderNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderNotificationScheduler.swift; sourceTree = "<group>"; };
 		E1D0B59B31ED879E86FA80A2 /* SavyNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyNavigation.swift; sourceTree = "<group>"; };
+		1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricUnlocker.swift; sourceTree = "<group>"; };
+		834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStore.swift; sourceTree = "<group>"; };
+		9B2DF20B40B53767A8A8656D /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
+		ABE0950195FA99739FEAC0D6 /* AuthenticationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationStore.swift; sourceTree = "<group>"; };
 		E4E7E8BF9260C3CE66E04A7B /* AWSGraphDiagnostic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AWSGraphDiagnostic.swift; sourceTree = "<group>"; };
 		F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBrandTheme.swift; sourceTree = "<group>"; };
 		"TEMP_4D1EC870-A8C5-4E39-8654-0976AF9C984D" /* SAVY.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SAVY.xcconfig; sourceTree = "<group>"; };
@@ -118,6 +126,10 @@
 				78F623BD250D3308A5C58730 /* Assets.xcassets */,
 				C37D6C6C19501D7A09690DBC /* AuthSession.swift */,
 				17179B6886F43D8A8BB3911C /* AWSGraphClient.swift */,
+				ABE0950195FA99739FEAC0D6 /* AuthenticationStore.swift */,
+				9B2DF20B40B53767A8A8656D /* AuthGateView.swift */,
+				1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */,
+				834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */,
 				E4E7E8BF9260C3CE66E04A7B /* AWSGraphDiagnostic.swift */,
 				D831D78FD50C7055D086693B /* CalendarView.swift */,
 				0DA56611B45F0D0FC844211C /* CaptureEntry.swift */,
@@ -261,6 +273,10 @@
 				F6F01445457DD9AD6544F48D /* AWSGraphDiagnostic.swift in Sources */,
 				0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */,
 				10E4339CF3515D36E2A66AAB /* AuthSession.swift in Sources */,
+				3F2B98948BEA2C1E3D499561 /* AuthGateView.swift in Sources */,
+				2F99A401D34AE9874D9DC0C1 /* AuthenticationStore.swift in Sources */,
+				FF94BAD45782F70A66588AAB /* BiometricUnlocker.swift in Sources */,
+				B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */,
 				8066C740B4B0BDADEA45B999 /* CalendarView.swift in Sources */,
 				1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */,
 				5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */,
