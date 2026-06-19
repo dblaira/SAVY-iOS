@@ -8,11 +8,12 @@ enum RootHomeLayout {
     )
     static let horizontalPadding: CGFloat = 24
     static let heroTopPadding: CGFloat = 0
-    static let heroHeight: CGFloat = 230
+    static let heroHeight: CGFloat = 248
     static let heroContentTopPadding: CGFloat = 34
-    static let heroWordmarkEyebrowSpacing: CGFloat = 12
+    static let heroWordmarkEyebrowSpacing: CGFloat = 10
     static let heroDividerHeight: CGFloat = 3
-    static let heroWordmarkFontSize: CGFloat = 48
+    static let heroWordmarkFontSize: CGFloat = 64
+    static let heroEyebrowFontSize: CGFloat = 20
     static let carouselTopPadding: CGFloat = 20
     static let carouselHorizontalPadding: CGFloat = 2
     static let carouselCardWidth: CGFloat = 282
@@ -22,13 +23,19 @@ enum RootHomeLayout {
     static let pinnedEntryTrailingInset: CGFloat = 17
     static let pinnedEntryFontSize: CGFloat = 32
     static let bottomNavigationHeight: CGFloat = 112
-    static let bottomNavigationTopPadding: CGFloat = 28
-    static let bottomNavigationIconSize: CGFloat = 34
-    static let bottomNavigationLabelSize: CGFloat = 14
-    static let floatingCaptureAlignment: Alignment = .bottom
-    static let floatingCaptureBottomPadding: CGFloat = 90
+    static let bottomNavigationTopPadding: CGFloat = 24
+    static let bottomNavigationIconSize: CGFloat = 28
+    static let bottomNavigationLabelSize: CGFloat = 11
+    static let bottomNavigationHorizontalPadding: CGFloat = 4
     static let floatingCaptureSize: CGFloat = 72
     static let floatingCaptureBackground = SavyTheme.deepNavy
+    /// FAB center sits on the top edge of the bottom navigation bar.
+    static var floatingCaptureCenterAboveBottom: CGFloat {
+        bottomNavigationHeight
+    }
+    static var radialMenuBottomPadding: CGFloat {
+        floatingCaptureCenterAboveBottom + (floatingCaptureSize / 2) + 10
+    }
     static let radialMenuButtonSize: CGFloat = 66
     static let radialMenuIconSize: CGFloat = 29
     static let radialMenuLabelSize: CGFloat = 14
@@ -49,7 +56,7 @@ struct RootView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: RootHomeLayout.floatingCaptureAlignment) {
+            ZStack {
                 SavyTheme.paper.ignoresSafeArea()
 
                 Group {
@@ -79,14 +86,16 @@ struct RootView: View {
                 VStack(spacing: 0) {
                     Spacer()
 
-                    SavyBottomNavigationBar(navigationState: navigationState)
+                    ZStack(alignment: .top) {
+                        SavyBottomNavigationBar(navigationState: navigationState)
+
+                        SavyFloatingActionButton(isPresented: navigationState.isRadialMenuPresented) {
+                            navigationState.toggleRadialMenu()
+                        }
+                        .offset(y: -RootHomeLayout.floatingCaptureSize / 2)
+                    }
                 }
                 .ignoresSafeArea(edges: .bottom)
-
-                SavyFloatingActionButton(isPresented: navigationState.isRadialMenuPresented) {
-                    navigationState.toggleRadialMenu()
-                }
-                .padding(.bottom, RootHomeLayout.floatingCaptureBottomPadding)
 
                 accountMenuButton
             }
@@ -226,18 +235,13 @@ struct EditorialHomeView: View {
     private func header(topInset: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: RootHomeLayout.heroWordmarkEyebrowSpacing) {
             Text("SAVY")
-                .font(.system(
-                    size: RootHomeLayout.heroWordmarkFontSize,
-                    weight: .regular,
-                    design: .serif
-                ))
-                .italic()
+                .font(SavyTypography.bodoniModa(RootHomeLayout.heroWordmarkFontSize))
                 .foregroundStyle(.white)
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
 
             Text("The Adam Pattern")
-                .font(.system(size: 12, weight: .heavy))
-                .tracking(3)
+                .font(.system(size: RootHomeLayout.heroEyebrowFontSize, weight: .semibold))
                 .foregroundStyle(SavyTheme.crimson)
         }
         .padding(.horizontal, RootHomeLayout.horizontalPadding)
@@ -493,7 +497,7 @@ private struct LeverageItemRow: View {
             }
 
             Text(item.title)
-                .font(.system(size: 25, weight: .regular, design: .serif))
+                .font(SavyTheme.beliefSerif(25))
                 .foregroundStyle(SavyTheme.ink)
 
             if !item.summary.isEmpty {
@@ -514,33 +518,28 @@ private struct LeverageDetailView: View {
     let section: LeverageSection
     let item: LeverageItem
 
+    @State private var graphTrace: BeliefGraphTraceResult?
+
+    private var showsGraphTrace: Bool {
+        section.id == "beliefs"
+    }
+
+    private var beliefHeroText: String {
+        let body = item.body.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !body.isEmpty {
+            return body
+        }
+        return item.title
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                Text(item.kicker)
-                    .font(.system(size: 12, weight: .bold))
-                    .tracking(2)
-                    .foregroundStyle(SavyTheme.crimson)
-
-                Text(item.title)
-                    .font(.system(size: 39, weight: .regular, design: .serif))
-                    .lineSpacing(2)
-                    .foregroundStyle(SavyTheme.ink)
-
-                if !item.summary.isEmpty {
-                    Text(item.summary)
-                        .font(.system(size: 19, weight: .regular, design: .serif))
-                        .lineSpacing(5)
-                        .foregroundStyle(.black.opacity(0.58))
+            VStack(alignment: .leading, spacing: 0) {
+                if showsGraphTrace {
+                    beliefDetailContent
+                } else {
+                    genericDetailContent
                 }
-
-                Divider()
-                    .padding(.vertical, 4)
-
-                Text(item.body)
-                    .font(.system(size: 18, weight: .regular, design: .serif))
-                    .lineSpacing(7)
-                    .foregroundStyle(SavyTheme.ink)
             }
             .padding(.horizontal, 25)
             .padding(.top, 34)
@@ -549,6 +548,126 @@ private struct LeverageDetailView: View {
         .background(SavyTheme.paper.ignoresSafeArea())
         .navigationTitle(section.title)
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: item.id) {
+            guard showsGraphTrace else {
+                graphTrace = nil
+                return
+            }
+            graphTrace = await AWSGraphClient.beliefGraphTraceOrNil(entryId: item.id)
+        }
+    }
+
+    @ViewBuilder
+    private var beliefDetailContent: some View {
+        Text(beliefHeroText)
+            .font(SavyTheme.beliefSerif(30))
+            .lineSpacing(8)
+            .foregroundStyle(SavyTheme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+
+        if let graphTrace {
+            Rectangle()
+                .fill(SavyTheme.crimson)
+                .frame(height: 2)
+                .padding(.top, 32)
+                .padding(.bottom, 28)
+
+            pathwaySection(graphTrace)
+        }
+    }
+
+    @ViewBuilder
+    private var genericDetailContent: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            Text(item.kicker)
+                .font(.system(size: 12, weight: .bold))
+                .tracking(2)
+                .foregroundStyle(SavyTheme.crimson)
+
+            Text(beliefHeroText)
+                .font(SavyTheme.beliefSerif(30))
+                .lineSpacing(8)
+                .foregroundStyle(SavyTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            legacyDetailBody
+        }
+    }
+
+    @ViewBuilder
+    private var legacyDetailBody: some View {
+        if !item.summary.isEmpty {
+            Text(item.summary)
+                .font(.system(size: 19, weight: .regular, design: .serif))
+                .lineSpacing(5)
+                .foregroundStyle(.black.opacity(0.58))
+        }
+
+        if !item.body.isEmpty, item.body != item.title {
+            Divider()
+                .padding(.vertical, 4)
+
+            Text(item.body)
+                .font(.system(size: 18, weight: .regular, design: .serif))
+                .lineSpacing(7)
+                .foregroundStyle(SavyTheme.ink)
+        }
+    }
+
+    @ViewBuilder
+    private func pathwaySection(_ result: BeliefGraphTraceResult) -> some View {
+        if let trace = result.graphTrace, !trace.triplePaths.isEmpty {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Pathway")
+                    .font(SavyTheme.beliefSerif(42))
+                    .foregroundStyle(SavyTheme.ink)
+
+                ForEach(trace.triplePaths, id: \.axiomIri) { path in
+                    pathwayCard(path)
+                }
+            }
+        }
+    }
+
+    private func pathwayCard(_ path: BeliefGraphTraceTriplePath) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(pathwayKicker(path.relationshipType))
+                .font(SavyTheme.beliefSerif(22))
+                .foregroundStyle(SavyTheme.ink.opacity(0.62))
+
+            Text(pathwayEffect(path))
+                .font(SavyTheme.beliefSerif(28))
+                .lineSpacing(7)
+                .foregroundStyle(SavyTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(SavyTheme.pinnedEntry, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func pathwayKicker(_ relationshipType: String?) -> String {
+        let normalized = relationshipType?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "_", with: " ") ?? ""
+
+        if normalized.isEmpty {
+            return "Causes"
+        }
+
+        return normalized.prefix(1).uppercased() + normalized.dropFirst().lowercased()
+    }
+
+    private func pathwayEffect(_ path: BeliefGraphTraceTriplePath) -> String {
+        let consequent = path.consequentLabel?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if !consequent.isEmpty {
+            return consequent
+        }
+
+        return path.antecedentLabel?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? "Unknown pathway"
     }
 }
 
@@ -657,6 +776,10 @@ enum SavyTheme {
     static let sectionBand = Color(red: 244 / 255, green: 239 / 255, blue: 231 / 255)
     static let pinnedEntry = Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
     static let ink = Color(red: 26 / 255, green: 26 / 255, blue: 26 / 255)
+
+    static func beliefSerif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .serif)
+    }
 }
 
 private extension String {

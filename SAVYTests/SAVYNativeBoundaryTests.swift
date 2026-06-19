@@ -82,6 +82,51 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(snapshot.correlations.first?.categoryB, "Learning")
     }
 
+    func testBodoniModaFontLoadsInAppBundle() {
+        XCTAssertNotNil(Bundle.main.url(forResource: "BodoniModa-Regular", withExtension: "ttf"))
+        XCTAssertNotNil(UIFont(name: "BodoniModa-Regular", size: 20))
+    }
+
+    func testBeliefEntryDisplayUsesFullContentWhenHeadlineTruncated() {
+        let headline = "The 10 minutes exporting your judgment builds a system th..."
+        let content =
+            "The 10 minutes exporting your judgment builds a system that compounds. The 10 minutes just doing the task is gone forever."
+
+        XCTAssertTrue(BeliefEntryDisplay.isTruncatedHeadline(headline, content))
+        XCTAssertEqual(BeliefEntryDisplay.title(headline: headline, content: content), content)
+    }
+
+    func testAWSGraphBeliefGraphTraceDecodesGatewayPayload() throws {
+        let data = """
+        {
+          "decision": "belief-graph-match",
+          "confidence": "high",
+          "entryId": "entry-1",
+          "graphTrace": {
+            "matchedAxiomIris": ["https://understood.app/ontology/axiom/axiom-learning-affect"],
+            "evidenceEntryIri": "https://understood.app/entry/entry-1",
+            "paths": ["High Learning -> predicts -> Higher Affect"],
+            "triplePaths": [
+              {
+                "axiomIri": "https://understood.app/ontology/axiom/axiom-learning-affect",
+                "antecedentLabel": "High Learning",
+                "consequentLabel": "Higher Affect",
+                "relationshipType": "predicts",
+                "supportedBy": "https://understood.app/entry/entry-1"
+              }
+            ],
+            "rankingMethod": "evidence-supportedBy-entry — deterministic personal graph only"
+          },
+          "reason": "1 axiom path(s) cite this entry as evidence."
+        }
+        """.data(using: .utf8)!
+
+        let result = try JSONDecoder.awsGraph.decode(BeliefGraphTraceResult.self, from: data)
+
+        XCTAssertTrue(result.hasGraphPath)
+        XCTAssertEqual(result.graphTrace?.paths.first, "High Learning -> predicts -> Higher Affect")
+    }
+
     func testAWSGraphStaticFallbackReturnsSeedWithoutConfiguredClient() async {
         let entries = await AWSGraphClient.entriesOrSeed()
         let captures = await AWSGraphClient.capturesOrSeed()
@@ -153,23 +198,23 @@ final class SAVYNativeBoundaryTests: XCTestCase {
 
     func testHomeLayoutIsNativeIPhoneFirstWithBottomCenteredCaptureButton() {
         XCTAssertEqual(RootHomeLayout.leverageGridColumnCount, 2)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureAlignment, .bottom)
         XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.deepNavy)
         XCTAssertEqual(RootHomeLayout.floatingCaptureSize, 72)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureBottomPadding, 90)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureCenterAboveBottom, 112)
+        XCTAssertEqual(RootHomeLayout.radialMenuBottomPadding, 158)
         XCTAssertEqual(RootHomeLayout.heroTopPadding, 0)
-        XCTAssertEqual(RootHomeLayout.heroHeight, 230)
+        XCTAssertEqual(RootHomeLayout.heroHeight, 248)
         XCTAssertEqual(RootHomeLayout.heroContentTopPadding, 34)
-        XCTAssertEqual(RootHomeLayout.heroWordmarkEyebrowSpacing, 12)
+        XCTAssertEqual(RootHomeLayout.heroWordmarkEyebrowSpacing, 10)
         XCTAssertEqual(RootHomeLayout.heroDividerHeight, 3)
-        XCTAssertEqual(RootHomeLayout.heroWordmarkFontSize, 48)
+        XCTAssertEqual(RootHomeLayout.heroWordmarkFontSize, 64)
         XCTAssertEqual(RootHomeLayout.carouselTopPadding, 20)
         XCTAssertEqual(RootHomeLayout.carouselHorizontalPadding, 2)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
         XCTAssertEqual(RootHomeLayout.carouselCardHeight, 236)
         XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 112)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 28)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 34)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 24)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 28)
         XCTAssertEqual(RootHomeLayout.accountMenuSymbolName, "line.3.horizontal")
         XCTAssertEqual(RootHomeLayout.accountMenuTopPadding, 88)
         XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 66)

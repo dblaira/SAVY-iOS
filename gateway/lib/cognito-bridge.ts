@@ -7,6 +7,10 @@ import {
   SignUpCommand,
   type InitiateAuthCommandOutput,
 } from "@aws-sdk/client-cognito-identity-provider";
+import {
+  cognitoErrorMessage,
+  isNotConfirmedError,
+} from "./cognito-errors.js";
 
 export type AuthUser = {
   id: string;
@@ -22,16 +26,22 @@ export type AuthSession = {
 };
 
 function cognitoClient() {
-  const region = process.env.COGNITO_REGION ?? process.env.AWS_REGION ?? "us-west-2";
+  const region =
+    envValue("COGNITO_REGION") ?? envValue("AWS_REGION") ?? "us-west-2";
   return new CognitoIdentityProviderClient({ region });
+}
+
+function envValue(key: string): string | undefined {
+  const value = process.env[key]?.trim();
+  return value || undefined;
 }
 
 function poolConfig() {
   const userPoolId =
-    process.env.COGNITO_USER_POOL_ID ?? "us-west-2_sqayHoHrK";
+    envValue("COGNITO_USER_POOL_ID") ?? "us-west-2_sqayHoHrK";
   const clientId =
-    process.env.COGNITO_CLIENT_ID ?? "omkdcfdi0rsems3fmc7r5r797";
-  const clientSecret = process.env.COGNITO_CLIENT_SECRET;
+    envValue("COGNITO_CLIENT_ID") ?? "omkdcfdi0rsems3fmc7r5r797";
+  const clientSecret = envValue("COGNITO_CLIENT_SECRET");
 
   if (!userPoolId || !clientId) {
     throw new Error("COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID required");
@@ -126,8 +136,7 @@ export async function signUp(email: string, password: string): Promise<AuthSessi
   try {
     return await signIn(email, password);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!/not confirmed/i.test(message)) throw error;
+    if (!isNotConfirmedError(error)) throw error;
 
     const { userPoolId } = poolConfig();
     try {
@@ -138,9 +147,9 @@ export async function signUp(email: string, password: string): Promise<AuthSessi
         })
       );
       return signIn(email, password);
-    } catch {
+    } catch (confirmError) {
       throw new Error(
-        "Account created but not confirmed yet. Check your email for a confirmation code, then sign in."
+        `Account created but Cognito has not activated it yet (${cognitoErrorMessage(confirmError)}).`
       );
     }
   }

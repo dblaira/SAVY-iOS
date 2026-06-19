@@ -24,31 +24,16 @@ struct SavyBottomNavigationBar: View {
     private let barBackground = Color(red: 0.80, green: 0.70, blue: 0.58)
     private let inactiveColor = Color(red: 0.34, green: 0.27, blue: 0.21).opacity(0.68)
 
-    private var leadingSections: [SavyNavigationSection] {
-        Array(SavyNavigationSection.allCases.prefix(2))
-    }
-
-    private var trailingSections: [SavyNavigationSection] {
-        Array(SavyNavigationSection.allCases.suffix(2))
-    }
-
     var body: some View {
         ZStack(alignment: .top) {
             barBackground
 
-            HStack(alignment: .top, spacing: 0) {
-                ForEach(leadingSections) { section in
-                    navigationButton(for: section)
-                }
-
-                Spacer()
-                    .frame(maxWidth: .infinity)
-
-                ForEach(trailingSections) { section in
+            HStack(spacing: 0) {
+                ForEach(SavyNavigationSection.allCases) { section in
                     navigationButton(for: section)
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, RootHomeLayout.bottomNavigationHorizontalPadding)
             .padding(.top, RootHomeLayout.bottomNavigationTopPadding)
 
             Rectangle()
@@ -60,26 +45,26 @@ struct SavyBottomNavigationBar: View {
     }
 
     private func navigationButton(for section: SavyNavigationSection) -> some View {
-        Button {
+        let isActive = navigationState.activeSection == section
+
+        return Button {
             SavyHapticFeedback.selection()
             navigationState.activeSection = section
             navigationState.dismissRadialMenu()
         } label: {
-            VStack(spacing: 7) {
-                Image(systemName: section.symbolName)
-                    .font(.system(
-                        size: RootHomeLayout.bottomNavigationIconSize,
-                        weight: navigationState.activeSection == section ? .heavy : .bold
-                    ))
+            VStack(spacing: 6) {
+                SavyTabIcon(section: section)
+                    .foregroundStyle(isActive ? SavyTheme.crimson : inactiveColor)
 
                 Text(section.title)
-                    .font(.system(size: RootHomeLayout.bottomNavigationLabelSize, weight: .heavy))
+                    .font(.system(size: RootHomeLayout.bottomNavigationLabelSize, weight: isActive ? .semibold : .medium))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.72)
+                    .allowsTightening(true)
             }
             .frame(maxWidth: .infinity)
             .frame(height: RootHomeLayout.bottomNavigationHeight - RootHomeLayout.bottomNavigationTopPadding)
-            .foregroundStyle(navigationState.activeSection == section ? SavyTheme.crimson : inactiveColor)
+            .foregroundStyle(isActive ? SavyTheme.crimson : inactiveColor)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -108,7 +93,7 @@ struct SavyRadialFabMenu: View {
                     radialButton(kind: .calendar, x: 122, y: -94)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding(.bottom, 118)
+                .padding(.bottom, RootHomeLayout.radialMenuBottomPadding)
                 .transition(.scale(scale: 0.78, anchor: .bottom).combined(with: .opacity))
             }
         }

@@ -28,6 +28,36 @@ struct LeverageItem: Identifiable, Codable, Equatable {
     let body: String
 }
 
+struct BeliefGraphTraceTriplePath: Codable, Equatable {
+    let axiomIri: String
+    let antecedentLabel: String?
+    let consequentLabel: String?
+    let relationshipType: String?
+    let supportedBy: String
+}
+
+struct BeliefGraphTrace: Codable, Equatable {
+    let matchedAxiomIris: [String]
+    let evidenceEntryIri: String
+    let paths: [String]
+    let triplePaths: [BeliefGraphTraceTriplePath]
+    let rankingMethod: String
+}
+
+struct BeliefGraphTraceResult: Codable, Equatable {
+    let decision: String
+    let confidence: String
+    let entryId: String
+    let graphTrace: BeliefGraphTrace?
+    let reason: String
+
+    var hasGraphPath: Bool {
+        decision == "belief-graph-match" || decision == "connection-graph-match"
+            ? graphTrace != nil
+            : false
+    }
+}
+
 struct OntologyCorrelation: Codable, Equatable {
     let categoryA: String
     let categoryB: String

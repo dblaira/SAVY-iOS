@@ -1,6 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { cors, requireApiKey } from "../../../lib/http.js";
 import { cognitoEnabled, signIn } from "../../../lib/cognito-bridge.js";
+import {
+  cognitoErrorMessage,
+  cognitoErrorName,
+  isNotConfirmedError,
+} from "../../../lib/cognito-errors.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;
@@ -34,11 +39,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const session = await signIn(email, password);
     res.status(200).json(session);
   } catch (error) {
-    console.error("v1/auth/sign-in", error);
+    console.error("v1/auth/sign-in", cognitoErrorName(error), error);
+
+    if (isNotConfirmedError(error)) {
+      res.status(403).json({
+        message:
+          "Your account exists but email is not confirmed yet. Check your inbox for the Cognito confirmation message.",
+        error_code: "account_not_confirmed",
+        error: cognitoErrorMessage(error),
+      });
+      return;
+    }
+
     res.status(401).json({
-      message: "Email or password did not match.",
+      message: "That email and password did not match.",
       error_code: "invalid_credentials",
-      error: error instanceof Error ? error.message : "Authentication failed",
+      error: cognitoErrorMessage(error),
     });
   }
 }

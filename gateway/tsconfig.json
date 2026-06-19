@@ -8,5 +8,5 @@
     "noEmit": true,
     "isolatedModules": true
   },
-  "include": ["api/**/*.ts", "lib/**/*.ts"]
+  "include": ["api/**/*.ts", "lib/**/*.ts", "scripts/**/*.ts", "test/**/*.ts", "../packages/suite-graph-engine/src/**/*.ts"]
 }

@@ -1,6 +1,6 @@
 import pg from "pg";
 import { Signer } from "@aws-sdk/rds-signer";
-import type { CaptureRow, CorrelationSnapshot, EntryRow } from "./types.js";
+import type { CaptureRow, CorrelationSnapshot, EntryRow, RdfTripleRow } from "./types.js";
 import { normalizeCategoryStats, normalizeCorrelations } from "./normalize.js";
 
 const { Pool } = pg;
@@ -141,5 +141,205 @@ export async function fetchLatestCorrelations(): Promise<CorrelationSnapshot | n
       correlations: normalizeCorrelations(row.correlations),
       category_stats: normalizeCategoryStats(row.category_stats),
     };
+  });
+}
+
+const DEFAULT_GRAPH_IRI = "https://understood.app/graph/personal";
+
+export async function importSuiteTriples(rows: RdfTripleRow[]): Promise<number> {
+  return withClient(async (client) => {
+    const { rows: result } = await client.query<{ import_suite_triples: string }>(
+      `SELECT savy.import_suite_triples($1::jsonb)::text AS import_suite_triples`,
+      [JSON.stringify(rows)]
+    );
+    return Number.parseInt(result[0]?.import_suite_triples ?? "0", 10);
+  });
+}
+
+export async function countRdfTriples(graphIri = DEFAULT_GRAPH_IRI): Promise<number> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM savy.rdf_triples WHERE graph_iri = $1`,
+      [graphIri]
+    );
+    return Number.parseInt(rows[0]?.count ?? "0", 10);
+  });
+}
+
+export async function fetchRdfTriples(options: {
+  graphIri?: string;
+  subject?: string;
+  predicate?: string;
+  limit?: number;
+}): Promise<RdfTripleRow[]> {
+  const graphIri = options.graphIri ?? DEFAULT_GRAPH_IRI;
+  const limit = Math.min(Math.max(options.limit ?? 100, 1), 500);
+  const clauses = ["graph_iri = $1"];
+  const params: unknown[] = [graphIri];
+
+  if (options.subject) {
+    params.push(options.subject);
+    clauses.push(`subject = $${params.length}`);
+  }
+  if (options.predicate) {
+    params.push(options.predicate);
+    clauses.push(`predicate = $${params.length}`);
+  }
+
+  params.push(limit);
+
+  return withClient(async (client) => {
+    const { rows } = await client.query<{
+      graph_iri: string;
+      subject: string;
+      predicate: string;
+      object: string;
+      object_is_iri: boolean;
+      source_app: RdfTripleRow["sourceApp"];
+    }>(
+      `SELECT graph_iri, subject, predicate, object, object_is_iri, source_app
+       FROM savy.rdf_triples
+       WHERE ${clauses.join(" AND ")}
+       ORDER BY imported_at DESC, id DESC
+       LIMIT $${params.length}`,
+      params
+    );
+
+    return rows.map((row) => ({
+      graphIri: row.graph_iri,
+      subject: row.subject,
+      predicate: row.predicate,
+      object: row.object,
+      objectIsIri: row.object_is_iri,
+      sourceApp: row.source_app,
+    }));
+  });
+}
+
+type BeliefEntryRow = {
+  id: string;
+  headline: string;
+  content: string;
+  connection_type: string | null;
+  entry_type: string | null;
+};
+
+export async function fetchBeliefEntryById(entryId: string): Promise<BeliefEntryRow | null> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<BeliefEntryRow>(
+      `SELECT id::text, headline, content, connection_type, entry_type
+       FROM savy.entries
+       WHERE id = $1::uuid
+       LIMIT 1`,
+      [entryId]
+    );
+    return rows[0] ?? null;
+  });
+}
+
+export async function fetchAllBeliefEntries(): Promise<BeliefEntryRow[]> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<BeliefEntryRow>(
+      `SELECT id::text, headline, content, connection_type, entry_type
+       FROM savy.entries
+       WHERE entry_type = 'connection'
+       ORDER BY pinned_at DESC NULLS LAST, created_at DESC`
+    );
+    return rows;
+  });
+}
+
+export async function rdfEntrySyncAvailable(): Promise<boolean> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{ available: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM pg_proc p
+         JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'savy'
+           AND p.proname = 'sync_entry_rdf_triples'
+       ) AS available`
+    );
+    return Boolean(rows[0]?.available);
+  });
+}
+
+export async function syncEntryRdfTriples(entryId: string): Promise<number> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{ sync_entry_rdf_triples: string }>(
+      `SELECT savy.sync_entry_rdf_triples($1::uuid)::text AS sync_entry_rdf_triples`,
+      [entryId]
+    );
+    return Number.parseInt(rows[0]?.sync_entry_rdf_triples ?? "0", 10);
+  });
+}
+
+export async function syncAllBeliefEntryRdf(): Promise<number> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{ sync_all_belief_entry_rdf: string }>(
+      `SELECT savy.sync_all_belief_entry_rdf()::text AS sync_all_belief_entry_rdf`
+    );
+    return Number.parseInt(rows[0]?.sync_all_belief_entry_rdf ?? "0", 10);
+  });
+}
+
+export async function deleteEntryRdfTriples(subjectIri: string): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(
+      `DELETE FROM savy.rdf_triples
+       WHERE source_app = 'savy'
+         AND subject = $1`,
+      [subjectIri]
+    );
+  });
+}
+
+export async function deleteBeliefEntryRdfTriples(): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(
+      `DELETE FROM savy.rdf_triples
+       WHERE source_app = 'savy'
+         AND subject LIKE 'https://understood.app/entry/%'`
+    );
+  });
+}
+
+export async function replaceEntryRdfTriples(
+  subjectIri: string,
+  rows: RdfTripleRow[]
+): Promise<number> {
+  return withClient(async (client) => {
+    await client.query(
+      `DELETE FROM savy.rdf_triples
+       WHERE source_app = 'savy'
+         AND subject = $1`,
+      [subjectIri]
+    );
+
+    if (rows.length === 0) {
+      return 0;
+    }
+
+    const { rows: result } = await client.query<{ import_suite_triples: string }>(
+      `SELECT savy.import_suite_triples($1::jsonb)::text AS import_suite_triples`,
+      [JSON.stringify(rows)]
+    );
+    return Number.parseInt(result[0]?.import_suite_triples ?? "0", 10);
+  });
+}
+
+export async function deleteAxiomProjectionTriples(): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(
+      `DELETE FROM savy.rdf_triples
+       WHERE source_app = 'understood'
+         AND (
+           subject LIKE 'https://understood.app/ontology/axiom/%'
+           OR (
+             subject LIKE 'https://understood.app/ontology/axiom/%'
+             AND predicate = 'https://understood.app/ontology#supportedBy'
+           )
+         )`
+    );
   });
 }

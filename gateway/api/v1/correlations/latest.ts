@@ -21,6 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       return;
     }
+    res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     res.status(200).json(snapshot);
   } catch (error) {
     console.error("v1/correlations/latest", error);

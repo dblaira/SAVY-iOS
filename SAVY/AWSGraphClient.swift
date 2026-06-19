@@ -198,6 +198,23 @@ actor AWSGraphClient {
         }
     }
 
+    func fetchBeliefGraphTrace(entryId: String, accessToken: String? = nil) async throws -> BeliefGraphTraceResult {
+        try await fetch(
+            path: "v1/rdf/belief-trace",
+            queryItems: [URLQueryItem(name: "entryId", value: entryId)],
+            accessToken: accessToken
+        )
+    }
+
+    static func beliefGraphTraceOrNil(entryId: String) async -> BeliefGraphTraceResult? {
+        guard let client = fromBundleConfiguration() else { return nil }
+        do {
+            return try await client.fetchBeliefGraphTrace(entryId: entryId)
+        } catch {
+            return nil
+        }
+    }
+
     private static func compactFetchError(_ error: Error) -> String {
         if error is CancellationError {
             return "cancelled"
@@ -251,30 +268,6 @@ actor AWSGraphClient {
         }
     }
 
-    func signIn(email: String, password: String) async throws -> AuthSession {
-        try await authRequest(
-            path: "v1/auth/sign-in",
-            body: AuthCredentialRequest(email: email, password: password)
-        )
-    }
-
-    func signUp(email: String, password: String) async throws -> AuthSession {
-        try await signUpRequest(
-            path: "v1/auth/sign-up",
-            body: AuthCredentialRequest(email: email, password: password)
-        )
-    }
-
-    func signOut(accessToken: String) async throws {
-        var request = authorizedRequest(path: "v1/auth/sign-out", method: "POST", accessToken: accessToken)
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw AWSGraphClientError.requestFailed
-        }
-    }
-
     private func fetch<T: Decodable>(
         path: String,
         queryItems: [URLQueryItem],
@@ -307,76 +300,6 @@ actor AWSGraphClient {
         }
 
         return try JSONDecoder.awsGraph.decode(T.self, from: data)
-    }
-
-    private func authRequest<T: Encodable>(path: String, body: T) async throws -> AuthSession {
-        var request = authorizedRequest(path: path, method: "POST")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(body)
-
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw AWSGraphClientError.authFailed(
-                message: "AWS graph API did not return an HTTP response.",
-                diagnostic: AWSGraphDiagnostic(
-                    stage: "auth transport",
-                    endpoint: path,
-                    statusCode: nil,
-                    requestID: nil,
-                    errorCode: nil,
-                    missingField: nil,
-                    responseKeys: [],
-                    underlyingMessage: nil
-                )
-            )
-        }
-
-        guard (200..<300).contains(http.statusCode) else {
-            let error = try? JSONDecoder.awsGraph.decode(AWSGraphAuthErrorResponse.self, from: data)
-            throw AWSGraphClientError.authFailed(
-                message: error?.friendlyMessage ?? "Authentication failed.",
-                diagnostic: AWSGraphDiagnostic(
-                    stage: "auth response",
-                    endpoint: path,
-                    statusCode: http.statusCode,
-                    requestID: http.awsRequestID,
-                    errorCode: error?.errorCode,
-                    missingField: nil,
-                    responseKeys: data.topLevelJSONKeys,
-                    underlyingMessage: error?.rawMessage
-                )
-            )
-        }
-
-        do {
-            return try JSONDecoder.awsGraph.decode(AuthSession.self, from: data)
-        } catch {
-            throw AWSGraphClientError.authFailed(
-                message: "AWS graph API returned a response the app could not read.",
-                diagnostic: AWSGraphDiagnostic(
-                    stage: "auth decode",
-                    endpoint: path,
-                    statusCode: http.statusCode,
-                    requestID: http.awsRequestID,
-                    errorCode: nil,
-                    missingField: error.missingDecodingField,
-                    responseKeys: data.topLevelJSONKeys,
-                    underlyingMessage: error.localizedDescription
-                )
-            )
-        }
-    }
-
-    private func signUpRequest<T: Encodable>(path: String, body: T) async throws -> AuthSession {
-        do {
-            return try await authRequest(path: path, body: body)
-        } catch AWSGraphClientError.authFailed(_, let diagnostic)
-            where diagnostic?.stage == "auth decode" {
-            throw AWSGraphClientError.authFailed(
-                message: "Account created. Check your email to confirm it, then sign in.",
-                diagnostic: diagnostic
-            )
-        }
     }
 }
 
@@ -428,6 +351,14 @@ private struct AWSGraphAuthErrorResponse: Decodable {
             return "That account already exists. Switch to Sign In and use your password."
         }
 
+        if errorCode == "activation_pending" {
+            return message ?? "Your account was created but Cognito has not activated it yet. AWS needs a one-time permission fix."
+        }
+
+        if errorCode == "account_not_confirmed" {
+            return message ?? "Check your email for the confirmation message from AWS, then try again."
+        }
+
         if errorCode == "invalid_credentials" {
             return "Email or password did not match. Try again."
         }
@@ -475,15 +406,14 @@ private struct EntryRow: Decodable {
     }
 
     var leverageItem: LeverageItem? {
-        let title = headline.trimmedNonEmpty ?? content.trimmedNonEmpty
-        guard let title else { return nil }
-        let body = content.trimmedNonEmpty ?? title
+        let body = content.trimmedNonEmpty ?? headline.trimmedNonEmpty
+        guard let body else { return nil }
 
         return LeverageItem(
             id: id,
             kicker: connectionType?.displayLabel ?? entryType?.displayLabel ?? "ENTRY",
-            title: title,
-            summary: body == title ? "" : body,
+            title: BeliefEntryDisplay.title(headline: headline, content: body),
+            summary: "",
             body: body
         )
     }

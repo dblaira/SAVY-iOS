@@ -27,21 +27,121 @@ final class AuthenticationStore: ObservableObject {
     }
 
     func bootstrap() {
-        if case .checking = state {
-            if let session = KeychainSessionStore.load() {
-                state = .locked(session)
-            } else {
+        guard case .checking = state else { return }
+
+        Task {
+            do {
+                if let session = try await AmplifyAuthService.bootstrapSession() {
+                    try? KeychainSessionStore.save(session)
+                    state = .locked(session)
+                } else if let legacySession = KeychainSessionStore.load() {
+                    KeychainSessionStore.clear()
+                    state = .signedOut
+                    message = legacySession.user.email == nil
+                        ? nil
+                        : "Sign in again to refresh your session."
+                } else {
+                    state = .signedOut
+                }
+            } catch {
+                KeychainSessionStore.clear()
                 state = .signedOut
             }
         }
     }
 
+    func enter(email: String, password: String) async {
+        await authenticate(email: email, password: password, action: AmplifyAuthService.enter)
+    }
+
     func signIn(email: String, password: String) async {
-        await authenticate(email: email, password: password, mode: .signIn)
+        await authenticate(email: email, password: password, action: AmplifyAuthService.signIn)
     }
 
     func signUp(email: String, password: String) async {
-        await authenticate(email: email, password: password, mode: .signUp)
+        await authenticate(email: email, password: password, action: AmplifyAuthService.signUp)
+    }
+
+    func confirmSignUp(email: String, code: String) async {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedEmail.isEmpty, !trimmedCode.isEmpty else {
+            message = "Enter the confirmation code from your email."
+            return
+        }
+
+        isWorking = true
+        message = nil
+        diagnostic = nil
+
+        do {
+            try await AmplifyAuthService.confirmSignUp(email: trimmedEmail, code: trimmedCode)
+            message = "Account confirmed. Continue to sign in."
+            state = .signedOut
+        } catch {
+            message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+
+        isWorking = false
+    }
+
+    func startPasswordReset(email: String) async {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedEmail.isEmpty else {
+            message = "Enter the email for your account."
+            return
+        }
+
+        isWorking = true
+        message = nil
+        diagnostic = nil
+
+        do {
+            let guidance = try await AmplifyAuthService.resetPassword(email: trimmedEmail)
+            state = .awaitingPasswordReset(email: trimmedEmail, message: guidance)
+            message = guidance
+        } catch {
+            message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+
+        isWorking = false
+    }
+
+    func confirmPasswordReset(email: String, code: String, newPassword: String) async {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedEmail.isEmpty, !trimmedCode.isEmpty, !newPassword.isEmpty else {
+            message = "Enter the code and your new password."
+            return
+        }
+
+        isWorking = true
+        message = nil
+        diagnostic = nil
+
+        do {
+            try await AmplifyAuthService.confirmResetPassword(
+                email: trimmedEmail,
+                newPassword: newPassword,
+                confirmationCode: trimmedCode
+            )
+            state = .signedOut
+            message = "Password updated. Continue with your new password."
+        } catch {
+            message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+
+        isWorking = false
+    }
+
+    func cancelPasswordReset() {
+        state = .signedOut
+        message = nil
+    }
+
+    func cancelSignUpConfirmation() {
+        state = .signedOut
+        message = nil
     }
 
     func unlockWithFaceID() async {
@@ -65,36 +165,22 @@ final class AuthenticationStore: ObservableObject {
     }
 
     func signOut() async {
-        if let client, case .unlocked(let session) = state {
-            try? await client.signOut(accessToken: session.accessToken)
-        }
-
+        await AmplifyAuthService.signOut()
         KeychainSessionStore.clear()
         state = .signedOut
         message = nil
         diagnostic = nil
     }
 
-    private func authenticate(email: String, password: String, mode: AuthenticationMode) async {
+    private func authenticate(
+        email: String,
+        password: String,
+        action: (String, String) async throws -> AuthSession
+    ) async {
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedEmail.isEmpty, !password.isEmpty else {
             message = "Enter an email and password."
             diagnostic = nil
-            return
-        }
-
-        guard let client else {
-            message = "AWS graph API is not configured in this build."
-            diagnostic = AWSGraphDiagnostic(
-                stage: "configuration",
-                endpoint: nil,
-                statusCode: nil,
-                requestID: nil,
-                errorCode: nil,
-                missingField: nil,
-                responseKeys: [],
-                underlyingMessage: "Missing AWS_API_BASE_URL or AWS_API_KEY in the built app Info.plist."
-            )
             return
         }
 
@@ -103,28 +189,19 @@ final class AuthenticationStore: ObservableObject {
         diagnostic = nil
 
         do {
-            let session: AuthSession
-            switch mode {
-            case .signIn:
-                session = try await client.signIn(email: trimmedEmail, password: password)
-            case .signUp:
-                session = try await client.signUp(email: trimmedEmail, password: password)
-            }
-
+            let session = try await action(trimmedEmail, password)
             try KeychainSessionStore.save(session)
             state = .unlocked(session)
+        } catch let error as AmplifyAuthServiceError {
+            switch error {
+            case .confirmSignUpRequired(let email, let guidance):
+                state = .awaitingSignUpConfirmation(email: email, message: guidance)
+                message = guidance ?? error.localizedDescription
+            default:
+                message = error.localizedDescription
+            }
         } catch {
             message = error.localizedDescription
-            diagnostic = (error as? AWSGraphClientError)?.diagnostic ?? AWSGraphDiagnostic(
-                stage: "native auth",
-                endpoint: nil,
-                statusCode: nil,
-                requestID: nil,
-                errorCode: nil,
-                missingField: nil,
-                responseKeys: [],
-                underlyingMessage: error.localizedDescription
-            )
         }
 
         isWorking = false

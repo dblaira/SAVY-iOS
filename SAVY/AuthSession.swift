@@ -28,6 +28,8 @@ struct AuthUser: Codable, Equatable {
 enum AuthenticationState: Equatable {
     case checking
     case signedOut
+    case awaitingSignUpConfirmation(email: String, message: String?)
+    case awaitingPasswordReset(email: String, message: String?)
     case locked(AuthSession)
     case unlocked(AuthSession)
 }
