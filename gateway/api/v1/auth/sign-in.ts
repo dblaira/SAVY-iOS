@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { cors, requireApiKey } from "../../lib/http.js";
-import { signIn } from "../../lib/cognito-bridge.js";
+import { cognitoEnabled, signIn } from "../../lib/cognito-bridge.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;
@@ -9,6 +9,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
   if (!requireApiKey(req, res)) return;
+
+  if (!cognitoEnabled()) {
+    res.status(503).json({
+      message: "Sign-in is not configured on the gateway yet.",
+      error_code: "auth_unavailable",
+    });
+    return;
+  }
 
   const body = (req.body ?? {}) as { email?: string; password?: string };
   const email = body.email?.trim();

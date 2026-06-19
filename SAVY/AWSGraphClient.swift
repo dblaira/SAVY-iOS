@@ -432,6 +432,14 @@ private struct AWSGraphAuthErrorResponse: Decodable {
             return "Email or password did not match. Try again."
         }
 
+        if errorCode == "auth_unavailable" {
+            return "Sign-in is not live on the gateway yet. Try again in a minute."
+        }
+
+        if errorCode == "sign_up_failed" {
+            return message ?? "Could not create account. Try Sign In if you already registered."
+        }
+
         return [message, errorDescription, error]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }

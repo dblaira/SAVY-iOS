@@ -1,4 +1,6 @@
+import { createHmac } from "node:crypto";
 import {
+  AdminConfirmSignUpCommand,
   CognitoIdentityProviderClient,
   GlobalSignOutCommand,
   InitiateAuthCommand,
@@ -25,14 +27,23 @@ function cognitoClient() {
 }
 
 function poolConfig() {
-  const userPoolId = process.env.COGNITO_USER_POOL_ID;
-  const clientId = process.env.COGNITO_CLIENT_ID;
+  const userPoolId =
+    process.env.COGNITO_USER_POOL_ID ?? "us-west-2_sqayHoHrK";
+  const clientId =
+    process.env.COGNITO_CLIENT_ID ?? "omkdcfdi0rsems3fmc7r5r797";
+  const clientSecret = process.env.COGNITO_CLIENT_SECRET;
 
   if (!userPoolId || !clientId) {
     throw new Error("COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID required");
   }
 
-  return { userPoolId, clientId };
+  return { userPoolId, clientId, clientSecret };
+}
+
+function secretHash(username: string, clientId: string, clientSecret: string): string {
+  return createHmac("sha256", clientSecret)
+    .update(`${username}${clientId}`)
+    .digest("base64");
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
@@ -66,6 +77,20 @@ function sessionFromAuthResult(
   };
 }
 
+function authParameters(email: string, password: string): Record<string, string> {
+  const { clientId, clientSecret } = poolConfig();
+  const params: Record<string, string> = {
+    USERNAME: email,
+    PASSWORD: password,
+  };
+
+  if (clientSecret) {
+    params.SECRET_HASH = secretHash(email, clientId, clientSecret);
+  }
+
+  return params;
+}
+
 export async function signIn(email: string, password: string): Promise<AuthSession> {
   const { clientId } = poolConfig();
   const client = cognitoClient();
@@ -74,10 +99,7 @@ export async function signIn(email: string, password: string): Promise<AuthSessi
     new InitiateAuthCommand({
       ClientId: clientId,
       AuthFlow: "USER_PASSWORD_AUTH",
-      AuthParameters: {
-        USERNAME: email,
-        PASSWORD: password,
-      },
+      AuthParameters: authParameters(email, password),
     })
   );
 
@@ -85,19 +107,43 @@ export async function signIn(email: string, password: string): Promise<AuthSessi
 }
 
 export async function signUp(email: string, password: string): Promise<AuthSession> {
-  const { clientId } = poolConfig();
+  const { clientId, clientSecret } = poolConfig();
   const client = cognitoClient();
 
-  await client.send(
-    new SignUpCommand({
-      ClientId: clientId,
-      Username: email,
-      Password: password,
-      UserAttributes: [{ Name: "email", Value: email }],
-    })
-  );
+  const signUpInput: ConstructorParameters<typeof SignUpCommand>[0] = {
+    ClientId: clientId,
+    Username: email,
+    Password: password,
+    UserAttributes: [{ Name: "email", Value: email }],
+  };
 
-  return signIn(email, password);
+  if (clientSecret) {
+    signUpInput.SecretHash = secretHash(email, clientId, clientSecret);
+  }
+
+  await client.send(new SignUpCommand(signUpInput));
+
+  try {
+    return await signIn(email, password);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/not confirmed/i.test(message)) throw error;
+
+    const { userPoolId } = poolConfig();
+    try {
+      await client.send(
+        new AdminConfirmSignUpCommand({
+          UserPoolId: userPoolId,
+          Username: email,
+        })
+      );
+      return signIn(email, password);
+    } catch {
+      throw new Error(
+        "Account created but not confirmed yet. Check your email for a confirmation code, then sign in."
+      );
+    }
+  }
 }
 
 export async function signOut(accessToken: string): Promise<void> {
@@ -110,5 +156,6 @@ export async function signOut(accessToken: string): Promise<void> {
 }
 
 export function cognitoEnabled(): boolean {
-  return Boolean(process.env.COGNITO_USER_POOL_ID && process.env.COGNITO_CLIENT_ID);
+  const { userPoolId, clientId } = poolConfig();
+  return Boolean(userPoolId && clientId);
 }
