@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { cors, requireApiKey } from "../../lib/http.js";
-import { cognitoEnabled, signIn } from "../../lib/cognito-bridge.js";
+import { cors, requireApiKey } from "../../../lib/http.js";
+import { cognitoEnabled, signIn } from "../../../lib/cognito-bridge.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;
