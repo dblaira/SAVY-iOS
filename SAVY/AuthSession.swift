@@ -23,6 +23,12 @@ struct AuthSession: Codable, Equatable {
 struct AuthUser: Codable, Equatable {
     let id: String
     let email: String?
+
+    /// Human-readable account label for UI. Hides Cognito UUID usernames.
+    var displayEmail: String? {
+        guard let email, email.contains("@") else { return nil }
+        return email
+    }
 }
 
 enum AuthenticationState: Equatable {

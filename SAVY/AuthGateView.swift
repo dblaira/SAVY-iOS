@@ -237,10 +237,12 @@ private struct LockedView: View {
                     .italic()
                     .foregroundStyle(SavyTheme.crimson)
 
-                Text(session.user.email ?? "Your workspace")
-                    .font(.system(size: 15, weight: .bold))
-                    .tracking(1.4)
-                    .foregroundStyle(.black.opacity(0.38))
+                if let email = session.user.displayEmail {
+                    Text(email)
+                        .font(.system(size: 15, weight: .bold))
+                        .tracking(1.4)
+                        .foregroundStyle(.black.opacity(0.38))
+                }
             }
 
             Button {

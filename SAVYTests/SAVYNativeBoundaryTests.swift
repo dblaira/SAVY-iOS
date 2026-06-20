@@ -96,6 +96,17 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(BeliefEntryDisplay.title(headline: headline, content: content), content)
     }
 
+    func testAuthUserDisplayEmailHidesCognitoUUID() {
+        let uuidUser = AuthUser(
+            id: "f8d1c3b0-8031-701b-6ee0-76f1cc7041b9",
+            email: "f8d1c3b0-8031-701b-6ee0-76f1cc7041b9"
+        )
+        let emailUser = AuthUser(id: "user-id", email: "adam@example.com")
+
+        XCTAssertNil(uuidUser.displayEmail)
+        XCTAssertEqual(emailUser.displayEmail, "adam@example.com")
+    }
+
     func testAWSGraphBeliefGraphTraceDecodesGatewayPayload() throws {
         let data = """
         {

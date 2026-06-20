@@ -137,14 +137,25 @@ enum AmplifyAuthService {
         }
 
         let tokens = try tokenProvider.getCognitoTokens().get()
-        let user = try await Amplify.Auth.getCurrentUser()
+        let cognitoUser = try await Amplify.Auth.getCurrentUser()
+        let attributes = try await Amplify.Auth.fetchUserAttributes()
+        let attributeEmail = attributes.first(where: { $0.key == .email })?.value
+
+        let email: String?
+        if let attributeEmail, attributeEmail.contains("@") {
+            email = attributeEmail
+        } else if cognitoUser.username.contains("@") {
+            email = cognitoUser.username
+        } else {
+            email = nil
+        }
 
         return AuthSession(
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
             tokenType: "bearer",
             expiresIn: 3600,
-            user: AuthUser(id: user.userId, email: user.username)
+            user: AuthUser(id: cognitoUser.userId, email: email)
         )
     }
 
