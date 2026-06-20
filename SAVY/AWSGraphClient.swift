@@ -330,7 +330,7 @@ actor AWSGraphClient {
             }
         }
         if case AWSGraphClientError.httpError(let statusCode, _) = error {
-            return statusCode == 502 || statusCode == 503 || statusCode == 504
+            return statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504
         }
         return false
     }

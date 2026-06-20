@@ -32,8 +32,6 @@ export async function fetchLatestCorrelations(): Promise<CorrelationSnapshot | n
   if (!usesAurora()) {
     return supabase.fetchLatestCorrelations();
   }
-  if (neo4j.neo4jEnabled()) {
-    return neo4j.fetchLatestCorrelations();
-  }
+  // Aurora holds the published snapshot; skip Neo4j enrichment on this hot path to avoid serverless timeouts.
   return aurora.fetchLatestCorrelations();
 }
