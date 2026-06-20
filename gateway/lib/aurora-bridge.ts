@@ -343,3 +343,368 @@ export async function deleteAxiomProjectionTriples(): Promise<void> {
     );
   });
 }
+
+const BELIEF_TRACE_SUPPORTED_BY = "https://understood.app/ontology#supportedBy";
+const BELIEF_TRACE_ANTECEDENT = "https://understood.app/ontology#antecedent";
+const BELIEF_TRACE_CONSEQUENT = "https://understood.app/ontology#consequent";
+
+export async function fetchRdfTriplesForBeliefTrace(
+  entryId: string,
+  graphIri = DEFAULT_GRAPH_IRI
+): Promise<RdfTripleRow[]> {
+  const entryIri = `https://understood.app/entry/${encodeURIComponent(entryId)}`;
+
+  return withClient(async (client) => {
+    const { rows } = await client.query<{
+      graph_iri: string;
+      subject: string;
+      predicate: string;
+      object: string;
+      object_is_iri: boolean;
+      source_app: RdfTripleRow["sourceApp"];
+    }>(
+      `WITH entry_links AS (
+         SELECT DISTINCT subject AS axiom_iri
+         FROM savy.rdf_triples
+         WHERE graph_iri = $1
+           AND predicate = $2
+           AND object = $3
+       ),
+       concept_iris AS (
+         SELECT t.object AS iri
+         FROM savy.rdf_triples t
+         INNER JOIN entry_links e ON t.subject = e.axiom_iri
+         WHERE t.graph_iri = $1
+           AND t.predicate IN ($4, $5)
+           AND t.object_is_iri = TRUE
+       ),
+       relevant AS (
+         SELECT $3::text AS iri
+         UNION
+         SELECT axiom_iri FROM entry_links
+         UNION
+         SELECT iri FROM concept_iris
+       )
+       SELECT graph_iri, subject, predicate, object, object_is_iri, source_app
+       FROM savy.rdf_triples
+       WHERE graph_iri = $1
+         AND (
+           subject IN (SELECT iri FROM relevant)
+           OR object IN (SELECT iri FROM relevant)
+         )
+       ORDER BY imported_at DESC, id DESC
+       LIMIT 500`,
+      [
+        graphIri,
+        BELIEF_TRACE_SUPPORTED_BY,
+        entryIri,
+        BELIEF_TRACE_ANTECEDENT,
+        BELIEF_TRACE_CONSEQUENT,
+      ]
+    );
+
+    return rows.map((row) => ({
+      graphIri: row.graph_iri,
+      subject: row.subject,
+      predicate: row.predicate,
+      object: row.object,
+      objectIsIri: row.object_is_iri,
+      sourceApp: row.source_app,
+    }));
+  });
+}
+
+export type ReminderSubtaskRow = {
+  id: string;
+  title: string;
+  done: boolean;
+  position: number;
+};
+
+export type ReminderRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  notes: string;
+  url: string;
+  image_path: string | null;
+  due_date: string | null;
+  due_time: string | null;
+  urgent: boolean;
+  repeat_rule: string;
+  early_reminder: string;
+  list_name: string;
+  flag: boolean;
+  priority: string;
+  location_name: string;
+  when_messaging_person: string;
+  kind: string;
+  end_time: string | null;
+  outcome: string | null;
+  effort: string | null;
+  energy: string | null;
+  context: string | null;
+  defer_date: string | null;
+  waiting_on: string | null;
+  pinned: boolean;
+  up_next_order: number | null;
+  seeded_from_template_id: string | null;
+  status: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  tags: string[];
+  subtasks: ReminderSubtaskRow[];
+};
+
+export async function ensureSavyUser(userId: string, email?: string | null): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(
+      `INSERT INTO savy.users (id, email)
+       VALUES ($1, $2)
+       ON CONFLICT (id) DO UPDATE
+       SET email = COALESCE(EXCLUDED.email, savy.users.email),
+           updated_at = NOW()`,
+      [userId, email ?? null]
+    );
+  });
+}
+
+export async function fetchRemindersForUser(userId: string): Promise<ReminderRow[]> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<ReminderRow & { tags: string[] | null }>(
+      `SELECT
+         r.id::text,
+         r.user_id,
+         r.title,
+         r.notes,
+         r.url,
+         r.image_path,
+         r.due_date::text,
+         r.due_time::text,
+         r.urgent,
+         r.repeat_rule,
+         r.early_reminder,
+         r.list_name,
+         r.flag,
+         r.priority,
+         r.location_name,
+         r.when_messaging_person,
+         r.kind,
+         r.end_time::text,
+         r.outcome,
+         r.effort,
+         r.energy,
+         r.context,
+         r.defer_date::text,
+         r.waiting_on,
+         r.pinned,
+         r.up_next_order,
+         r.seeded_from_template_id,
+         r.status,
+         r.completed_at::text,
+         r.created_at::text,
+         r.updated_at::text,
+         COALESCE(
+           ARRAY(
+             SELECT tag FROM savy.reminder_tags t
+             WHERE t.reminder_id = r.id
+             ORDER BY tag
+           ),
+           ARRAY[]::text[]
+         ) AS tags
+       FROM savy.reminders r
+       WHERE r.user_id = $1
+         AND r.status <> 'deleted'
+       ORDER BY r.pinned DESC, r.up_next_order NULLS LAST, r.created_at DESC`,
+      [userId]
+    );
+
+    const reminders = rows.map((row) => ({
+      ...row,
+      tags: row.tags ?? [],
+      subtasks: [] as ReminderSubtaskRow[],
+    }));
+
+    if (reminders.length === 0) return reminders;
+
+    const ids = reminders.map((row) => row.id);
+    const { rows: subtasks } = await client.query<{
+      reminder_id: string;
+      id: string;
+      title: string;
+      done: boolean;
+      position: number;
+    }>(
+      `SELECT reminder_id::text, id::text, title, done, position
+       FROM savy.reminder_subtasks
+       WHERE reminder_id = ANY($1::uuid[])
+       ORDER BY position ASC`,
+      [ids]
+    );
+
+    const subtasksByReminder = new Map<string, ReminderSubtaskRow[]>();
+    for (const subtask of subtasks) {
+      const bucket = subtasksByReminder.get(subtask.reminder_id) ?? [];
+      bucket.push({
+        id: subtask.id,
+        title: subtask.title,
+        done: subtask.done,
+        position: subtask.position,
+      });
+      subtasksByReminder.set(subtask.reminder_id, bucket);
+    }
+
+    return reminders.map((reminder) => ({
+      ...reminder,
+      subtasks: subtasksByReminder.get(reminder.id) ?? [],
+    }));
+  });
+}
+
+export type ReminderUpsertInput = Omit<
+  ReminderRow,
+  "user_id" | "created_at" | "updated_at" | "tags" | "subtasks"
+> & {
+  tags?: string[];
+  subtasks?: ReminderSubtaskRow[];
+};
+
+export async function upsertReminderForUser(
+  userId: string,
+  input: ReminderUpsertInput
+): Promise<void> {
+  await withClient(async (client) => {
+    await client.query("BEGIN");
+    try {
+      await client.query(
+        `INSERT INTO savy.reminders (
+           id, user_id, title, notes, url, image_path,
+           due_date, due_time, urgent, repeat_rule, early_reminder,
+           list_name, flag, priority, location_name, when_messaging_person,
+           kind, end_time, outcome, effort, energy, context, defer_date, waiting_on,
+           pinned, up_next_order, seeded_from_template_id, status, completed_at
+         ) VALUES (
+           $1::uuid, $2, $3, $4, $5, $6,
+           $7::date, $8::time, $9, $10, $11,
+           $12, $13, $14, $15, $16,
+           $17, $18::time, $19, $20, $21, $22, $23::date, $24,
+           $25, $26, $27, $28, $29::timestamptz
+         )
+         ON CONFLICT (id) DO UPDATE SET
+           title = EXCLUDED.title,
+           notes = EXCLUDED.notes,
+           url = EXCLUDED.url,
+           image_path = COALESCE(EXCLUDED.image_path, savy.reminders.image_path),
+           due_date = EXCLUDED.due_date,
+           due_time = EXCLUDED.due_time,
+           urgent = EXCLUDED.urgent,
+           repeat_rule = EXCLUDED.repeat_rule,
+           early_reminder = EXCLUDED.early_reminder,
+           list_name = EXCLUDED.list_name,
+           flag = EXCLUDED.flag,
+           priority = EXCLUDED.priority,
+           location_name = EXCLUDED.location_name,
+           when_messaging_person = EXCLUDED.when_messaging_person,
+           kind = EXCLUDED.kind,
+           end_time = EXCLUDED.end_time,
+           outcome = EXCLUDED.outcome,
+           effort = EXCLUDED.effort,
+           energy = EXCLUDED.energy,
+           context = EXCLUDED.context,
+           defer_date = EXCLUDED.defer_date,
+           waiting_on = EXCLUDED.waiting_on,
+           pinned = EXCLUDED.pinned,
+           up_next_order = EXCLUDED.up_next_order,
+           seeded_from_template_id = EXCLUDED.seeded_from_template_id,
+           status = EXCLUDED.status,
+           completed_at = EXCLUDED.completed_at,
+           updated_at = NOW()
+         WHERE savy.reminders.user_id = EXCLUDED.user_id`,
+        [
+          input.id,
+          userId,
+          input.title,
+          input.notes,
+          input.url,
+          input.image_path,
+          input.due_date,
+          input.due_time,
+          input.urgent,
+          input.repeat_rule,
+          input.early_reminder,
+          input.list_name,
+          input.flag,
+          input.priority,
+          input.location_name,
+          input.when_messaging_person,
+          input.kind,
+          input.end_time,
+          input.outcome,
+          input.effort,
+          input.energy,
+          input.context,
+          input.defer_date,
+          input.waiting_on,
+          input.pinned,
+          input.up_next_order,
+          input.seeded_from_template_id,
+          input.status,
+          input.completed_at,
+        ]
+      );
+
+      await client.query(`DELETE FROM savy.reminder_tags WHERE reminder_id = $1::uuid`, [input.id]);
+      for (const tag of input.tags ?? []) {
+        const trimmed = tag.trim();
+        if (!trimmed) continue;
+        await client.query(
+          `INSERT INTO savy.reminder_tags (reminder_id, tag) VALUES ($1::uuid, $2)`,
+          [input.id, trimmed]
+        );
+      }
+
+      await client.query(`DELETE FROM savy.reminder_subtasks WHERE reminder_id = $1::uuid`, [
+        input.id,
+      ]);
+      for (const subtask of input.subtasks ?? []) {
+        await client.query(
+          `INSERT INTO savy.reminder_subtasks (id, reminder_id, title, done, position)
+           VALUES ($1::uuid, $2::uuid, $3, $4, $5)`,
+          [subtask.id, input.id, subtask.title, subtask.done, subtask.position]
+        );
+      }
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
+export async function deleteReminderForUser(userId: string, reminderId: string): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(
+      `UPDATE savy.reminders
+       SET status = 'deleted', updated_at = NOW()
+       WHERE id = $1::uuid AND user_id = $2`,
+      [reminderId, userId]
+    );
+  });
+}
+
+export async function setReminderImagePath(
+  userId: string,
+  reminderId: string,
+  imagePath: string
+): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(
+      `UPDATE savy.reminders
+       SET image_path = $3, updated_at = NOW()
+       WHERE id = $1::uuid AND user_id = $2`,
+      [reminderId, userId, imagePath]
+    );
+  });
+}

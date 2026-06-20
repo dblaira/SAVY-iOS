@@ -44,14 +44,24 @@ enum RootHomeLayout {
 }
 
 struct RootView: View {
+    let session: AuthSession
     let onSignOut: (() -> Void)?
     @StateObject private var navigationState = SavyNavigationState()
     @StateObject private var leverageStore = LeverageDataStore()
     @StateObject private var metadataStore = MetadataEntryStore.live()
-    @StateObject private var reminderStore = ReminderStore()
+    @StateObject private var reminderStore: ReminderStore
 
-    init(onSignOut: (() -> Void)? = nil) {
+    init(session: AuthSession, onSignOut: (() -> Void)? = nil) {
+        self.session = session
         self.onSignOut = onSignOut
+        _reminderStore = StateObject(
+            wrappedValue: ReminderStore(
+                repo: GatewayReminderRepository(
+                    accessToken: { session.accessToken },
+                    userEmail: { session.user.displayEmail }
+                )
+            )
+        )
     }
 
     var body: some View {
@@ -61,14 +71,20 @@ struct RootView: View {
 
                 Group {
                     if navigationState.activeSection == .now {
-                        EditorialHomeView(leverageStore: leverageStore)
+                        EditorialHomeView(
+                            leverageStore: leverageStore,
+                            reminderStore: reminderStore
+                        )
                     } else if
                         let sectionID = navigationState.activeSection.leverageSectionID,
                         let section = leverageStore.section(id: sectionID)
                     {
                         LeverageSectionView(section: section)
                     } else {
-                        EditorialHomeView(leverageStore: leverageStore)
+                        EditorialHomeView(
+                            leverageStore: leverageStore,
+                            reminderStore: reminderStore
+                        )
                     }
                 }
                 .padding(.bottom, RootHomeLayout.bottomNavigationHeight + 8)
@@ -103,6 +119,9 @@ struct RootView: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $navigationState.activeComposerKind) { kind in
                 reminderEntrySheet(for: kind)
+            }
+            .task {
+                await reminderStore.bootstrap()
             }
         }
     }
@@ -164,7 +183,15 @@ struct RootView: View {
 
 struct EditorialHomeView: View {
     @ObservedObject var leverageStore: LeverageDataStore
+    @ObservedObject var reminderStore: ReminderStore
 
+    private var feedRows: [HomeFeedRow] {
+        HomeFeedRow.rows(
+            reminderStore: reminderStore,
+            leverageStore: leverageStore,
+            limit: 4
+        )
+    }
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -217,6 +244,10 @@ struct EditorialHomeView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Color.black.opacity(0.48))
                 .fixedSize(horizontal: false, vertical: true)
+
+            Text("Capture: \(reminderStore.syncStatusLabel)")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.black.opacity(0.48))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -301,8 +332,8 @@ struct EditorialHomeView: View {
                 .padding(.horizontal, 18)
                 .background(SavyTheme.sectionBand)
 
-            ForEach(HomePinnedEntry.referenceRows) { entry in
-                HomePinnedEntryRow(entry: entry)
+            ForEach(feedRows) { entry in
+                HomeFeedRowView(entry: entry)
             }
         }
     }
@@ -335,6 +366,92 @@ struct EditorialHomeView: View {
         )
         .background(.white, in: RoundedRectangle(cornerRadius: 8))
         .shadow(color: .black.opacity(0.06), radius: 12, y: 5)
+    }
+}
+
+struct HomeFeedRow: Identifiable {
+    enum Kind {
+        case pinnedReminder
+        case leverageBelief
+    }
+
+    let id: String
+    let title: String
+    let subtitle: String?
+    let alignment: Alignment
+    let kind: Kind
+
+    @MainActor
+    static func rows(
+        reminderStore: ReminderStore,
+        leverageStore: LeverageDataStore,
+        limit: Int = 4
+    ) -> [HomeFeedRow] {
+        var rows: [HomeFeedRow] = []
+
+        for (index, reminder) in reminderStore.pinnedFeed.prefix(limit).enumerated() {
+            rows.append(
+                HomeFeedRow(
+                    id: reminder.id.uuidString,
+                    title: reminder.title.isEmpty ? reminder.kind.label : reminder.title,
+                    subtitle: reminder.whenLabel,
+                    alignment: index.isMultiple(of: 2) ? .leading : .center,
+                    kind: .pinnedReminder
+                )
+            )
+        }
+
+        if rows.count < limit {
+            for (offset, item) in leverageStore.greatestLeverageItems(limit: limit - rows.count).enumerated() {
+                let index = rows.count + offset
+                rows.append(
+                    HomeFeedRow(
+                        id: item.id,
+                        title: item.title,
+                        subtitle: item.kicker,
+                        alignment: index.isMultiple(of: 2) ? .leading : .center,
+                        kind: .leverageBelief
+                    )
+                )
+            }
+        }
+
+        return rows
+    }
+}
+
+private struct HomeFeedRowView: View {
+    let entry: HomeFeedRow
+
+    var body: some View {
+        Text(entry.title)
+            .font(.system(
+                size: RootHomeLayout.pinnedEntryFontSize,
+                weight: .regular,
+                design: .serif
+            ))
+            .italic()
+            .lineLimit(2)
+            .minimumScaleFactor(0.72)
+            .foregroundStyle(SavyTheme.ink)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: RootHomeLayout.pinnedEntryRowHeight,
+                alignment: entry.alignment
+            )
+            .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)
+            .background(SavyTheme.pinnedEntry)
+            .overlay(alignment: .bottom) {
+                if let subtitle = entry.subtitle, !subtitle.isEmpty {
+                    Text(subtitle.uppercased())
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(1.4)
+                        .foregroundStyle(SavyTheme.crimson.opacity(0.72))
+                        .frame(maxWidth: .infinity, alignment: entry.alignment)
+                        .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)
+                        .padding(.bottom, 10)
+                }
+            }
     }
 }
 
@@ -792,5 +909,13 @@ private extension String {
 }
 
 #Preview {
-    RootView()
+    RootView(
+        session: AuthSession(
+            accessToken: "preview",
+            refreshToken: "preview",
+            tokenType: "bearer",
+            expiresIn: 3600,
+            user: AuthUser(id: "preview-user", email: "adam@example.com")
+        )
+    )
 }

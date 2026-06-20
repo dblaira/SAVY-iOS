@@ -11,10 +11,12 @@
     "import:suite-rdf": "node --import tsx scripts/import-suite-triples.ts",
     "import:belief-entries-rdf": "node --import tsx scripts/import-belief-entries-rdf.ts",
     "import:axiom-rdf": "node --import tsx scripts/import-axiom-rdf.ts",
+    "import:adam-beliefs-rdf": "node --import tsx scripts/import-adam-beliefs-rdf.ts",
     "sync:graph-rdf": "node --import tsx scripts/sync-graph-rdf.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1072.0",
+    "@aws-sdk/client-s3": "^3.1073.0",
     "@aws-sdk/rds-signer": "^3.1072.0",
     "@supabase/supabase-js": "^2.49.1",
     "@vercel/node": "^5.0.4",

@@ -19,8 +19,8 @@ struct AuthGateView: View {
                 ResetPasswordView(store: authStore, email: email, guidance: guidance)
             case .locked(let session):
                 LockedView(store: authStore, session: session)
-            case .unlocked:
-                RootView {
+            case .unlocked(let session):
+                RootView(session: session) {
                     Task {
                         await authStore.signOut()
                     }
@@ -116,8 +116,7 @@ private struct LoginView: View {
     private var brandHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("SAVY")
-                .font(.system(size: 54, weight: .regular, design: .serif))
-                .italic()
+                .font(SavyTypography.bodoniModa(54))
                 .foregroundStyle(SavyTheme.crimson)
 
             Text("A STUDY IN LEVERAGE")
@@ -233,8 +232,7 @@ private struct LockedView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("SAVY")
-                    .font(.system(size: 54, weight: .regular, design: .serif))
-                    .italic()
+                    .font(SavyTypography.bodoniModa(54))
                     .foregroundStyle(SavyTheme.crimson)
 
                 Text(session.user.email ?? "Your workspace")

@@ -56,7 +56,7 @@ function secretHash(username: string, clientId: string, clientSecret: string): s
     .digest("base64");
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> {
+export function decodeJwtPayload(token: string): Record<string, unknown> {
   const segment = token.split(".")[1];
   if (!segment) return {};
   const json = Buffer.from(segment, "base64url").toString("utf8");

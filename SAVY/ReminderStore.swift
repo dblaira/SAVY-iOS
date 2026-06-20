@@ -11,7 +11,7 @@ final class ReminderStore: ObservableObject {
     private let repo: ReminderRepository
     private let cacheURL: URL
 
-    // SAVY runs the reminder system on-device for now. Cloud sync via AWSGraphClient is the follow-up.
+    // SAVY runs the reminder system on-device first, then syncs through GatewayReminderRepository.
     init(repo: ReminderRepository = LocalReminderRepository()) {
         self.repo = repo
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -23,6 +23,24 @@ final class ReminderStore: ObservableObject {
     var active: [Reminder] {
         reminders.filter { $0.status == .active }
             .sorted { compareUpNext($0, $1) }
+    }
+
+    var pinnedFeed: [Reminder] {
+        active.filter(\.pinned)
+    }
+
+    var pendingSyncCount: Int {
+        reminders.filter(\.needsSync).count
+    }
+
+    var syncStatusLabel: String {
+        if lastSyncFailed {
+            return "failed"
+        }
+        if pendingSyncCount > 0 {
+            return "pending (\(pendingSyncCount))"
+        }
+        return "live"
     }
 
     /// Pinned block first; within each block, manual order then date fallback.
@@ -205,20 +223,20 @@ final class ReminderStore: ObservableObject {
     private func mergeRemote(_ remote: [Reminder], withLocal local: [Reminder]) -> [Reminder] {
         var merged = remote.map { incoming -> Reminder in
             guard let localCopy = local.first(where: { $0.id == incoming.id }) else { return incoming }
-            var r = incoming
-            if r.imageLocalPath == nil { r.imageLocalPath = localCopy.imageLocalPath }
-            // These fields aren't synced to the backend yet, so carry the local values forward.
-            r.kind = localCopy.kind
-            r.endTime = localCopy.endTime
-            r.outcome = localCopy.outcome
-            r.effort = localCopy.effort
-            r.energy = localCopy.energy
-            r.context = localCopy.context
-            r.deferDate = localCopy.deferDate
-            r.waitingOn = localCopy.waitingOn
-            r.pinned = localCopy.pinned
-            r.upNextOrder = localCopy.upNextOrder
-            return r
+            var reminder = incoming
+
+            if localCopy.needsSync {
+                reminder = localCopy
+                if reminder.imageLocalPath == nil {
+                    reminder.imageLocalPath = localCopy.imageLocalPath
+                }
+                return reminder
+            }
+
+            if reminder.imageLocalPath == nil {
+                reminder.imageLocalPath = localCopy.imageLocalPath
+            }
+            return reminder
         }
 
         // Keep local rows that haven't synced yet; they win over the remote copy.

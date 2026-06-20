@@ -71,7 +71,7 @@ final class LeverageDataStore: ObservableObject {
     private func label(for source: AWSGraphClient.ContentLineSource) -> String {
         switch source {
         case .unconfigured:
-            return "no API config in build"
+            return "no API config — run setup-savy-secrets.sh and rebuild"
         case let .live(itemCount):
             return "live (\(itemCount))"
         case .seedBecauseEmpty:
@@ -79,6 +79,17 @@ final class LeverageDataStore: ObservableObject {
         case let .seedBecauseFailed(message):
             return "failed (\(message))"
         }
+    }
+
+    func greatestLeverageItems(limit: Int = 4) -> [LeverageItem] {
+        var items: [LeverageItem] = []
+        if let beliefs = section(id: "beliefs") {
+            items.append(contentsOf: beliefs.items.prefix(max(1, limit / 2)))
+        }
+        if let ontology = section(id: "ontology"), items.count < limit {
+            items.append(contentsOf: ontology.items.prefix(limit - items.count))
+        }
+        return Array(items.prefix(limit))
     }
 }
 
