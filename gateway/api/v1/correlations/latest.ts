@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { cors, requireApiKey } from "../../../lib/http.js";
 import { fetchLatestCorrelations } from "../../../lib/content-store.js";
+import { withTimeout } from "../../../lib/timeout.js";
+
+const CORRELATIONS_DEADLINE_MS = 12_000;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;
@@ -11,7 +14,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!requireApiKey(req, res)) return;
 
   try {
-    const snapshot = await fetchLatestCorrelations();
+    const snapshot = await withTimeout(
+      fetchLatestCorrelations(),
+      CORRELATIONS_DEADLINE_MS,
+      "Correlations request timed out"
+    );
     if (!snapshot) {
       res.status(200).json({
         total_weeks: 0,

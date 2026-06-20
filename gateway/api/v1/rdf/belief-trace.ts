@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { buildBeliefGraphTrace } from "../../../lib/belief-graph-trace.js";
 import { cors, requireApiKey } from "../../../lib/http.js";
-import { fetchRdfTriples, rdfStoreAvailable } from "../../../lib/rdf-store.js";
+import { fetchRdfTriplesForBeliefTrace, rdfStoreAvailable } from "../../../lib/rdf-store.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;
@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? req.query.graph
         : "https://understood.app/graph/personal";
 
-    const triples = await fetchRdfTriples({ graphIri, limit: 500 });
+    const triples = await fetchRdfTriplesForBeliefTrace(entryId, graphIri);
     const result = buildBeliefGraphTrace(entryId, triples, { graphIri });
 
     res.status(200).json(result);

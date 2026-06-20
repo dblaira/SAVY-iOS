@@ -12,6 +12,20 @@ enum SavyHapticFeedback {
     }
 
     @MainActor
+    static func menuOpen() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.92)
+    }
+
+    @MainActor
+    static func menuClose() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.78)
+    }
+
+    @MainActor
     static func selection() {
         let generator = UISelectionFeedbackGenerator()
         generator.prepare()
@@ -83,6 +97,7 @@ struct SavyRadialFabMenu: View {
                 Color.black.opacity(0.18)
                     .ignoresSafeArea()
                     .onTapGesture {
+                        SavyHapticFeedback.menuClose()
                         onDismiss()
                     }
                     .transition(.opacity)
@@ -373,7 +388,11 @@ struct SavyFloatingActionButton: View {
 
     var body: some View {
         Button {
-            SavyHapticFeedback.primaryImpact()
+            if isPresented {
+                SavyHapticFeedback.menuClose()
+            } else {
+                SavyHapticFeedback.menuOpen()
+            }
             action()
         } label: {
             Image(systemName: isPresented ? "xmark" : "plus")

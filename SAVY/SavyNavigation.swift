@@ -12,7 +12,7 @@ enum SavyNavigationSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .now:
-            "ACTION"
+            "Now"
         case .essays:
             "Essays"
         case .beliefs:

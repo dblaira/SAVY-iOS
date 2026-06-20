@@ -166,6 +166,9 @@ private extension KeyedDecodingContainer where Key == DynamicCodingKey {
             if let value = try decodeIfPresent(Double.self, forKey: DynamicCodingKey(key)) {
                 return value
             }
+            if let intValue = try decodeIfPresent(Int.self, forKey: DynamicCodingKey(key)) {
+                return Double(intValue)
+            }
         }
         throw DecodingError.keyNotFound(
             DynamicCodingKey(keys[0]),

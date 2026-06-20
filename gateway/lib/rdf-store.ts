@@ -40,6 +40,17 @@ export async function fetchRdfTriples(options: {
   return aurora.fetchRdfTriples(options);
 }
 
+export async function fetchRdfTriplesForBeliefTrace(
+  entryId: string,
+  graphIri?: string
+): Promise<RdfTripleRow[]> {
+  if (!usesAurora()) {
+    throw new Error("RDF triple reads require Aurora (AURORA_HOST or DATABASE_URL)");
+  }
+
+  return aurora.fetchRdfTriplesForBeliefTrace(entryId, graphIri);
+}
+
 export async function fetchRdfTripleCount(graphIri?: string): Promise<number> {
   if (!usesAurora()) {
     return 0;

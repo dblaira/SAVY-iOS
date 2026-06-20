@@ -21,6 +21,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     func testAWSGraphConfigurationRequiresConcreteBackendValues() {
         XCTAssertNil(AWSGraphConfiguration(baseURLString: "", apiKey: "abc"))
         XCTAssertNil(AWSGraphConfiguration(baseURLString: "https://api.example.com", apiKey: ""))
+        XCTAssertNil(AWSGraphConfiguration(baseURLString: "https:", apiKey: "key"))
         XCTAssertNotNil(AWSGraphConfiguration(baseURLString: "https://api.example.com", apiKey: "key"))
     }
 
@@ -56,6 +57,39 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(snapshot.totalWeeks, 92)
         XCTAssertEqual(snapshot.correlations.first?.categoryA, "Affect")
         XCTAssertEqual(snapshot.correlations.first?.categoryB, "Learning")
+    }
+
+    func testAWSGraphCorrelationsDecodeProductionCategoryStats() throws {
+        let data = """
+        {
+          "total_weeks": 92,
+          "total_extractions": 4873,
+          "correlations": [
+            {
+              "category_a": "Affect",
+              "category_b": "Learning",
+              "coefficient": 0.67,
+              "lag": 0,
+              "type": "co-movement"
+            }
+          ],
+          "category_stats": [
+            {
+              "category": "Exercise",
+              "mean": 29.52,
+              "std_dev": 6.76,
+              "weeks_with_data": 92,
+              "total_count": 2716,
+              "coverage_percent": 100
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try JSONDecoder.awsGraph.decode(OntologySnapshot.self, from: data)
+
+        XCTAssertEqual(snapshot.categoryStats.first?.coveragePercent, 100)
+        XCTAssertEqual(snapshot.categoryStats.first?.totalCount, 2716)
     }
 
     func testAWSGraphCorrelationsDecodeCamelCasePayload() throws {
@@ -207,6 +241,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(AuthenticationMode.signUp.actionTitle, "Create Account")
     }
 
+    @MainActor
     func testHomeLayoutIsNativeIPhoneFirstWithBottomCenteredCaptureButton() {
         XCTAssertEqual(RootHomeLayout.leverageGridColumnCount, 2)
         XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.deepNavy)
@@ -235,10 +270,11 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.pinnedEntryTrailingInset, 17)
         XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 32)
         XCTAssertEqual(SavyHapticFeedback.primaryImpactIntensity, 1.0)
-        XCTAssertEqual(HomePinnedEntry.referenceRows.map(\.title), [
-            "Top Pinned entry",
-            "2nd top Pinned entry"
-        ])
+        XCTAssertEqual(HomeFeedRow.rows(
+            reminderStore: ReminderStore(),
+            leverageStore: LeverageDataStore(),
+            limit: 4
+        ).count, 4)
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.title), [
             "News\nChannel",
             "Field\nEssays",
@@ -294,7 +330,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
 
     func testNavigationStateDeclaresLeverageSectionsInsteadOfProductivityTabs() {
         XCTAssertEqual(SavyNavigationSection.allCases.map(\.title), [
-            "ACTION",
+            "Now",
             "Essays",
             "Beliefs",
             "News"

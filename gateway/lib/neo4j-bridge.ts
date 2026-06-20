@@ -100,6 +100,12 @@ export async function fetchLatestCorrelations(): Promise<CorrelationSnapshot | n
     return stats;
   }
 
+  const reachable = await verifyConnectivity();
+  if (!reachable) {
+    console.warn("v1/correlations/latest skipping Neo4j enrichment: connectivity check failed");
+    return stats;
+  }
+
   try {
     const graphCorrelations = normalizeCorrelations(await fetchCorrelationsFromGraph());
     if (graphCorrelations.length === 0) {
