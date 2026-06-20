@@ -32,8 +32,11 @@ targets:
         product: AWSPluginsCore
     sources:
       - path: SAVY
+        excludes:
+          - Assets.xcassets
     resources:
       - path: SAVY/amplifyconfiguration.json
+      - path: SAVY/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.adamblair.savy
