@@ -11,6 +11,8 @@ import {
   PERSONAL_GRAPH_IRI,
   RDF_TYPE,
   entryIdFromIri,
+  beliefIdFromSubjectIri,
+  beliefSubjectIriCandidates,
 } from "./rdf-authority.js";
 
 const { Pool } = pg;
@@ -154,9 +156,9 @@ export async function fetchValidatedBeliefEntriesFromRdf(limit: number): Promise
 
     const entries: EntryRow[] = [];
     for (const row of rows) {
-      const id = entryIdFromIri(row.subject);
+      const id = beliefIdFromSubjectIri(row.subject);
       const label = row.label?.trim();
-      if (!id || !label) continue;
+      if (!label) continue;
 
       entries.push({
         id,
@@ -429,9 +431,9 @@ export async function fetchRdfTriplesForBeliefTrace(
   entryId: string,
   graphIri = DEFAULT_GRAPH_IRI
 ): Promise<RdfTripleRow[]> {
-  const entryIri = `https://understood.app/entry/${encodeURIComponent(entryId)}`;
-
   return withClient(async (client) => {
+    const entryIri = await resolveBeliefSubjectIri(client, entryId, graphIri);
+
     const { rows } = await client.query<{
       graph_iri: string;
       subject: string;
@@ -493,6 +495,29 @@ export async function fetchRdfTriplesForBeliefTrace(
       sourceApp: row.source_app,
     }));
   });
+}
+
+async function resolveBeliefSubjectIri(
+  client: pg.PoolClient,
+  beliefId: string,
+  graphIri: string
+): Promise<string> {
+  const candidates = beliefSubjectIriCandidates(beliefId);
+  if (candidates.length === 0) {
+    return `https://understood.app/entry/${encodeURIComponent(beliefId)}`;
+  }
+
+  const { rows } = await client.query<{ subject: string }>(
+    `SELECT DISTINCT subject
+     FROM savy.rdf_triples
+     WHERE graph_iri = $1
+       AND subject = ANY($2::text[])
+       AND source_app = ANY($3::text[])
+     LIMIT 1`,
+    [graphIri, candidates, AUTHORITATIVE_SOURCE_APPS]
+  );
+
+  return rows[0]?.subject ?? candidates[0];
 }
 
 export type ReminderSubtaskRow = {

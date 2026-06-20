@@ -19,7 +19,7 @@ enum RootHomeLayout {
     static let carouselCardWidth: CGFloat = 282
     static let carouselCardHeight: CGFloat = 236
     static let latestSectionBandHeight: CGFloat = 92
-    static let pinnedEntryRowHeight: CGFloat = 81
+    static let pinnedEntryRowHeight: CGFloat = 96
     static let pinnedEntryTrailingInset: CGFloat = 17
     static let pinnedEntryFontSize: CGFloat = 32
     static let bottomNavigationHeight: CGFloat = 112
@@ -346,7 +346,7 @@ struct EditorialHomeView: View {
                     .frame(width: 4, height: 74)
 
                 Text("“\(quote.title.shortQuote)”")
-                    .font(.system(size: 21, weight: .regular, design: .serif))
+                    .font(SavyTypography.bodoniModa(21))
                     .italic()
                     .lineSpacing(4)
                     .foregroundStyle(SavyTheme.ink)
@@ -424,34 +424,42 @@ private struct HomeFeedRowView: View {
     let entry: HomeFeedRow
 
     var body: some View {
-        Text(entry.title)
-            .font(.system(
-                size: RootHomeLayout.pinnedEntryFontSize,
-                weight: .regular,
-                design: .serif
-            ))
-            .italic()
-            .lineLimit(2)
-            .minimumScaleFactor(0.72)
-            .foregroundStyle(SavyTheme.ink)
-            .frame(
-                maxWidth: .infinity,
-                minHeight: RootHomeLayout.pinnedEntryRowHeight,
-                alignment: entry.alignment
-            )
-            .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)
-            .background(SavyTheme.pinnedEntry)
-            .overlay(alignment: .bottom) {
-                if let subtitle = entry.subtitle, !subtitle.isEmpty {
-                    Text(subtitle.uppercased())
-                        .font(.system(size: 11, weight: .bold))
-                        .tracking(1.4)
-                        .foregroundStyle(SavyTheme.crimson.opacity(0.72))
-                        .frame(maxWidth: .infinity, alignment: entry.alignment)
-                        .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)
-                        .padding(.bottom, 10)
-                }
+        VStack(alignment: horizontalAlignment, spacing: 10) {
+            Text(entry.title)
+                .font(SavyTypography.bodoniModa(RootHomeLayout.pinnedEntryFontSize))
+                .italic()
+                .lineLimit(2)
+                .minimumScaleFactor(0.72)
+                .foregroundStyle(SavyTheme.ink)
+                .frame(maxWidth: .infinity, alignment: entry.alignment)
+
+            if let subtitle = entry.subtitle, !subtitle.isEmpty {
+                Text(subtitle.uppercased())
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(SavyTheme.crimson.opacity(0.72))
+                    .frame(maxWidth: .infinity, alignment: entry.alignment)
             }
+        }
+        .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)
+        .padding(.vertical, 14)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: RootHomeLayout.pinnedEntryRowHeight,
+            alignment: .top
+        )
+        .background(SavyTheme.pinnedEntry)
+    }
+
+    private var horizontalAlignment: HorizontalAlignment {
+        switch entry.alignment {
+        case .center:
+            return .center
+        case .trailing:
+            return .trailing
+        default:
+            return .leading
+        }
     }
 }
 
@@ -527,7 +535,7 @@ private struct HomeLeverageCardView: View {
             }
 
             Text(card.title)
-                .font(.system(size: 28, weight: .regular, design: .serif))
+                .font(SavyTypography.bodoniModa(28))
                 .lineSpacing(-1)
                 .foregroundStyle(SavyTheme.ink)
 
@@ -895,7 +903,7 @@ enum SavyTheme {
     static let ink = Color(red: 26 / 255, green: 26 / 255, blue: 26 / 255)
 
     static func beliefSerif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .serif)
+        SavyTypography.bodoniModa(size)
     }
 }
 

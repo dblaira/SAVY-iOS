@@ -23,3 +23,31 @@ export function entryIdFromIri(iri: string): string | null {
   const id = decodeURIComponent(iri.slice(prefix.length)).trim();
   return id || null;
 }
+
+export function beliefIdFromSubjectIri(iri: string): string {
+  const entryId = entryIdFromIri(iri);
+  if (entryId) return entryId;
+
+  const connectionPrefix = "https://understood.app/ontology/connection/";
+  if (iri.startsWith(connectionPrefix)) {
+    const id = decodeURIComponent(iri.slice(connectionPrefix.length)).trim();
+    if (id) return id;
+  }
+
+  const parts = iri.split("/").filter(Boolean);
+  return decodeURIComponent(parts[parts.length - 1] ?? iri);
+}
+
+export function beliefSubjectIriCandidates(beliefId: string): string[] {
+  const trimmed = beliefId.trim();
+  if (!trimmed) return [];
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return [trimmed];
+  }
+
+  return [
+    `https://understood.app/entry/${encodeURIComponent(trimmed)}`,
+    `https://understood.app/ontology/connection/${trimmed}`,
+  ];
+}
