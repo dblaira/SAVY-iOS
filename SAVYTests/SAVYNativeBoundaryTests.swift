@@ -119,6 +119,19 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     func testBodoniModaFontLoadsInAppBundle() {
         XCTAssertNotNil(Bundle.main.url(forResource: "BodoniModa-Regular", withExtension: "ttf"))
         XCTAssertNotNil(UIFont(name: "BodoniModa-Regular", size: 20))
+        XCTAssertNotNil(Bundle.main.url(forResource: "Roboto-Medium", withExtension: "ttf"))
+        XCTAssertNotNil(UIFont(name: "Roboto-Medium", size: 22))
+        XCTAssertNotNil(
+            UIFont(
+                descriptor: UIFont(name: "BodoniModa-Regular", size: 20)!.fontDescriptor.addingAttributes([
+                    UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [
+                        "wght": 700,
+                        "opsz": 18,
+                    ],
+                ]),
+                size: 20
+            )
+        )
     }
 
     func testBeliefEntryDisplayUsesFullContentWhenHeadlineTruncated() {
@@ -258,9 +271,9 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.carouselHorizontalPadding, 2)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
         XCTAssertEqual(RootHomeLayout.carouselCardHeight, 236)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 112)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 24)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 28)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 96)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 14)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 36)
         XCTAssertEqual(RootHomeLayout.accountMenuSymbolName, "line.3.horizontal")
         XCTAssertEqual(RootHomeLayout.accountMenuTopPadding, 88)
         XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 66)
@@ -279,7 +292,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
             "News\nChannel",
             "Field\nEssays",
             "Adam's\nOntology",
-            "Belief\nLibrary"
+            "Connection"
         ])
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.sectionID), [
             "news-channel",
@@ -332,7 +345,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(SavyNavigationSection.allCases.map(\.title), [
             "Now",
             "Essays",
-            "Beliefs",
+            "Connection",
             "News"
         ])
         XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Reminders"))

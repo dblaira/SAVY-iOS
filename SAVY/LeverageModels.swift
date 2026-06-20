@@ -26,6 +26,26 @@ struct LeverageItem: Identifiable, Codable, Equatable {
     let title: String
     let summary: String
     let body: String
+    var imageName: String?
+    var category: String?
+
+    init(
+        id: String,
+        kicker: String,
+        title: String,
+        summary: String,
+        body: String,
+        imageName: String? = nil,
+        category: String? = nil
+    ) {
+        self.id = id
+        self.kicker = kicker
+        self.title = title
+        self.summary = summary
+        self.body = body
+        self.imageName = imageName
+        self.category = category
+    }
 }
 
 struct BeliefGraphTraceTriplePath: Codable, Equatable {

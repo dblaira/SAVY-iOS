@@ -16,7 +16,7 @@ enum SavyNavigationSection: String, CaseIterable, Identifiable {
         case .essays:
             "Essays"
         case .beliefs:
-            "Beliefs"
+            "Connection"
         case .news:
             "News"
         }

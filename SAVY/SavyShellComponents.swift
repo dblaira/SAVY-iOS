@@ -66,15 +66,14 @@ struct SavyBottomNavigationBar: View {
             navigationState.activeSection = section
             navigationState.dismissRadialMenu()
         } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 SavyTabIcon(section: section)
                     .foregroundStyle(isActive ? SavyTheme.crimson : inactiveColor)
 
                 Text(section.title)
-                    .font(.system(size: RootHomeLayout.bottomNavigationLabelSize, weight: isActive ? .semibold : .medium))
+                    .font(.system(size: RootHomeLayout.bottomNavigationLabelSize, weight: isActive ? .bold : .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
-                    .allowsTightening(true)
             }
             .frame(maxWidth: .infinity)
             .frame(height: RootHomeLayout.bottomNavigationHeight - RootHomeLayout.bottomNavigationTopPadding)

@@ -38,7 +38,9 @@
 		B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */; };
 		BB70759B7D2FF0F8C19F5641 /* LeverageDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C6C144C69E4ECE420740763 /* LeverageDataStore.swift */; };
 		B3E4F5A62C8D9E1F0A2B3C4E /* BeliefEntryDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E4F5A62C8D9E1F0A2B3C4D /* BeliefEntryDisplay.swift */; };
+		C0NN3CT10NV13W000000001 /* ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0NN3CT10NV13W000000002 /* ConnectionView.swift */; };
 		C1D2E3F4A5B60718293A4B5D /* BodoniModa-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B60718293A4B5C /* BodoniModa-Regular.ttf */; };
+		F4A5B60718293A4B5C702 /* Roboto-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F4A5B60718293A4B5C701 /* Roboto-Medium.ttf */; };
 		D2E3F4A5B60718293A4B5C6E /* SavyTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E3F4A5B60718293A4B5C6D /* SavyTypography.swift */; };
 		BC6829860ABA267D108308E1 /* amplifyconfiguration.json in Resources */ = {isa = PBXBuildFile; fileRef = 71BED1D3FCF0C25EB8E2B51F /* amplifyconfiguration.json */; };
 		C8AF92E504C468AF17F3B019 /* AWSCognitoAuthPlugin in Frameworks */ = {isa = PBXBuildFile; productRef = DE00E65E2BEA2B7AF9BFD1A0 /* AWSCognitoAuthPlugin */; };
@@ -90,12 +92,14 @@
 		AA30048EC8E5615CFB651053 /* SavyReminderScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyReminderScreens.swift; sourceTree = "<group>"; };
 		ABE0950195FA99739FEAC0D6 /* AuthenticationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationStore.swift; sourceTree = "<group>"; };
 		B3E4F5A62C8D9E1F0A2B3C4D /* BeliefEntryDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeliefEntryDisplay.swift; sourceTree = "<group>"; };
+		C0NN3CT10NV13W000000002 /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
 		B62835A3E93CCCE1E25CCDA2 /* MetadataEntryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataEntryStore.swift; sourceTree = "<group>"; };
 		BA02A326CF8327C0B2833F07 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		BB21E7E709F5315C8570F028 /* SAVYTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SAVYTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE63B27DF6EFB1D75DC8FB0A /* SAVYApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYApp.swift; sourceTree = "<group>"; };
 		C37D6C6C19501D7A09690DBC /* AuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSession.swift; sourceTree = "<group>"; };
 		C1D2E3F4A5B60718293A4B5C /* BodoniModa-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BodoniModa-Regular.ttf"; sourceTree = "<group>"; };
+		F4A5B60718293A4B5C701 /* Roboto-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Roboto-Medium.ttf"; sourceTree = "<group>"; };
 		D2E3F4A5B60718293A4B5C6D /* SavyTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyTypography.swift; sourceTree = "<group>"; };
 		D831D78FD50C7055D086693B /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		DA7BB7AA8C7BCE337E18D90E /* ReminderLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderLocationProvider.swift; sourceTree = "<group>"; };
@@ -151,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				C1D2E3F4A5B60718293A4B5C /* BodoniModa-Regular.ttf */,
+				F4A5B60718293A4B5C701 /* Roboto-Medium.ttf */,
 			);
 			path = Fonts;
 			sourceTree = "<group>";
@@ -169,6 +174,7 @@
 				E4E7E8BF9260C3CE66E04A7B /* AWSGraphDiagnostic.swift */,
 				1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */,
 				B3E4F5A62C8D9E1F0A2B3C4D /* BeliefEntryDisplay.swift */,
+				C0NN3CT10NV13W000000002 /* ConnectionView.swift */,
 				D831D78FD50C7055D086693B /* CalendarView.swift */,
 				0DA56611B45F0D0FC844211C /* CaptureEntry.swift */,
 				7E869D9555384C4E876A5056 /* CaptureStore.swift */,
@@ -301,6 +307,7 @@
 			files = (
 				09B7E4626804496E1984EDFF /* Assets.xcassets in Resources */,
 				C1D2E3F4A5B60718293A4B5D /* BodoniModa-Regular.ttf in Resources */,
+				F4A5B60718293A4B5C702 /* Roboto-Medium.ttf in Resources */,
 				BC6829860ABA267D108308E1 /* amplifyconfiguration.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -329,6 +336,7 @@
 				2F99A401D34AE9874D9DC0C1 /* AuthenticationStore.swift in Sources */,
 				FF94BAD45782F70A66588AAB /* BiometricUnlocker.swift in Sources */,
 				B3E4F5A62C8D9E1F0A2B3C4E /* BeliefEntryDisplay.swift in Sources */,
+				C0NN3CT10NV13W000000001 /* ConnectionView.swift in Sources */,
 				8066C740B4B0BDADEA45B999 /* CalendarView.swift in Sources */,
 				1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */,
 				5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */,

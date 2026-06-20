@@ -22,13 +22,13 @@ enum RootHomeLayout {
     static let pinnedEntryRowHeight: CGFloat = 96
     static let pinnedEntryTrailingInset: CGFloat = 17
     static let pinnedEntryFontSize: CGFloat = 32
-    static let bottomNavigationHeight: CGFloat = 112
-    static let bottomNavigationTopPadding: CGFloat = 24
-    static let bottomNavigationIconSize: CGFloat = 28
+    static let bottomNavigationHeight: CGFloat = 96
+    static let bottomNavigationTopPadding: CGFloat = 14
+    static let bottomNavigationIconSize: CGFloat = 36
     static let bottomNavigationLabelSize: CGFloat = 11
     static let bottomNavigationHorizontalPadding: CGFloat = 4
     static let floatingCaptureSize: CGFloat = 72
-    static let floatingCaptureBackground = SavyTheme.deepNavy
+    static var floatingCaptureBackground: Color { SavyTheme.crimson }
     /// FAB center sits on the top edge of the bottom navigation bar.
     static var floatingCaptureCenterAboveBottom: CGFloat {
         bottomNavigationHeight
@@ -46,14 +46,21 @@ enum RootHomeLayout {
 struct RootView: View {
     let session: AuthSession
     let onSignOut: (() -> Void)?
-    @StateObject private var navigationState = SavyNavigationState()
+    @StateObject private var navigationState: SavyNavigationState
     @StateObject private var leverageStore = LeverageDataStore()
     @StateObject private var metadataStore = MetadataEntryStore.live()
     @StateObject private var reminderStore: ReminderStore
 
-    init(session: AuthSession, onSignOut: (() -> Void)? = nil) {
+    init(
+        session: AuthSession,
+        onSignOut: (() -> Void)? = nil,
+        initialSection: SavyNavigationSection = .now
+    ) {
         self.session = session
         self.onSignOut = onSignOut
+        let navigationState = SavyNavigationState()
+        navigationState.activeSection = initialSection
+        _navigationState = StateObject(wrappedValue: navigationState)
         _reminderStore = StateObject(
             wrappedValue: ReminderStore(
                 repo: GatewayReminderRepository(
@@ -79,7 +86,13 @@ struct RootView: View {
                         let sectionID = navigationState.activeSection.leverageSectionID,
                         let section = leverageStore.section(id: sectionID)
                     {
-                        LeverageSectionView(section: section)
+                        if section.id == "news-channel" {
+                            NewsChannelView(section: section)
+                        } else if section.id == "beliefs" {
+                            ConnectionView(section: section, onSignOut: onSignOut)
+                        } else {
+                            LeverageSectionView(section: section)
+                        }
                     } else {
                         EditorialHomeView(
                             leverageStore: leverageStore,
@@ -146,9 +159,23 @@ struct RootView: View {
         }
     }
 
+    private var accountMenuUsesLightForeground: Bool {
+        navigationState.activeSection == .now
+    }
+
+    private var showsGlobalAccountMenu: Bool {
+        navigationState.activeSection != .beliefs
+    }
+
+    private var accountMenuTopPadding: CGFloat {
+        accountMenuUsesLightForeground
+            ? RootHomeLayout.accountMenuTopPadding
+            : RootHomeLayout.accountMenuTopPadding + 14
+    }
+
     @ViewBuilder
     private var accountMenuButton: some View {
-        if let onSignOut {
+        if let onSignOut, showsGlobalAccountMenu {
             VStack {
                 HStack {
                     Spacer()
@@ -160,19 +187,33 @@ struct RootView: View {
                     } label: {
                         Image(systemName: RootHomeLayout.accountMenuSymbolName)
                             .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.78))
+                            .foregroundStyle(
+                                accountMenuUsesLightForeground
+                                    ? .white.opacity(0.78)
+                                    : SavyTheme.ink
+                            )
                             .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.08), in: Circle())
+                            .background(
+                                accountMenuUsesLightForeground
+                                    ? .white.opacity(0.08)
+                                    : Color.black.opacity(0.06),
+                                in: Circle()
+                            )
                             .overlay(
                                 Circle()
-                                    .stroke(.white.opacity(0.12), lineWidth: 1)
+                                    .stroke(
+                                        accountMenuUsesLightForeground
+                                            ? .white.opacity(0.12)
+                                            : Color.black.opacity(0.12),
+                                        lineWidth: 1
+                                    )
                             )
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Account menu")
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, RootHomeLayout.accountMenuTopPadding)
+                .padding(.top, accountMenuTopPadding)
 
                 Spacer()
             }
@@ -513,7 +554,7 @@ struct HomeLeverageCard: Identifiable {
         HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: "NEWS CHANNEL", title: "News\nChannel"),
         HomeLeverageCard(id: "essays", sectionID: "field-essays", eyebrow: "FIELD ESSAYS", title: "Field\nEssays"),
         HomeLeverageCard(id: "ontology", sectionID: "ontology", eyebrow: "ONTOLOGY", title: "Adam's\nOntology"),
-        HomeLeverageCard(id: "beliefs", sectionID: "beliefs", eyebrow: "BELIEFS", title: "Belief\nLibrary")
+        HomeLeverageCard(id: "beliefs", sectionID: "beliefs", eyebrow: "CONNECTION", title: "Connection")
     ]
 }
 
@@ -555,72 +596,102 @@ private struct HomeLeverageCardView: View {
     }
 }
 
-private struct LeverageSectionView: View {
+private enum NewsChannelLayout {
+    static let horizontalPadding: CGFloat = 24
+    static let carouselCardWidth: CGFloat = 220
+    static let carouselImageHeight: CGFloat = 148
+    static let sectionLabelTracking: CGFloat = 1.8
+}
+
+private struct NewsChannelView: View {
     let section: LeverageSection
+
+    private var pinnedItem: LeverageItem? {
+        section.items.first
+    }
+
+    private var carouselItems: [LeverageItem] {
+        guard section.items.count > 1 else { return [] }
+        let endIndex = min(section.items.count, 5)
+        return Array(section.items[1..<endIndex])
+    }
+
+    private var moreStories: [LeverageItem] {
+        guard section.items.count > 5 else { return [] }
+        return Array(section.items.dropFirst(5))
+    }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(section.eyebrow)
-                        .font(.system(size: 12, weight: .bold))
-                        .tracking(2.4)
-                        .foregroundStyle(SavyTheme.crimson)
+            VStack(alignment: .leading, spacing: 28) {
+                Text(section.title)
+                    .font(.system(size: 44, weight: .regular, design: .serif))
+                    .lineSpacing(2)
+                    .foregroundStyle(SavyTheme.ink)
+                    .padding(.top, 34)
 
-                    Text(section.title)
-                        .font(.system(size: 44, weight: .regular, design: .serif))
-                        .italic(section.id == "beliefs" || section.id == "ontology")
-                        .lineSpacing(2)
-                        .foregroundStyle(SavyTheme.ink)
-
-                    Text(section.summary)
-                        .font(.system(size: 17, weight: .regular, design: .serif))
-                        .lineSpacing(5)
-                        .foregroundStyle(.black.opacity(0.58))
-                        .padding(.top, 4)
+                if let pinnedItem {
+                    NavigationLink {
+                        LeverageDetailView(section: section, item: pinnedItem)
+                    } label: {
+                        NewsPinnedStoryCard(item: pinnedItem)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .padding(.top, 34)
 
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(section.headline)
-                        .font(.system(size: 24, weight: .regular, design: .serif))
-                        .foregroundStyle(SavyTheme.ink)
+                if !carouselItems.isEmpty {
+                    newsSectionLabel("Latest Stories")
 
-                    ForEach(section.items) { item in
-                        NavigationLink {
-                            LeverageDetailView(section: section, item: item)
-                        } label: {
-                            LeverageItemRow(item: item)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            ForEach(carouselItems) { item in
+                                NavigationLink {
+                                    LeverageDetailView(section: section, item: item)
+                                } label: {
+                                    NewsCarouselCard(item: item)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, NewsChannelLayout.horizontalPadding)
+                    }
+                    .padding(.horizontal, -NewsChannelLayout.horizontalPadding)
+                }
+
+                if !moreStories.isEmpty {
+                    newsSectionLabel("More Stories")
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(moreStories) { item in
+                            NavigationLink {
+                                LeverageDetailView(section: section, item: item)
+                            } label: {
+                                NewsMoreStoryRow(item: item)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, NewsChannelLayout.horizontalPadding)
             .padding(.bottom, 48)
         }
-        .background(SavyTheme.paper.ignoresSafeArea())
-        .navigationTitle(section.title)
-        .navigationBarTitleDisplayMode(.inline)
+        .background(Color.white.ignoresSafeArea())
+    }
+
+    private func newsSectionLabel(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(.system(size: 12, weight: .bold))
+            .tracking(NewsChannelLayout.sectionLabelTracking)
+            .foregroundStyle(.black.opacity(0.42))
     }
 }
 
-private struct LeverageItemRow: View {
+private struct NewsPinnedStoryCard: View {
     let item: LeverageItem
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(SavyTheme.green)
-                    .frame(width: 9, height: 9)
-
-                Text(item.kicker)
-                    .font(.system(size: 12, weight: .bold))
-                    .tracking(1.6)
-                    .foregroundStyle(.black.opacity(0.4))
-            }
-
             Text(item.title)
                 .font(SavyTheme.beliefSerif(25))
                 .foregroundStyle(SavyTheme.ink)
@@ -634,12 +705,201 @@ private struct LeverageItemRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(22)
-        .background(.white, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .background(Brand.card, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
-private struct LeverageDetailView: View {
+private struct NewsCarouselCard: View {
+    let item: LeverageItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            newsImage
+
+            if let category = item.category, !category.isEmpty {
+                Text(category.uppercased())
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(SavyTheme.crimson)
+            }
+
+            Text(item.title)
+                .font(SavyTheme.beliefSerif(20))
+                .foregroundStyle(SavyTheme.ink)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !item.kicker.isEmpty {
+                Text(item.kicker)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.black.opacity(0.42))
+            }
+        }
+        .frame(width: NewsChannelLayout.carouselCardWidth, alignment: .leading)
+        .padding(12)
+        .background(Brand.card, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private var newsImage: some View {
+        Group {
+            if let imageName = item.imageName, !imageName.isEmpty {
+                Image(imageName)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(SavyTheme.paperAccent)
+                    .overlay {
+                        Image(systemName: "photo")
+                            .font(.system(size: 28, weight: .light))
+                            .foregroundStyle(.black.opacity(0.18))
+                    }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: NewsChannelLayout.carouselImageHeight)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct NewsMoreStoryRow: View {
+    let item: LeverageItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let category = item.category, !category.isEmpty {
+                Text(category.uppercased())
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(SavyTheme.crimson)
+            }
+
+            Text(item.title)
+                .font(SavyTheme.beliefSerif(22))
+                .foregroundStyle(SavyTheme.ink)
+                .lineLimit(3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .background(Brand.card, in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+private struct LeverageSectionView: View {
+    let section: LeverageSection
+
+    private var isBeliefs: Bool { section.id == "beliefs" }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                if isBeliefs {
+                    Text(section.title)
+                        .font(SavyTypography.bodoniModa(44, weight: 400, opticalSize: 48))
+                        .lineSpacing(2)
+                        .foregroundStyle(SavyTheme.ink)
+                        .padding(.top, 34)
+
+                    Text(section.headline)
+                        .font(SavyTypography.bodoniModa(24, weight: 400, opticalSize: 24))
+                        .foregroundStyle(SavyTheme.ink)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(section.eyebrow)
+                            .font(.system(size: 12, weight: .bold))
+                            .tracking(2.4)
+                            .foregroundStyle(SavyTheme.crimson)
+
+                        Text(section.title)
+                            .font(.system(size: 44, weight: .regular, design: .serif))
+                            .italic(section.id == "ontology")
+                            .lineSpacing(2)
+                            .foregroundStyle(SavyTheme.ink)
+
+                        Text(section.summary)
+                            .font(.system(size: 17, weight: .regular, design: .serif))
+                            .lineSpacing(5)
+                            .foregroundStyle(.black.opacity(0.58))
+                            .padding(.top, 4)
+                    }
+                    .padding(.top, 34)
+
+                    Text(section.headline)
+                        .font(.system(size: 24, weight: .regular, design: .serif))
+                        .foregroundStyle(SavyTheme.ink)
+                }
+
+                VStack(alignment: .leading, spacing: isBeliefs ? 10 : 14) {
+                    ForEach(section.items) { item in
+                        NavigationLink {
+                            LeverageDetailView(section: section, item: item)
+                        } label: {
+                            LeverageItemRow(item: item, isBeliefs: isBeliefs)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 48)
+        }
+        .background((isBeliefs ? Color.white : SavyTheme.paper).ignoresSafeArea())
+    }
+}
+
+private struct LeverageItemRow: View {
+    let item: LeverageItem
+    var isBeliefs = false
+
+    var body: some View {
+        Group {
+            if isBeliefs {
+                Text(item.title)
+                    .font(SavyTypography.robotoMedium(22))
+                    .lineSpacing(2)
+                    .foregroundStyle(SavyTheme.crimson)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(SavyTheme.green)
+                            .frame(width: 9, height: 9)
+
+                        Text(item.kicker)
+                            .font(.system(size: 12, weight: .bold))
+                            .tracking(1.6)
+                            .foregroundStyle(.black.opacity(0.4))
+                    }
+
+                    Text(item.title)
+                        .font(SavyTheme.beliefSerif(25))
+                        .foregroundStyle(SavyTheme.ink)
+
+                    if !item.summary.isEmpty {
+                        Text(item.summary)
+                            .font(.system(size: 15))
+                            .lineSpacing(3)
+                            .foregroundStyle(.black.opacity(0.55))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(22)
+            }
+        }
+        .background(
+            isBeliefs ? SavyTheme.beliefCard : .white,
+            in: RoundedRectangle(cornerRadius: 12)
+        )
+        .shadow(color: .black.opacity(isBeliefs ? 0 : 0.04), radius: 10, y: 4)
+    }
+}
+
+struct LeverageDetailView: View {
     let section: LeverageSection
     let item: LeverageItem
 
@@ -898,6 +1158,8 @@ enum SavyTheme {
     static let green = Color(red: 42 / 255, green: 184 / 255, blue: 96 / 255)
     static let paper = Color(red: 248 / 255, green: 244 / 255, blue: 237 / 255)
     static let paperAccent = Color(red: 239 / 255, green: 235 / 255, blue: 228 / 255)
+    static let beliefCard = Color(red: 0.96, green: 0.94, blue: 0.90)
+    static let connectionBand = Color(red: 0.93, green: 0.90, blue: 0.85)
     static let sectionBand = Color(red: 244 / 255, green: 239 / 255, blue: 231 / 255)
     static let pinnedEntry = Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
     static let ink = Color(red: 26 / 255, green: 26 / 255, blue: 26 / 255)

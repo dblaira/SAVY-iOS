@@ -65,7 +65,7 @@ final class LeverageDataStore: ObservableObject {
         beliefs: AWSGraphClient.ContentLineSource,
         ontology: AWSGraphClient.ContentLineSource
     ) -> String {
-        "Beliefs: \(label(for: beliefs)) · Ontology: \(label(for: ontology))"
+        "Connection: \(label(for: beliefs)) · Ontology: \(label(for: ontology))"
     }
 
     private func label(for source: AWSGraphClient.ContentLineSource) -> String {
