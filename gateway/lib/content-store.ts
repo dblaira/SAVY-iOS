@@ -15,10 +15,10 @@ export function gatewayPhase(): GatewayPhase {
 }
 
 export async function fetchBeliefEntries(limit: number): Promise<EntryRow[]> {
-  if (usesAurora()) {
-    return aurora.fetchBeliefEntries(limit);
+  if (!usesAurora()) {
+    return [];
   }
-  return supabase.fetchBeliefEntries(limit);
+  return aurora.fetchValidatedBeliefEntriesFromRdf(limit);
 }
 
 export async function fetchCaptures(limit: number): Promise<CaptureRow[]> {

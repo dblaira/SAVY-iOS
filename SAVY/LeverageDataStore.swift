@@ -18,7 +18,7 @@ final class LeverageDataStore: ObservableObject {
     }
 
     var isLiveContent: Bool {
-        status == "Live AWS graph content"
+        status == "Validated RDF content"
     }
 
     func refresh() async {
@@ -50,9 +50,8 @@ final class LeverageDataStore: ObservableObject {
         sections = nextSections
 
         let beliefsLive = isLive(beliefs.source)
-        let ontologyLive = isLive(ontology.source)
 
-        status = beliefsLive || ontologyLive ? "Live AWS graph content" : "Website seed content"
+        status = beliefsLive ? "Validated RDF content" : "Website seed content"
         statusDetail = detailLine(beliefs: beliefs.source, ontology: ontology.source)
     }
 
@@ -73,10 +72,13 @@ final class LeverageDataStore: ObservableObject {
         case .unconfigured:
             return "no API config — run setup-savy-secrets.sh and rebuild"
         case let .live(itemCount):
-            return "live (\(itemCount))"
+            return "validated RDF (\(itemCount))"
         case .seedBecauseEmpty:
-            return "empty response"
+            return "no validated RDF yet"
         case let .seedBecauseFailed(message):
+            if message.contains("validated RDF") {
+                return "seed (not RDF-exported)"
+            }
             return "failed (\(message))"
         }
     }

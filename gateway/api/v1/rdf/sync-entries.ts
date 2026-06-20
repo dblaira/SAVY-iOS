@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { cors, requireGatewayOrCron } from "../../../lib/http.js";
+import { unvalidatedRdfSyncAllowed } from "../../../lib/rdf-authority.js";
 import { syncAllAxiomRdf } from "../../../lib/rdf-axiom-sync.js";
 import { syncAllBeliefEntryRdf, syncBeliefEntryRdf } from "../../../lib/rdf-entry-sync.js";
 import { rdfStoreAvailable } from "../../../lib/rdf-store.js";
@@ -12,6 +13,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
   if (!requireGatewayOrCron(req, res)) return;
+
+  if (!unvalidatedRdfSyncAllowed()) {
+    res.status(403).json({
+      error:
+        "Postgres-derived RDF sync is disabled. Import Protégé/Docker-validated triples via POST /api/v1/rdf/import.",
+    });
+    return;
+  }
 
   if (!rdfStoreAvailable()) {
     res.status(503).json({

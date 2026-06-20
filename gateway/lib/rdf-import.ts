@@ -20,8 +20,10 @@ export function parseSuiteTripleRows(body: unknown): RdfTripleRow[] {
     }
 
     const sourceApp = record.sourceApp;
-    if (sourceApp !== "understood" && sourceApp !== "recall" && sourceApp !== "savy") {
-      throw new Error(`Row ${index} has invalid sourceApp`);
+    if (sourceApp !== "understood" && sourceApp !== "recall") {
+      throw new Error(
+        `Row ${index} has invalid sourceApp "${String(sourceApp)}". Only understood or recall suite exports are authoritative.`
+      );
     }
 
     return {

@@ -2,6 +2,16 @@ import pg from "pg";
 import { Signer } from "@aws-sdk/rds-signer";
 import type { CaptureRow, CorrelationSnapshot, EntryRow, RdfTripleRow } from "./types.js";
 import { normalizeCategoryStats, normalizeCorrelations } from "./normalize.js";
+import {
+  AUTHORITATIVE_SOURCE_APPS,
+  CONNECTION_CLASS,
+  CONNECTION_TYPE_PREDICATE,
+  ENTRY_TYPE_PREDICATE,
+  LABEL_PREDICATE,
+  PERSONAL_GRAPH_IRI,
+  RDF_TYPE,
+  entryIdFromIri,
+} from "./rdf-authority.js";
 
 const { Pool } = pg;
 
@@ -91,6 +101,73 @@ export async function fetchBeliefEntries(limit: number): Promise<EntryRow[]> {
       [limit]
     );
     return rows;
+  });
+}
+
+export async function fetchValidatedBeliefEntriesFromRdf(limit: number): Promise<EntryRow[]> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{
+      subject: string;
+      label: string | null;
+      connection_type: string | null;
+      entry_type: string | null;
+    }>(
+      `WITH connections AS (
+         SELECT DISTINCT subject
+         FROM savy.rdf_triples
+         WHERE graph_iri = $2
+           AND predicate = $3
+           AND object = $4
+           AND source_app = ANY($5::text[])
+       ),
+       labeled AS (
+         SELECT
+           c.subject,
+           MAX(CASE WHEN t.predicate = $6 THEN t.object END) AS label,
+           MAX(CASE WHEN t.predicate = $7 THEN t.object END) AS connection_type,
+           MAX(CASE WHEN t.predicate = $8 THEN t.object END) AS entry_type
+         FROM connections c
+         LEFT JOIN savy.rdf_triples t
+           ON t.graph_iri = $2
+          AND t.subject = c.subject
+          AND t.source_app = ANY($5::text[])
+          AND t.predicate IN ($6, $7, $8)
+         GROUP BY c.subject
+       )
+       SELECT subject, label, connection_type, entry_type
+       FROM labeled
+       WHERE label IS NOT NULL
+         AND btrim(label) <> ''
+       ORDER BY subject
+       LIMIT $1`,
+      [
+        limit,
+        PERSONAL_GRAPH_IRI,
+        RDF_TYPE,
+        CONNECTION_CLASS,
+        AUTHORITATIVE_SOURCE_APPS,
+        LABEL_PREDICATE,
+        CONNECTION_TYPE_PREDICATE,
+        ENTRY_TYPE_PREDICATE,
+      ]
+    );
+
+    const entries: EntryRow[] = [];
+    for (const row of rows) {
+      const id = entryIdFromIri(row.subject);
+      const label = row.label?.trim();
+      if (!id || !label) continue;
+
+      entries.push({
+        id,
+        headline: label,
+        content: label,
+        connection_type: row.connection_type,
+        entry_type: row.entry_type ?? "connection",
+      });
+    }
+
+    return entries;
   });
 }
 
@@ -369,12 +446,14 @@ export async function fetchRdfTriplesForBeliefTrace(
          WHERE graph_iri = $1
            AND predicate = $2
            AND object = $3
+           AND source_app = ANY($6::text[])
        ),
        concept_iris AS (
          SELECT t.object AS iri
          FROM savy.rdf_triples t
          INNER JOIN entry_links e ON t.subject = e.axiom_iri
          WHERE t.graph_iri = $1
+           AND t.source_app = ANY($6::text[])
            AND t.predicate IN ($4, $5)
            AND t.object_is_iri = TRUE
        ),
@@ -388,6 +467,7 @@ export async function fetchRdfTriplesForBeliefTrace(
        SELECT graph_iri, subject, predicate, object, object_is_iri, source_app
        FROM savy.rdf_triples
        WHERE graph_iri = $1
+         AND source_app = ANY($6::text[])
          AND (
            subject IN (SELECT iri FROM relevant)
            OR object IN (SELECT iri FROM relevant)
@@ -400,6 +480,7 @@ export async function fetchRdfTriplesForBeliefTrace(
         entryIri,
         BELIEF_TRACE_ANTECEDENT,
         BELIEF_TRACE_CONSEQUENT,
+        AUTHORITATIVE_SOURCE_APPS,
       ]
     );
 
