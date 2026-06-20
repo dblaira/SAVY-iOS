@@ -13,6 +13,9 @@ import {
   entryIdFromIri,
   beliefIdFromSubjectIri,
   beliefSubjectIriCandidates,
+  domainIdFromIri,
+  IN_LIFE_DOMAIN_PREDICATE,
+  LIFE_DOMAIN_CLASS,
 } from "./rdf-authority.js";
 
 const { Pool } = pg;
@@ -170,6 +173,114 @@ export async function fetchValidatedBeliefEntriesFromRdf(limit: number): Promise
     }
 
     return entries;
+  });
+}
+
+export async function fetchValidatedOntologyFromRdf(limit: number): Promise<EntryRow[]> {
+  return withClient(async (client) => {
+    const { rows: countRows } = await client.query<{
+      domain_count: string;
+      connection_count: string;
+    }>(
+      `SELECT
+         (
+           SELECT COUNT(DISTINCT subject)::text
+           FROM savy.rdf_triples
+           WHERE graph_iri = $1
+             AND predicate = $2
+             AND object = $3
+             AND source_app = ANY($4::text[])
+         ) AS domain_count,
+         (
+           SELECT COUNT(DISTINCT subject)::text
+           FROM savy.rdf_triples
+           WHERE graph_iri = $1
+             AND predicate = $2
+             AND object = $5
+             AND source_app = ANY($4::text[])
+         ) AS connection_count`,
+      [PERSONAL_GRAPH_IRI, RDF_TYPE, LIFE_DOMAIN_CLASS, AUTHORITATIVE_SOURCE_APPS, CONNECTION_CLASS]
+    );
+
+    const domainCount = Number.parseInt(countRows[0]?.domain_count ?? "0", 10);
+    const connectionCount = Number.parseInt(countRows[0]?.connection_count ?? "0", 10);
+
+    const { rows } = await client.query<{
+      subject: string;
+      label: string | null;
+      belief_count: string;
+    }>(
+      `WITH domains AS (
+         SELECT DISTINCT subject
+         FROM savy.rdf_triples
+         WHERE graph_iri = $1
+           AND predicate = $2
+           AND object = $3
+           AND source_app = ANY($4::text[])
+       ),
+       labeled AS (
+         SELECT
+           d.subject,
+           MAX(CASE WHEN t.predicate = $5 THEN t.object END) AS label
+         FROM domains d
+         LEFT JOIN savy.rdf_triples t
+           ON t.graph_iri = $1
+          AND t.subject = d.subject
+          AND t.source_app = ANY($4::text[])
+          AND t.predicate = $5
+         GROUP BY d.subject
+       ),
+       belief_counts AS (
+         SELECT object AS domain_iri, COUNT(DISTINCT subject)::text AS belief_count
+         FROM savy.rdf_triples
+         WHERE graph_iri = $1
+           AND predicate = $6
+           AND source_app = ANY($4::text[])
+         GROUP BY object
+       )
+       SELECT l.subject, l.label, COALESCE(b.belief_count, '0') AS belief_count
+       FROM labeled l
+       LEFT JOIN belief_counts b ON b.domain_iri = l.subject
+       WHERE l.label IS NOT NULL
+         AND btrim(l.label) <> ''
+       ORDER BY l.label
+       LIMIT $7`,
+      [
+        PERSONAL_GRAPH_IRI,
+        RDF_TYPE,
+        LIFE_DOMAIN_CLASS,
+        AUTHORITATIVE_SOURCE_APPS,
+        LABEL_PREDICATE,
+        IN_LIFE_DOMAIN_PREDICATE,
+        Math.max(limit - 1, 1),
+      ]
+    );
+
+    const items: EntryRow[] = [];
+    if (domainCount > 0) {
+      items.push({
+        id: "ontology-summary",
+        headline: `${domainCount} life domains, ${connectionCount} beliefs`,
+        content: `Validated personal graph with ${domainCount} life domains anchoring ${connectionCount} connections.`,
+        connection_type: "ONTOLOGY",
+        entry_type: "summary",
+      });
+    }
+
+    for (const row of rows) {
+      const label = row.label?.trim();
+      if (!label) continue;
+      const beliefCount = Number.parseInt(row.belief_count ?? "0", 10);
+      items.push({
+        id: domainIdFromIri(row.subject),
+        headline: label,
+        content: `${beliefCount} validated connection${beliefCount === 1 ? "" : "s"} in this life domain.`,
+        connection_type: `${beliefCount} beliefs`,
+        entry_type: "life_domain",
+      });
+    }
+
+    return items.slice(0, limit);
   });
 }
 

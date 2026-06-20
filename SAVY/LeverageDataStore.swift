@@ -50,8 +50,9 @@ final class LeverageDataStore: ObservableObject {
         sections = nextSections
 
         let beliefsLive = isLive(beliefs.source)
+        let ontologyLive = isLive(ontology.source)
 
-        status = beliefsLive ? "Validated RDF content" : "Website seed content"
+        status = beliefsLive || ontologyLive ? "Validated RDF content" : "Website seed content"
         statusDetail = detailLine(beliefs: beliefs.source, ontology: ontology.source)
     }
 
@@ -76,7 +77,7 @@ final class LeverageDataStore: ObservableObject {
         case .seedBecauseEmpty:
             return "no validated RDF yet"
         case let .seedBecauseFailed(message):
-            if message.contains("validated RDF") {
+            if message.contains("validated RDF") || message.contains("awaits validated RDF") {
                 return "seed (not RDF-exported)"
             }
             return "failed (\(message))"

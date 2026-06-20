@@ -7,12 +7,6 @@
       "includeFiles": "gateway/lib/**"
     }
   },
-  "crons": [
-    {
-      "path": "/api/v1/rdf/sync-entries",
-      "schedule": "0 * * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",

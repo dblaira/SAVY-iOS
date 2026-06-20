@@ -25,6 +25,7 @@ SAVY product knowledge must pass:
 ## Gateway rules
 
 - `GET /v1/entries` → `fetchValidatedBeliefEntriesFromRdf`
+- `GET /v1/rdf/ontology` → `fetchValidatedOntologyFromRdf`
 - `GET /v1/rdf/belief-trace` → authoritative triples only
 - `GET /v1/correlations/latest` → 403 (not RDF-authoritative)
 

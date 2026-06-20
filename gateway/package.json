@@ -10,6 +10,7 @@
     "test:gateway": "node --import tsx --test test/**/*.test.ts",
     "import:suite-rdf": "node --import tsx scripts/import-suite-triples.ts",
     "import:adam-beliefs-triples": "node --import tsx scripts/import-adam-beliefs-triples.ts",
+    "validate:ontology": "bash ../understood-app/ontology/validate.sh",
     "import:belief-entries-rdf": "node --import tsx scripts/import-belief-entries-rdf.ts",
     "import:axiom-rdf": "node --import tsx scripts/import-axiom-rdf.ts",
     "import:adam-beliefs-rdf": "node --import tsx scripts/import-adam-beliefs-rdf.ts",

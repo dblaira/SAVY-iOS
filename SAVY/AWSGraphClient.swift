@@ -203,14 +203,35 @@ actor AWSGraphClient {
     }
 
     static func fetchOntologyReport() async -> OntologyFetchReport {
-        guard fromBundleConfiguration() != nil else {
+        guard let client = fromBundleConfiguration() else {
             return OntologyFetchReport(items: AWSGraphSeed.ontologyItems, source: .unconfigured)
         }
 
-        return OntologyFetchReport(
-            items: AWSGraphSeed.ontologyItems,
-            source: .seedBecauseFailed("awaits validated RDF export")
-        )
+        for attempt in 1...2 {
+            do {
+                let rows: [EntryRow] = try await client.fetch(
+                    path: "v1/rdf/ontology",
+                    queryItems: [URLQueryItem(name: "limit", value: "16")],
+                    accessToken: nil
+                )
+                let items = rows.compactMap(\.leverageItem)
+                if items.isEmpty {
+                    return OntologyFetchReport(items: AWSGraphSeed.ontologyItems, source: .seedBecauseEmpty)
+                }
+                return OntologyFetchReport(items: items, source: .live(itemCount: items.count))
+            } catch {
+                if attempt == 1, shouldRetryGatewayFetch(error) {
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    continue
+                }
+                return OntologyFetchReport(
+                    items: AWSGraphSeed.ontologyItems,
+                    source: .seedBecauseFailed(compactFetchError(error))
+                )
+            }
+        }
+
+        return OntologyFetchReport(items: AWSGraphSeed.ontologyItems, source: .seedBecauseFailed("request failed"))
     }
 
     func fetchBeliefGraphTrace(entryId: String, accessToken: String? = nil) async throws -> BeliefGraphTraceResult {
