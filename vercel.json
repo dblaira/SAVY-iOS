@@ -1,0 +1,26 @@
+{
+  "installCommand": "npm install && npm install --prefix gateway",
+  "functions": {
+    "api/v1/**/*.ts": {
+      "memory": 512,
+      "maxDuration": 30,
+      "includeFiles": "gateway/lib/**"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/v1/rdf/sync-entries",
+      "schedule": "0 * * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, x-api-key, Authorization" }
+      ]
+    }
+  ]
+}

@@ -7,5 +7,6 @@ xcuserdata/
 SAVY-Secrets.xcconfig
 SAVY-Ops.local.md
 gateway/node_modules/
+node_modules/
 gateway/.env.local
 gateway/.vercel
