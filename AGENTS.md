@@ -40,3 +40,12 @@ This app is being built for Adam first. Adam's taste, language, understanding, a
 - No WebKit/WebView in the app target unless Adam explicitly reverses this rule.
 - No JavaScript or TypeScript application runtime in the iOS app.
 - No simulator-first workflow unless Adam explicitly asks for it.
+
+## Cursor Cloud specific instructions
+
+Cloud Agent VMs are **Linux**, so the shipped iOS app (`SAVY.xcodeproj`) cannot be built or run here — that requires macOS + Xcode. On this VM only the **Node/TypeScript backend gateway** is runnable and testable: the Vercel serverless functions under `gateway/api/**` (re-exported by the root `api/**`), the helpers in `gateway/lib/**`, and the `packages/suite-graph-engine` package.
+
+- **Runtime:** Node 22 is preinstalled; `package.json` pins `engines.node` to `20.x`, so `npm install` prints an `EBADENGINE` warning. It is only a warning — tests and the handlers run fine on Node 22.
+- **Tests:** `cd gateway && npm test` runs the engine + gateway suites (commands defined in `gateway/package.json`). One gateway test (`gateway/test/rdf-import.test.ts`) reads a fixture from a sibling repo at `../../../understood-app/fixtures/ontology/suite-triples.json`. That repo is not checked out here, so that single test fails with `ENOENT`; everything else passes. This is an external-repo gap, not a code bug.
+- **No lint/build gate:** there is no lint script and no build step (functions are deployed by Vercel with `noEmit`). `npx tsc --noEmit` in `gateway/` is **not** clean on a stock checkout (dynamic `[id]` route files aren't matched by the tsconfig `include` glob, plus a `ws` type mismatch), so don't treat raw `tsc` as a pass/fail gate.
+- **Running the gateway:** the documented dev command is `vercel dev`, which requires Vercel credentials (`vercel login` / `VERCEL_TOKEN`) and will not start offline. Without credentials, the handlers are plain `(req, res)` functions and can be smoke-tested by importing them directly via `tsx` behind a tiny Node HTTP adapter. `GET /api/v1/health` needs no secrets and reports the active phase (`supabase-bridge` when neither `AURORA_HOST` nor `DATABASE_URL` is set). All non-health routes require an `x-api-key` header matching `SAVY_API_KEY` (put it in `gateway/.env.local`).
