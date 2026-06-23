@@ -3,48 +3,38 @@ import SwiftUI
 
 enum SavyNavigationSection: String, CaseIterable, Identifiable {
     case now
-    case essays
-    case beliefs
-    case news
+    case reminders
+    case actions
+    case calendar
 
     var id: String { rawValue }
+
+    static let leadingSections: [SavyNavigationSection] = [.now, .reminders]
+    static let trailingSections: [SavyNavigationSection] = [.actions, .calendar]
 
     var title: String {
         switch self {
         case .now:
             "Now"
-        case .essays:
-            "Essays"
-        case .beliefs:
-            "Connection"
-        case .news:
-            "News"
+        case .reminders:
+            "Reminders"
+        case .actions:
+            "Actions"
+        case .calendar:
+            "Calendar"
         }
     }
 
     var symbolName: String {
         switch self {
         case .now:
-            "sparkle"
-        case .essays:
-            "doc.text"
-        case .beliefs:
-            "quote.bubble"
-        case .news:
-            "newspaper"
-        }
-    }
-
-    var leverageSectionID: String? {
-        switch self {
-        case .now:
-            nil
-        case .essays:
-            "field-essays"
-        case .beliefs:
-            "beliefs"
-        case .news:
-            "news-channel"
+            "house"
+        case .reminders:
+            "bell"
+        case .actions:
+            "bolt"
+        case .calendar:
+            "calendar"
         }
     }
 }
@@ -53,18 +43,24 @@ enum SavyNavigationSection: String, CaseIterable, Identifiable {
 final class SavyNavigationState: ObservableObject {
     @Published var activeSection: SavyNavigationSection = .now
     @Published var isRadialMenuPresented = false
+    @Published var highlightedCaptureKind: MetadataEntryKind?
     @Published var activeComposerKind: MetadataEntryKind?
 
     func toggleRadialMenu() {
         isRadialMenuPresented.toggle()
+        if !isRadialMenuPresented {
+            highlightedCaptureKind = nil
+        }
     }
 
     func dismissRadialMenu() {
         isRadialMenuPresented = false
+        highlightedCaptureKind = nil
     }
 
     func openComposer(for kind: MetadataEntryKind) {
         activeComposerKind = kind
         isRadialMenuPresented = false
+        highlightedCaptureKind = nil
     }
 }

@@ -18,16 +18,19 @@ enum RootHomeLayout {
     static let carouselHorizontalPadding: CGFloat = 2
     static let carouselCardWidth: CGFloat = 282
     static let carouselCardHeight: CGFloat = 236
+    static let carouselCardTitleFontSize: CGFloat = 24
     static let latestSectionBandHeight: CGFloat = 92
     static let pinnedEntryRowHeight: CGFloat = 96
     static let pinnedEntryTrailingInset: CGFloat = 17
-    static let pinnedEntryFontSize: CGFloat = 32
+    static let pinnedEntryFontSize: CGFloat = 24
     static let bottomNavigationHeight: CGFloat = 96
+    /// Navy band painted above the tan bar (FAB overflow zone); does not add layout height.
+    static let bottomNavNavyRiserHeight: CGFloat = 32
     static let bottomNavigationTopPadding: CGFloat = 14
     static let bottomNavigationIconSize: CGFloat = 36
     static let bottomNavigationLabelSize: CGFloat = 11
     static let bottomNavigationHorizontalPadding: CGFloat = 4
-    static let floatingCaptureSize: CGFloat = 72
+    static let floatingCaptureSize: CGFloat = 64
     static var floatingCaptureBackground: Color { SavyTheme.crimson }
     /// FAB center sits on the top edge of the bottom navigation bar.
     static var floatingCaptureCenterAboveBottom: CGFloat {
@@ -36,11 +39,17 @@ enum RootHomeLayout {
     static var radialMenuBottomPadding: CGFloat {
         floatingCaptureCenterAboveBottom + (floatingCaptureSize / 2) + 10
     }
-    static let radialMenuButtonSize: CGFloat = 66
-    static let radialMenuIconSize: CGFloat = 29
-    static let radialMenuLabelSize: CGFloat = 14
+    static let radialMenuButtonSize: CGFloat = 56
+    static let radialMenuIconSize: CGFloat = 20
+    static let radialMenuLabelSize: CGFloat = 12
     static let accountMenuSymbolName = "line.3.horizontal"
+    static let accountMenuButtonSize: CGFloat = 42
     static let accountMenuTopPadding: CGFloat = 88
+
+    /// Nudges the menu down to the optical center of the SAVY wordmark cap height.
+    static var accountMenuHeroWordmarkOffset: CGFloat {
+        ((heroWordmarkFontSize - accountMenuButtonSize) * 0.42) + 5
+    }
 }
 
 struct RootView: View {
@@ -77,57 +86,55 @@ struct RootView: View {
                 SavyTheme.paper.ignoresSafeArea()
 
                 Group {
-                    if navigationState.activeSection == .now {
+                    switch navigationState.activeSection {
+                    case .now:
                         EditorialHomeView(
                             leverageStore: leverageStore,
-                            reminderStore: reminderStore
+                            reminderStore: reminderStore,
+                            onSignOut: onSignOut
                         )
-                    } else if
-                        let sectionID = navigationState.activeSection.leverageSectionID,
-                        let section = leverageStore.section(id: sectionID)
-                    {
-                        if section.id == "news-channel" {
-                            NewsChannelView(section: section)
-                        } else if section.id == "beliefs" {
-                            ConnectionView(section: section, onSignOut: onSignOut)
-                        } else {
-                            LeverageSectionView(section: section)
-                        }
-                    } else {
-                        EditorialHomeView(
-                            leverageStore: leverageStore,
-                            reminderStore: reminderStore
-                        )
+                    case .reminders:
+                        SavyReminderKindTabScreen(kind: .reminder)
+                            .environmentObject(reminderStore)
+                    case .actions:
+                        SavyReminderKindTabScreen(kind: .action)
+                            .environmentObject(reminderStore)
+                    case .calendar:
+                        SavyCalendarTabScreen()
+                            .environmentObject(reminderStore)
                     }
                 }
                 .padding(.bottom, RootHomeLayout.bottomNavigationHeight + 8)
 
-                SavyRadialFabMenu(
-                    isPresented: navigationState.isRadialMenuPresented,
-                    onDismiss: {
-                        navigationState.dismissRadialMenu()
-                    },
-                    onSelect: { kind in
-                        navigationState.openComposer(for: kind)
-                    }
-                )
+                if navigationState.isRadialMenuPresented {
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            SavyHapticFeedback.menuClose()
+                            withAnimation(SavyFabMenuMotion.close) {
+                                navigationState.dismissRadialMenu()
+                            }
+                        }
+                        .transition(.opacity)
+                }
 
                 VStack(spacing: 0) {
                     Spacer()
 
-                    ZStack(alignment: .top) {
-                        SavyBottomNavigationBar(navigationState: navigationState)
-
-                        SavyFloatingActionButton(isPresented: navigationState.isRadialMenuPresented) {
-                            navigationState.toggleRadialMenu()
+                    SavyBottomNavigationBar(
+                        navigationState: navigationState,
+                        onSelectCaptureKind: { kind in
+                            navigationState.openComposer(for: kind)
                         }
-                        .offset(y: -RootHomeLayout.floatingCaptureSize / 2)
-                    }
+                    )
                 }
                 .ignoresSafeArea(edges: .bottom)
 
-                accountMenuButton
+                if navigationState.activeSection != .now {
+                    accountMenuButton
+                }
             }
+            .animation(SavyFabMenuMotion.open, value: navigationState.isRadialMenuPresented)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $navigationState.activeComposerKind) { kind in
@@ -159,65 +166,18 @@ struct RootView: View {
         }
     }
 
-    private var accountMenuUsesLightForeground: Bool {
-        navigationState.activeSection == .now
-    }
-
-    private var showsGlobalAccountMenu: Bool {
-        navigationState.activeSection != .beliefs
-    }
-
-    private var accountMenuTopPadding: CGFloat {
-        accountMenuUsesLightForeground
-            ? RootHomeLayout.accountMenuTopPadding
-            : RootHomeLayout.accountMenuTopPadding + 14
-    }
-
     @ViewBuilder
     private var accountMenuButton: some View {
-        if let onSignOut, showsGlobalAccountMenu {
+        if let onSignOut {
             VStack {
                 HStack {
                     Spacer()
-
-                    Menu {
-                        Button("Sign Out", role: .destructive) {
-                            onSignOut()
-                        }
-                    } label: {
-                        Image(systemName: RootHomeLayout.accountMenuSymbolName)
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(
-                                accountMenuUsesLightForeground
-                                    ? .white.opacity(0.78)
-                                    : SavyTheme.ink
-                            )
-                            .frame(width: 42, height: 42)
-                            .background(
-                                accountMenuUsesLightForeground
-                                    ? .white.opacity(0.08)
-                                    : Color.black.opacity(0.06),
-                                in: Circle()
-                            )
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        accountMenuUsesLightForeground
-                                            ? .white.opacity(0.12)
-                                            : Color.black.opacity(0.12),
-                                        lineWidth: 1
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Account menu")
+                    SavyAccountMenuButton(onSignOut: onSignOut, lightForeground: false)
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, accountMenuTopPadding)
-
                 Spacer()
             }
-            .ignoresSafeArea(edges: .top)
+            .safeAreaPadding(.top, 12)
         }
     }
 }
@@ -225,6 +185,7 @@ struct RootView: View {
 struct EditorialHomeView: View {
     @ObservedObject var leverageStore: LeverageDataStore
     @ObservedObject var reminderStore: ReminderStore
+    let onSignOut: (() -> Void)?
 
     private var feedRows: [HomeFeedRow] {
         HomeFeedRow.rows(
@@ -239,14 +200,14 @@ struct EditorialHomeView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header(topInset: proxy.safeAreaInsets.top)
 
-                    contentSourceBand
-                        .padding(.horizontal, RootHomeLayout.horizontalPadding)
-                        .padding(.top, 12)
-
                     leverageCarousel
                         .padding(.top, RootHomeLayout.carouselTopPadding)
 
                     latestSection
+
+                    contentSourceBand
+                        .padding(.horizontal, RootHomeLayout.horizontalPadding)
+                        .padding(.top, 24)
                 }
                 .padding(.bottom, 40)
             }
@@ -258,18 +219,18 @@ struct EditorialHomeView: View {
                 await leverageStore.refresh()
             }
         }
-        .background(SavyTheme.paper.ignoresSafeArea())
+        .background(Color.white.ignoresSafeArea())
     }
 
     private var contentSourceBand: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(leverageStore.isLiveContent ? Color(red: 0.16, green: 0.72, blue: 0.35) : Color(red: 0.86, green: 0.45, blue: 0.12))
                     .frame(width: 8, height: 8)
 
                 Text(leverageStore.status)
-                    .font(.system(size: 13, weight: .heavy))
+                    .font(SavyTheme.readingLabel(13))
                     .foregroundStyle(leverageStore.isLiveContent ? SavyTheme.ink : SavyTheme.crimson)
 
                 if leverageStore.isLoading {
@@ -282,13 +243,13 @@ struct EditorialHomeView: View {
             }
 
             Text(leverageStore.statusDetail)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.48))
+                .font(SavyTheme.readingBody(13))
+                .foregroundStyle(SavyTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Capture: \(reminderStore.syncStatusLabel)")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.black.opacity(0.48))
+                .font(SavyTheme.readingBody(13))
+                .foregroundStyle(SavyTheme.secondaryText)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -305,16 +266,25 @@ struct EditorialHomeView: View {
     }
 
     private func header(topInset: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: RootHomeLayout.heroWordmarkEyebrowSpacing) {
-            Text("SAVY")
-                .font(SavyTypography.bodoniModa(RootHomeLayout.heroWordmarkFontSize))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
+        HStack(alignment: .top, spacing: 0) {
+            VStack(alignment: .leading, spacing: RootHomeLayout.heroWordmarkEyebrowSpacing) {
+                Text("SAVY")
+                    .font(SavyTypography.displaySerif(RootHomeLayout.heroWordmarkFontSize, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
 
-            Text("The Adam Pattern")
-                .font(.system(size: RootHomeLayout.heroEyebrowFontSize, weight: .semibold))
-                .foregroundStyle(SavyTheme.crimson)
+                Text("The Adam Pattern")
+                    .font(SavyTheme.readingLabel(RootHomeLayout.heroEyebrowFontSize))
+                    .foregroundStyle(SavyTheme.bottomNavTan)
+            }
+
+            Spacer(minLength: 0)
+
+            if let onSignOut {
+                SavyAccountMenuButton(onSignOut: onSignOut)
+                    .padding(.top, RootHomeLayout.accountMenuHeroWordmarkOffset)
+            }
         }
         .padding(.horizontal, RootHomeLayout.horizontalPadding)
         .padding(.top, topInset + RootHomeLayout.heroContentTopPadding)
@@ -367,11 +337,11 @@ struct EditorialHomeView: View {
     private var latestSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("GREATEST LEVERAGE")
-                .font(.system(size: 20, weight: .heavy))
+                .font(SavyTheme.readingLabel(20))
                 .foregroundStyle(SavyTheme.ink)
                 .frame(maxWidth: .infinity, minHeight: RootHomeLayout.latestSectionBandHeight, alignment: .leading)
                 .padding(.horizontal, 18)
-                .background(SavyTheme.sectionBand)
+                .background(Color.white)
 
             ForEach(feedRows) { entry in
                 HomeFeedRowView(entry: entry)
@@ -386,17 +356,17 @@ struct EditorialHomeView: View {
                     .fill(SavyTheme.crimson)
                     .frame(width: 4, height: 74)
 
-                Text("“\(quote.title.shortQuote)”")
-                    .font(SavyTypography.bodoniModa(21))
-                    .italic()
-                    .lineSpacing(4)
+                Text("“\(quote.title)”")
+                    .font(SavyTheme.carouselCardTitle(22))
+                    .lineSpacing(3)
                     .foregroundStyle(SavyTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Text("FEATURED SIGNAL")
-                .font(.system(size: 11, weight: .bold))
+                .font(SavyTheme.readingLabel(12))
                 .tracking(1.8)
-                .foregroundStyle(.black.opacity(0.32))
+                .foregroundStyle(SavyTheme.tertiaryText)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 22)
@@ -465,31 +435,35 @@ private struct HomeFeedRowView: View {
     let entry: HomeFeedRow
 
     var body: some View {
-        VStack(alignment: horizontalAlignment, spacing: 10) {
+        VStack(alignment: horizontalAlignment, spacing: 8) {
             Text(entry.title)
-                .font(SavyTypography.bodoniModa(RootHomeLayout.pinnedEntryFontSize))
-                .italic()
-                .lineLimit(2)
-                .minimumScaleFactor(0.72)
+                .font(SavyTheme.carouselCardTitle(RootHomeLayout.pinnedEntryFontSize))
+                .lineLimit(3)
+                .minimumScaleFactor(0.85)
                 .foregroundStyle(SavyTheme.ink)
                 .frame(maxWidth: .infinity, alignment: entry.alignment)
 
             if let subtitle = entry.subtitle, !subtitle.isEmpty {
                 Text(subtitle.uppercased())
-                    .font(.system(size: 11, weight: .bold))
+                    .font(SavyTheme.readingLabel(12))
                     .tracking(1.4)
-                    .foregroundStyle(SavyTheme.crimson.opacity(0.72))
+                    .foregroundStyle(SavyTheme.crimson)
                     .frame(maxWidth: .infinity, alignment: entry.alignment)
             }
         }
         .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)
-        .padding(.vertical, 14)
+        .padding(.vertical, 16)
         .frame(
             maxWidth: .infinity,
             minHeight: RootHomeLayout.pinnedEntryRowHeight,
             alignment: .top
         )
-        .background(SavyTheme.pinnedEntry)
+        .background(Brand.card)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.black.opacity(0.08))
+                .frame(height: 1)
+        }
     }
 
     private var horizontalAlignment: HorizontalAlignment {
@@ -551,9 +525,9 @@ struct HomeLeverageCard: Identifiable {
     let title: String
 
     static let referenceCards: [HomeLeverageCard] = [
-        HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: "NEWS CHANNEL", title: "News\nChannel"),
-        HomeLeverageCard(id: "essays", sectionID: "field-essays", eyebrow: "FIELD ESSAYS", title: "Field\nEssays"),
-        HomeLeverageCard(id: "ontology", sectionID: "ontology", eyebrow: "ONTOLOGY", title: "Adam's\nOntology"),
+        HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: "NEWS CHANNEL", title: "News Channel"),
+        HomeLeverageCard(id: "essays", sectionID: "field-essays", eyebrow: "FIELD ESSAYS", title: "Field Essays"),
+        HomeLeverageCard(id: "ontology", sectionID: "ontology", eyebrow: "ONTOLOGY", title: "Adam's Ontology"),
         HomeLeverageCard(id: "beliefs", sectionID: "beliefs", eyebrow: "CONNECTION", title: "Connection")
     ]
 }
@@ -564,28 +538,23 @@ private struct HomeLeverageCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 34) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(SavyTheme.green)
-                    .frame(width: 10, height: 10)
-
-                Text(card.eyebrow)
-                    .font(.system(size: 13, weight: .bold))
-                    .tracking(1.8)
-                    .foregroundStyle(.black.opacity(0.36))
-            }
+            Text(card.eyebrow)
+                .font(SavyTheme.readingLabel(12))
+                .tracking(1.8)
+                .foregroundStyle(SavyTheme.secondaryText)
 
             Text(card.title)
-                .font(SavyTypography.bodoniModa(28))
-                .lineSpacing(-1)
+                .font(SavyTheme.carouselCardTitle())
+                .lineSpacing(3)
                 .foregroundStyle(SavyTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
 
             Text("\(count) ITEMS")
-                .font(.system(size: 11, weight: .bold))
+                .font(SavyTheme.readingLabel(12))
                 .tracking(1.4)
-                .foregroundStyle(.black.opacity(0.28))
+                .foregroundStyle(SavyTheme.tertiaryText)
         }
         .padding(.top, 28)
         .padding(.horizontal, 30)
@@ -698,9 +667,9 @@ private struct NewsPinnedStoryCard: View {
 
             if !item.summary.isEmpty {
                 Text(item.summary)
-                    .font(.system(size: 15))
+                    .font(SavyTheme.readingBody(15))
                     .lineSpacing(3)
-                    .foregroundStyle(.black.opacity(0.55))
+                    .foregroundStyle(SavyTheme.secondaryText)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1162,10 +1131,36 @@ enum SavyTheme {
     static let connectionBand = Color(red: 0.93, green: 0.90, blue: 0.85)
     static let sectionBand = Color(red: 244 / 255, green: 239 / 255, blue: 231 / 255)
     static let pinnedEntry = Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
-    static let ink = Color(red: 26 / 255, green: 26 / 255, blue: 26 / 255)
+    static let ink = Color.black
+    static let bottomNavTan = Color(red: 0.80, green: 0.70, blue: 0.58)
+    static let secondaryText = Color.black.opacity(0.62)
+    static let tertiaryText = Color.black.opacity(0.45)
 
-    static func beliefSerif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        SavyTypography.bodoniModa(size)
+    /// Editorial serif — bold by default, matching Notorious Recall's `Brand.serif`.
+    static func displaySerif(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
+        SavyTypography.displaySerif(size, weight: weight)
+    }
+
+    /// Primary titles on light surfaces — semibold sans; section headers use `readingLabel`.
+    static func readingTitle(_ size: CGFloat) -> Font {
+        .system(size: size, weight: .semibold)
+    }
+
+    static func readingBody(_ size: CGFloat) -> Font {
+        .system(size: size, weight: .semibold)
+    }
+
+    static func readingLabel(_ size: CGFloat) -> Font {
+        .system(size: size, weight: .heavy)
+    }
+
+    /// Home leverage carousel cards — Times New Roman at the same optical size as reading titles.
+    static func carouselCardTitle(_ size: CGFloat = RootHomeLayout.carouselCardTitleFontSize) -> Font {
+        SavyTypography.timesNewRoman(size)
+    }
+
+    static func beliefSerif(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
+        displaySerif(size, weight: weight)
     }
 }
 

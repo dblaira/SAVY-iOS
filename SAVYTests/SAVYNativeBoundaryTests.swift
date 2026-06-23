@@ -117,21 +117,16 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     }
 
     func testBodoniModaFontLoadsInAppBundle() {
+        let audit = SavyTypography.performAudit()
+
         XCTAssertNotNil(Bundle.main.url(forResource: "BodoniModa-Regular", withExtension: "ttf"))
+        XCTAssertTrue(audit.bodoniModaBundled)
         XCTAssertNotNil(UIFont(name: "BodoniModa-Regular", size: 20))
         XCTAssertNotNil(Bundle.main.url(forResource: "Roboto-Medium", withExtension: "ttf"))
+        XCTAssertTrue(audit.robotoMediumBundled)
         XCTAssertNotNil(UIFont(name: "Roboto-Medium", size: 22))
-        XCTAssertNotNil(
-            UIFont(
-                descriptor: UIFont(name: "BodoniModa-Regular", size: 20)!.fontDescriptor.addingAttributes([
-                    UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [
-                        "wght": 700,
-                        "opsz": 18,
-                    ],
-                ]),
-                size: 20
-            )
-        )
+        XCTAssertTrue(audit.bodoni72OldstyleAvailable, "Bodoni 72 Oldstyle should be available on iOS")
+        XCTAssertEqual(audit.displaySerifSource, "Bodoni 72 Oldstyle")
     }
 
     func testBeliefEntryDisplayUsesFullContentWhenHeadlineTruncated() {
@@ -257,10 +252,10 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     @MainActor
     func testHomeLayoutIsNativeIPhoneFirstWithBottomCenteredCaptureButton() {
         XCTAssertEqual(RootHomeLayout.leverageGridColumnCount, 2)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.deepNavy)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureSize, 72)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureCenterAboveBottom, 112)
-        XCTAssertEqual(RootHomeLayout.radialMenuBottomPadding, 158)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.crimson)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureSize, 64)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureCenterAboveBottom, 96)
+        XCTAssertEqual(RootHomeLayout.radialMenuBottomPadding, 138)
         XCTAssertEqual(RootHomeLayout.heroTopPadding, 0)
         XCTAssertEqual(RootHomeLayout.heroHeight, 248)
         XCTAssertEqual(RootHomeLayout.heroContentTopPadding, 34)
@@ -276,12 +271,12 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 36)
         XCTAssertEqual(RootHomeLayout.accountMenuSymbolName, "line.3.horizontal")
         XCTAssertEqual(RootHomeLayout.accountMenuTopPadding, 88)
-        XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 66)
-        XCTAssertEqual(RootHomeLayout.radialMenuIconSize, 29)
+        XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 56)
+        XCTAssertEqual(RootHomeLayout.radialMenuIconSize, 20)
         XCTAssertEqual(RootHomeLayout.latestSectionBandHeight, 92)
-        XCTAssertEqual(RootHomeLayout.pinnedEntryRowHeight, 81)
+        XCTAssertEqual(RootHomeLayout.pinnedEntryRowHeight, 96)
         XCTAssertEqual(RootHomeLayout.pinnedEntryTrailingInset, 17)
-        XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 32)
+        XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 24)
         XCTAssertEqual(SavyHapticFeedback.primaryImpactIntensity, 1.0)
         XCTAssertEqual(HomeFeedRow.rows(
             reminderStore: ReminderStore(),
@@ -289,9 +284,9 @@ final class SAVYNativeBoundaryTests: XCTestCase {
             limit: 4
         ).count, 4)
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.title), [
-            "News\nChannel",
-            "Field\nEssays",
-            "Adam's\nOntology",
+            "News Channel",
+            "Field Essays",
+            "Adam's Ontology",
             "Connection"
         ])
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.sectionID), [
@@ -344,13 +339,18 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     func testNavigationStateDeclaresLeverageSectionsInsteadOfProductivityTabs() {
         XCTAssertEqual(SavyNavigationSection.allCases.map(\.title), [
             "Now",
-            "Essays",
-            "Connection",
-            "News"
+            "Reminders",
+            "Actions",
+            "Calendar"
         ])
-        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Reminders"))
-        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Actions"))
-        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Calendar"))
+        XCTAssertEqual(SavyNavigationSection.leadingSections.map(\.title), ["Now", "Reminders"])
+        XCTAssertEqual(SavyNavigationSection.trailingSections.map(\.title), ["Actions", "Calendar"])
+        XCTAssertEqual(SavyNavigationSection.allCases.map(\.symbolName), [
+            "house",
+            "bell",
+            "bolt",
+            "calendar"
+        ])
     }
 
     func testRadialFabMenuExposesBehaviorAndTimeMetadataOptions() {

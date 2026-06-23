@@ -24,9 +24,9 @@ enum Brand {
     static let tabActive   = Color(hex: 0x2E2716)   // active tab label
     static let tabInactive = Color(hex: 0x7D6A45)   // inactive tab label
 
-    /// System serif until Bodoni is bundled in the asset catalog.
+    /// Matches Notorious Recall — Bodoni 72 Oldstyle ships on every iPhone.
     static func serif(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
-        .system(size: size, weight: weight, design: .serif)
+        SavyTypography.displaySerif(size, weight: weight)
     }
 }
 

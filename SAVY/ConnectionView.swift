@@ -87,7 +87,7 @@ struct ConnectionView: View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
                 Text("CONNECTION")
-                    .font(SavyTypography.bodoniModa(34, weight: 500, opticalSize: 40))
+                    .font(SavyTypography.displaySerif(34, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -198,7 +198,7 @@ private struct ConnectionFeaturedCard: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(ConnectionDisplayText.featuredTitle(item.title))
-                    .font(SavyTypography.bodoniModa(26, weight: 400, opticalSize: 28))
+                    .font(SavyTypography.displaySerif(26, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(3)
                     .multilineTextAlignment(.leading)

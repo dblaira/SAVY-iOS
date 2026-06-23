@@ -28,6 +28,18 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
             "calendar"
         }
     }
+
+    /// Icons used in the radial FAB fan — matches Notorious Recall.
+    var fabMenuSymbolName: String {
+        switch self {
+        case .reminder:
+            "clock"
+        case .action:
+            "bolt.fill"
+        case .calendar:
+            "calendar"
+        }
+    }
 }
 
 enum MetadataEntryPriority: String, CaseIterable, Codable, Equatable, Identifiable {

@@ -10,3 +10,4 @@ gateway/node_modules/
 node_modules/
 gateway/.env.local
 gateway/.vercel
+.vercel/

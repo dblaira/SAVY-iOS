@@ -116,7 +116,7 @@ private struct LoginView: View {
     private var brandHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("SAVY")
-                .font(SavyTypography.bodoniModa(54))
+                .font(SavyTypography.displaySerif(54, weight: .bold))
                 .foregroundStyle(SavyTheme.crimson)
 
             Text("A STUDY IN LEVERAGE")
@@ -232,7 +232,7 @@ private struct LockedView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("SAVY")
-                    .font(SavyTypography.bodoniModa(54))
+                    .font(SavyTypography.displaySerif(54, weight: .bold))
                     .foregroundStyle(SavyTheme.crimson)
 
                 if let email = session.user.displayEmail {
