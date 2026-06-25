@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { requireBearerUser } from "../../lib/cognito-auth.js";
-import { cors, requireApiKey } from "../../lib/http.js";
-import { attachReminderImagePath, deleteUserReminder, reminderStoreAvailable } from "../../lib/reminder-store.js";
+import { requireBearerUser } from "../../../lib/cognito-auth.js";
+import { cors, requireApiKey } from "../../../lib/http.js";
+import { attachReminderImagePath, deleteUserReminder, reminderStoreAvailable } from "../../../lib/reminder-store.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;
