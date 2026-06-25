@@ -21,3 +21,18 @@ export type CorrelationSnapshot = {
 };
 
 export type GatewayPhase = "aurora" | "aurora+neo4j" | "supabase-bridge";
+
+export type RdfTripleRow = {
+  graphIri: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  objectIsIri: boolean;
+  sourceApp: "understood" | "recall" | "savy";
+};
+
+export type RdfImportResult = {
+  inserted: number;
+  graphIri: string;
+  totalRows: number;
+};

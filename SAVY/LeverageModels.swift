@@ -26,6 +26,56 @@ struct LeverageItem: Identifiable, Codable, Equatable {
     let title: String
     let summary: String
     let body: String
+    var imageName: String?
+    var category: String?
+
+    init(
+        id: String,
+        kicker: String,
+        title: String,
+        summary: String,
+        body: String,
+        imageName: String? = nil,
+        category: String? = nil
+    ) {
+        self.id = id
+        self.kicker = kicker
+        self.title = title
+        self.summary = summary
+        self.body = body
+        self.imageName = imageName
+        self.category = category
+    }
+}
+
+struct BeliefGraphTraceTriplePath: Codable, Equatable {
+    let axiomIri: String
+    let antecedentLabel: String?
+    let consequentLabel: String?
+    let relationshipType: String?
+    let supportedBy: String
+}
+
+struct BeliefGraphTrace: Codable, Equatable {
+    let matchedAxiomIris: [String]
+    let evidenceEntryIri: String
+    let paths: [String]
+    let triplePaths: [BeliefGraphTraceTriplePath]
+    let rankingMethod: String
+}
+
+struct BeliefGraphTraceResult: Codable, Equatable {
+    let decision: String
+    let confidence: String
+    let entryId: String
+    let graphTrace: BeliefGraphTrace?
+    let reason: String
+
+    var hasGraphPath: Bool {
+        decision == "belief-graph-match" || decision == "connection-graph-match"
+            ? graphTrace != nil
+            : false
+    }
 }
 
 struct OntologyCorrelation: Codable, Equatable {
@@ -135,6 +185,9 @@ private extension KeyedDecodingContainer where Key == DynamicCodingKey {
         for key in keys {
             if let value = try decodeIfPresent(Double.self, forKey: DynamicCodingKey(key)) {
                 return value
+            }
+            if let intValue = try decodeIfPresent(Int.self, forKey: DynamicCodingKey(key)) {
+                return Double(intValue)
             }
         }
         throw DecodingError.keyNotFound(

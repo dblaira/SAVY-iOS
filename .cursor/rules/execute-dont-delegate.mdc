@@ -1,0 +1,46 @@
+---
+description: Execute work with tools; never hand Adam long manual instructions for things the agent can do
+alwaysApply: true
+---
+
+# Execute, Don't Delegate
+
+Adam runs multiple agents. **If you can do it, do it.** Do not bounce executable work back as instructions.
+
+## Default
+
+1. **Run it** — shell, git, `gh`, `xcodebuild`, `devicectl`, file edits, deploys, tests, package resolve.
+2. **Report the outcome** — 2–4 lines: what ran, result, any blocker.
+3. **Only ask Adam when** the step is genuinely human-only or permission-gated.
+
+## Human-only exceptions (short ask, no tutorial)
+
+- Unlock phone, tap Trust, enter password/2FA, approve Apple Developer prompt
+- Approve a destructive or privileged action you cannot run
+- Product/design judgment Adam has not specified
+
+Say exactly what you need in **one sentence**. Example: *"Unlock your iPhone — I installed SAVY but launch was blocked while locked."*
+
+## Never do this
+
+- Multi-step Xcode menu walkthroughs when `xcodebuild` / `devicectl` can do the job
+- *"Run this in Terminal"* when you have shell access — **you** run it
+- Long verification checklists Adam must follow manually
+- Debating whether to act when tools are available — **act first**, explain after
+
+## iOS / Xcode specifically
+
+For git sync, package resolve, clean build, and device install:
+
+```bash
+git checkout main && git pull origin main
+xcodebuild -resolvePackageDependencies -project SAVY.xcodeproj -scheme SAVY
+xcodebuild -project SAVY.xcodeproj -scheme SAVY -destination 'id=<DEVICE_ID>' build install
+xcrun devicectl device install app --device <DEVICE_ID> <path-to-.app>
+```
+
+Use `xcrun xctrace list devices` to find the connected iPhone. If launch fails with *device locked*, install succeeded — ask Adam to unlock only.
+
+## When blocked
+
+State: **what you tried**, **what failed**, **the one thing Adam must do** (if anything). No fallback instruction manual.

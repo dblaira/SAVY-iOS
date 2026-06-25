@@ -18,7 +18,7 @@ final class LeverageDataStore: ObservableObject {
     }
 
     var isLiveContent: Bool {
-        status == "Live AWS graph content"
+        status == "Validated RDF content"
     }
 
     func refresh() async {
@@ -52,7 +52,7 @@ final class LeverageDataStore: ObservableObject {
         let beliefsLive = isLive(beliefs.source)
         let ontologyLive = isLive(ontology.source)
 
-        status = beliefsLive || ontologyLive ? "Live AWS graph content" : "Website seed content"
+        status = beliefsLive || ontologyLive ? "Validated RDF content" : "Website seed content"
         statusDetail = detailLine(beliefs: beliefs.source, ontology: ontology.source)
     }
 
@@ -65,20 +65,34 @@ final class LeverageDataStore: ObservableObject {
         beliefs: AWSGraphClient.ContentLineSource,
         ontology: AWSGraphClient.ContentLineSource
     ) -> String {
-        "Beliefs: \(label(for: beliefs)) · Ontology: \(label(for: ontology))"
+        "Connection: \(label(for: beliefs)) · Ontology: \(label(for: ontology))"
     }
 
     private func label(for source: AWSGraphClient.ContentLineSource) -> String {
         switch source {
         case .unconfigured:
-            return "no API config in build"
+            return "no API config — run setup-savy-secrets.sh and rebuild"
         case let .live(itemCount):
-            return "live (\(itemCount))"
+            return "validated RDF (\(itemCount))"
         case .seedBecauseEmpty:
-            return "empty response"
+            return "no validated RDF yet"
         case let .seedBecauseFailed(message):
+            if message.contains("validated RDF") || message.contains("awaits validated RDF") {
+                return "seed (not RDF-exported)"
+            }
             return "failed (\(message))"
         }
+    }
+
+    func greatestLeverageItems(limit: Int = 4) -> [LeverageItem] {
+        var items: [LeverageItem] = []
+        if let beliefs = section(id: "beliefs") {
+            items.append(contentsOf: beliefs.items.prefix(max(1, limit / 2)))
+        }
+        if let ontology = section(id: "ontology"), items.count < limit {
+            items.append(contentsOf: ontology.items.prefix(limit - items.count))
+        }
+        return Array(items.prefix(limit))
     }
 }
 

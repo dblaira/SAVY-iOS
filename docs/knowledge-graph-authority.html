@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Understood Suite — Knowledge Graph Authority</title>
+  <style>
+    :root {
+      --paper: #f8f4ed;
+      --paper-accent: #efebe4;
+      --section-band: #f4efe7;
+      --ink: #1a1a1a;
+      --ink-muted: rgba(26, 26, 26, 0.62);
+      --ink-soft: rgba(26, 26, 26, 0.38);
+      --crimson: #e60e44;
+      --crimson-dark: #b00124;
+      --deep-navy: #08172d;
+      --green: #2ab860;
+      --amber: #c4922a;
+      --line: rgba(26, 26, 26, 0.12);
+      --shadow: 0 12px 40px rgba(8, 23, 45, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 48px 28px 96px;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2.6px;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-bottom: 12px;
+    }
+
+    /* ── ANSWER FIRST ── */
+    .answer-block { margin-bottom: 40px; }
+
+    .answer-block h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.6rem, 7vw, 4rem);
+      font-weight: 400;
+      font-style: italic;
+      color: var(--crimson);
+      line-height: 1.08;
+      margin-bottom: 18px;
+    }
+
+    .verdict {
+      background: var(--deep-navy);
+      color: var(--paper);
+      border-radius: 16px;
+      padding: 28px 30px;
+      font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+      font-weight: 600;
+      line-height: 1.5;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .verdict strong { color: white; }
+
+    .answer-lead {
+      font-family: Georgia, serif;
+      font-size: clamp(1.15rem, 2.5vw, 1.4rem);
+      line-height: 1.45;
+      color: var(--ink);
+      max-width: 920px;
+      margin-bottom: 28px;
+    }
+
+    .suite-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0 0 32px;
+      font-weight: 800;
+      font-size: clamp(0.88rem, 2vw, 1rem);
+      color: var(--deep-navy);
+      background: white;
+      border: 2px solid var(--crimson);
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .suite-flow .arrow { color: var(--crimson); font-size: 1.25rem; }
+
+    /* ── HIERARCHY VISUAL ── */
+    .hierarchy-panel {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 28px 24px 32px;
+      margin-bottom: 32px;
+    }
+
+    .hierarchy-panel h2 {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: 1.65rem;
+      font-weight: 400;
+      color: var(--crimson);
+      margin-bottom: 6px;
+    }
+
+    .hierarchy-panel .sub {
+      font-size: 0.95rem;
+      color: var(--ink-muted);
+      margin-bottom: 24px;
+    }
+
+    .pyramid {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+
+    .pyramid-tier {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      line-height: 1.35;
+      color: white;
+      position: relative;
+    }
+
+    .tier-1 { width: 100%; background: var(--crimson); font-size: 1.05rem; padding: 18px 24px; }
+    .tier-2 { width: 92%; background: var(--crimson-dark); }
+    .tier-3 { width: 84%; background: var(--deep-navy); }
+    .tier-4 { width: 76%; background: #14304d; }
+    .tier-5 { width: 68%; background: #2a4a6e; color: var(--paper); font-weight: 600; }
+
+    .tier-label {
+      position: absolute;
+      left: -8px;
+      top: 50%;
+      transform: translate(-100%, -50%);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: var(--ink-soft);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 720px) {
+      .tier-label { display: none; }
+      .pyramid-tier { width: 100% !important; }
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 800px) {
+      .flow-row { grid-template-columns: 1fr; }
+    }
+
+    .flow-step {
+      background: var(--paper-accent);
+      border-radius: 10px;
+      padding: 14px 12px;
+      text-align: center;
+      font-size: 0.82rem;
+      position: relative;
+    }
+
+    .flow-step .step-num {
+      display: inline-flex;
+      width: 24px;
+      height: 24px;
+      align-items: center;
+      justify-content: center;
+      background: var(--crimson);
+      color: white;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .flow-step strong {
+      display: block;
+      font-size: 0.88rem;
+      margin-bottom: 4px;
+    }
+
+    @media (min-width: 801px) {
+      .flow-step:not(:last-child)::after {
+        content: "→";
+        position: absolute;
+        right: -10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--crimson);
+        font-weight: 800;
+        font-size: 1.1rem;
+        z-index: 1;
+      }
+    }
+
+    /* ── CAPABILITY SCORE VISUAL ── */
+    .score-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 700px) {
+      .score-panel { grid-template-columns: 1fr; }
+    }
+
+    .score-card {
+      background: white;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 22px 20px;
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .donut {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .donut::after {
+      content: "";
+      width: 62px;
+      height: 62px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+    }
+
+    .donut span {
+      position: relative;
+      z-index: 1;
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+
+    .donut.recall {
+      background: conic-gradient(var(--green) 0deg 360deg, var(--paper-accent) 360deg);
+    }
+
+    .donut.recall span { color: #1a7a42; }
+
+    .donut.savy {
+      background: conic-gradient(var(--amber) 0deg 98deg, var(--paper-accent) 98deg);
+    }
+
+    .donut.savy span { color: #8a6418; }
+
+    .score-card h3 {
+      font-size: 0.72rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .score-card.recall h3 { color: var(--green); }
+    .score-card.savy h3 { color: var(--amber); }
+
+    .score-card p {
+      font-size: 0.88rem;
+      color: var(--ink-muted);
+      line-height: 1.4;
+    }
+
+    .score-breakdown {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+    }
+
+    /* ── THREE PILLARS ── */
+    .suite-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 800px) {
+      .suite-row { grid-template-columns: 1fr; }
+    }
+
+    .suite-card {
+      background: white;
+      border-radius: 14px;
+      padding: 22px 20px;
+      box-shadow: var(--shadow);
+      border-top: 5px solid var(--crimson);
+    }
+
+    .suite-card.data { border-top-color: var(--amber); }
+    .suite-card.structure { border-top-color: var(--green); }
+    .suite-card.surface { border-top-color: var(--crimson); }
+
+    .suite-card .role {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 2.2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      opacity: 0.7;
+    }
+
+    .suite-card h3 {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: 1.45rem;
+      font-weight: 400;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .suite-card .stat {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--crimson);
+      margin: 10px 0 4px;
+    }
+
+    .suite-card.data .stat { color: var(--amber); }
+    .suite-card.structure .stat { color: var(--green); }
+
+    .suite-card p {
+      font-size: 0.9rem;
+      color: var(--ink-muted);
+      line-height: 1.45;
+    }
+
+    .suite-card code {
+      font-size: 0.78rem;
+      background: var(--paper-accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .answer-pillars {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .pillar {
+      background: white;
+      border: 2px solid var(--crimson);
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .pillar .num {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--crimson);
+      margin-bottom: 6px;
+    }
+
+    .pillar strong {
+      display: block;
+      font-size: 1.05rem;
+      margin-bottom: 6px;
+    }
+
+    .pillar span {
+      font-size: 0.92rem;
+      color: var(--ink-muted);
+    }
+
+    .pillar.data { border-color: var(--amber); }
+    .pillar.data .num { color: var(--amber); }
+    .pillar.structure { border-color: var(--green); }
+    .pillar.structure .num { color: #1a7a42; }
+    .pillar.surface { border-color: var(--crimson); }
+
+    .formalized-box {
+      background: rgba(42, 184, 96, 0.08);
+      border: 1px solid rgba(42, 184, 96, 0.25);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-top: 8px;
+    }
+
+    .formalized-box h3 {
+      font-size: 0.72rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #1a7a42;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .formalized-box ol {
+      margin: 0 0 0 1.2rem;
+    }
+
+    .formalized-box li {
+      margin-bottom: 8px;
+      font-size: 0.92rem;
+      color: var(--ink);
+    }
+
+    /* ── DETAIL SECTIONS ── */
+    .divider {
+      height: 3px;
+      background: var(--crimson);
+      width: 64px;
+      margin: 56px 0 32px;
+    }
+
+    .detail-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 2.4px;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-bottom: 8px;
+    }
+
+    section h2 {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: 1.85rem;
+      font-weight: 400;
+      color: var(--crimson);
+      margin-bottom: 14px;
+    }
+
+    section h3 {
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin: 28px 0 12px;
+    }
+
+    section p, section li {
+      font-size: 0.98rem;
+      color: var(--ink);
+      max-width: 880px;
+    }
+
+    section p { margin-bottom: 14px; }
+
+    section ul {
+      margin: 0 0 16px 1.2rem;
+    }
+
+    section li { margin-bottom: 8px; color: var(--ink-muted); }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      margin: 20px 0 28px;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .compare-table th,
+    .compare-table td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    .compare-table th {
+      background: var(--section-band);
+      font-size: 0.72rem;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--ink-soft);
+    }
+
+    .compare-table tr:last-child td { border-bottom: none; }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-right: 4px;
+    }
+
+    .tag-yes { background: rgba(42, 184, 96, 0.15); color: #1a7a42; }
+    .tag-no { background: rgba(230, 14, 68, 0.12); color: var(--crimson-dark); }
+    .tag-partial { background: rgba(196, 146, 42, 0.15); color: #8a6418; }
+
+    .code-path {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 0.82rem;
+      background: var(--paper-accent);
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 3px solid var(--crimson);
+      margin: 12px 0 20px;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.5;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    @media (max-width: 720px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h4 {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: 1.2rem;
+      color: var(--crimson);
+      margin-bottom: 10px;
+    }
+
+    .vocab-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 16px 0 24px;
+    }
+
+    .vocab-item {
+      background: white;
+      border-radius: 10px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+    }
+
+    .vocab-item dt {
+      font-weight: 800;
+      color: var(--crimson);
+      margin-bottom: 4px;
+    }
+
+    .vocab-item dd {
+      font-size: 0.88rem;
+      color: var(--ink-muted);
+      margin: 0;
+    }
+
+    .next-steps {
+      background: var(--section-band);
+      border-radius: 14px;
+      padding: 24px 26px;
+      border: 1px solid var(--line);
+    }
+
+    .next-steps ol {
+      margin: 12px 0 0 1.3rem;
+    }
+
+    .next-steps li {
+      margin-bottom: 10px;
+      color: var(--ink);
+    }
+
+    .honesty-box {
+      background: rgba(230, 14, 68, 0.06);
+      border: 2px solid rgba(230, 14, 68, 0.22);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-bottom: 28px;
+    }
+
+    .honesty-box h3 {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: 1.2rem;
+      color: var(--crimson-dark);
+      margin-bottom: 10px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .honesty-box p {
+      font-size: 0.95rem;
+      color: var(--ink-muted);
+      max-width: none;
+    }
+
+    .narrative-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 20px 0 28px;
+    }
+
+    @media (max-width: 720px) {
+      .narrative-split { grid-template-columns: 1fr; }
+    }
+
+    .narrative-card {
+      border-radius: 14px;
+      padding: 20px;
+      background: white;
+      box-shadow: var(--shadow);
+    }
+
+    .narrative-card.narrative { border-top: 5px solid var(--amber); }
+    .narrative-card.relational { border-top: 5px solid var(--green); }
+
+    .narrative-card .label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .narrative-card.narrative .label { color: var(--amber); }
+    .narrative-card.relational .label { color: #1a7a42; }
+
+    .narrative-card h4 {
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: 1.25rem;
+      margin-bottom: 8px;
+    }
+
+    .narrative-card p {
+      font-size: 0.9rem;
+      color: var(--ink-muted);
+    }
+
+    .tool-chain {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 20px 0 28px;
+    }
+
+    @media (max-width: 800px) {
+      .tool-chain { grid-template-columns: 1fr; }
+    }
+
+    .tool-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .tool-card .tool-name {
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--deep-navy);
+      margin-bottom: 4px;
+    }
+
+    .tool-card .tool-role {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--crimson);
+      margin-bottom: 10px;
+    }
+
+    .tool-card p {
+      font-size: 0.86rem;
+      color: var(--ink-muted);
+      margin: 0;
+    }
+
+    .lifecycle-flow {
+      background: var(--deep-navy);
+      color: var(--paper);
+      border-radius: 14px;
+      padding: 24px;
+      margin: 20px 0 28px;
+      overflow-x: auto;
+    }
+
+    .lifecycle-flow .lc-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(248, 244, 237, 0.55);
+      margin-bottom: 16px;
+    }
+
+    .lifecycle-steps {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      min-width: 720px;
+    }
+
+    .lc-step {
+      flex: 1;
+      padding: 12px 14px;
+      border-right: 1px solid rgba(248, 244, 237, 0.15);
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    .lc-step:last-child { border-right: none; }
+
+    .lc-step strong {
+      display: block;
+      color: var(--crimson);
+      font-size: 0.7rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .lc-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--crimson);
+      font-weight: 800;
+      padding: 0 4px;
+      font-size: 1.1rem;
+    }
+
+    .shield-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    @media (max-width: 720px) {
+      .shield-grid { grid-template-columns: 1fr; }
+    }
+
+    .shield-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 4px solid var(--deep-navy);
+      box-shadow: var(--shadow);
+    }
+
+    .shield-card h4 {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--deep-navy);
+      margin-bottom: 8px;
+    }
+
+    .shield-card p, .shield-card li {
+      font-size: 0.9rem;
+      color: var(--ink-muted);
+    }
+
+    .shield-card ul { margin: 8px 0 0 1.1rem; }
+
+    .governance-loop {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    @media (max-width: 800px) {
+      .governance-loop { grid-template-columns: 1fr; }
+    }
+
+    .gov-node {
+      background: var(--paper-accent);
+      border-radius: 10px;
+      padding: 14px 12px;
+      text-align: center;
+      font-size: 0.8rem;
+      border: 1px solid var(--line);
+    }
+
+    .gov-node strong {
+      display: block;
+      color: var(--crimson);
+      font-size: 0.68rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ═══════════════════════════════════════════════════════════
+         ANSWER FIRST — verdict immediately, no build-up
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="eyebrow">Understood suite · Data · Structure · Surface · June 2026</div>
+
+    <div class="answer-block">
+      <h1>Three apps. One knowledge graph. Re_Call is the spine.</h1>
+
+      <div class="verdict">
+        <strong>Bottom line:</strong> Understood is not competing with Re_Call — it <em>feeds</em> it.
+        The axiom-style Postgres ontology in Understood is <em>valuable corpus</em>, not the final authority layer — it was built before W3C formal tools existed in your workflow.
+        Formal meaning lives in OWL/Turtle (Protégé) + validated triples (Docker/W3C stack) + Re_Call's graphTrace engine.
+        <em>No app gets its own orphan ontology. No AI path without a traceable triple.</em>
+      </div>
+
+      <div class="honesty-box">
+        <h3>Two systems, two eras — don't confuse them</h3>
+        <p>
+          <strong>Understood.app ontology</strong> (2024–2025): personal if-then rules in Postgres, human-confirmed axioms, ~5k–8k extractions — built to govern AI prompts before you had Protégé and the W3C RDF pipeline. It works. It is not OWL in the database, and it should not be narrated as "the best system."
+          <strong>Re_Call + W3C stack</strong> (2025–2026): OWL classes authored in <strong>Protégé</strong>, triples validated in <strong>Docker</strong> (riot + SPARQL + HermiT), deterministic n3 engine, graphTrace on every AI path — interoperability by design, hallucination curb by architecture.
+          The suite plan: <em>migrate corpus → formal triples → one engine → all surfaces cite paths.</em>
+        </p>
+      </div>
+
+      <div class="suite-flow">
+        <span>Understood axioms + extractions</span>
+        <span class="arrow">→</span>
+        <span>Formal RDF triples (shared)</span>
+        <span class="arrow">→</span>
+        <span>Re_Call engine + graphTrace</span>
+        <span class="arrow">→</span>
+        <span>All apps cite paths</span>
+      </div>
+
+      <p class="answer-lead">
+        <strong>Understood</strong> holds years of personal data and axiom-style ontology (~5k–8k extractions, confirmed causal rules).
+        <strong>Re_Call</strong> has the backend structure that makes AI traceable (RDF, <code>graphTrace</code>, graph-first).
+        <strong>SAVY</strong> (and the rest of the suite) are surfaces that must plug into both —
+        not invent their own meaning layer.
+      </p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         HIERARCHY + FLOW — what's most important, in order
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="hierarchy-panel">
+      <h2>Authority hierarchy</h2>
+      <p class="sub">Most important at top. Each layer only valid if the layer above exists. Read down = less authority, more convenience.</p>
+
+      <div class="pyramid">
+        <div class="pyramid-tier tier-1">
+          <span class="tier-label">#1 AUTHORITY</span>
+          OWL / Turtle ontologies (.ttl) — meaning humans authored
+        </div>
+        <div class="pyramid-tier tier-2">
+          <span class="tier-label">#2 PROOF</span>
+          RDF triples + deterministic graph engine (n3) + graphTrace
+        </div>
+        <div class="pyramid-tier tier-3">
+          <span class="tier-label">#3 PERSIST</span>
+          Postgres projection — rdf_triples, rdf_terms (Aurora or Supabase)
+        </div>
+        <div class="pyramid-tier tier-4">
+          <span class="tier-label">#4 QUERY</span>
+          SPARQL proofs (dev) · Neo4j traversal (optional runtime)
+        </div>
+        <div class="pyramid-tier tier-5">
+          <span class="tier-label">#5 VOICE</span>
+          LLM copy only — forbidden from inventing graph facts
+        </div>
+      </div>
+
+      <h3 style="margin-top:8px; font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; color:var(--ink-soft); font-weight:800;">Request flow (Re_Call — the target pattern)</h3>
+      <div class="flow-row">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <strong>Signal</strong>
+          User rates a reminder / opens a moment
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <strong>Match</strong>
+          n3 walks RDF rules in Turtle files
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <strong>Trace</strong>
+          graphTrace: rule IDs + triple paths
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <strong>Rank</strong>
+          depthScore + shared strengths (no LLM)
+        </div>
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <strong>Copy</strong>
+          Optional LLM — graph JSON only
+        </div>
+      </div>
+    </div>
+
+    <!-- Why the suite exists: narrative brain vs relational life -->
+    <div class="hierarchy-panel">
+      <h2>Why this architecture exists</h2>
+      <p class="sub">From your Obsidian vault: memory compresses life into stories; life runs on delayed, connected effects. The suite is built for the second problem, not the first.</p>
+
+      <div class="narrative-split">
+        <div class="narrative-card narrative">
+          <div class="label">🗯 Memory is narrative</div>
+          <h4>Storytelling brain</h4>
+          <p>Your mind turns life into stories — "bad week because work was stressful." Memory compresses, edits, and explains after the fact. Most apps stop here: prose, summaries, coaching copy.</p>
+        </div>
+        <div class="narrative-card relational">
+          <div class="label">🔥 Life is relational</div>
+          <h4>Connected effects</h4>
+          <p>Sleep changes ambition. Learning changes mood. Belief changes entertainment two weeks later. Exercise + sleep may do something neither does alone. Understood reveals connections; Re_Call recovers relational context at return moments.</p>
+        </div>
+      </div>
+
+      <p style="font-size:1.05rem; font-family:Georgia,serif; font-style:italic; color:var(--ink); max-width:880px;">
+        You're using a storytelling brain to understand a life made of delayed, connected effects.
+        The deterministic ontology layer exists so AI assists that relational life — without inventing facts, without crowd-generalized advice, without silent mutation of your meaning.
+      </p>
+    </div>
+
+    <!-- Tool chain: Protégé vs Docker vs runtime -->
+    <div class="hierarchy-panel">
+      <h2>How ontologies are built vs how triples are validated</h2>
+      <p class="sub">Ontology = the contract (what kinds of things and relations are allowed). RDF triples = the state (actual facts). Different tools, different jobs — both W3C-aligned.</p>
+
+      <div class="tool-chain">
+        <div class="tool-card">
+          <div class="tool-role">Author meaning</div>
+          <div class="tool-name">Protégé (macOS)</div>
+          <p>OWL classes, object/datatype properties, imports (BFO/CCO), competency questions. HermiT reasoner checks logical consistency. Source: <code>.ttl</code> files humans steward.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-role">Validate facts</div>
+          <div class="tool-name">Docker + W3C stack</div>
+          <p>Jena <strong>riot</strong> (syntax) · <strong>SPARQL</strong> (query proofs) · N-Triples canonicalization · <code>ontology/validate.sh</code> in Re_Call. Interoperability: same triples work across tools, browsers, apps.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-role">Run at request time</div>
+          <div class="tool-name">n3 + graphTrace</div>
+          <p>In-memory graph walk over Turtle rules. Deterministic match → rank → <code>graphTrace</code> payload. LLM receives graph JSON only — never invents eligibility or facts.</p>
+        </div>
+      </div>
+
+      <h3>Governance loop (from Obsidian: AI Agents and the Deterministic Ontology Layer)</h3>
+      <div class="governance-loop">
+        <div class="gov-node"><strong>AI agent</strong>Proposes candidates — classes, triples, queries, mappings</div>
+        <div class="gov-node"><strong>Ontology</strong>Contract — what is allowed</div>
+        <div class="gov-node"><strong>Knowledge graph</strong>State — growing facts + provenance</div>
+        <div class="gov-node"><strong>Reasoner / tests</strong>Judge — SHACL, SPARQL, HermiT</div>
+        <div class="gov-node"><strong>Human</strong>Steward — never silent AI mutation</div>
+      </div>
+      <p style="font-size:0.9rem; color:var(--ink-muted);">Never let the AI silently mutate the ontology. Every change is a diff with reasons: which competency question does it support? What passes? What fails?</p>
+    </div>
+
+    <!-- After you enter data: full lifecycle -->
+    <div class="hierarchy-panel">
+      <h2>After you enter data — full suite lifecycle</h2>
+      <p class="sub">Capture → structure → validate → infer → surface. Each step has a tool and an authority layer. Inference gets richer only from <em>your</em> graph — never from generalized crowd models.</p>
+
+      <div class="lifecycle-flow">
+        <div class="lc-title">End-to-end flow (all apps)</div>
+        <div class="lifecycle-steps">
+          <div class="lc-step"><strong>1 · Capture</strong>Journal entry, belief, reminder signal, health sync — Understood / SAVY / Re_Call iOS</div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step"><strong>2 · Extract</strong>Structured facts, candidate axioms, connections — LLM proposes, human confirms</div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step"><strong>3 · Govern</strong>Personal axioms vs product lane vs public/BFO guardrails — two authorities, one assistant</div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step"><strong>4 · Export</strong><code>exportSuiteBundle()</code> → Turtle + triple rows → Postgres <code>rdf_triples</code></div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step"><strong>5 · Match</strong>n3 engine walks rules — depthScore, shared strengths, goal weights</div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step"><strong>6 · Trace</strong>graphTrace on every response — rule IDs, triple paths, refusal if unsupported</div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-step"><strong>7 · Surface</strong>SAVY beliefs · Re_Call reminders · richer personal inference only</div>
+        </div>
+      </div>
+
+      <h3>Privacy &amp; personalization shield</h3>
+      <div class="shield-grid">
+        <div class="shield-card">
+          <h4>Shielded from generalized feedback</h4>
+          <ul>
+            <li>Deterministic layer decides eligibility — not "what users like you do"</li>
+            <li>Reactive recommendations stay within <em>revealed strength</em> — deeper, not broader</li>
+            <li>LLM drafts language only; graph decides what is allowed</li>
+            <li>Agent refuses unsupported personal inference — shows rule used or says "don't know yet"</li>
+          </ul>
+        </div>
+        <div class="shield-card">
+          <h4>Safe to add more data</h4>
+          <ul>
+            <li>Personal graph IRI: <code>understood.app/graph/personal</code> — your triples, your rules</li>
+            <li>Provenance on every axiom: <code>supportedBy</code> entry evidence, human confirmation</li>
+            <li>RLS + Cognito/Supabase auth — no cross-user graph leakage</li>
+            <li>Inspectable: templates, rules, feedback you control — not black-box coaching</li>
+          </ul>
+        </div>
+      </div>
+      <p style="font-size:0.95rem; color:var(--ink); font-weight:600;">
+        Design principle (W3C): interoperability prevents digital fragmentation — documents, programs, and web specs work identically across devices. Applied here: one IRI tree, one triple shape, one graphTrace contract — so your meaning survives every app surface.
+      </p>
+    </div>
+
+    <!-- Capability gap at a glance -->
+    <div class="score-panel">
+      <div class="score-card recall">
+        <div class="donut recall"><span>11/11</span></div>
+        <div>
+          <h3>Re_Call — meaning authority</h3>
+          <p>RDF triples · graphTrace · BFO/CCO · QC-gated deploy · LLM constrained by graph</p>
+          <div class="score-breakdown">Full graph stack — this is the reference architecture</div>
+        </div>
+      </div>
+      <div class="score-card savy">
+        <div class="donut savy"><span>3/11</span></div>
+        <div>
+          <h3>SAVY — today</h3>
+          <p>Live beliefs + correlation display · suite RDF export formalized · graphTrace wiring next</p>
+          <div class="score-breakdown">Storage works · meaning authority not wired to runtime yet</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Three apps at a glance -->
+    <div class="suite-row">
+      <div class="suite-card data">
+        <div class="role">#1 · Data authority</div>
+        <h3>Understood</h3>
+        <div class="stat">~8,000+</div>
+        <p>Extractions, beliefs, axioms, correlations. Formal RDF export live via <code>exportSuiteBundle()</code> + <code>understood-suite.ttl</code>. Vercel: <code>news-journal-app</code>.</p>
+      </div>
+      <div class="suite-card structure">
+        <div class="role">#2 · Structure authority</div>
+        <h3>Re_Call</h3>
+        <div class="stat">graphTrace</div>
+        <p>OWL/Turtle + n3 engine + QC-gated deploy. Shared namespace: <code>understood.app/ontology/project-recall#</code>. Graph decides before LLM speaks.</p>
+      </div>
+      <div class="suite-card surface">
+        <div class="role">#3 · Surfaces</div>
+        <h3>SAVY · Re_Call iOS · Understood iOS</h3>
+        <div class="stat">3 apps</div>
+        <p>Native iOS experiences. Must consume the same triples — not parallel JSON blobs. SAVY today: live beliefs + correlation display only.</p>
+      </div>
+    </div>
+
+    <div class="answer-pillars">
+      <div class="pillar data">
+        <div class="num">UNDERSTOOD</div>
+        <strong>Axiom ontology = the corpus</strong>
+        <span>13 life domains · antecedent → consequent rules · human-confirmed · evidence_entry_ids</span>
+      </div>
+      <div class="pillar structure">
+        <div class="num">RE_CALL</div>
+        <strong>RDF stack = the law</strong>
+        <span>Turtle writes first · deterministic match · graphTrace on every AI path</span>
+      </div>
+      <div class="pillar surface">
+        <div class="num">SAVY + iOS</div>
+        <strong>Apps = the experience</strong>
+        <span>Read graph · show leverage · never hallucinate without a traceable triple path</span>
+      </div>
+    </div>
+
+    <div class="formalized-box">
+      <h3>Formalized — June 18, 2026</h3>
+      <ol>
+        <li><strong>OWL document</strong> — <code>understood-app/ontology/understood-suite.ttl</code></li>
+        <li><strong>Suite export</strong> — <code>npm run export:suite-rdf</code> → <code>suite-bundle.ttl</code> + <code>suite-triples.json</code> (110 rows)</li>
+        <li><strong>Evidence triples</strong> — <code>understood:supportedBy</code> → journal entry IRIs</li>
+        <li><strong>Life domains</strong> — 13 SKOS domains + narrower children in export</li>
+        <li><strong>Re_Call import</strong> — <code>owl:imports</code> + <code>ontology/understood-suite-import.ttl</code></li>
+        <li><strong>SAVY schema</strong> — <code>docs/schema/rdf-triples.sql</code> + <code>import_suite_triples()</code></li>
+      </ol>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         DETAIL BELOW — optional deep read
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="divider"></div>
+    <p class="detail-label">Detail below — read if you want the full analysis</p>
+
+    <section id="build-lineage">
+      <h2>Build lineage — honest history</h2>
+      <p>Prevents a false narrative that Understood's axiom Postgres system was always the "right" architecture. It was the right <em>first move</em> with the tools available then. W3C formalization came after.</p>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>Era</th><th>What you built</th><th>Tools available</th><th>Role today</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Understood v1</td>
+            <td>Axiom-style Postgres: antecedent → consequent, evidence_entry_ids, 13 life domains, Connections as operating principles</td>
+            <td>Next.js, Supabase, LLM extraction, prompt governance — no Protégé pipeline yet</td>
+            <td><span class="tag tag-partial">Corpus</span> feeds formal export; governs prompts until triple import is live</td>
+          </tr>
+          <tr>
+            <td>Discovery</td>
+            <td>W3C RDF/OWL/SHACL/SPARQL — open standards for interoperability and validation</td>
+            <td>Reading Obsidian notes, CDO Magazine ontologist articles, metaphacts KG characteristics</td>
+            <td><span class="tag tag-yes">North star</span> for meaning authority</td>
+          </tr>
+          <tr>
+            <td>Re_Call formal</td>
+            <td>OWL in Protégé · Turtle source files · Docker validation · n3 engine · graphTrace · BFO/CCO spine</td>
+            <td>Protégé 5.6.9 + HermiT · Docker (riot, SPARQL) · <code>qc.sh</code> native QC</td>
+            <td><span class="tag tag-yes">Structure authority</span> — the law all apps inherit</td>
+          </tr>
+          <tr>
+            <td>Suite formalization</td>
+            <td><code>understood-suite.ttl</code> · <code>exportSuiteBundle()</code> · <code>savy.rdf_triples</code> schema · Re_Call <code>owl:imports</code></td>
+            <td>understood-app export script · Aurora/Supabase projection</td>
+            <td><span class="tag tag-partial">Bridge</span> corpus → formal triples</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Two-layer meaning (Understood sprint thesis)</h3>
+      <p>Personal beliefs and public standards are <strong>separate authorities</strong>. AI uses both and owns neither. Personal axioms govern strong behavior; BFO/CCO scaffold prevents treating your memory as universal truth. "Meaning maker" is the production process; the two-layer ontology is the product.</p>
+    </section>
+
+    <section id="tools-storage">
+      <h2>Tools, storage, and call paths</h2>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>Job</th><th>Tool / surface</th><th>Artifact</th><th>When</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Author ontology classes</td><td>Protégé (macOS)</td><td><code>*.ttl</code> in repo</td><td>Design time</td></tr>
+          <tr><td>Validate syntax + queries</td><td>Docker: Jena riot, SPARQL</td><td><code>ontology/validate.sh</code></td><td>Pre-deploy CI</td></tr>
+          <tr><td>Check logical consistency</td><td>Protégé + HermiT reasoner</td><td>Consistency report</td><td>Design time / milestone</td></tr>
+          <tr><td>Compile recommendations</td><td><code>build-recommendations.mjs</code></td><td><code>recommendations.js</code></td><td>Build time — zero LLM</td></tr>
+          <tr><td>Runtime graph match</td><td>n3 in-memory store</td><td><code>graphTrace</code> JSON</td><td>Every API request</td></tr>
+          <tr><td>Export personal corpus</td><td><code>npm run export:suite-rdf</code></td><td><code>suite-bundle.ttl</code>, <code>suite-triples.json</code></td><td>On demand / CI</td></tr>
+          <tr><td>Persist triples</td><td>Postgres (Supabase / Aurora)</td><td><code>recall.rdf_triples</code>, <code>savy.rdf_triples</code></td><td>Runtime read</td></tr>
+          <tr><td>Capture &amp; review axioms</td><td>Understood.app / Supabase</td><td><code>ontology_axioms</code>, entries, extractions</td><td>Continuous</td></tr>
+          <tr><td>Surface on device</td><td>SAVY iOS · Re_Call iOS · Understood iOS</td><td>Native SwiftUI — gateway APIs</td><td>User moments</td></tr>
+          <tr><td>Optional LLM copy</td><td>OpenAI (graph-constrained)</td><td>Phrasing only — graph JSON in prompt</td><td>After graphTrace</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="understood">
+      <h2>Understood.app — the data layer</h2>
+      <p>
+        Repo: <code>/Users/adamblair/Developer/GitHub/Understood</code> (iOS) +
+        <code>/Users/adamblair/Developer/GitHub/understood-app</code> (backend).
+        Vercel project <strong>news-journal-app</strong> · Supabase Postgres · Next.js 15.
+      </p>
+
+      <h3>What “axiom-style” means</h3>
+      <p>Understood's ontology is a <strong>personal causal rule system</strong> in Postgres — reviewed if-then rules with evidence. OWL lives in export files, not the database rows:</p>
+      <div class="code-path">Capture (entries) → Extractions (~5k–8k JSONB facts)
+    → Connections / beliefs (entry_type = connection)
+    → ontology_axioms (antecedent → consequent, confidence, status)
+    → exportSuiteBundle() — confirmed + personal only
+    → suite-triples.json → savy.rdf_triples / recall.rdf_triples shape
+    → Optional SHACL scaffold (not enforced in DB yet)</div>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>Layer</th><th>What it holds</th><th>Formal RDF today?</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>extractions</td>
+            <td>~4,873–8,069 structured facts across 13 life domains</td>
+            <td><span class="tag tag-no">No</span> JSONB + category labels</td>
+          </tr>
+          <tr>
+            <td>ontology_axioms</td>
+            <td>Confirmed causal rules (e.g. Learning Master Key, Exercise-Sleep Synergy)</td>
+            <td><span class="tag tag-yes">Export live</span> exportSuiteBundle()</td>
+          </tr>
+          <tr>
+            <td>entries (connections)</td>
+            <td>Belief library — identity_anchor, validated_principle, etc.</td>
+            <td><span class="tag tag-partial">Partial</span> adam-beliefs.ttl</td>
+          </tr>
+          <tr>
+            <td>correlation_analyses</td>
+            <td>92 weeks · statistical co-movement (same data SAVY displays)</td>
+            <td><span class="tag tag-no">No</span></td>
+          </tr>
+          <tr>
+            <td>ontology_categories</td>
+            <td>38 child labels → 14 parent categories</td>
+            <td><span class="tag tag-partial">SKOS export</span> life domains in suite bundle</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Shared namespace — already one family</h3>
+      <p>Re_Call already hosts on <code>understood.app</code>:</p>
+      <ul>
+        <li><code>https://understood.app/ontology#</code> — Understood axioms &amp; concepts</li>
+        <li><code>https://understood.app/ontology/project-recall#</code> — Re_Call OWL (templates, rules)</li>
+        <li><code>https://understood.app/adam/</code> — personal belief graph (informal TTL)</li>
+        <li><code>https://understood.app/graph/personal</code> — named graph for confirmed personal triples</li>
+      </ul>
+      <p>The suite was never three separate ontologies. It was one IRI tree waiting to be unified.</p>
+
+      <h3>Migration path: axiom → formal triples</h3>
+      <div class="next-steps">
+        <ol>
+          <li><strong>Done</strong> — <code>understood-suite.ttl</code> OWL document + <code>exportSuiteBundle()</code></li>
+          <li><strong>Done</strong> — <code>understood:supportedBy</code> evidence triples to journal entry IRIs</li>
+          <li><strong>Done</strong> — 13 life domains as SKOS broader/narrower in suite export</li>
+          <li><strong>Done</strong> — <code>savy.rdf_triples</code> schema + Re_Call <code>owl:imports</code> binding</li>
+          <li><strong>Next</strong> — Connections → formal <code>adam-beliefs.ttl</code> aligned to understood:#</li>
+          <li><strong>Largest</strong> — ~5k extractions as typed individuals with provenance</li>
+          <li><strong>Engine</strong> — wire suite triple import into Re_Call n3 runtime + SAVY gateway read path</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="vocabulary">
+      <h2>Vocabulary</h2>
+      <p>RDF triples, Shackle, and Sparkle — mapped to the actual technologies:</p>
+
+      <dl class="vocab-grid">
+        <div class="vocab-item">
+          <dt>RDF triples</dt>
+          <dd>Subject → predicate → object. e.g. <em>ScanCalendarReminder → revealsStrength → TimeAwareness</em>. Core of Re_Call.</dd>
+        </div>
+        <div class="vocab-item">
+          <dt>SPARQL (likely “Sparkle”)</dt>
+          <dd>Query language that walks the graph. Used in <code>ontology/validate.sh</code> and <code>ontology/queries/*.rq</code> for proofs — not runtime on Vercel.</dd>
+        </div>
+        <div class="vocab-item">
+          <dt>SHACL (likely “Shackle”)</dt>
+          <dd>Shape constraints — “this graph must look like X.” Scaffold exists in understood-app; not enforced in Re_Call DB yet.</dd>
+        </div>
+        <div class="vocab-item">
+          <dt>Original Spark</dt>
+          <dd>Product doctrine term (narrative vs relational memory) — not a technology.</dd>
+        </div>
+        <div class="vocab-item">
+          <dt>Aurora</dt>
+          <dd>AWS managed PostgreSQL. SAVY's beliefs table + correlation JSON snapshots. Storage — not meaning authority by itself.</dd>
+        </div>
+        <div class="vocab-item">
+          <dt>Neo4j</dt>
+          <dd>Graph DB for traversal. Re_Call projects to it; SAVY uses it for correlation edges. Read surface — not source of truth in either app today.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section id="recall-backend">
+      <h2>Re_Call backend (reference architecture)</h2>
+
+      <div class="code-path">Turtle files (ontology/)
+    ↓
+n3 in-memory Store (reminder-recommendation-engine.js)
+    ↓
+graphTrace { matchedRuleIds, sourceTriple, rankingMethod }
+    ↓
+Optional OpenAI copy — "RDF graph is the authority"
+    ↓
+Supabase recall.rdf_triples + neo4j_* projection views</div>
+
+      <h3>Key files</h3>
+      <table class="compare-table">
+        <thead>
+          <tr><th>What</th><th>Path (Re_Call repo)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Personal seed KG</td><td><code>ontology/recall-seed.ttl</code></td></tr>
+          <tr><td>Suite import manifest</td><td><code>ontology/understood-suite-import.ttl</code></td></tr>
+          <tr><td>Recommendation ontology</td><td><code>ontology/reminder-recommendation.ttl</code></td></tr>
+          <tr><td>Graph engine</td><td><code>src/reminder-recommendation-engine.js</code></td></tr>
+          <tr><td>LLM constraint</td><td><code>src/openai-reminder-copy.js</code></td></tr>
+          <tr><td>API</td><td><code>POST /api/recommendations</code>, <code>POST /api/signal</code></td></tr>
+          <tr><td>RDF in Postgres</td><td><code>recall.rdf_triples</code> (~107 rows prod)</td></tr>
+          <tr><td>Validation</td><td><code>ontology/validate.sh</code> (Apache Jena + SPARQL)</td></tr>
+          <tr><td>Deploy gate</td><td><code>npm test</code> — graph contracts must pass</td></tr>
+          <tr><td>Doctrine</td><td><code>docs/product/personalization-system-doctrine.md</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>graphTrace (hallucination curb)</h3>
+      <p>Every recommendation returns traceable graph evidence before any model runs:</p>
+      <div class="code-path">graphTrace: {
+  matchedRuleIds: ["CalendarDepthRecommendationRule"],
+  sourceTriple: "ScanCalendarReminder -> revealsStrength -> TimeAwareness",
+  recommendationTriplePattern: "RecommendationRule -> recommendsTemplate -> ReminderTemplate",
+  rankingMethod: "depthScore + shared graph feature overlap + small context boost"
+}</div>
+
+      <h3>Formal alignment</h3>
+      <p>Re_Call aligns to <strong>BFO</strong> (Basic Formal Ontology) and <strong>CCO</strong> (Common Core Ontologies). Classes like <code>ReminderTemplate</code> subclass CCO information entities. This is not decorative — it makes cross-app vocabulary stable.</p>
+    </section>
+
+    <section id="savy-today">
+      <h2>SAVY today</h2>
+
+      <div class="code-path">iOS AWSGraphClient
+    ↓
+Vercel gateway (x-api-key)
+    ↓
+Aurora: savy.entries (beliefs) · savy.correlation_analyses (JSON snapshot)
+    ↓
+Neo4j (optional): Category CORRELATES_WITH edges — enrichment / display
+    ↓
+savy.rdf_triples schema defined · import path ready · graphTrace not wired yet</div>
+
+      <p>SAVY answers: <em>"What are the latest correlation coefficients?"</em></p>
+      <p>Re_Call answers: <em>"Which rule fired, which triples support this, why is this recommendation eligible?"</em></p>
+
+      <h3>Aurora schema (graph-shaped, RDF layer added)</h3>
+      <p>SAVY's <code>docs/schema/aurora.sql</code> has Neo4j projection views. <code>docs/schema/rdf-triples.sql</code> now adds <code>savy.rdf_triples</code>, <code>savy.rdf_terms</code>, and <code>import_suite_triples()</code> — same shape as Re_Call's Supabase RDF layer.</p>
+    </section>
+
+    <section id="side-by-side">
+      <h2>Side-by-side</h2>
+
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>Re_Call</th>
+            <th>SAVY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>OWL / Turtle source of truth</td>
+            <td><span class="tag tag-yes">Yes</span> multiple .ttl files</td>
+            <td><span class="tag tag-partial">Via suite</span> understood-suite.ttl import path</td>
+          </tr>
+          <tr>
+            <td>RDF triple store in DB</td>
+            <td><span class="tag tag-yes">Yes</span> recall.rdf_triples</td>
+            <td><span class="tag tag-partial">Schema</span> savy.rdf_triples — not live import yet</td>
+          </tr>
+          <tr>
+            <td>Deterministic graph engine</td>
+            <td><span class="tag tag-yes">Yes</span> n3 + rules</td>
+            <td><span class="tag tag-no">No</span></td>
+          </tr>
+          <tr>
+            <td>graphTrace on API responses</td>
+            <td><span class="tag tag-yes">Yes</span></td>
+            <td><span class="tag tag-no">No</span></td>
+          </tr>
+          <tr>
+            <td>LLM constrained by graph</td>
+            <td><span class="tag tag-yes">Yes</span> explicit prompt law</td>
+            <td><span class="tag tag-no">N/A</span> no AI graph layer yet</td>
+          </tr>
+          <tr>
+            <td>BFO / CCO alignment</td>
+            <td><span class="tag tag-yes">Yes</span></td>
+            <td><span class="tag tag-no">No</span></td>
+          </tr>
+          <tr>
+            <td>Neo4j projection views</td>
+            <td><span class="tag tag-yes">Yes</span> Supabase</td>
+            <td><span class="tag tag-partial">Partial</span> Aurora views exist</td>
+          </tr>
+          <tr>
+            <td>Live beliefs from DB</td>
+            <td><span class="tag tag-yes">Yes</span> Supabase</td>
+            <td><span class="tag tag-yes">Yes</span> Aurora (18 live)</td>
+          </tr>
+          <tr>
+            <td>Correlation / ontology display</td>
+            <td><span class="tag tag-partial">Via KG cards</span> compile step</td>
+            <td><span class="tag tag-partial">Display only</span> Neo4j/Aurora fetch</td>
+          </tr>
+          <tr>
+            <td>QC gate on deploy</td>
+            <td><span class="tag tag-yes">npm test</span></td>
+            <td><span class="tag tag-no">No</span> graph contracts</td>
+          </tr>
+          <tr>
+            <td>SPARQL validation</td>
+            <td><span class="tag tag-yes">Jena</span></td>
+            <td><span class="tag tag-no">No</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="why-aurora-not-enough">
+      <h2>Why Aurora alone doesn't curb hallucinations</h2>
+
+      <div class="two-col">
+        <div class="card">
+          <h4>What Aurora gives SAVY</h4>
+          <ul>
+            <li>Relational rows with UUIDs (beliefs)</li>
+            <li>One latest analysis row with correlations as JSON array</li>
+            <li>Projection views for Neo4j export</li>
+          </ul>
+          <p style="font-size:0.9rem; color:var(--ink-muted); margin-top:10px;">Traceable at the <strong>row</strong> level. Not at the <strong>rule + path</strong> level AI needs.</p>
+        </div>
+        <div class="card">
+          <h4>What hallucination control requires</h4>
+          <ul>
+            <li>Every claim links to triple IDs</li>
+            <li>Engine proves which rule authorized the claim</li>
+            <li>Model receives graphTrace — invents nothing</li>
+            <li>User can audit: "show me the path"</li>
+          </ul>
+          <p style="font-size:0.9rem; color:var(--ink-muted); margin-top:10px;">That's Re_Call's stack — not a database brand.</p>
+        </div>
+      </div>
+
+      <p>The Vercel ontology 504 fix (Neo4j timeout → Aurora fallback) is a <strong>reliability</strong> patch. It does not add meaning authority. Same snapshot, different read path.</p>
+    </section>
+
+    <section id="shared-spine">
+      <h2>Shared spine across all apps</h2>
+
+      <table class="compare-table">
+        <thead>
+          <tr><th>Layer</th><th>Shared artifact</th><th>Re_Call today</th><th>SAVY status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1 · Ontology</td>
+            <td><code>understood-suite.ttl</code> + extend <code>recall-seed.ttl</code></td>
+            <td>recall-seed + reminder-recommendation + suite import</td>
+            <td><span class="tag tag-partial">Import path</span> via suite export</td>
+          </tr>
+          <tr>
+            <td>2 · Engine</td>
+            <td>Shared npm package (n3 + graphTrace)</td>
+            <td>reminder-recommendation-engine.js</td>
+            <td><span class="tag tag-no">Extract + reuse in gateway</span></td>
+          </tr>
+          <tr>
+            <td>3 · Postgres</td>
+            <td><code>rdf_triples</code> in Aurora + Supabase</td>
+            <td>recall.rdf_*</td>
+            <td><span class="tag tag-partial">Schema done</span> live import next</td>
+          </tr>
+          <tr>
+            <td>4 · Validation</td>
+            <td>Jena + SPARQL in CI; SHACL later</td>
+            <td>ontology/validate.sh</td>
+            <td><span class="tag tag-no">Same pipeline needed</span></td>
+          </tr>
+          <tr>
+            <td>5 · AI contract</td>
+            <td>No LLM without graphTrace payload</td>
+            <td>openai-reminder-copy.js</td>
+            <td><span class="tag tag-no">Any SAVY AI feature</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="next">
+      <h2>Master plan — everything in one sequence</h2>
+      <div class="next-steps">
+        <ol>
+          <li><strong>Honor the lineage</strong> — Understood corpus stays valuable; never narrate axiom Postgres as OWL authority. Export path is the bridge.</li>
+          <li><strong>Protégé for all new meaning</strong> — classes, properties, imports authored in OWL; HermiT before merge.</li>
+          <li><strong>Docker for all triple proofs</strong> — riot + SPARQL in CI on every <code>.ttl</code> change; same gate for SAVY gateway as Re_Call <code>npm test</code>.</li>
+          <li><strong>Runtime import</strong> — load <code>suite-triples.json</code> into Aurora via <code>import_suite_triples()</code>; wire gateway read path.</li>
+          <li><strong>Shared engine package</strong> — extract n3 + graphTrace from Re_Call; both Vercel projects import it.</li>
+          <li><strong>First SAVY graphTrace feature</strong> — e.g. "why surface this belief" — trace before any copy.</li>
+          <li><strong>Connections + extractions migration</strong> — adam-beliefs.ttl aligned to understood:#; ~5k extractions as typed individuals with provenance.</li>
+          <li><strong>Compounding inference loop</strong> — every accept/edit/dismiss becomes signal → affinity → resurface → deeper personal graph only; never broaden to crowd patterns.</li>
+          <li><strong>Privacy contract</strong> — RLS, personal graph IRI, refusal when unsupported, inspectable rules — so adding data always feels safe.</li>
+          <li><strong>Second meaning maker test</strong> — run the personal/public split on another person's domain; what breaks is the kill switch for "for myself and others."</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="recommended-next">
+      <h2>Immediate next steps (engineering)</h2>
+      <div class="next-steps">
+        <ol>
+          <li><strong>Runtime import</strong> — load <code>suite-triples.json</code> into Aurora via <code>import_suite_triples()</code></li>
+          <li><strong>Extract</strong> — pull graph engine + graphTrace into a shared package both Vercel projects import</li>
+          <li><strong>First SAVY graphTrace</strong> — pick one feature (e.g. "why surface this belief on home") and require trace before any copy</li>
+          <li><strong>Connections export</strong> — align <code>adam-beliefs.ttl</code> to <code>understood:#</code></li>
+          <li><strong>QC gate</strong> — SAVY gateway deploy fails if graph contract tests fail (same as Re_Call <code>npm test</code>)</li>
+        </ol>
+      </div>
+    </section>
+
+    <footer>
+      Understood Suite · Knowledge Graph Authority Analysis · June 2026 ·
+      Repos: Re_Call, understood-app, SAVY-iOS, Understood (iOS) ·
+      Open: <code>docs/knowledge-graph-authority.html</code>
+    </footer>
+
+  </div>
+</body>
+</html>

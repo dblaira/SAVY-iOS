@@ -13,10 +13,14 @@ struct AuthGateView: View {
                     .background(SavyTheme.paper.ignoresSafeArea())
             case .signedOut:
                 LoginView(store: authStore)
+            case .awaitingSignUpConfirmation(let email, let guidance):
+                ConfirmSignUpView(store: authStore, email: email, guidance: guidance)
+            case .awaitingPasswordReset(let email, let guidance):
+                ResetPasswordView(store: authStore, email: email, guidance: guidance)
             case .locked(let session):
                 LockedView(store: authStore, session: session)
-            case .unlocked:
-                RootView {
+            case .unlocked(let session):
+                RootView(session: session) {
                     Task {
                         await authStore.signOut()
                     }
@@ -31,7 +35,6 @@ struct AuthGateView: View {
 
 private struct LoginView: View {
     @ObservedObject var store: AuthenticationStore
-    @State private var mode: AuthenticationMode = .signIn
     @State private var email = ""
     @State private var password = ""
 
@@ -41,13 +44,6 @@ private struct LoginView: View {
                 brandHeader
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Picker("Mode", selection: $mode) {
-                        ForEach(AuthenticationMode.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-
                     TextField("Email", text: $email)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.emailAddress)
@@ -56,17 +52,12 @@ private struct LoginView: View {
                         .authFieldStyle()
 
                     SecureField("Password", text: $password)
-                        .textContentType(mode == .signIn ? .password : .newPassword)
+                        .textContentType(.password)
                         .authFieldStyle()
 
                     Button {
                         Task {
-                            switch mode {
-                            case .signIn:
-                                await store.signIn(email: email, password: password)
-                            case .signUp:
-                                await store.signUp(email: email, password: password)
-                            }
+                            await store.enter(email: email, password: password)
                         }
                     } label: {
                         HStack {
@@ -74,10 +65,10 @@ private struct LoginView: View {
                                 ProgressView()
                                     .tint(.white)
                             } else {
-                                Image(systemName: mode == .signIn ? "person.crop.circle.badge.checkmark" : "person.badge.plus")
+                                Image(systemName: "arrow.right.circle.fill")
                             }
 
-                            Text(mode.actionTitle)
+                            Text("Continue")
                                 .font(.system(size: 17, weight: .bold))
                         }
                         .frame(maxWidth: .infinity, minHeight: 54)
@@ -87,18 +78,29 @@ private struct LoginView: View {
                     .background(SavyTheme.crimson, in: RoundedRectangle(cornerRadius: 12))
                     .disabled(store.isWorking)
 
+                    Button("Forgot password?") {
+                        Task {
+                            await store.startPasswordReset(email: email)
+                        }
+                    }
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(SavyTheme.crimson)
+                    .disabled(store.isWorking || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Text("First time here? Continue creates your account. Returning? Continue signs you in.")
+                        .font(.system(size: 14, weight: .regular, design: .serif))
+                        .foregroundStyle(SavyTheme.ink.opacity(0.62))
+                        .fixedSize(horizontal: false, vertical: true)
+
                     if let message = store.message {
                         Text(message)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(SavyTheme.crimson)
-                    }
-
-                    if let diagnostic = store.diagnostic {
-                        DiagnosticTraceView(diagnostic: diagnostic)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     if !store.hasBackendConfiguration {
-                        Text("This build is missing AWS API configuration.")
+                        Text("Beliefs API is not configured in this build. Auth still works; live data may use seed content.")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(SavyTheme.ink.opacity(0.55))
                     }
@@ -114,8 +116,7 @@ private struct LoginView: View {
     private var brandHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("SAVY")
-                .font(.system(size: 54, weight: .regular, design: .serif))
-                .italic()
+                .font(SavyTypography.displaySerif(54, weight: .bold))
                 .foregroundStyle(SavyTheme.crimson)
 
             Text("A STUDY IN LEVERAGE")
@@ -132,6 +133,95 @@ private struct LoginView: View {
     }
 }
 
+private struct ConfirmSignUpView: View {
+    @ObservedObject var store: AuthenticationStore
+    let email: String
+    let guidance: String?
+    @State private var code = ""
+
+    var body: some View {
+        authForm(
+            title: "Confirm your account",
+            subtitle: guidance ?? "Enter the code AWS sent to \(email)."
+        ) {
+            TextField("Confirmation code", text: $code)
+                .keyboardType(.numberPad)
+                .textContentType(.oneTimeCode)
+                .authFieldStyle()
+
+            Button {
+                Task {
+                    await store.confirmSignUp(email: email, code: code)
+                }
+            } label: {
+                primaryButtonLabel("Confirm Account")
+            }
+            .disabled(store.isWorking || code.isEmpty)
+
+            Button("Back to sign in") {
+                store.cancelSignUpConfirmation()
+            }
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(SavyTheme.ink.opacity(0.62))
+
+            if let message = store.message {
+                Text(message)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SavyTheme.crimson)
+            }
+        }
+    }
+}
+
+private struct ResetPasswordView: View {
+    @ObservedObject var store: AuthenticationStore
+    let email: String
+    let guidance: String?
+    @State private var code = ""
+    @State private var newPassword = ""
+
+    var body: some View {
+        authForm(
+            title: "Reset password",
+            subtitle: guidance ?? "Enter the code sent to \(email) and choose a new password."
+        ) {
+            TextField("Reset code", text: $code)
+                .keyboardType(.numberPad)
+                .textContentType(.oneTimeCode)
+                .authFieldStyle()
+
+            SecureField("New password", text: $newPassword)
+                .textContentType(.newPassword)
+                .authFieldStyle()
+
+            Button {
+                Task {
+                    await store.confirmPasswordReset(
+                        email: email,
+                        code: code,
+                        newPassword: newPassword
+                    )
+                }
+            } label: {
+                primaryButtonLabel("Update Password")
+            }
+            .disabled(store.isWorking || code.isEmpty || newPassword.isEmpty)
+
+            Button("Back to sign in") {
+                store.cancelPasswordReset()
+            }
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(SavyTheme.ink.opacity(0.62))
+
+            if let message = store.message {
+                Text(message)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SavyTheme.crimson)
+            }
+        }
+    }
+}
+
 private struct LockedView: View {
     @ObservedObject var store: AuthenticationStore
     let session: AuthSession
@@ -142,14 +232,15 @@ private struct LockedView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("SAVY")
-                    .font(.system(size: 54, weight: .regular, design: .serif))
-                    .italic()
+                    .font(SavyTypography.displaySerif(54, weight: .bold))
                     .foregroundStyle(SavyTheme.crimson)
 
-                Text(session.user.email ?? "Your workspace")
-                    .font(.system(size: 15, weight: .bold))
-                    .tracking(1.4)
-                    .foregroundStyle(.black.opacity(0.38))
+                if let email = session.user.displayEmail {
+                    Text(email)
+                        .font(.system(size: 15, weight: .bold))
+                        .tracking(1.4)
+                        .foregroundStyle(.black.opacity(0.38))
+                }
             }
 
             Button {
@@ -181,10 +272,6 @@ private struct LockedView: View {
                     .foregroundStyle(SavyTheme.crimson)
             }
 
-            if let diagnostic = store.diagnostic {
-                DiagnosticTraceView(diagnostic: diagnostic)
-            }
-
             Spacer()
         }
         .padding(.horizontal, 28)
@@ -192,25 +279,44 @@ private struct LockedView: View {
     }
 }
 
-private struct DiagnosticTraceView: View {
-    let diagnostic: AWSGraphDiagnostic
+@ViewBuilder
+private func authForm<Content: View>(
+    title: String,
+    subtitle: String,
+    @ViewBuilder content: () -> Content
+) -> some View {
+    ScrollView {
+        VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(title)
+                    .font(.system(size: 34, weight: .regular, design: .serif))
+                    .italic()
+                    .foregroundStyle(SavyTheme.crimson)
 
-    var body: some View {
-        DisclosureGroup {
-            Text(diagnostic.displayText)
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.black.opacity(0.58))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 8)
-        } label: {
-            Label("AWS Graph Trace", systemImage: "waveform.path.ecg.rectangle")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(SavyTheme.ink.opacity(0.58))
+                Text(subtitle)
+                    .font(.system(size: 17, weight: .regular, design: .serif))
+                    .lineSpacing(4)
+                    .foregroundStyle(SavyTheme.ink.opacity(0.72))
+            }
+
+            VStack(alignment: .leading, spacing: 16) {
+                content()
+            }
         }
-        .padding(12)
-        .background(SavyTheme.paperAccent, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 28)
+        .padding(.top, 88)
+        .padding(.bottom, 40)
     }
+    .background(SavyTheme.paper.ignoresSafeArea())
+}
+
+@ViewBuilder
+private func primaryButtonLabel(_ title: String) -> some View {
+    Text(title)
+        .font(.system(size: 17, weight: .bold))
+        .frame(maxWidth: .infinity, minHeight: 54)
+        .foregroundStyle(.white)
+        .background(SavyTheme.crimson, in: RoundedRectangle(cornerRadius: 12))
 }
 
 private extension View {

@@ -1,11 +1,17 @@
 {
   "functions": {
     "api/v1/**/*.ts": {
-      "memory": 256,
-      "maxDuration": 10,
+      "memory": 512,
+      "maxDuration": 30,
       "includeFiles": "lib/**"
     }
   },
+  "crons": [
+    {
+      "path": "/api/v1/rdf/sync-entries",
+      "schedule": "0 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

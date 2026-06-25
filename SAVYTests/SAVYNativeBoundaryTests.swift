@@ -21,6 +21,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     func testAWSGraphConfigurationRequiresConcreteBackendValues() {
         XCTAssertNil(AWSGraphConfiguration(baseURLString: "", apiKey: "abc"))
         XCTAssertNil(AWSGraphConfiguration(baseURLString: "https://api.example.com", apiKey: ""))
+        XCTAssertNil(AWSGraphConfiguration(baseURLString: "https:", apiKey: "key"))
         XCTAssertNotNil(AWSGraphConfiguration(baseURLString: "https://api.example.com", apiKey: "key"))
     }
 
@@ -58,6 +59,39 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(snapshot.correlations.first?.categoryB, "Learning")
     }
 
+    func testAWSGraphCorrelationsDecodeProductionCategoryStats() throws {
+        let data = """
+        {
+          "total_weeks": 92,
+          "total_extractions": 4873,
+          "correlations": [
+            {
+              "category_a": "Affect",
+              "category_b": "Learning",
+              "coefficient": 0.67,
+              "lag": 0,
+              "type": "co-movement"
+            }
+          ],
+          "category_stats": [
+            {
+              "category": "Exercise",
+              "mean": 29.52,
+              "std_dev": 6.76,
+              "weeks_with_data": 92,
+              "total_count": 2716,
+              "coverage_percent": 100
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let snapshot = try JSONDecoder.awsGraph.decode(OntologySnapshot.self, from: data)
+
+        XCTAssertEqual(snapshot.categoryStats.first?.coveragePercent, 100)
+        XCTAssertEqual(snapshot.categoryStats.first?.totalCount, 2716)
+    }
+
     func testAWSGraphCorrelationsDecodeCamelCasePayload() throws {
         let data = """
         {
@@ -80,6 +114,70 @@ final class SAVYNativeBoundaryTests: XCTestCase {
 
         XCTAssertEqual(snapshot.correlations.first?.categoryA, "Affect")
         XCTAssertEqual(snapshot.correlations.first?.categoryB, "Learning")
+    }
+
+    func testBodoniModaFontLoadsInAppBundle() {
+        let audit = SavyTypography.performAudit()
+
+        XCTAssertNotNil(Bundle.main.url(forResource: "BodoniModa-Regular", withExtension: "ttf"))
+        XCTAssertTrue(audit.bodoniModaBundled)
+        XCTAssertNotNil(UIFont(name: "BodoniModa-Regular", size: 20))
+        XCTAssertNotNil(Bundle.main.url(forResource: "Roboto-Medium", withExtension: "ttf"))
+        XCTAssertTrue(audit.robotoMediumBundled)
+        XCTAssertNotNil(UIFont(name: "Roboto-Medium", size: 22))
+        XCTAssertTrue(audit.bodoni72OldstyleAvailable, "Bodoni 72 Oldstyle should be available on iOS")
+        XCTAssertEqual(audit.displaySerifSource, "Bodoni 72 Oldstyle")
+    }
+
+    func testBeliefEntryDisplayUsesFullContentWhenHeadlineTruncated() {
+        let headline = "The 10 minutes exporting your judgment builds a system th..."
+        let content =
+            "The 10 minutes exporting your judgment builds a system that compounds. The 10 minutes just doing the task is gone forever."
+
+        XCTAssertTrue(BeliefEntryDisplay.isTruncatedHeadline(headline, content))
+        XCTAssertEqual(BeliefEntryDisplay.title(headline: headline, content: content), content)
+    }
+
+    func testAuthUserDisplayEmailHidesCognitoUUID() {
+        let uuidUser = AuthUser(
+            id: "f8d1c3b0-8031-701b-6ee0-76f1cc7041b9",
+            email: "f8d1c3b0-8031-701b-6ee0-76f1cc7041b9"
+        )
+        let emailUser = AuthUser(id: "user-id", email: "adam@example.com")
+
+        XCTAssertNil(uuidUser.displayEmail)
+        XCTAssertEqual(emailUser.displayEmail, "adam@example.com")
+    }
+
+    func testAWSGraphBeliefGraphTraceDecodesGatewayPayload() throws {
+        let data = """
+        {
+          "decision": "belief-graph-match",
+          "confidence": "high",
+          "entryId": "entry-1",
+          "graphTrace": {
+            "matchedAxiomIris": ["https://understood.app/ontology/axiom/axiom-learning-affect"],
+            "evidenceEntryIri": "https://understood.app/entry/entry-1",
+            "paths": ["High Learning -> predicts -> Higher Affect"],
+            "triplePaths": [
+              {
+                "axiomIri": "https://understood.app/ontology/axiom/axiom-learning-affect",
+                "antecedentLabel": "High Learning",
+                "consequentLabel": "Higher Affect",
+                "relationshipType": "predicts",
+                "supportedBy": "https://understood.app/entry/entry-1"
+              }
+            ],
+            "rankingMethod": "evidence-supportedBy-entry — deterministic personal graph only"
+          },
+          "reason": "1 axiom path(s) cite this entry as evidence."
+        }
+        """.data(using: .utf8)!
+
+        let result = try JSONDecoder.awsGraph.decode(BeliefGraphTraceResult.self, from: data)
+
+        XCTAssertTrue(result.hasGraphPath)
+        XCTAssertEqual(result.graphTrace?.paths.first, "High Learning -> predicts -> Higher Affect")
     }
 
     func testAWSGraphStaticFallbackReturnsSeedWithoutConfiguredClient() async {
@@ -151,43 +249,45 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(AuthenticationMode.signUp.actionTitle, "Create Account")
     }
 
+    @MainActor
     func testHomeLayoutIsNativeIPhoneFirstWithBottomCenteredCaptureButton() {
         XCTAssertEqual(RootHomeLayout.leverageGridColumnCount, 2)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureAlignment, .bottom)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.deepNavy)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureSize, 72)
-        XCTAssertEqual(RootHomeLayout.floatingCaptureBottomPadding, 90)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.crimson)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureSize, 64)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureCenterAboveBottom, 96)
+        XCTAssertEqual(RootHomeLayout.radialMenuBottomPadding, 138)
         XCTAssertEqual(RootHomeLayout.heroTopPadding, 0)
-        XCTAssertEqual(RootHomeLayout.heroHeight, 230)
+        XCTAssertEqual(RootHomeLayout.heroHeight, 248)
         XCTAssertEqual(RootHomeLayout.heroContentTopPadding, 34)
-        XCTAssertEqual(RootHomeLayout.heroWordmarkEyebrowSpacing, 12)
+        XCTAssertEqual(RootHomeLayout.heroWordmarkEyebrowSpacing, 10)
         XCTAssertEqual(RootHomeLayout.heroDividerHeight, 3)
-        XCTAssertEqual(RootHomeLayout.heroWordmarkFontSize, 48)
+        XCTAssertEqual(RootHomeLayout.heroWordmarkFontSize, 64)
         XCTAssertEqual(RootHomeLayout.carouselTopPadding, 20)
         XCTAssertEqual(RootHomeLayout.carouselHorizontalPadding, 2)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
         XCTAssertEqual(RootHomeLayout.carouselCardHeight, 236)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 112)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 28)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 34)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 96)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 14)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 36)
         XCTAssertEqual(RootHomeLayout.accountMenuSymbolName, "line.3.horizontal")
         XCTAssertEqual(RootHomeLayout.accountMenuTopPadding, 88)
-        XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 66)
-        XCTAssertEqual(RootHomeLayout.radialMenuIconSize, 29)
+        XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 56)
+        XCTAssertEqual(RootHomeLayout.radialMenuIconSize, 20)
         XCTAssertEqual(RootHomeLayout.latestSectionBandHeight, 92)
-        XCTAssertEqual(RootHomeLayout.pinnedEntryRowHeight, 81)
+        XCTAssertEqual(RootHomeLayout.pinnedEntryRowHeight, 96)
         XCTAssertEqual(RootHomeLayout.pinnedEntryTrailingInset, 17)
-        XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 32)
+        XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 24)
         XCTAssertEqual(SavyHapticFeedback.primaryImpactIntensity, 1.0)
-        XCTAssertEqual(HomePinnedEntry.referenceRows.map(\.title), [
-            "Top Pinned entry",
-            "2nd top Pinned entry"
-        ])
+        XCTAssertEqual(HomeFeedRow.rows(
+            reminderStore: ReminderStore(),
+            leverageStore: LeverageDataStore(),
+            limit: 4
+        ).count, 4)
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.title), [
-            "News\nChannel",
-            "Field\nEssays",
-            "Adam's\nOntology",
-            "Belief\nLibrary"
+            "News Channel",
+            "Field Essays",
+            "Adam's Ontology",
+            "Connection"
         ])
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.sectionID), [
             "news-channel",
@@ -238,14 +338,19 @@ final class SAVYNativeBoundaryTests: XCTestCase {
 
     func testNavigationStateDeclaresLeverageSectionsInsteadOfProductivityTabs() {
         XCTAssertEqual(SavyNavigationSection.allCases.map(\.title), [
-            "ACTION",
-            "Essays",
-            "Beliefs",
-            "News"
+            "Now",
+            "Reminders",
+            "Actions",
+            "Calendar"
         ])
-        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Reminders"))
-        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Actions"))
-        XCTAssertFalse(SavyNavigationSection.allCases.map(\.title).contains("Calendar"))
+        XCTAssertEqual(SavyNavigationSection.leadingSections.map(\.title), ["Now", "Reminders"])
+        XCTAssertEqual(SavyNavigationSection.trailingSections.map(\.title), ["Actions", "Calendar"])
+        XCTAssertEqual(SavyNavigationSection.allCases.map(\.symbolName), [
+            "house",
+            "bell",
+            "bolt",
+            "calendar"
+        ])
     }
 
     func testRadialFabMenuExposesBehaviorAndTimeMetadataOptions() {

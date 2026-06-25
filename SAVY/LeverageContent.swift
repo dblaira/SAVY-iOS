@@ -30,38 +30,43 @@ enum LeverageContent {
             ),
             LeverageItem(
                 id: "agent-workflows",
-                kicker: "SIGNAL 1",
+                kicker: "Jun 4, 2026",
                 title: "Agent workflows",
                 summary: "AI is being turned into repeatable work loops.",
-                body: "Use an agent when the path is unknown. Use a workflow when the steps are known. Rewriting an entry is a workflow; finding a hidden life pattern is closer to agent-like search."
+                body: "Use an agent when the path is unknown. Use a workflow when the steps are known. Rewriting an entry is a workflow; finding a hidden life pattern is closer to agent-like search.",
+                category: "AI"
             ),
             LeverageItem(
                 id: "context-graphs",
-                kicker: "SIGNAL 2",
+                kicker: "Jun 3, 2026",
                 title: "Context graphs",
                 summary: "AI needs structured memory. This is the ontology lane.",
-                body: "Neo4j's enterprise message is that AI alone is not enough. AI needs connected facts. SAVY's human version is sharper: narratives hide, relationships reveal."
+                body: "Neo4j's enterprise message is that AI alone is not enough. AI needs connected facts. SAVY's human version is sharper: narratives hide, relationships reveal.",
+                category: "SYSTEMS"
             ),
             LeverageItem(
                 id: "guardrails",
-                kicker: "SIGNAL 3",
+                kicker: "Jun 2, 2026",
                 title: "Guardrails",
                 summary: "AI tools need rules and limits. That is where trust gets built.",
-                body: "OpenRouter is becoming less like a model menu and more like a control layer: models plus rules plus voice plus routing."
+                body: "OpenRouter is becoming less like a model menu and more like a control layer: models plus rules plus voice plus routing.",
+                category: "TRUST"
             ),
             LeverageItem(
                 id: "coding-models",
-                kicker: "SIGNAL 4",
+                kicker: "Jun 1, 2026",
                 title: "Coding models",
                 summary: "More models are built just for software work.",
-                body: "Grok Build 0.1 points toward idea to code to test to fix to ship loops. That matters when the work is made of many small software pieces."
+                body: "Grok Build 0.1 points toward idea to code to test to fix to ship loops. That matters when the work is made of many small software pieces.",
+                category: "BUILD"
             ),
             LeverageItem(
                 id: "vendor-ai-stacks",
-                kicker: "SIGNAL 5",
+                kicker: "May 30, 2026",
                 title: "Vendor AI stacks",
                 summary: "Companies are adding AI into existing tools.",
-                body: "Linear, Stripe, Figma, Replit, and Magnific point in the same direction: AI capability is being absorbed into existing work and business rails."
+                body: "Linear, Stripe, Figma, Replit, and Magnific point in the same direction: AI capability is being absorbed into existing work and business rails.",
+                category: "BUSINESS"
             )
         ]
     )
@@ -142,8 +147,8 @@ enum LeverageContent {
 
     static let beliefs = LeverageSection(
         id: "beliefs",
-        title: "Belief Library",
-        eyebrow: "BELIEFS",
+        title: "Connection",
+        eyebrow: "CONNECTION",
         headline: "Principles worth keeping close.",
         summary: "Personal leverage rules, identity anchors, and patterns worth preserving.",
         items: [

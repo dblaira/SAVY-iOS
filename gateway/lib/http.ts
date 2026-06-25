@@ -24,6 +24,16 @@ export function requireApiKey(req: VercelRequest, res: VercelResponse): boolean 
   return true;
 }
 
+export function requireGatewayOrCron(req: VercelRequest, res: VercelResponse): boolean {
+  const cronSecret = process.env.CRON_SECRET;
+  const authorization = req.headers.authorization;
+  if (cronSecret && authorization === `Bearer ${cronSecret}`) {
+    return true;
+  }
+
+  return requireApiKey(req, res);
+}
+
 export function parseLimit(value: string | string[] | undefined, fallback = 24): number {
   const raw = Array.isArray(value) ? value[0] : value;
   const n = Number.parseInt(raw ?? "", 10);

@@ -11,6 +11,11 @@ settings:
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 7FKUS5M5QS
 
+packages:
+  Amplify:
+    url: https://github.com/aws-amplify/amplify-swift
+    from: 2.46.0
+
 targets:
   SAVY:
     type: application
@@ -18,8 +23,20 @@ targets:
     configFiles:
       Debug: SAVY.xcconfig
       Release: SAVY.xcconfig
+    dependencies:
+      - package: Amplify
+        product: Amplify
+      - package: Amplify
+        product: AWSCognitoAuthPlugin
+      - package: Amplify
+        product: AWSPluginsCore
     sources:
       - path: SAVY
+        excludes:
+          - Assets.xcassets
+    resources:
+      - path: SAVY/amplifyconfiguration.json
+      - path: SAVY/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.adamblair.savy

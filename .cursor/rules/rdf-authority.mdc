@@ -1,0 +1,35 @@
+---
+description: Only Protégé/Docker-validated RDF triples may enter SAVY product surfaces
+alwaysApply: true
+---
+
+# RDF Authority Gate
+
+SAVY product knowledge must pass:
+
+**Protégé → Docker (riot/SPARQL/HermiT) → W3C RDF triples → `POST /api/v1/rdf/import` → `savy.rdf_triples` → iOS**
+
+## Authoritative
+
+- `source_app IN ('understood', 'recall')` in `savy.rdf_triples`
+- Belief Library + Pathway read **only** these triples
+- Import rejects `sourceApp: "savy"` rows
+
+## Not product authority (do not wire to live UI)
+
+- Raw `savy.entries` / `correlation_analyses` Postgres rows
+- `POST /api/v1/rdf/sync-entries` (blocked unless `ALLOW_UNVALIDATED_RDF_SYNC=true`)
+- Neo4j projections
+- `AWSGraphSeed` fallback (preview only)
+
+## Gateway rules
+
+- `GET /v1/entries` → `fetchValidatedBeliefEntriesFromRdf`
+- `GET /v1/rdf/ontology` → `fetchValidatedOntologyFromRdf`
+- `GET /v1/rdf/belief-trace` → authoritative triples only
+- `GET /v1/correlations/latest` → 403 (not RDF-authoritative)
+
+## iOS status copy
+
+- Green band: **Validated RDF content** (beliefs from authoritative triples only)
+- Ontology carousel: seed until RDF ontology export exists
