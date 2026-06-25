@@ -243,7 +243,9 @@ struct ReminderFormView: View {
     }
 
     private var imageRow: some View {
-        HStack {
+        let hasPickedImage = pickedImage != nil
+
+        return HStack {
             Label("Image", systemImage: "photo")
             Spacer()
             if let img = pickedImage {
@@ -251,7 +253,7 @@ struct ReminderFormView: View {
                     .frame(width: 40, height: 40).clipShape(RoundedRectangle(cornerRadius: 8))
             }
             PhotosPicker(selection: $photoItem, matching: .images) {
-                Text(pickedImage == nil ? "Add" : "Change").foregroundStyle(Brand.crimson)
+                Text(hasPickedImage ? "Change" : "Add").foregroundStyle(Brand.crimson)
             }
         }
     }

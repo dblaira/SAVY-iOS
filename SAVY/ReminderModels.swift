@@ -217,14 +217,12 @@ extension Reminder {
 }
 
 extension JSONEncoder {
-    // `nonisolated(unsafe)`: read-only shared coder, configured once. SAVY builds in Swift 6
-    // strict-concurrency mode (Re_Call was Swift 5); this is the only adaptation to the model.
-    nonisolated(unsafe) static let recall: JSONEncoder = {
+    static let recall: JSONEncoder = {
         let e = JSONEncoder(); e.dateEncodingStrategy = .iso8601; return e
     }()
 }
 extension JSONDecoder {
-    nonisolated(unsafe) static let recall: JSONDecoder = {
+    static let recall: JSONDecoder = {
         let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601; return d
     }()
 }

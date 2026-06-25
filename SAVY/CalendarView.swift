@@ -13,9 +13,8 @@ struct CalendarView: View {
     private let cal = Calendar.current
     private let hourHeight: CGFloat = 56
     private let gutter: CGFloat = 60
-    // `nonisolated(unsafe)`: read-only shared formatters (SAVY builds in Swift 6 strict mode).
-    nonisolated(unsafe) private static let timeFmt: DateFormatter = { let f = DateFormatter(); f.dateFormat = "h:mm"; return f }()
-    nonisolated(unsafe) private static let hourFmt: DateFormatter = { let f = DateFormatter(); f.dateFormat = "h a"; return f }()
+    private static let timeFmt: DateFormatter = { let f = DateFormatter(); f.dateFormat = "h:mm"; return f }()
+    private static let hourFmt: DateFormatter = { let f = DateFormatter(); f.dateFormat = "h a"; return f }()
 
     var body: some View {
         ScrollViewReader { proxy in
