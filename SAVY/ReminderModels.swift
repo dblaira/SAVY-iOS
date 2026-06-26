@@ -161,6 +161,7 @@ struct Reminder: Identifiable, Codable, Equatable {
     var flag: Bool = false
     var priority: Priority = .none
     // Action (local-first for now)
+    var whenIAm: String? = nil
     var outcome: String = ""
     var effort: Effort = .none
     var energy: Energy = .none

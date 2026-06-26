@@ -60,11 +60,7 @@ struct ReminderFormView: View {
                 }
                 .listRowBackground(Brand.card)
 
-                switch r.kind {
-                case .reminder: reminderSections
-                case .action:   actionSections
-                case .event:    eventSections
-                }
+                unifiedEntrySections
             }
             .scrollContentBackground(.hidden)
             .background(Color.white.ignoresSafeArea())
@@ -115,55 +111,16 @@ struct ReminderFormView: View {
         .transition(.opacity)
     }
 
-    // MARK: - Reminder (timed nudge)
+    // MARK: - Shared entry flow
 
-    @ViewBuilder private var reminderSections: some View {
+    @ViewBuilder private var unifiedEntrySections: some View {
         Section {
-            TextField("Title", text: $r.title)
-            TextField("Notes", text: $r.notes, axis: .vertical).lineLimit(1...5)
-            urlField("URL")
-            imageRow
-        } header: { sectionHeader("Details") }
-        .listRowBackground(Brand.card)
-
-        patternSection
-
-        Section {
-            dateGroup("Date", icon: "calendar", isOn: $hasDate, date: $date)
-            timeGroup("Time", icon: "clock", isOn: $hasTime, time: $time)
-            Toggle(isOn: $r.urgent) { Label("Urgent", systemImage: "alarm") }
-            repeatGroup
-            earlyReminderGroup
-        } header: { sectionHeader("Date & Time") }
-        .listRowBackground(Brand.card)
-
-        Section {
-            listGroup
-            tagsEditor
-            subtasksEditor("Subtasks", addLabel: "Add Subtask")
-            Toggle(isOn: $r.flag) { Label("Flag", systemImage: "flag") }
-            priorityGroup
-        } header: { sectionHeader("Organization") }
-        .listRowBackground(Brand.card)
-
-        Section {
-            locationRow
-            messagingRow
-        } header: { sectionHeader("Places & People") } footer: {
-            Text("Saved with the reminder. Apple limits live Messages integration to its own Reminders app.")
-                .foregroundStyle(.black.opacity(0.45))
-        }
-        .listRowBackground(Brand.card)
-    }
-
-    // MARK: - Action (broad GTD-style)
-
-    @ViewBuilder private var actionSections: some View {
-        Section {
-            TextField("What will you do?", text: $r.title)
-            TextField("Outcome — what does done look like?", text: $r.outcome, axis: .vertical).lineLimit(1...3)
+            TextField("What do I want?", text: $r.title)
+                .accessibilityIdentifier("Title")
+            TextField("When I am...I like to", text: whenIAmBinding, axis: .vertical).lineLimit(1...3)
+            TextField("Done looks like...", text: $r.outcome, axis: .vertical).lineLimit(1...3)
             subtasksEditor("Steps", addLabel: "Add Step")
-        } header: { sectionHeader("Do") }
+        } header: { sectionHeader("Delegate") }
         .listRowBackground(Brand.card)
 
         patternSection
@@ -207,28 +164,6 @@ struct ReminderFormView: View {
         .listRowBackground(Brand.card)
     }
 
-    // MARK: - Event (time block)
-
-    @ViewBuilder private var eventSections: some View {
-        Section {
-            TextField("Title", text: $r.title)
-            TextField("Notes", text: $r.notes, axis: .vertical).lineLimit(1...4)
-            locationRow
-            tagsEditor
-        } header: { sectionHeader("Event") }
-        .listRowBackground(Brand.card)
-
-        patternSection
-
-        Section {
-            dateGroup("Date", icon: "calendar", isOn: $hasDate, date: $date)
-            timeGroup("Starts", icon: "clock", isOn: $hasTime, time: $time)
-            timeGroup("Ends", icon: "clock.badge.checkmark", isOn: $hasEnd, time: $endTime)
-            repeatGroup
-        } header: { sectionHeader("When") }
-        .listRowBackground(Brand.card)
-    }
-
     // MARK: - Reusable field groups
 
     private func sectionHeader(_ title: String) -> some View {
@@ -240,6 +175,13 @@ struct ReminderFormView: View {
     private func urlField(_ placeholder: String) -> some View {
         TextField(placeholder, text: $r.url)
             .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+    }
+
+    private var whenIAmBinding: Binding<String> {
+        Binding(
+            get: { r.whenIAm ?? "" },
+            set: { r.whenIAm = $0 }
+        )
     }
 
     private var imageRow: some View {
@@ -445,7 +387,7 @@ struct ReminderFormView: View {
 
     private var hasContent: Bool {
         if !r.title.trimmingCharacters(in: .whitespaces).isEmpty { return true }
-        if !r.notes.isEmpty || !r.outcome.isEmpty || !r.url.isEmpty { return true }
+        if !r.notes.isEmpty || !r.outcome.isEmpty || !(r.whenIAm ?? "").isEmpty || !r.url.isEmpty { return true }
         if !r.locationName.isEmpty || !r.waitingOn.isEmpty { return true }
         if !r.tags.isEmpty { return true }
         if r.subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
