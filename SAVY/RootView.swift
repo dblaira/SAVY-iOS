@@ -146,9 +146,8 @@ struct RootView: View {
         }
     }
 
-    /// Routes the radial "+" menu to the Re_Call entry forms and calendar, all backed by the
-    /// shared `reminderStore`. Reminder/Action open the three-face form; Calendar opens the
-    /// day-timeline calendar (which opens the form to edit an item).
+    /// Routes the radial "+" menu to the shared Re_Call-style entry form, backed by the
+    /// shared `reminderStore`. The output tabs stay separate; entry stays identical.
     @ViewBuilder
     private func reminderEntrySheet(for kind: MetadataEntryKind) -> some View {
         switch kind {
@@ -161,8 +160,9 @@ struct RootView: View {
                 reminderStore.save(reminder)
             }
         case .calendar:
-            SavyCalendarScreen()
-                .environmentObject(reminderStore)
+            ReminderFormView(initialKind: .event, existing: nil, existingTags: reminderStore.recentTags) { reminder in
+                reminderStore.save(reminder)
+            }
         }
     }
 
