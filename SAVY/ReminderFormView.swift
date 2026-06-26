@@ -2,9 +2,8 @@ import SwiftUI
 import PhotosUI
 import UIKit
 
-/// The entry form. One screen, three faces: the type selector at the top swaps the field set —
-/// Reminder (timed nudge), Action (broad GTD-style to-do), or Event (time block). White page,
-/// tan entry cells. Reused for create and edit.
+/// The entry form. One shared Action-style capture flow for Reminder, Action, and Event entries:
+/// the top selector changes where the saved item lands, while the field order stays identical.
 struct ReminderFormView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var location = LocationProvider()
@@ -137,6 +136,7 @@ struct ReminderFormView: View {
             dateGroup("Start / defer", icon: "calendar.badge.clock", isOn: $hasDefer, date: $deferDate)
             repeatGroup
             timeGroup("Nudge", icon: "bell", isOn: $hasTime, time: $time)
+            timeGroup("End", icon: "clock.badge.checkmark", isOn: $hasEnd, time: $endTime)
         } header: { sectionHeader("Schedule") }
         .listRowBackground(Brand.card)
 
@@ -402,8 +402,8 @@ struct ReminderFormView: View {
         }
         r.dueDate = hasDate ? date : nil
         r.dueTime = hasTime ? time : nil
-        r.deferDate = (r.kind == .action && hasDefer) ? deferDate : nil
-        r.endTime = (r.kind == .event && hasEnd) ? endTime : nil
+        r.deferDate = hasDefer ? deferDate : nil
+        r.endTime = hasEnd ? endTime : nil
         r.subtasks.removeAll { $0.title.trimmingCharacters(in: .whitespaces).isEmpty }
         if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(r.kind.label)" }
         onSave(r)
