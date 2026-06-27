@@ -313,9 +313,9 @@ actor AWSGraphClient {
                 if let body, body.localizedCaseInsensitiveContains("x-api-key") {
                     return "API key rejected — rebuild in Xcode"
                 }
-                return awsError.localizedDescription ?? "HTTP \(statusCode)"
+                return awsError.localizedDescription
             default:
-                return awsError.localizedDescription ?? "request failed"
+                return awsError.localizedDescription
             }
         }
         return error.localizedDescription

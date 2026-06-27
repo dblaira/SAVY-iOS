@@ -14,6 +14,12 @@ enum AmplifyAuthService {
         isConfigured = true
     }
 
+    static func signOutIfNeeded() async {
+        guard let session = try? await Amplify.Auth.fetchAuthSession(),
+              session.isSignedIn else { return }
+        _ = await Amplify.Auth.signOut()
+    }
+
     static func bootstrapSession() async throws -> AuthSession? {
         let session = try await Amplify.Auth.fetchAuthSession()
         guard session.isSignedIn else { return nil }
@@ -33,6 +39,16 @@ enum AmplifyAuthService {
     }
 
     static func signIn(email: String, password: String) async throws -> AuthSession {
+        try await performSignIn(email: email, password: password, allowRetry: true)
+    }
+
+    private static func performSignIn(
+        email: String,
+        password: String,
+        allowRetry: Bool
+    ) async throws -> AuthSession {
+        await signOutIfNeeded()
+
         do {
             let result = try await Amplify.Auth.signIn(username: email, password: password)
 
@@ -49,6 +65,13 @@ enum AmplifyAuthService {
         } catch let error as AmplifyAuthServiceError {
             throw error
         } catch {
+            let lower = error.localizedDescription.lowercased()
+            if allowRetry,
+               lower.contains("signedin")
+                || lower.contains("already signed in") {
+                _ = await Amplify.Auth.signOut()
+                return try await performSignIn(email: email, password: password, allowRetry: false)
+            }
             throw AmplifyAuthServiceError.map(error)
         }
     }
@@ -100,6 +123,8 @@ enum AmplifyAuthService {
     }
 
     static func resetPassword(email: String) async throws -> String {
+        await signOutIfNeeded()
+
         let result = try await Amplify.Auth.resetPassword(for: email)
 
         switch result.nextStep {
@@ -236,6 +261,14 @@ enum AmplifyAuthServiceError: LocalizedError, Equatable {
                 || combined.contains("already exists")
                 || combined.contains("user already exists") {
                 return .existingAccount
+            }
+
+            if combined.contains("signedin state")
+                || combined.contains("already signed in")
+                || combined.contains("already a user in signedin") {
+                return .additionalStepRequired(
+                    "Your previous session is still active. Try Continue again."
+                )
             }
 
             if combined.contains("notauthorized")

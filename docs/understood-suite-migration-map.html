@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SAVY — Where We Are</title>
+  <title>Understood Suite — Where We Are</title>
   <style>
     :root {
       --navy: #08172d;
@@ -65,7 +65,6 @@
       font-weight: 700;
     }
 
-    /* ── HORIZONTAL TRACK ── */
     .track-wrap {
       flex: 1;
       display: flex;
@@ -85,7 +84,6 @@
       position: relative;
     }
 
-    /* horizontal spine behind circles */
     .checklist::before {
       content: "";
       position: absolute;
@@ -125,6 +123,12 @@
     .done .mark {
       background: var(--green);
       color: var(--navy-deep);
+    }
+
+    .partial .mark {
+      background: var(--gold-box);
+      color: var(--navy-deep);
+      font-size: 14px;
     }
 
     .here .mark {
@@ -169,6 +173,7 @@
     }
 
     .done .item-title { color: var(--green); }
+    .partial .item-title { color: var(--gold-box); }
     .here .item-title { color: var(--cream); font-size: 12px; }
     .todo .item-title { color: var(--muted); }
 
@@ -214,47 +219,47 @@
 <body>
 
   <div class="top">
-    <div class="eyebrow">SAVY iOS</div>
+    <div class="eyebrow">Understood Suite</div>
     <h1>Where We Are</h1>
-    <div class="you-are-here">Step 6 of 8 — Auth + device validated · Next: RDF triple import runtime</div>
+    <div class="you-are-here">Step 7 of 8 — Agent boards live · Next: SAVY RDF runtime + graphTrace</div>
   </div>
 
   <div class="track-wrap">
     <ol class="checklist">
-      <li class="done">
-        <div class="mark">✓</div>
+      <li class="todo">
+        <div class="mark">1</div>
         <div class="step-num">1</div>
-        <div class="item-title">Native shell</div>
+        <div class="item-title">Collect News</div>
       </li>
       <li class="done">
         <div class="mark">✓</div>
         <div class="step-num">2</div>
-        <div class="item-title">Gateway live</div>
+        <div class="item-title">Re_Call analyze</div>
       </li>
       <li class="done">
         <div class="mark">✓</div>
         <div class="step-num">3</div>
-        <div class="item-title">Aurora + Neo4j</div>
+        <div class="item-title">Understood synthesize</div>
       </li>
-      <li class="done">
-        <div class="mark">✓</div>
+      <li class="partial">
+        <div class="mark">◐</div>
         <div class="step-num">4</div>
-        <div class="item-title">Credentials</div>
+        <div class="item-title">SAVY compound</div>
       </li>
       <li class="done">
         <div class="mark">✓</div>
         <div class="step-num">5</div>
-        <div class="item-title">Auth</div>
+        <div class="item-title">Agent spine</div>
       </li>
       <li class="done">
         <div class="mark">✓</div>
         <div class="step-num">6</div>
-        <div class="item-title">Device validated</div>
+        <div class="item-title">Suite boards</div>
       </li>
       <li class="here">
         <div class="mark">●</div>
         <div class="step-num">7</div>
-        <div class="item-title">RDF import</div>
+        <div class="item-title">RDF runtime</div>
         <span class="here-tag">HERE</span>
       </li>
       <li class="todo">
@@ -266,8 +271,8 @@
   </div>
 
   <div class="bottom">
-    <div class="next-move"><strong>Next:</strong> Wire <code>import_suite_triples()</code> on gateway → audit Belief Library for non-RDF paths → first graphTrace feature</div>
-    <span>savy-gateway.vercel.app · aurora+neo4j · validated RDF only in UI · no App Store without Adam</span>
+    <div class="next-move"><strong>Next:</strong> <code>import_suite_triples()</code> on savy-gateway → shared graphTrace package → first traced SAVY feature</div>
+    <span>Re_Call + Understood TestFlight VALID · 334k+ Fuseki triples · No App Store submit without Adam</span>
   </div>
 
 </body>

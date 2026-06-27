@@ -125,6 +125,8 @@ final class AuthenticationStore: ObservableObject {
                 newPassword: newPassword,
                 confirmationCode: trimmedCode
             )
+            await AmplifyAuthService.signOut()
+            KeychainSessionStore.clear()
             state = .signedOut
             message = "Password updated. Continue with your new password."
         } catch {
@@ -135,13 +137,21 @@ final class AuthenticationStore: ObservableObject {
     }
 
     func cancelPasswordReset() {
-        state = .signedOut
-        message = nil
+        Task {
+            await AmplifyAuthService.signOut()
+            KeychainSessionStore.clear()
+            state = .signedOut
+            message = nil
+        }
     }
 
     func cancelSignUpConfirmation() {
-        state = .signedOut
-        message = nil
+        Task {
+            await AmplifyAuthService.signOut()
+            KeychainSessionStore.clear()
+            state = .signedOut
+            message = nil
+        }
     }
 
     func unlockWithFaceID() async {
@@ -161,7 +171,12 @@ final class AuthenticationStore: ObservableObject {
     }
 
     func usePasswordInstead() {
-        state = .signedOut
+        Task {
+            await AmplifyAuthService.signOut()
+            KeychainSessionStore.clear()
+            state = .signedOut
+            message = nil
+        }
     }
 
     func signOut() async {

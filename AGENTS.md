@@ -14,7 +14,7 @@ Acceptance criteria: if it is part of the shipped iPhone app experience, it shou
 
 ## Plan Overview Rule
 
-Adam keeps `docs/savy-migration-map.html` on screen as the living status board.
+Adam keeps `docs/savy-migration-map.html` on screen as the living status board. Suite-wide progress: `docs/understood-suite-migration-map.html`.
 
 When sharing multi-step plans or migration status: **overview first** — one sentence, horizontal progress track (all steps on one screen), "HERE" on current step, one-line next move. Details below or collapsed. Update the HTML when milestones change. See `.cursor/rules/plan-overview.mdc`.
 
@@ -40,3 +40,9 @@ This app is being built for Adam first. Adam's taste, language, understanding, a
 - No WebKit/WebView in the app target unless Adam explicitly reverses this rule.
 - No JavaScript or TypeScript application runtime in the iOS app.
 - No simulator-first workflow unless Adam explicitly asks for it.
+
+## Current Lane
+
+Update this line when the active milestone changes:
+
+**Current lane:** Device-first shell + gateway health; wire validated RDF only to Belief Library and Pathway — audit non-RDF data paths. Do not expand scope without Adam saying so.
