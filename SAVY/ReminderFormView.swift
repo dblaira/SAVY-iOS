@@ -52,7 +52,7 @@ struct ReminderFormView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Type", selection: $r.kind) {
+                    Picker(EntryFormCopy.destinationPickerTitle, selection: $r.kind) {
                         ForEach(ReminderKind.allCases) { Text($0.label).tag($0) }
                     }
                     .pickerStyle(.segmented)
@@ -114,12 +114,12 @@ struct ReminderFormView: View {
 
     @ViewBuilder private var unifiedEntrySections: some View {
         Section {
-            TextField("What do I want?", text: $r.title)
+            TextField(EntryFormCopy.wantPrompt, text: $r.title)
                 .accessibilityIdentifier("Title")
-            TextField("When I am...I like to", text: whenIAmBinding, axis: .vertical).lineLimit(1...3)
-            TextField("Done looks like...", text: $r.outcome, axis: .vertical).lineLimit(1...3)
-            subtasksEditor("Steps", addLabel: "Add Step")
-        } header: { sectionHeader("Delegate") }
+            TextField(EntryFormCopy.whenPrompt, text: whenIAmBinding, axis: .vertical).lineLimit(1...3)
+            TextField(EntryFormCopy.donePrompt, text: $r.outcome, axis: .vertical).lineLimit(1...3)
+            subtasksEditor(EntryFormCopy.stepsTitle, addLabel: EntryFormCopy.addStepTitle)
+        } header: { sectionHeader(EntryFormCopy.delegateHeader) }
         .listRowBackground(Brand.card)
 
         patternSection
@@ -128,7 +128,7 @@ struct ReminderFormView: View {
             priorityGroup
             effortGroup
             energyGroup
-        } header: { sectionHeader("Choose") }
+        } header: { sectionHeader(EntryFormCopy.chooseHeader) }
         .listRowBackground(Brand.card)
 
         Section {
@@ -137,7 +137,7 @@ struct ReminderFormView: View {
             repeatGroup
             timeGroup("Nudge", icon: "bell", isOn: $hasTime, time: $time)
             timeGroup("End", icon: "clock.badge.checkmark", isOn: $hasEnd, time: $endTime)
-        } header: { sectionHeader("Schedule") }
+        } header: { sectionHeader(EntryFormCopy.scheduleHeader) }
         .listRowBackground(Brand.card)
 
         Section {
@@ -266,8 +266,8 @@ struct ReminderFormView: View {
     /// Adam's 8-step success architecture — its own cream section, a clean dropdown.
     private var patternSection: some View {
         Section {
-            enumMenu("Pattern", icon: "list.number", selection: $r.context) { $0.label }
-        } header: { sectionHeader("Pattern") }
+            enumMenu(EntryFormCopy.patternTitle, icon: "list.number", selection: $r.context) { $0.label }
+        } header: { sectionHeader(EntryFormCopy.patternHeader) }
         .listRowBackground(Brand.card)
     }
     private var listGroup: some View {
@@ -408,6 +408,20 @@ struct ReminderFormView: View {
         if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(r.kind.label)" }
         onSave(r)
     }
+}
+
+private enum EntryFormCopy {
+    static let destinationPickerTitle = "Destination"
+    static let delegateHeader = "Delegate"
+    static let patternHeader = "Pattern"
+    static let chooseHeader = "Choose"
+    static let scheduleHeader = "Schedule"
+    static let wantPrompt = "What do I want?"
+    static let whenPrompt = "When I am...I like to"
+    static let donePrompt = "Done looks like..."
+    static let stepsTitle = "Steps"
+    static let addStepTitle = "Add Step"
+    static let patternTitle = "Pattern"
 }
 
 // MARK: - Save (floppy disk) icon
