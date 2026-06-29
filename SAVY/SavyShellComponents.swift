@@ -38,45 +38,65 @@ enum SavyFabMenuMotion {
     static let close = Animation.spring(response: 0.3, dampingFraction: 0.8)
 }
 
+enum SavyAccountMenuAppearance {
+    case onDarkHero
+    case onWhiteHeader
+}
+
 struct SavyAccountMenuButton: View {
-    let onSignOut: () -> Void
-    var lightForeground = true
+    var onSignOut: (() -> Void)?
+    var appearance: SavyAccountMenuAppearance = .onDarkHero
 
     var body: some View {
         Menu {
-            Button("Sign Out", role: .destructive) {
-                onSignOut()
+            if let onSignOut {
+                Button("Sign Out", role: .destructive) {
+                    onSignOut()
+                }
             }
         } label: {
             Image(systemName: RootHomeLayout.accountMenuSymbolName)
                 .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(
-                    lightForeground
-                        ? .white.opacity(0.78)
-                        : SavyTheme.ink
-                )
+                .foregroundStyle(iconColor)
                 .frame(
                     width: RootHomeLayout.accountMenuButtonSize,
                     height: RootHomeLayout.accountMenuButtonSize
                 )
-                .background(
-                    lightForeground
-                        ? .white.opacity(0.08)
-                        : Color.black.opacity(0.06),
-                    in: Circle()
-                )
+                .background(backgroundColor, in: Circle())
                 .overlay(
                     Circle()
-                        .stroke(
-                            lightForeground
-                                ? .white.opacity(0.12)
-                                : Color.black.opacity(0.12),
-                            lineWidth: 1
-                        )
+                        .stroke(borderColor, lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Account menu")
+    }
+
+    private var iconColor: Color {
+        switch appearance {
+        case .onDarkHero:
+            .white.opacity(0.78)
+        case .onWhiteHeader:
+            SavyTheme.bottomNavTan
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch appearance {
+        case .onDarkHero:
+            .white.opacity(0.08)
+        case .onWhiteHeader:
+            SavyTheme.deepNavy
+        }
+    }
+
+    private var borderColor: Color {
+        switch appearance {
+        case .onDarkHero:
+            .white.opacity(0.12)
+        case .onWhiteHeader:
+            SavyTheme.bottomNavTan.opacity(0.35)
+        }
     }
 }
 
@@ -89,46 +109,53 @@ struct SavyBottomNavigationBar: View {
 
     private let barBackground = Color(red: 0.80, green: 0.70, blue: 0.58)
     private let inactiveColor = Color(red: 0.34, green: 0.27, blue: 0.21).opacity(0.68)
+    private let navyTopBandHeight: CGFloat = 24
 
     var body: some View {
-        ZStack(alignment: .top) {
-            barBackground
+        VStack(spacing: 0) {
+            SavyTheme.deepNavy
+                .frame(height: navyTopBandHeight)
 
-            HStack(alignment: .center, spacing: 0) {
-                ForEach(SavyNavigationSection.leadingSections) { section in
-                    navigationButton(for: section)
+            ZStack(alignment: .top) {
+                barBackground
+
+                HStack(alignment: .center, spacing: 0) {
+                    ForEach(SavyNavigationSection.leadingSections) { section in
+                        navigationButton(for: section)
+                    }
+
+                    Spacer()
+                        .frame(maxWidth: .infinity)
+
+                    ForEach(SavyNavigationSection.trailingSections) { section in
+                        navigationButton(for: section)
+                    }
                 }
+                .padding(.horizontal, 12)
+                .padding(.top, RootHomeLayout.bottomNavigationTopPadding)
 
-                Spacer()
-                    .frame(maxWidth: .infinity)
+                ZStack {
+                    if navigationState.isRadialMenuPresented {
+                        fabOption(.reminder).offset(x: -76, y: -40)
+                        fabOption(.action).offset(x: 0, y: -116)
+                        fabOption(.calendar).offset(x: 76, y: -40)
+                    }
 
-                ForEach(SavyNavigationSection.trailingSections) { section in
-                    navigationButton(for: section)
+                    captureFab
+                        .offset(y: -22)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.top, RootHomeLayout.bottomNavigationTopPadding)
-
-            Rectangle()
-                .fill(Color.white.opacity(0.22))
-                .frame(height: 1)
-
-            ZStack {
-                if navigationState.isRadialMenuPresented {
-                    fabOption(.reminder).offset(x: -76, y: -40)
-                    fabOption(.action).offset(x: 0, y: -116)
-                    fabOption(.calendar).offset(x: 76, y: -40)
-                }
-
-                captureFab
-                    .offset(y: -22)
-            }
+            .frame(height: RootHomeLayout.bottomNavigationHeight - navyTopBandHeight)
         }
         .frame(height: RootHomeLayout.bottomNavigationHeight)
         .background(alignment: .top) {
             SavyTheme.deepNavy
-                .frame(height: RootHomeLayout.bottomNavNavyRiserHeight)
-                .offset(y: -RootHomeLayout.bottomNavNavyRiserHeight)
+                .frame(
+                    height: RootHomeLayout.bottomNavNavyRiserHeight + RootHomeLayout.bottomNavigationTopPadding
+                )
+                .offset(
+                    y: -(RootHomeLayout.bottomNavNavyRiserHeight + RootHomeLayout.bottomNavigationTopPadding)
+                )
         }
         .background(barBackground.ignoresSafeArea(edges: .bottom))
         .animation(SavyFabMenuMotion.open, value: navigationState.isRadialMenuPresented)

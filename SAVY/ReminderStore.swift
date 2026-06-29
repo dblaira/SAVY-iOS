@@ -21,6 +21,10 @@ final class ReminderStore: ObservableObject {
             try? FileManager.default.removeItem(at: cacheURL)
         }
         loadCache()
+        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_DEMO_REMINDERS"), reminders.isEmpty {
+            reminders = Self.uiTestDemoReminders
+            saveCache()
+        }
     }
 
     var active: [Reminder] {
@@ -264,4 +268,30 @@ final class ReminderStore: ObservableObject {
             try? data.write(to: cacheURL, options: .atomic)
         }
     }
+
+    private static let uiTestDemoReminders: [Reminder] = {
+        var active = Reminder(
+            kind: .reminder,
+            title: "One of the most productive days of my life.",
+            listName: "Inspiration",
+            context: .clearSign,
+            status: .active
+        )
+        active.dueDate = Calendar.current.date(from: DateComponents(year: 2026, month: 6, day: 25))
+        active.dueTime = Calendar.current.date(from: DateComponents(hour: 20, minute: 24))
+
+        var completedA = Reminder(
+            kind: .reminder,
+            title: "Check on clothes and dryer",
+            status: .completed,
+            completedAt: Date().addingTimeInterval(-86400 * 2)
+        )
+        var completedB = Reminder(
+            kind: .reminder,
+            title: "Review weekly priorities",
+            status: .completed,
+            completedAt: Date().addingTimeInterval(-86400)
+        )
+        return [active, completedA, completedB]
+    }()
 }

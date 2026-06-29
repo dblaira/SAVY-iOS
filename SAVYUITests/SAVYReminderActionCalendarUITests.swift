@@ -104,11 +104,20 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(completedSection.waitForExistence(timeout: 10), "Completed section missing")
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) missing after Done")
 
-        let completedItem = app.staticTexts[title].firstMatch
-        completedItem.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
-            .press(forDuration: 0.05, thenDragTo: completedItem.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)))
-        XCTAssertTrue(app.buttons.matching(identifier: "swipeDelete").firstMatch.waitForExistence(timeout: 5), "Delete action missing for completed item")
-        tapVisibleButton("swipeDelete")
+        let toggleId = completedSectionId == "completedRemindersSection"
+            ? "completedRemindersToggle"
+            : "completedActionsToggle"
+        let toggle = app.buttons[toggleId].firstMatch
+        scrollUntilVisible(toggle, direction: .downThenUp)
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Completed toggle missing")
+        toggle.tap()
+
+        let completedItem = app.descendants(matching: .any)["completedReminderRow"].firstMatch
+        scrollUntilVisible(completedItem, direction: .downThenUp)
+        XCTAssertTrue(completedItem.waitForExistence(timeout: 5), "Completed row missing")
+        completedItem.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5), "Delete action missing for completed item")
+        app.buttons["Delete"].tap()
         XCTAssertFalse(app.staticTexts[title].waitForExistence(timeout: 3), "\(title) still visible after delete")
     }
 

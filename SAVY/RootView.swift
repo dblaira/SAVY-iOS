@@ -25,7 +25,7 @@ enum RootHomeLayout {
     static let pinnedEntryFontSize: CGFloat = 24
     static let bottomNavigationHeight: CGFloat = 96
     /// Navy band painted above the tan bar (FAB overflow zone); does not add layout height.
-    static let bottomNavNavyRiserHeight: CGFloat = 32
+    static let bottomNavNavyRiserHeight: CGFloat = 44
     static let bottomNavigationTopPadding: CGFloat = 14
     static let bottomNavigationIconSize: CGFloat = 36
     static let bottomNavigationLabelSize: CGFloat = 11
@@ -104,7 +104,7 @@ struct RootView: View {
                             .environmentObject(reminderStore)
                     }
                 }
-                .padding(.bottom, RootHomeLayout.bottomNavigationHeight + 8)
+                .padding(.bottom, RootHomeLayout.bottomNavigationHeight)
 
                 if navigationState.isRadialMenuPresented {
                     Color.black.opacity(0.45)
@@ -171,17 +171,16 @@ struct RootView: View {
 
     @ViewBuilder
     private var accountMenuButton: some View {
-        if let onSignOut {
-            VStack {
-                HStack {
-                    Spacer()
-                    SavyAccountMenuButton(onSignOut: onSignOut, lightForeground: false)
-                }
-                .padding(.horizontal, 24)
+        VStack {
+            HStack {
                 Spacer()
+                SavyAccountMenuButton(onSignOut: onSignOut, appearance: .onWhiteHeader)
             }
-            .safeAreaPadding(.top, 12)
+            .padding(.horizontal, 16)
+            Spacer()
         }
+        .safeAreaPadding(.top, 10)
+        .zIndex(20)
     }
 }
 
@@ -1136,6 +1135,7 @@ enum SavyTheme {
     static let pinnedEntry = Color(red: 217 / 255, green: 217 / 255, blue: 217 / 255)
     static let ink = Color.black
     static let bottomNavTan = Color(red: 0.80, green: 0.70, blue: 0.58)
+    static let sandyBrown = Brand.tan
     static let secondaryText = Color.black.opacity(0.62)
     static let tertiaryText = Color.black.opacity(0.45)
 

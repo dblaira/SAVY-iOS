@@ -6,7 +6,13 @@ struct AuthGateView: View {
     var body: some View {
         Group {
             if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") {
-                RootView(session: .uiTest)
+                RootView(
+                    session: .uiTest,
+                    onSignOut: {},
+                    initialSection: ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_OPEN_REMINDERS")
+                        ? .reminders
+                        : .now
+                )
             } else {
                 switch authStore.state {
                 case .checking:

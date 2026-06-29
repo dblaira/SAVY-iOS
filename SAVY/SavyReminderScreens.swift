@@ -34,6 +34,7 @@ struct SavyReminderKindTabScreen: View {
     @EnvironmentObject private var store: ReminderStore
     @State private var editing: Reminder?
     @State private var armedReorderId: UUID?
+    @State private var isCompletedExpanded = false
 
     private var activeItems: [Reminder] {
         store.active.filter { $0.kind == kind }
@@ -64,15 +65,18 @@ struct SavyReminderKindTabScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                hero
-                Rectangle().fill(SavyTheme.crimson).frame(height: 2)
-                activeBand
-                completedBand
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    hero
+                    Rectangle().fill(SavyTheme.crimson).frame(height: 2)
+                    activeBand
+                    completedBottomSection
+                }
+                .frame(minHeight: proxy.size.height, alignment: .top)
             }
+            .background(SavyTheme.deepNavy)
         }
-        .background(SavyTheme.deepNavy)
         .ignoresSafeArea(edges: .top)
         .accessibilityIdentifier(kind == .action ? "actionsHome" : "remindersHome")
         .sheet(item: $editing) { reminder in
@@ -95,7 +99,7 @@ struct SavyReminderKindTabScreen: View {
         .padding(.top, 60)
         .padding(.bottom, 18)
         .padding(.horizontal, 16)
-        .background(SavyTheme.bottomNavTan)
+        .background(Color.white)
     }
 
     private var activeBand: some View {
@@ -143,32 +147,57 @@ struct SavyReminderKindTabScreen: View {
         .background(SavyTheme.deepNavy)
     }
 
-    @ViewBuilder private var completedBand: some View {
-        if !completedItems.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Completed")
-                    .font(.system(size: 13, weight: .heavy))
-                    .textCase(.uppercase)
-                    .tracking(1.5)
-                    .foregroundStyle(.black.opacity(0.35))
-                ForEach(completedItems.prefix(12)) { reminder in
-                    SavyCompletedReminderRow(
-                        reminder: reminder,
-                        onToggle: { store.uncomplete(reminder) },
-                        onTap: { editing = reminder },
-                        onDelete: { store.delete(reminder) }
-                    )
+    @ViewBuilder private var completedBottomSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !completedItems.isEmpty {
+                Button {
+                    SavyHapticFeedback.selection()
+                    withAnimation(.snappy) { isCompletedExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("Completed")
+                            .font(.system(size: 13, weight: .heavy))
+                            .textCase(.uppercase)
+                            .tracking(1.5)
+                            .foregroundStyle(SavyTheme.bottomNavTan)
+                        Text("\(completedItems.count)")
+                            .font(.system(size: 12, weight: .heavy))
+                            .foregroundStyle(SavyTheme.crimson)
+                        Image(systemName: isCompletedExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 11, weight: .heavy))
+                            .foregroundStyle(SavyTheme.crimson)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isCompletedExpanded ? "Hide completed items" : "Show completed items")
+                .accessibilityIdentifier(
+                    kind == .action ? "completedActionsToggle" : "completedRemindersToggle"
+                )
+
+                if isCompletedExpanded {
+                    ForEach(completedItems.prefix(12)) { reminder in
+                        SavyCompletedReminderRow(
+                            reminder: reminder,
+                            onToggle: { store.uncomplete(reminder) },
+                            onTap: { editing = reminder },
+                            onDelete: { store.delete(reminder) }
+                        )
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
-            .padding(.top, 18)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 150)
-            .background(Color.white)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(kind == .action ? "completedActionsSection" : "completedRemindersSection")
-        } else {
-            Color.white.frame(height: 150)
+
+            Spacer(minLength: 0)
         }
+        .padding(.top, completedItems.isEmpty ? 0 : 18)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(SavyTheme.deepNavy)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(kind == .action ? "completedActionsSection" : "completedRemindersSection")
     }
 
     private var emptyState: some View {
@@ -289,7 +318,6 @@ struct SavyUpNextCardRow<Content: View>: View {
                 }
             }
             .frame(width: actionsWidth)
-            .frame(maxHeight: .infinity)
             .zIndex(swipeOffset > 0 ? 3 : 0)
 
             ZStack(alignment: .topTrailing) {
@@ -332,6 +360,7 @@ struct SavyUpNextCardRow<Content: View>: View {
             .shadow(color: isArmed ? SavyTheme.crimson.opacity(0.3) : .clear, radius: 6, y: 2)
             .animation(.snappy, value: isArmed)
         }
+        .fixedSize(horizontal: false, vertical: true)
         .onDisappear {
             if isArmed { armedId = nil }
         }
@@ -632,43 +661,43 @@ struct SavyCompletedReminderRow: View {
     var onDelete: () -> Void
 
     var body: some View {
-        SavySwipeRow(
-            actions: [
-                SavySwipeAction(title: "Reopen", icon: "arrow.uturn.left", bg: SavyTheme.crimson, run: onToggle),
-                SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124), run: onDelete),
-            ],
-            onTap: onTap
-        ) {
-            HStack(spacing: 12) {
-                Button(action: onToggle) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundStyle(SavyTheme.crimson)
-                }
-                .buttonStyle(.plain)
+        HStack(spacing: 12) {
+            Button(action: onToggle) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(SavyTheme.crimson)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Reopen")
 
+            Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(reminder.title.isEmpty ? "Untitled" : reminder.title)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(.black.opacity(0.42))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(SavyTheme.secondaryText)
                         .strikethrough()
-                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
                     if let when = reminder.whenLabel {
                         Text(when)
-                            .font(.system(size: 14))
-                            .foregroundStyle(.black.opacity(0.45))
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(SavyTheme.tertiaryText)
                             .lineLimit(1)
                     }
                 }
-
-                Spacer(minLength: 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(12)
-            .background(Color.black.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.black.opacity(0.08)))
-            .opacity(0.72)
+            .buttonStyle(.plain)
         }
+        .padding(12)
+        .background(Color.white.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(SavyTheme.deepNavy.opacity(0.08)))
+        .contextMenu {
+            Button("Reopen") { onToggle() }
+            Button("Delete", role: .destructive) { onDelete() }
+        }
+        .accessibilityIdentifier("completedReminderRow")
     }
 }
 
@@ -705,7 +734,6 @@ struct SavySwipeRow<Content: View>: View {
                 }
             }
             .frame(width: actionsWidth)
-            .frame(maxHeight: .infinity)
             .zIndex(offset > 0 ? 3 : 0)
 
             ZStack {
