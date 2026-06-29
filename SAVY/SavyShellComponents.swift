@@ -188,6 +188,7 @@ struct SavyBottomNavigationBar: View {
                     ? "Close quick entry menu"
                     : "Open quick entry menu"
             )
+            .accessibilityIdentifier("chargeFab")
     }
 
     private func fabOption(_ kind: MetadataEntryKind) -> some View {

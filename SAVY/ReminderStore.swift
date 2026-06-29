@@ -17,6 +17,9 @@ final class ReminderStore: ObservableObject {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         cacheURL = dir.appendingPathComponent("reminders.json")
+        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
+            try? FileManager.default.removeItem(at: cacheURL)
+        }
         loadCache()
     }
 

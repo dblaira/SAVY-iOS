@@ -32,11 +32,8 @@ targets:
         product: AWSPluginsCore
     sources:
       - path: SAVY
-        excludes:
-          - Assets.xcassets
     resources:
       - path: SAVY/amplifyconfiguration.json
-      - path: SAVY/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.adamblair.savy
@@ -59,6 +56,18 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.adamblair.savy.tests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/SAVY.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SAVY"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  SAVYUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SAVYUITests
+    dependencies:
+      - target: SAVY
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.adamblair.savy.uitests
+        TEST_TARGET_NAME: SAVY
 
 schemes:
   SAVY:
@@ -66,6 +75,7 @@ schemes:
       targets:
         SAVY: all
         SAVYTests: [test]
+        SAVYUITests: [test]
     run:
       config: Debug
       debugEnabled: false
@@ -74,3 +84,4 @@ schemes:
       debugEnabled: false
       targets:
         - SAVYTests
+        - SAVYUITests

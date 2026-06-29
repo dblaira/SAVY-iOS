@@ -35,7 +35,11 @@ struct CalendarView: View {
             }
             .background(Color.white)
             .ignoresSafeArea(edges: .top)
-            .onAppear { scrollToNow(proxy, animated: false) }
+            .onAppear {
+                if shouldScrollToNow {
+                    scrollToNow(proxy, animated: false)
+                }
+            }
         }
     }
 
@@ -106,25 +110,76 @@ struct CalendarView: View {
         let isToday = cal.isDateInToday(day)
         let isSelected = cal.isDate(day, inSameDayAs: selected)
         let events = reminders(on: day)
+        let importance = dayImportance(events)
+        let weight = dayWeight(importance)
+        let markSize = dayMarkSize(weight)
         return Button {
             selected = day
             if !inMonth { month = day }
         } label: {
-            VStack(spacing: 3) {
+            VStack(spacing: 2) {
                 Text("\(cal.component(.day, from: day))")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isToday ? .white : (inMonth ? .black : .black.opacity(0.3)))
-                    .frame(width: 30, height: 30)
-                    .background {
-                        if isToday { Circle().fill(Brand.crimson) }
-                        else if isSelected { Circle().fill(Brand.crimson.opacity(0.12)) }
-                    }
-                Circle().fill(dotColor(events)).frame(width: 5, height: 5).opacity(events.isEmpty ? 0 : 1)
+                    .font(.system(size: dayFontSize(weight), weight: .heavy))
+                    .foregroundStyle(dayTextColor(inMonth: inMonth, isToday: isToday, weight: weight))
+                    .frame(width: markSize, height: markSize)
+                    .background { dayBackground(isToday: isToday, isSelected: isSelected, weight: weight) }
+                    .overlay { dayBorder(isToday: isToday, isSelected: isSelected, weight: weight) }
+                daySignal(events, importance: importance, weight: weight)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 42)
+            .frame(height: 62)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("calendarDay-\(cal.component(.day, from: day))")
+        .accessibilityLabel(dayAccessibilityLabel(day: day, events: events, importance: importance))
+    }
+
+    @ViewBuilder private func daySignal(_ events: [Reminder], importance: Int, weight: Int) -> some View {
+        if events.isEmpty {
+            Circle().fill(Color.clear).frame(width: 5, height: 5)
+        } else if weight >= 3 {
+            HStack(spacing: 2) {
+                ForEach(0..<min(weight, 4), id: \.self) { _ in
+                    Capsule()
+                        .fill(Brand.crimson)
+                        .frame(width: 7, height: 3)
+                }
+            }
+            .frame(height: 9)
+        } else if events.count == 1 {
+            Circle()
+                .fill(dotColor(events))
+                .frame(width: weight >= 2 ? 7 : 5, height: weight >= 2 ? 7 : 5)
+        } else {
+            Text("\(events.count)")
+                .font(.system(size: 9, weight: .heavy))
+                .foregroundStyle(importance >= 3 ? Brand.crimson : .black.opacity(0.55))
+                .frame(height: 9)
+        }
+    }
+
+    @ViewBuilder private func dayBackground(isToday: Bool, isSelected: Bool, weight: Int) -> some View {
+        if isToday {
+            Circle().fill(Brand.crimson)
+        } else if weight >= 4 {
+            Circle().fill(Brand.crimson.opacity(0.28))
+        } else if weight == 3 {
+            Circle().fill(Brand.crimson.opacity(0.18))
+        } else if weight == 2 {
+            Circle().fill(Brand.tan)
+        } else if weight == 1 {
+            Circle().fill(Color.black.opacity(0.06))
+        } else if isSelected {
+            Circle().fill(Brand.crimson.opacity(0.10))
+        }
+    }
+
+    @ViewBuilder private func dayBorder(isToday: Bool, isSelected: Bool, weight: Int) -> some View {
+        if isSelected && !isToday {
+            Circle().stroke(Brand.crimson, lineWidth: weight >= 3 ? 2 : 1.5)
+        } else if weight >= 2 && !isToday {
+            Circle().stroke(Brand.crimson.opacity(weight >= 3 ? 0.55 : 0.25), lineWidth: weight >= 4 ? 1.5 : 1)
+        }
     }
 
     // MARK: Day header + all-day
@@ -148,7 +203,9 @@ struct CalendarView: View {
                     .foregroundStyle(.black.opacity(0.35))
                     .frame(width: 52, alignment: .trailing)
                 VStack(spacing: 6) {
-                    ForEach(items) { eventBlock($0, compact: true) }
+                    ForEach(items) { reminder in
+                        calendarEventRow(reminder, compact: true)
+                    }
                 }
             }
         }
@@ -174,8 +231,8 @@ struct CalendarView: View {
                 }
             }
             ForEach(timed) { r in
-                Button { onOpen(r) } label: { eventBlock(r, compact: false) }
-                    .buttonStyle(.plain)
+                calendarEventRow(r, compact: false)
+                    .accessibilityIdentifier("calendarEvent-\(r.id.uuidString)")
                     .padding(.leading, gutter)
                     .padding(.trailing, 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -219,6 +276,42 @@ struct CalendarView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke((hot ? Brand.crimson : Color.black).opacity(0.15)))
     }
 
+    private func calendarEventRow(_ reminder: Reminder, compact: Bool) -> some View {
+        SavyCalendarSwipeRow(
+            actions: calendarActions(reminder),
+            onTap: { onOpen(reminder) }
+        ) {
+            eventBlock(reminder, compact: compact)
+        }
+        .accessibilityIdentifier("calendarEvent-\(reminder.id.uuidString)")
+    }
+
+    private func calendarActions(_ reminder: Reminder) -> [SavySwipeAction] {
+        [
+            SavySwipeAction(
+                title: reminder.status == .completed ? "Reopen" : "Done",
+                icon: reminder.status == .completed ? "arrow.uturn.left" : "checkmark",
+                bg: Brand.crimson
+            ) {
+                if reminder.status == .completed {
+                    store.uncomplete(reminder)
+                } else {
+                    store.complete(reminder)
+                }
+            },
+            SavySwipeAction(
+                title: reminder.pinned ? "Unpin" : "Pin",
+                icon: "pin",
+                bg: Brand.tileBlue
+            ) {
+                store.togglePin(reminder)
+            },
+            SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
+                store.delete(reminder)
+            },
+        ]
+    }
+
     // MARK: Data & helpers
 
     private func reminders(on day: Date) -> [Reminder] {
@@ -228,8 +321,73 @@ struct CalendarView: View {
             .sorted { ($0.fireDate ?? .distantFuture) < ($1.fireDate ?? .distantFuture) }
     }
 
+    private var shouldScrollToNow: Bool {
+        reminders(on: selected).allSatisfy { $0.dueTime != nil }
+    }
+
     private func dotColor(_ events: [Reminder]) -> Color {
         events.contains { $0.urgent || $0.flag || $0.priority == .high } ? Brand.crimson : .black
+    }
+
+    private func dayImportance(_ events: [Reminder]) -> Int {
+        events.reduce(0) { $0 + eventWeight($1) }
+    }
+
+    private func dayWeight(_ importance: Int) -> Int {
+        switch importance {
+        case 9...: return 4
+        case 5...8: return 3
+        case 3...4: return 2
+        case 1...2: return 1
+        default: return 0
+        }
+    }
+
+    private func eventWeight(_ reminder: Reminder) -> Int {
+        var score = 1
+        if reminder.kind == .action { score += 1 }
+        if reminder.kind == .event { score += 1 }
+        if reminder.pinned { score += 2 }
+        if reminder.flag { score += 2 }
+        if reminder.urgent { score += 3 }
+        switch reminder.priority {
+        case .high: score += 4
+        case .medium: score += 2
+        case .low: score += 1
+        case .none: break
+        }
+        return score
+    }
+
+    private func dayMarkSize(_ weight: Int) -> CGFloat {
+        switch weight {
+        case 4...: return 50
+        case 3: return 44
+        case 2: return 38
+        case 1: return 32
+        default: return 28
+        }
+    }
+
+    private func dayFontSize(_ weight: Int) -> CGFloat {
+        switch weight {
+        case 4...: return 22
+        case 3: return 21
+        case 2: return 19
+        default: return 18
+        }
+    }
+
+    private func dayTextColor(inMonth: Bool, isToday: Bool, weight: Int) -> Color {
+        if isToday { return .white }
+        if !inMonth { return .black.opacity(0.28) }
+        return weight >= 3 ? Brand.crimson : .black
+    }
+
+    private func dayAccessibilityLabel(day: Date, events: [Reminder], importance: Int) -> String {
+        let date = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
+        guard !events.isEmpty else { return "\(date), no scheduled items" }
+        return "\(date), \(events.count) scheduled items, importance \(importance)"
     }
 
     private func subtitle(_ r: Reminder) -> String? {
@@ -269,5 +427,69 @@ struct CalendarView: View {
         guard let start = cal.date(byAdding: .day, value: -(weekdayOfFirst - 1), to: monthStart) else { return [] }
         let days = (0..<42).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
         return stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
+    }
+}
+
+private struct SavyCalendarSwipeRow<Content: View>: View {
+    let actions: [SavySwipeAction]
+    var onTap: () -> Void
+    @ViewBuilder var content: Content
+
+    @State private var offset: CGFloat = 0
+    private var actionsWidth: CGFloat { CGFloat(actions.count) * 64 }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            HStack(spacing: 0) {
+                ForEach(actions) { action in
+                    Button {
+                        withAnimation(.snappy) { offset = 0 }
+                        action.run()
+                    } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: action.icon)
+                                .font(.system(size: 16, weight: .bold))
+                            Text(action.title)
+                                .font(.system(size: 10, weight: .heavy))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(width: 64)
+                        .frame(maxHeight: .infinity)
+                        .background(action.bg)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("swipe\(action.title)")
+                }
+            }
+            .frame(width: actionsWidth)
+            .frame(maxHeight: .infinity)
+
+            Button {
+                if offset != 0 {
+                    withAnimation(.snappy) { offset = 0 }
+                } else {
+                    onTap()
+                }
+            } label: {
+                content
+            }
+            .buttonStyle(.plain)
+            .offset(x: offset)
+            .highPriorityGesture(swipeGesture)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var swipeGesture: some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                offset = min(max(value.translation.width, 0), actionsWidth)
+            }
+            .onEnded { _ in
+                withAnimation(.snappy) {
+                    offset = offset > actionsWidth / 2 ? actionsWidth : 0
+                }
+            }
     }
 }

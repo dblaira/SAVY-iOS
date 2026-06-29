@@ -35,7 +35,10 @@ struct ReminderFormView: View {
         self.existingTags = existingTags
         self.onSave = onSave
         var base = existing ?? Reminder()
-        if existing == nil { base.kind = initialKind }
+        if existing == nil {
+            base.kind = initialKind
+            if initialKind == .event { base.dueDate = Date() }
+        }
         _r = State(initialValue: base)
         _hasDate = State(initialValue: base.dueDate != nil)
         _hasTime = State(initialValue: base.dueTime != nil)

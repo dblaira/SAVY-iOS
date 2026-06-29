@@ -5,32 +5,47 @@ struct AuthGateView: View {
 
     var body: some View {
         Group {
-            switch authStore.state {
-            case .checking:
-                ProgressView()
-                    .tint(SavyTheme.crimson)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(SavyTheme.paper.ignoresSafeArea())
-            case .signedOut:
-                LoginView(store: authStore)
-            case .awaitingSignUpConfirmation(let email, let guidance):
-                ConfirmSignUpView(store: authStore, email: email, guidance: guidance)
-            case .awaitingPasswordReset(let email, let guidance):
-                ResetPasswordView(store: authStore, email: email, guidance: guidance)
-            case .locked(let session):
-                LockedView(store: authStore, session: session)
-            case .unlocked(let session):
-                RootView(session: session) {
-                    Task {
-                        await authStore.signOut()
+            if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") {
+                RootView(session: .uiTest)
+            } else {
+                switch authStore.state {
+                case .checking:
+                    ProgressView()
+                        .tint(SavyTheme.crimson)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(SavyTheme.paper.ignoresSafeArea())
+                case .signedOut:
+                    LoginView(store: authStore)
+                case .awaitingSignUpConfirmation(let email, let guidance):
+                    ConfirmSignUpView(store: authStore, email: email, guidance: guidance)
+                case .awaitingPasswordReset(let email, let guidance):
+                    ResetPasswordView(store: authStore, email: email, guidance: guidance)
+                case .locked(let session):
+                    LockedView(store: authStore, session: session)
+                case .unlocked(let session):
+                    RootView(session: session) {
+                        Task {
+                            await authStore.signOut()
+                        }
                     }
                 }
             }
         }
         .task {
+            guard !ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") else { return }
             authStore.bootstrap()
         }
     }
+}
+
+private extension AuthSession {
+    static let uiTest = AuthSession(
+        accessToken: "ui-test-access-token",
+        refreshToken: "ui-test-refresh-token",
+        tokenType: "bearer",
+        expiresIn: 3600,
+        user: AuthUser(id: "ui-test-user", email: "ui-test@savy.local")
+    )
 }
 
 private struct LoginView: View {

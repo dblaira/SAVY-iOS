@@ -154,14 +154,17 @@ struct RootView: View {
         case .reminder:
             ReminderFormView(initialKind: .reminder, existing: nil, existingTags: reminderStore.recentTags) { reminder in
                 reminderStore.save(reminder)
+                navigationState.activeSection = .reminders
             }
         case .action:
             ReminderFormView(initialKind: .action, existing: nil, existingTags: reminderStore.recentTags) { reminder in
                 reminderStore.save(reminder)
+                navigationState.activeSection = .actions
             }
         case .calendar:
             ReminderFormView(initialKind: .event, existing: nil, existingTags: reminderStore.recentTags) { reminder in
                 reminderStore.save(reminder)
+                navigationState.activeSection = .calendar
             }
         }
     }

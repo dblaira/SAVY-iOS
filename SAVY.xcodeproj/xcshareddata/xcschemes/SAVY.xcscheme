@@ -35,6 +35,20 @@
                ReferencedContainer = "container:SAVY.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C786FF3174742FDC23101F57"
+               BuildableName = "SAVYUITests.xctest"
+               BlueprintName = "SAVYUITests"
+               ReferencedContainer = "container:SAVY.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -61,6 +75,17 @@
                BlueprintIdentifier = "C5F0F32DCB930F81E2318BB8"
                BuildableName = "SAVYTests.xctest"
                BlueprintName = "SAVYTests"
+               ReferencedContainer = "container:SAVY.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C786FF3174742FDC23101F57"
+               BuildableName = "SAVYUITests.xctest"
+               BlueprintName = "SAVYUITests"
                ReferencedContainer = "container:SAVY.xcodeproj">
             </BuildableReference>
          </TestableReference>
