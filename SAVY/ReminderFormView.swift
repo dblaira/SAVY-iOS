@@ -215,13 +215,6 @@ struct ReminderFormView: View {
         }
     }
 
-    private var messagingRow: some View {
-        HStack {
-            Image(systemName: "message").foregroundStyle(.secondary)
-            TextField("When messaging a person", text: $r.whenMessagingPerson)
-        }
-    }
-
     private func dateGroup(_ title: String, icon: String, isOn: Binding<Bool>, date: Binding<Date>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Toggle(isOn: isOn) { Label(title, systemImage: icon) }
@@ -253,9 +246,6 @@ struct ReminderFormView: View {
 
     private var repeatGroup: some View {
         enumMenu("Repeat", icon: "repeat", selection: $r.repeatRule) { $0.label }
-    }
-    private var earlyReminderGroup: some View {
-        enumMenu("Early Reminder", icon: "bell", selection: $r.earlyReminder) { $0.label }
     }
     private var priorityGroup: some View {
         enumMenu("Priority", icon: "exclamationmark.3", selection: $r.priority) { $0.label }
