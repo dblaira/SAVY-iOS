@@ -37,6 +37,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.adamblair.savy
+        CODE_SIGN_ENTITLEMENTS: SAVY/SAVY.entitlements
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 7FKUS5M5QS
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: SAVY/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
