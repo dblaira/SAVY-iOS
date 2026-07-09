@@ -166,12 +166,6 @@ struct RootView: View {
                 reminderStore.save(reminder)
                 navigationState.activeSection = .calendar
             }
-        case .delegate:
-            // Adam's three-sentence handoff -- lands in the Harness
-            // Delegation queue at home via the shared iCloud container.
-            HarnessDelegationComposerView {
-                navigationState.activeComposerKind = nil
-            }
         }
     }
 

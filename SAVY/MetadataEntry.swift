@@ -4,11 +4,6 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
     case reminder
     case action
     case calendar
-    /// Adam's delegation formula, captured here and landed in Harness
-    /// at home ("I go into the savvy app ... I have the three step
-    /// delegation when I press enter ... I would like for that to
-    /// transfer automatically to the harness app").
-    case delegate
 
     var id: String { rawValue }
 
@@ -20,8 +15,6 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
             "Action"
         case .calendar:
             "Calendar"
-        case .delegate:
-            "Delegate"
         }
     }
 
@@ -33,8 +26,6 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
             "checkmark.circle"
         case .calendar:
             "calendar"
-        case .delegate:
-            "arrow.up.forward.circle"
         }
     }
 
@@ -47,8 +38,6 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
             "bolt.fill"
         case .calendar:
             "calendar"
-        case .delegate:
-            "arrow.up.forward.circle"
         }
     }
 }

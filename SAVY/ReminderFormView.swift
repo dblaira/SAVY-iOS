@@ -104,7 +104,7 @@ struct ReminderFormView: View {
             VStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 46)).foregroundStyle(Brand.crimson)
-                Text("Locked In").font(Brand.serif(30)).foregroundStyle(.black)
+                Text("Harnessed!").font(Brand.serif(30)).foregroundStyle(.black)
             }
             .padding(.horizontal, 40).padding(.vertical, 30)
             .background(Color.white, in: RoundedRectangle(cornerRadius: 22))
@@ -377,6 +377,15 @@ struct ReminderFormView: View {
     private func commit() {
         committed = true
         persist()
+        // Adam's list #7: every saved entry rides home to the Harness
+        // Delegation queue through the shared iCloud pocket -- his
+        // three sentences (want / when I am / done), verbatim. No new
+        // menu options; the toast says where it went: "Harnessed!"
+        HarnessDelegationWriter.write(
+            want: r.title,
+            think: r.whenIAm ?? "",
+            done: r.outcome
+        )
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation(.spring(response: 0.3)) { showSaved = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }

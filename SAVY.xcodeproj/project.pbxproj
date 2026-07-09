@@ -50,6 +50,7 @@
 		DA958E6153EFC6478AD8DCDA /* SavyReminderScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA30048EC8E5615CFB651053 /* SavyReminderScreens.swift */; };
 		E7F5F0E200B631EE00F748F4 /* SAVYReminderActionCalendarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */; };
 		EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C471C0DAFF40B2987170667F /* ConnectionView.swift */; };
+		EF5F11DC0E410FB3E004478D /* HarnessDelegationCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */; };
 		F6F01445457DD9AD6544F48D /* AWSGraphDiagnostic.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E7E8BF9260C3CE66E04A7B /* AWSGraphDiagnostic.swift */; };
 		FF94BAD45782F70A66588AAB /* BiometricUnlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */; };
 /* End PBXBuildFile section */
@@ -72,6 +73,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0664053D22FAA613F02569D1 /* SAVY.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAVY.entitlements; sourceTree = "<group>"; };
 		0DA56611B45F0D0FC844211C /* CaptureEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEntry.swift; sourceTree = "<group>"; };
 		13CD74063706864F16360321 /* SavyLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyLocationProvider.swift; sourceTree = "<group>"; };
 		17179B6886F43D8A8BB3911C /* AWSGraphClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AWSGraphClient.swift; sourceTree = "<group>"; };
@@ -90,6 +92,7 @@
 		777974A93BA9AD820FAE420F /* MetadataEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataEntry.swift; sourceTree = "<group>"; };
 		78F623BD250D3308A5C58730 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7E869D9555384C4E876A5056 /* CaptureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureStore.swift; sourceTree = "<group>"; };
+		801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarnessDelegationCapture.swift; sourceTree = "<group>"; };
 		81B8D9162176E51C28F60467 /* SAVY.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SAVY.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		826F7F00C571ECDD018421A2 /* NativeNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNotificationScheduler.swift; sourceTree = "<group>"; };
 		834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStore.swift; sourceTree = "<group>"; };
@@ -118,7 +121,7 @@
 		E1D0B59B31ED879E86FA80A2 /* SavyNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyNavigation.swift; sourceTree = "<group>"; };
 		E4E7E8BF9260C3CE66E04A7B /* AWSGraphDiagnostic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AWSGraphDiagnostic.swift; sourceTree = "<group>"; };
 		F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBrandTheme.swift; sourceTree = "<group>"; };
-		"TEMP_123F07C4-D6AC-4803-BEB9-421DFC10C7E8" /* SAVY.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SAVY.xcconfig; sourceTree = "<group>"; };
+		"TEMP_BCCC0046-8C5A-48AF-9A0C-2B5BEC50E0B4" /* SAVY.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SAVY.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -190,6 +193,7 @@
 				0DA56611B45F0D0FC844211C /* CaptureEntry.swift */,
 				7E869D9555384C4E876A5056 /* CaptureStore.swift */,
 				C471C0DAFF40B2987170667F /* ConnectionView.swift */,
+				801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */,
 				44B158E4E3B37B90666E0541 /* Info.plist */,
 				834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */,
 				1BD761F7DE8C3F6784C607CC /* LeverageContent.swift */,
@@ -207,6 +211,7 @@
 				4102AF21CEECC9B183B07C38 /* ReminderRepository.swift */,
 				871BD4E6C5423FBBB43C168D /* ReminderStore.swift */,
 				BA02A326CF8327C0B2833F07 /* RootView.swift */,
+				0664053D22FAA613F02569D1 /* SAVY.entitlements */,
 				BE63B27DF6EFB1D75DC8FB0A /* SAVYApp.swift */,
 				13CD74063706864F16360321 /* SavyLocationProvider.swift */,
 				E1D0B59B31ED879E86FA80A2 /* SavyNavigation.swift */,
@@ -227,10 +232,10 @@
 			path = SAVYUITests;
 			sourceTree = "<group>";
 		};
-		"TEMP_4F33075E-0BCD-4130-8529-7BA2CCCC38D1" /* SAVY-iOS */ = {
+		"TEMP_9F06B956-42B8-428E-BD12-821C3083C7B7" /* SAVY-iOS */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_123F07C4-D6AC-4803-BEB9-421DFC10C7E8" /* SAVY.xcconfig */,
+				"TEMP_BCCC0046-8C5A-48AF-9A0C-2B5BEC50E0B4" /* SAVY.xcconfig */,
 			);
 			path = "SAVY-iOS";
 			sourceTree = "<group>";
@@ -392,6 +397,7 @@
 				1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */,
 				5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */,
 				EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */,
+				EF5F11DC0E410FB3E004478D /* HarnessDelegationCapture.swift in Sources */,
 				B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */,
 				57E78791EDB9525E26984968 /* LeverageContent.swift in Sources */,
 				BB70759B7D2FF0F8C19F5641 /* LeverageDataStore.swift in Sources */,
@@ -436,11 +442,14 @@
 /* Begin XCBuildConfiguration section */
 		377CFB8BE2AD3D588F9A36E1 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_123F07C4-D6AC-4803-BEB9-421DFC10C7E8" /* SAVY.xcconfig */;
+			baseConfigurationReference = "TEMP_BCCC0046-8C5A-48AF-9A0C-2B5BEC50E0B4" /* SAVY.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SAVY/SAVY.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7FKUS5M5QS;
 				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SAVY/Info.plist;
@@ -589,11 +598,14 @@
 		};
 		EEF21691D2CC21239BA5B2DC /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_123F07C4-D6AC-4803-BEB9-421DFC10C7E8" /* SAVY.xcconfig */;
+			baseConfigurationReference = "TEMP_BCCC0046-8C5A-48AF-9A0C-2B5BEC50E0B4" /* SAVY.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SAVY/SAVY.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7FKUS5M5QS;
 				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SAVY/Info.plist;
