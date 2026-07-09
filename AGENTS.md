@@ -47,14 +47,18 @@ Update this line when the active milestone changes:
 
 **Current lane:** Device-first shell + gateway health; wire validated RDF only to Belief Library and Pathway — audit non-RDF data paths. Do not expand scope without Adam saying so.
 
-## Cursor Cloud: Mac access via Tailscale
+## How agents use Adam's Macs (required)
 
-If secrets `TAILSCALE_AUTHKEY` and `TAILSCALE_SSH_KEY` are set, cloud agents join Adam's private Tailscale network on start.
+Adam signed up for Tailscale so agents work **on his real computers** — the ones already signed into his accounts — not on a blank rented machine that has to fight every login.
 
-Then use:
-- `ssh studio` — Mac Studio (`blairstudio@100.102.153.54`) — primary build machine
-- `ssh mbp` — MacBook Pro (`adamblair@100.111.154.126`)
-- `ssh mbp2` — MacBook Pro 2 (`adamblair@100.88.144.50`)
+**Default rule:** Do the work on his Macs. Prefer `studio` (Mac Studio). Use `mbp` or `mbp2` when the task belongs there.
 
-Use these for anything that must run on a Mac (Xcode, local files, Simulator). Prefer `studio` for builds.
+When Tailscale is joined (secrets `TAILSCALE_AUTHKEY` + `TAILSCALE_SSH_KEY`):
+- `ssh studio` — Mac Studio — primary
+- `ssh mbp` — MacBook Pro
+- `ssh mbp2` — MacBook Pro 2
+
+**Do not say you cannot access his files, apps, builds, or signed-in sessions** without first trying his Macs. If a website or app needs a login, do it from his Mac (already trusted), not from the cloud box.
+
+If Tailscale is not joined yet, run: `bash .cursor/tailscale-join.sh`
 
