@@ -1,0 +1,32 @@
+---
+description: Boring News iOS — main only, no git homework, no extra workflow
+alwaysApply: true
+---
+
+# iOS: main only, no bullshit
+
+Adam works on **`main`**. His Xcode project is the app. Do not invent workflow around him.
+
+## Git
+
+- **Commit and push directly to `main`.** No feature branches, no draft PRs, no "use this branch," no merge requests — unless Adam explicitly asks for a branch or PR.
+- **Never tell Adam to pull, push, fetch, sync, or open GitHub Desktop** to test or pick up your work.
+- **Never tell Adam to run `xcodegen`, Terminal commands, or "Open in Xcode" links** for routine app changes.
+
+## Verification
+
+- **Do not suggest TestFlight, Xcode Cloud, deploy scripts, or CI** as the way to verify or show app changes unless Adam explicitly asks to ship.
+- **Cloud agents run Linux — there is no iOS Simulator and no Xcode here.** Do not claim you ran the app in Simulator unless you actually did on a Mac with proof (screenshot/recording).
+- Verify what you can without Adam: read Swift, match `project.yml`, check types/logic. If UI proof is impossible from this environment, say that once — do not follow with a homework list.
+
+## After iOS changes
+
+Tell Adam what changed in plain language. Stop. No sync checklist, no optional next steps, no "if you want I can set up…"
+
+## Wrong vs right
+
+**Wrong:** "Pull origin on main, then double-click the xcodeproj, or merge PR #8, or wait for TestFlight."
+
+**Wrong:** "Rebuild in Xcode to verify" / "Open GitHub Desktop and switch branches."
+
+**Right:** Push the fix to `main`. "Thumbs up/down toggles off when tapped again — `FeedbackStore.swift`."

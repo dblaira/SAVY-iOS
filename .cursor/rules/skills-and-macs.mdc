@@ -1,0 +1,24 @@
+---
+description: Required skills and Mac-first execution for Adam's projects
+alwaysApply: true
+---
+
+# Skills and Macs
+
+## Macs first
+Do the work on Adam's Macs via Tailscale / My Machines (`ssh studio` preferred). Do not claim you cannot access files, apps, builds, or signed-in sessions without trying his Macs first.
+
+## Always-on behavior skills (vault)
+Load and obey when relevant:
+- `requirement-is-the-test` — Adam's literal sentence is the acceptance test; no "done" without evidence he can see
+- `adams-words` — quote his rules verbatim; never paraphrase
+- `no-time-estimates` — never estimate duration or urgency
+- `cognitive-fit` — tables/lists over spatial metaphors
+- `articulate-leadership-communication` — answer first, short; detail only if asked
+- `market-inefficiency` — when deciding whether to build a product/feature from a spotted gap
+
+## When stuck or broken
+Use systematic debugging: reproduce → evidence → one hypothesis → fix. Do not spray random changes.
+
+## When the same correction happens twice
+Use `create-rule` / add a `.cursor/rules` entry so the class of mistake never repeats. Prefer system over one-off apology.

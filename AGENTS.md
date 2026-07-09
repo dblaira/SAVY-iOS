@@ -62,3 +62,12 @@ When Tailscale is joined (secrets `TAILSCALE_AUTHKEY` + `TAILSCALE_SSH_KEY`):
 
 If Tailscale is not joined yet, run: `bash .cursor/tailscale-join.sh`
 
+
+## Skills to load (do not skip)
+
+Always: requirement-is-the-test, adams-words, no-time-estimates, cognitive-fit, articulate-leadership-communication.
+
+Stack (when editing matching files): see `.cursor/rules/stack-*.mdc` — nextjs / react-best-practices / figma-swiftui / aws-lambda / context7 / systematic-debugging.
+
+If the same mistake happens twice: create a rule. Prefer system over apology.
+
