@@ -582,6 +582,16 @@ struct SavyReminderBandCard: View {
                     Image(systemName: "pin.fill")
                         .font(.system(size: 10, weight: .heavy))
                 }
+                // Adam: "put some type of little ... cowboy hat icon in
+                // the upper right side and that lets me know that it's
+                // been harnessed."
+                if HarnessedRegistry.isHarnessed(reminder.id) {
+                    Spacer(minLength: 4)
+                    Image(systemName: UIImage(systemName: "hat.widebrim.fill") != nil ? "hat.widebrim.fill" : "lasso")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(SavyTheme.bottomNavTan)
+                        .accessibilityLabel("Harnessed")
+                }
             }
             .foregroundStyle(fg.opacity(0.7))
 

@@ -101,3 +101,19 @@ enum HarnessDelegationWriter {
         return formatter
     }()
 }
+
+/// Which reminders have ridden home -- the cowboy hat's memory. Local
+/// to this phone; being harnessed is a fact about THIS capture moment.
+enum HarnessedRegistry {
+    private static let key = "harnessedReminderIDs"
+
+    static func mark(_ id: UUID) {
+        var ids = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        ids.insert(id.uuidString)
+        UserDefaults.standard.set(Array(ids), forKey: key)
+    }
+
+    static func isHarnessed(_ id: UUID) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: key) ?? []).contains(id.uuidString)
+    }
+}
