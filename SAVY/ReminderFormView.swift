@@ -386,7 +386,7 @@ struct ReminderFormView: View {
             think: r.whenIAm ?? "",
             done: r.outcome
         )
-        HarnessedRegistry.mark(r.id)
+        HarnessedRegistry.mark(r)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation(.spring(response: 0.3)) { showSaved = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }

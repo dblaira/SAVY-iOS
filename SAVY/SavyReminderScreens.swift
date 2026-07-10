@@ -585,7 +585,7 @@ struct SavyReminderBandCard: View {
                 // Adam: "put some type of little ... cowboy hat icon in
                 // the upper right side and that lets me know that it's
                 // been harnessed."
-                if HarnessedRegistry.isHarnessed(reminder.id) {
+                if HarnessedRegistry.isHarnessed(reminder) {
                     Spacer(minLength: 4)
                     // Adam's own hat artwork, template-tinted tan.
                     Image("HarnessedHat")

@@ -104,16 +104,32 @@ enum HarnessDelegationWriter {
 
 /// Which reminders have ridden home -- the cowboy hat's memory. Local
 /// to this phone; being harnessed is a fact about THIS capture moment.
+/// The gateway can hand back a different id for the same reminder after
+/// a sync round trip, so the registry also remembers the capture by its
+/// own words -- the words survive; ids don't have to.
 enum HarnessedRegistry {
     private static let key = "harnessedReminderIDs"
+    private static let wordsKey = "harnessedReminderWords"
 
-    static func mark(_ id: UUID) {
-        var ids = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
-        ids.insert(id.uuidString)
-        UserDefaults.standard.set(Array(ids), forKey: key)
+    private static func words(_ title: String) -> String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
-    static func isHarnessed(_ id: UUID) -> Bool {
-        (UserDefaults.standard.stringArray(forKey: key) ?? []).contains(id.uuidString)
+    static func mark(_ reminder: Reminder) {
+        var ids = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        ids.insert(reminder.id.uuidString)
+        UserDefaults.standard.set(Array(ids), forKey: key)
+
+        var marked = Set(UserDefaults.standard.stringArray(forKey: wordsKey) ?? [])
+        marked.insert(words(reminder.title))
+        UserDefaults.standard.set(Array(marked), forKey: wordsKey)
+    }
+
+    static func isHarnessed(_ reminder: Reminder) -> Bool {
+        if (UserDefaults.standard.stringArray(forKey: key) ?? []).contains(reminder.id.uuidString) {
+            return true
+        }
+        return (UserDefaults.standard.stringArray(forKey: wordsKey) ?? [])
+            .contains(words(reminder.title))
     }
 }
