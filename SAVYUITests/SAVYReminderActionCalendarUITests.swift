@@ -113,7 +113,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let completedItem = app.descendants(matching: .any)["completedReminderRow"].firstMatch
         scrollUntilVisible(completedItem, direction: .downThenUp)
         XCTAssertTrue(completedItem.waitForExistence(timeout: 5), "Completed row missing")
-        XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 10), "\(title) missing after Done")
+        XCTAssertTrue(completedItem.label.contains(title), "\(title) missing after Done")
         completedItem.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5), "Delete action missing for completed item")
         app.buttons["Delete"].tap()

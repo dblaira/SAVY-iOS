@@ -712,6 +712,7 @@ struct SavyCompletedReminderRow: View {
             Button("Delete", role: .destructive) { onDelete() }
         }
         .accessibilityIdentifier("completedReminderRow")
+        .accessibilityLabel(reminder.title.isEmpty ? "Untitled" : reminder.title)
     }
 }
 
