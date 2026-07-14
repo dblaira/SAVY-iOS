@@ -102,8 +102,6 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let completedSection = app.descendants(matching: .any)[completedSectionId].firstMatch
         scrollUntilVisible(completedSection, direction: .downThenUp)
         XCTAssertTrue(completedSection.waitForExistence(timeout: 10), "Completed section missing")
-        XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) missing after Done")
-
         let toggleId = completedSectionId == "completedRemindersSection"
             ? "completedRemindersToggle"
             : "completedActionsToggle"
@@ -115,6 +113,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let completedItem = app.descendants(matching: .any)["completedReminderRow"].firstMatch
         scrollUntilVisible(completedItem, direction: .downThenUp)
         XCTAssertTrue(completedItem.waitForExistence(timeout: 5), "Completed row missing")
+        XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 10), "\(title) missing after Done")
         completedItem.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5), "Delete action missing for completed item")
         app.buttons["Delete"].tap()
