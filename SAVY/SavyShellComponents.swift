@@ -45,10 +45,23 @@ enum SavyAccountMenuAppearance {
 
 struct SavyAccountMenuButton: View {
     var onSignOut: (() -> Void)?
+    var onOpenPersonalAuthorityReview: (() -> Void)?
     var appearance: SavyAccountMenuAppearance = .onDarkHero
 
     var body: some View {
         Menu {
+            if let onOpenPersonalAuthorityReview {
+                Button {
+                    onOpenPersonalAuthorityReview()
+                } label: {
+                    Label("Teach Cowboy AI", systemImage: "sparkles")
+                }
+            }
+
+            if onOpenPersonalAuthorityReview != nil, onSignOut != nil {
+                Divider()
+            }
+
             if let onSignOut {
                 Button("Sign Out", role: .destructive) {
                     onSignOut()
@@ -69,7 +82,7 @@ struct SavyAccountMenuButton: View {
                 )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Account menu")
+        .accessibilityLabel("SAVY menu")
     }
 
     private var iconColor: Color {

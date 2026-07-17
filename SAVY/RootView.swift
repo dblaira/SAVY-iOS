@@ -59,6 +59,7 @@ struct RootView: View {
     @StateObject private var leverageStore = LeverageDataStore()
     @StateObject private var metadataStore = MetadataEntryStore.live()
     @StateObject private var reminderStore: ReminderStore
+    @State private var isPersonalAuthorityReviewPresented = false
 
     init(
         session: AuthSession,
@@ -91,7 +92,10 @@ struct RootView: View {
                         EditorialHomeView(
                             leverageStore: leverageStore,
                             reminderStore: reminderStore,
-                            onSignOut: onSignOut
+                            onSignOut: onSignOut,
+                            onOpenPersonalAuthorityReview: {
+                                isPersonalAuthorityReviewPresented = true
+                            }
                         )
                     case .reminders:
                         SavyReminderKindTabScreen(kind: .reminder)
@@ -140,6 +144,9 @@ struct RootView: View {
             .sheet(item: $navigationState.activeComposerKind) { kind in
                 reminderEntrySheet(for: kind)
             }
+            .fullScreenCover(isPresented: $isPersonalAuthorityReviewPresented) {
+                PersonalAuthorityReviewView()
+            }
             .task {
                 await reminderStore.bootstrap()
             }
@@ -174,7 +181,13 @@ struct RootView: View {
         VStack {
             HStack {
                 Spacer()
-                SavyAccountMenuButton(onSignOut: onSignOut, appearance: .onWhiteHeader)
+                SavyAccountMenuButton(
+                    onSignOut: onSignOut,
+                    onOpenPersonalAuthorityReview: {
+                        isPersonalAuthorityReviewPresented = true
+                    },
+                    appearance: .onWhiteHeader
+                )
             }
             .padding(.horizontal, 16)
             Spacer()
@@ -188,6 +201,7 @@ struct EditorialHomeView: View {
     @ObservedObject var leverageStore: LeverageDataStore
     @ObservedObject var reminderStore: ReminderStore
     let onSignOut: (() -> Void)?
+    let onOpenPersonalAuthorityReview: () -> Void
 
     private var feedRows: [HomeFeedRow] {
         HomeFeedRow.rows(
@@ -284,7 +298,10 @@ struct EditorialHomeView: View {
             Spacer(minLength: 0)
 
             if let onSignOut {
-                SavyAccountMenuButton(onSignOut: onSignOut)
+                SavyAccountMenuButton(
+                    onSignOut: onSignOut,
+                    onOpenPersonalAuthorityReview: onOpenPersonalAuthorityReview
+                )
                     .padding(.top, RootHomeLayout.accountMenuHeroWordmarkOffset)
             }
         }
@@ -309,6 +326,8 @@ struct EditorialHomeView: View {
 
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 16) {
+                PersonalAuthorityLaunchCard(onOpen: onOpenPersonalAuthorityReview)
+
                 principleCard(quote: quote)
 
                 ForEach(HomeLeverageCard.referenceCards) { card in

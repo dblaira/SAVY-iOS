@@ -3,6 +3,50 @@ import UIKit
 @testable import SAVY
 
 final class SAVYNativeBoundaryTests: XCTestCase {
+    func testPersonalAuthorityFormatterPreservesDelegationHierarchy() {
+        let blocks = PersonalAuthorityTextFormatter.blocks(from: """
+        What I want?
+        Objective proof I know how to update my ontology.
+        How I think about it?
+        Standardize before optimizing.
+        Objective Measurements: The task flow is unconscious.
+        """)
+
+        XCTAssertEqual(
+            blocks.map(\.style),
+            [.heading, .body, .heading, .body, .heading, .body]
+        )
+        XCTAssertEqual(blocks[0].text, "What I want?")
+        XCTAssertEqual(blocks[4].text, "Objective Measurements:")
+        XCTAssertEqual(blocks[5].text, "The task flow is unconscious.")
+    }
+
+    func testPersonalAuthorityPayloadKeepsCandidatesOutsideAcceptedAuthority() throws {
+        let data = """
+        {
+          "generatedAt": "2026-07-17",
+          "candidateCount": 1,
+          "candidates": [{
+            "index": 1,
+            "id": "candidate-1",
+            "text": "What I want?\\nA dependable personal model.",
+            "source": "cursor-data-export",
+            "sourceHash": "hash",
+            "signalScore": 13,
+            "reason": "first-person judgment",
+            "reviewStatus": "unreviewed",
+            "authorityStatus": "candidate-only"
+          }]
+        }
+        """.data(using: .utf8)!
+
+        let payload = try PersonalAuthorityReviewStore.decodeCandidates(from: data)
+
+        XCTAssertEqual(payload.candidateCount, 1)
+        XCTAssertEqual(payload.candidates.first?.authorityStatus, "candidate-only")
+        XCTAssertEqual(payload.candidates.first?.sourceLabel, "Cursor")
+    }
+
     func testAppRuntimeDeclaresNativeOnlyBoundary() {
         XCTAssertEqual(AppRuntimeBoundary.allowedRuntime, .nativeSwift)
         XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.webViewShell))

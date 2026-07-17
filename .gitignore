@@ -11,3 +11,4 @@ node_modules/
 gateway/.env.local
 gateway/.vercel
 .vercel/
+/artifacts/
