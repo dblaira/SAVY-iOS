@@ -73,6 +73,38 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testPersonalAuthorityApprovalIsExplicitAndPersists() throws {
+        let suiteName = "SAVYNativeBoundaryTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = PersonalAuthorityReviewStore(defaults: defaults)
+        let directCount = store.candidates.filter { $0.conferenceStatus == .ready }.count
+        XCTAssertEqual(store.approvedCount, directCount)
+
+        let candidate = try XCTUnwrap(
+            store.candidates.first { $0.conferenceStatus == .sourceCheck }
+        )
+
+        store.decide(.mine, candidate: candidate)
+
+        XCTAssertEqual(store.decision(for: candidate), .mine)
+        XCTAssertEqual(store.approvedCount, directCount + 1)
+        XCTAssertEqual(store.disapprovedCount, 0)
+        XCTAssertEqual(store.decidedCount, directCount + 1)
+
+        let reloadedStore = PersonalAuthorityReviewStore(defaults: defaults)
+        let reloadedCandidate = try XCTUnwrap(
+            reloadedStore.candidates.first { $0.id == candidate.id }
+        )
+        XCTAssertEqual(reloadedStore.decision(for: reloadedCandidate), .mine)
+
+        reloadedStore.decide(.evidenceOnly, candidate: reloadedCandidate)
+        XCTAssertEqual(reloadedStore.approvedCount, directCount)
+        XCTAssertEqual(reloadedStore.disapprovedCount, 1)
+    }
+
     func testAppRuntimeDeclaresNativeOnlyBoundary() {
         XCTAssertEqual(AppRuntimeBoundary.allowedRuntime, .nativeSwift)
         XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.webViewShell))

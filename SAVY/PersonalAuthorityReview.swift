@@ -798,11 +798,13 @@ final class PersonalAuthorityReviewStore: ObservableObject {
         loadCandidates(from: bundle)
     }
 
-    var reviewedCount: Int { decisions.count }
-    var waitingCount: Int { max(candidates.count - reviewedCount, 0) }
+    var approvedCount: Int { decisions.values.filter { $0 == .mine }.count }
+    var disapprovedCount: Int { decisions.values.filter { $0 == .evidenceOnly }.count }
+    var decidedCount: Int { approvedCount + disapprovedCount }
+    var waitingCount: Int { max(candidates.count - decidedCount, 0) }
     var progress: Double {
         guard !candidates.isEmpty else { return 0 }
-        return Double(reviewedCount) / Double(candidates.count)
+        return Double(decidedCount) / Double(candidates.count)
     }
 
     func decision(for candidate: PersonalAuthorityCandidate) -> PersonalAuthorityDecision? {
@@ -811,6 +813,13 @@ final class PersonalAuthorityReviewStore: ObservableObject {
 
     func decide(_ decision: PersonalAuthorityDecision, candidate: PersonalAuthorityCandidate) {
         decisions[candidate.id] = decision
+        persistDecisions()
+    }
+
+    func approveUnreviewedDirectMessages() {
+        for candidate in candidates where candidate.conferenceStatus == .ready && decisions[candidate.id] == nil {
+            decisions[candidate.id] = .mine
+        }
         persistDecisions()
     }
 
@@ -831,6 +840,7 @@ final class PersonalAuthorityReviewStore: ObservableObject {
                 loadError = "The candidate count does not match the bundled review file."
                 return
             }
+            approveUnreviewedDirectMessages()
         } catch {
             loadError = "SAVY could not read the candidate review file."
         }
@@ -894,16 +904,18 @@ struct PersonalAuthorityLaunchCard: View {
 
 private enum PersonalAuthorityConferenceFilter: String, CaseIterable, Identifiable {
     case all
-    case ready
-    case sourceCheck
+    case toDecide
+    case approved
+    case disapproved
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .all: "ALL"
-        case .ready: "READY"
-        case .sourceCheck: "CHECK SOURCE"
+        case .toDecide: "TO DECIDE"
+        case .approved: "APPROVED"
+        case .disapproved: "DISAPPROVED"
         }
     }
 }
@@ -911,7 +923,7 @@ private enum PersonalAuthorityConferenceFilter: String, CaseIterable, Identifiab
 struct PersonalAuthorityReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var store = PersonalAuthorityReviewStore()
-    @State private var filter: PersonalAuthorityConferenceFilter = .all
+    @State private var filter: PersonalAuthorityConferenceFilter = .toDecide
     @State private var searchText = ""
     @State private var selectedCandidate: PersonalAuthorityCandidate?
 
@@ -932,8 +944,9 @@ struct PersonalAuthorityReviewView: View {
             let isInFilter: Bool
             switch filter {
             case .all: isInFilter = true
-            case .ready: isInFilter = candidate.conferenceStatus == .ready
-            case .sourceCheck: isInFilter = candidate.conferenceStatus == .sourceCheck
+            case .toDecide: isInFilter = store.decision(for: candidate) != .mine && store.decision(for: candidate) != .evidenceOnly
+            case .approved: isInFilter = store.decision(for: candidate) == .mine
+            case .disapproved: isInFilter = store.decision(for: candidate) == .evidenceOnly
             }
 
             let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -964,7 +977,7 @@ struct PersonalAuthorityReviewView: View {
             conferenceBoundary
         }
         .sheet(item: $selectedCandidate) { candidate in
-            PersonalAuthorityConferenceDetail(candidate: candidate)
+            PersonalAuthorityConferenceDetail(store: store, candidate: candidate)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
@@ -1035,6 +1048,27 @@ struct PersonalAuthorityReviewView: View {
 
     private var statusBand: some View {
         VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .lastTextBaseline, spacing: 10) {
+                Text("\(Int((store.progress * 100).rounded()))%")
+                    .font(SavyTypography.displaySerif(74, weight: .bold))
+                    .foregroundStyle(SavyTheme.crimson)
+                Text("DECIDED")
+                    .font(SavyTheme.readingLabel(13))
+                    .tracking(1.5)
+                    .foregroundStyle(SavyTheme.deepNavy)
+                    .padding(.bottom, 11)
+            }
+
+            ProgressView(value: store.progress)
+                .tint(SavyTheme.crimson)
+                .scaleEffect(x: 1, y: 2.5, anchor: .center)
+
+            HStack(spacing: 8) {
+                decisionMetric(store.approvedCount, "APPROVED", SavyTheme.crimson)
+                decisionMetric(store.disapprovedCount, "DISAPPROVED", SavyTheme.deepNavy)
+                decisionMetric(store.waitingCount, "WAITING", Color(hex: 0xE66F24))
+            }
+
             HStack(alignment: .top, spacing: 14) {
                 conferenceMetric(
                     count: readyCount,
@@ -1071,6 +1105,19 @@ struct PersonalAuthorityReviewView: View {
         }
     }
 
+    private func decisionMetric(_ count: Int, _ label: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("\(count)")
+                .font(SavyTheme.readingTitle(24))
+                .foregroundStyle(color)
+            Text(label)
+                .font(SavyTheme.readingLabel(9))
+                .foregroundStyle(SavyTheme.deepNavy)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func conferenceMetric(
         count: Int,
         label: String,
@@ -1100,15 +1147,32 @@ struct PersonalAuthorityReviewView: View {
         } else {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 9) {
-                    Text("SCAN THE EXACT WORDS")
+                    Text("ONLY THE UNCERTAIN 70 REMAIN")
                         .font(SavyTheme.readingLabel(13))
                         .tracking(1.7)
                         .foregroundStyle(Brand.tan)
 
-                    Text("Nothing below is promoted by this screen. You are confirming authorship before Cowboy AI changes the graph.")
+                    Text("Your \(readyCount) direct messages are already approved. Only \(sourceCheckCount) statements containing outside material remain to confirm.")
                         .font(SavyTheme.readingBody(15))
                         .foregroundStyle(Brand.card.opacity(0.82))
                 }
+
+                HStack(spacing: 12) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 25, weight: .bold))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(readyCount) DIRECT MESSAGES APPROVED")
+                            .font(SavyTheme.readingTitle(16))
+                        Text("No tapping through your own words")
+                            .font(SavyTheme.readingBody(12))
+                    }
+                    Spacer()
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 68)
+                .background(SavyTheme.crimson, in: RoundedRectangle(cornerRadius: 14))
+                .accessibilityIdentifier("personalAuthorityDirectMessagesApproved")
 
                 TextField("Search your words, source, or number", text: $searchText)
                     .font(SavyTheme.readingBody(16))
@@ -1133,7 +1197,7 @@ struct PersonalAuthorityReviewView: View {
                         .font(SavyTheme.readingLabel(12))
                         .foregroundStyle(Brand.tan)
                     Spacer()
-                    Text("Tap any statement to read or listen")
+                    Text("Decide here or tap words to read and listen")
                         .font(SavyTheme.readingBody(12))
                         .foregroundStyle(Brand.card.opacity(0.68))
                 }
@@ -1170,11 +1234,13 @@ struct PersonalAuthorityReviewView: View {
 
     private func conferenceRow(_ candidate: PersonalAuthorityCandidate) -> some View {
         let needsCheck = candidate.conferenceStatus == .sourceCheck
+        let decision = store.decision(for: candidate)
 
-        return Button {
-            selectedCandidate = candidate
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 13) {
+            Button {
+                selectedCandidate = candidate
+            } label: {
+                VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 9) {
                     Text("#\(candidate.index)")
                         .font(SavyTheme.readingLabel(12))
@@ -1186,7 +1252,14 @@ struct PersonalAuthorityReviewView: View {
 
                     Spacer()
 
-                    if candidate.containsInjectedSystemPrefix {
+                    if let decision, decision == .mine || decision == .evidenceOnly {
+                        Label(
+                            decision == .mine ? "APPROVED" : "DISAPPROVED",
+                            systemImage: decision == .mine ? "checkmark.circle.fill" : "xmark.circle.fill"
+                        )
+                        .font(SavyTheme.readingLabel(10))
+                        .foregroundStyle(decision == .mine ? SavyTheme.crimson : SavyTheme.deepNavy)
+                    } else if candidate.containsInjectedSystemPrefix {
                         Label("PREFIX CLEANED", systemImage: "scissors")
                             .font(SavyTheme.readingLabel(10))
                             .foregroundStyle(SavyTheme.deepNavy)
@@ -1212,18 +1285,21 @@ struct PersonalAuthorityReviewView: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(SavyTheme.deepNavy)
                 }
+                }
             }
-            .padding(17)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Brand.card, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(alignment: .leading) {
-                Rectangle()
-                    .fill(needsCheck ? Color(hex: 0xE66F24) : SavyTheme.crimson)
-                    .frame(width: needsCheck ? 7 : 3)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .buttonStyle(.plain)
+
+            PersonalAuthorityDecisionControls(store: store, candidate: candidate, compact: true)
         }
-        .buttonStyle(.plain)
+        .padding(17)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Brand.card, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(decision == .mine ? SavyTheme.crimson : (decision == .evidenceOnly ? SavyTheme.deepNavy : (needsCheck ? Color(hex: 0xE66F24) : SavyTheme.crimson)))
+                .frame(width: decision == nil ? (needsCheck ? 7 : 3) : 8)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 14))
         .accessibilityIdentifier("personalAuthorityCandidateRow\(candidate.index)")
     }
 
@@ -1232,10 +1308,10 @@ struct PersonalAuthorityReviewView: View {
             Image(systemName: "lock.shield.fill")
                 .font(.system(size: 18, weight: .bold))
             VStack(alignment: .leading, spacing: 1) {
-                Text("0% PROMOTED")
+                Text("\(Int((store.progress * 100).rounded()))% DECIDED")
                     .font(SavyTheme.readingLabel(12))
                     .tracking(1.2)
-                Text("This is the list before approval.")
+                Text("\(store.approvedCount) approved • \(store.disapprovedCount) disapproved • \(store.waitingCount) waiting")
                     .font(SavyTheme.readingBody(12))
             }
             Spacer()
@@ -1258,8 +1334,99 @@ struct PersonalAuthorityReviewView: View {
     }
 }
 
+private struct PersonalAuthorityDecisionControls: View {
+    @ObservedObject var store: PersonalAuthorityReviewStore
+    let candidate: PersonalAuthorityCandidate
+    let compact: Bool
+
+    private var decision: PersonalAuthorityDecision? {
+        store.decision(for: candidate)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            if !compact {
+                Text(decisionTitle)
+                    .font(SavyTheme.readingLabel(12))
+                    .tracking(1.2)
+                    .foregroundStyle(decision == nil ? Brand.tan : Brand.card)
+            }
+
+            HStack(spacing: 9) {
+                decisionButton(
+                    title: "APPROVE",
+                    subtitle: "I SAID THIS",
+                    systemImage: decision == .mine ? "checkmark.circle.fill" : "checkmark.circle",
+                    foreground: .white,
+                    background: SavyTheme.crimson,
+                    decision: .mine
+                )
+
+                decisionButton(
+                    title: "DISAPPROVE",
+                    subtitle: "NOT MY WORDS",
+                    systemImage: decision == .evidenceOnly ? "xmark.circle.fill" : "xmark.circle",
+                    foreground: decision == .evidenceOnly ? .white : SavyTheme.deepNavy,
+                    background: decision == .evidenceOnly ? SavyTheme.deepNavy : Brand.tan,
+                    decision: .evidenceOnly
+                )
+            }
+        }
+    }
+
+    private var decisionTitle: String {
+        switch decision {
+        case .mine: "SAVED: APPROVED AS YOUR WORDS"
+        case .evidenceOnly: "SAVED: DISAPPROVED — NOT YOUR WORDS"
+        default: "MAKE THE DECISION"
+        }
+    }
+
+    private func decisionButton(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        foreground: Color,
+        background: Color,
+        decision newDecision: PersonalAuthorityDecision
+    ) -> some View {
+        Button {
+            store.decide(newDecision, candidate: candidate)
+            SavyHapticFeedback.selection()
+        } label: {
+            HStack(spacing: compact ? 7 : 10) {
+                Image(systemName: systemImage)
+                    .font(.system(size: compact ? 17 : 21, weight: .bold))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(SavyTheme.readingLabel(compact ? 10 : 12))
+                        .minimumScaleFactor(0.75)
+                    Text(subtitle)
+                        .font(SavyTheme.readingBody(compact ? 9 : 11))
+                        .minimumScaleFactor(0.7)
+                }
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(foreground)
+            .padding(.horizontal, compact ? 10 : 14)
+            .frame(maxWidth: .infinity, minHeight: compact ? 58 : 70, alignment: .leading)
+            .background(background, in: RoundedRectangle(cornerRadius: compact ? 10 : 14))
+            .overlay {
+                RoundedRectangle(cornerRadius: compact ? 10 : 14)
+                    .stroke(newDecision == decision ? Brand.card : SavyTheme.deepNavy.opacity(0.16), lineWidth: newDecision == decision ? 4 : 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title). \(subtitle). Statement \(candidate.index).")
+        .accessibilityIdentifier(newDecision == .mine
+            ? "personalAuthorityApprove\(candidate.index)"
+            : "personalAuthorityDisapprove\(candidate.index)")
+    }
+}
+
 private struct PersonalAuthorityConferenceDetail: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject var store: PersonalAuthorityReviewStore
     let candidate: PersonalAuthorityCandidate
 
     var body: some View {
@@ -1333,9 +1500,11 @@ private struct PersonalAuthorityConferenceDetail: View {
                         accessibilityIdentifier: "personalAuthority"
                     )
 
-                    Text("No approval action exists on this screen. This statement remains candidate-only.")
+                    PersonalAuthorityDecisionControls(store: store, candidate: candidate, compact: false)
+
+                    Text("Your decision is saved in SAVY for the next graph promotion. Check Source never approves or disapproves anything by itself.")
                         .font(SavyTheme.readingBody(13))
-                        .foregroundStyle(Brand.tan)
+                        .foregroundStyle(Brand.card.opacity(0.78))
                         .padding(.bottom, 30)
                 }
                 .padding(20)
