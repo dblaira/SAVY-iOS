@@ -47,6 +47,32 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(payload.candidates.first?.sourceLabel, "Cursor")
     }
 
+    func testPersonalAuthorityConferenceRemovesCursorSystemPrefixWithoutChangingAdamWords() {
+        let text = """
+        <system_reminder>
+        IMPORTANT: injected Cursor instruction.
+        </system_reminder>
+        These are Adam's exact words.
+        """
+
+        XCTAssertTrue(PersonalAuthorityConferenceClassifier.containsInjectedSystemPrefix(text))
+        XCTAssertEqual(
+            PersonalAuthorityConferenceClassifier.authoredText(from: text),
+            "These are Adam's exact words."
+        )
+    }
+
+    func testPersonalAuthorityConferenceFlagsEmbeddedSourceMaterial() {
+        XCTAssertEqual(
+            PersonalAuthorityConferenceClassifier.status(for: "I especially like these suggestions: quoted material"),
+            .sourceCheck
+        )
+        XCTAssertEqual(
+            PersonalAuthorityConferenceClassifier.status(for: "I know what I believe and I said it directly."),
+            .ready
+        )
+    }
+
     func testAppRuntimeDeclaresNativeOnlyBoundary() {
         XCTAssertEqual(AppRuntimeBoundary.allowedRuntime, .nativeSwift)
         XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.webViewShell))

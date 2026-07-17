@@ -24,6 +24,75 @@ struct PersonalAuthorityCandidate: Decodable, Identifiable, Equatable {
     var sourceLabel: String {
         source == "cursor-data-export" ? "Cursor" : "OpenAI"
     }
+
+    var authoredText: String {
+        PersonalAuthorityConferenceClassifier.authoredText(from: text)
+    }
+
+    var containsInjectedSystemPrefix: Bool {
+        PersonalAuthorityConferenceClassifier.containsInjectedSystemPrefix(text)
+    }
+
+    var conferenceStatus: PersonalAuthorityConferenceStatus {
+        PersonalAuthorityConferenceClassifier.status(for: authoredText)
+    }
+}
+
+enum PersonalAuthorityConferenceStatus: String, CaseIterable, Identifiable {
+    case ready
+    case sourceCheck
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .ready: "READY"
+        case .sourceCheck: "CHECK SOURCE"
+        }
+    }
+
+    var explanation: String {
+        switch self {
+        case .ready:
+            "Matched to an Adam user message with no embedded-source marker."
+        case .sourceCheck:
+            "May contain a quote, transcript, pasted response, or attributed words."
+        }
+    }
+}
+
+enum PersonalAuthorityConferenceClassifier {
+    private static let systemPrefix = try! NSRegularExpression(
+        pattern: #"^<system_reminder>.*?</system_reminder>\s*"#,
+        options: [.dotMatchesLineSeparators]
+    )
+    private static let embeddedSourceMarker = try! NSRegularExpression(
+        pattern: #"(summar(?:ize|y)|transcript|quoted?|pasted?|following (?:text|article|response|conversation|content)|i especially like these suggestions|the fix:|what (?:claude|chatgpt|the ai|cursor) (?:said|wrote|gave)|assistant(?:’|'| i)s response)"#,
+        options: [.caseInsensitive]
+    )
+    private static let longQuotedBlock = try! NSRegularExpression(
+        pattern: #"[“\"](.{120,}?)[”\"]"#,
+        options: [.dotMatchesLineSeparators]
+    )
+
+    static func containsInjectedSystemPrefix(_ text: String) -> Bool {
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return systemPrefix.firstMatch(in: text, range: range) != nil
+    }
+
+    static func authoredText(from text: String) -> String {
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return systemPrefix
+            .stringByReplacingMatches(in: text, range: range, withTemplate: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func status(for authoredText: String) -> PersonalAuthorityConferenceStatus {
+        let range = NSRange(authoredText.startIndex..<authoredText.endIndex, in: authoredText)
+        let hasEmbeddedMarker = embeddedSourceMarker.firstMatch(in: authoredText, range: range) != nil
+        let hasLongQuote = longQuotedBlock.firstMatch(in: authoredText, range: range) != nil
+        return hasEmbeddedMarker || hasLongQuote ? .sourceCheck : .ready
+    }
 }
 
 enum PersonalAuthorityDecision: String, Codable, CaseIterable {
@@ -805,7 +874,7 @@ struct PersonalAuthorityLaunchCard: View {
                         .tracking(1.8)
                         .foregroundStyle(SavyTheme.crimson)
 
-                    Text("709 signals\nwaiting for you")
+                    Text("709 statements\nready to scan")
                         .font(SavyTypography.displaySerif(28, weight: .bold))
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.leading)
@@ -818,21 +887,62 @@ struct PersonalAuthorityLaunchCard: View {
             .shadow(color: .black.opacity(0.16), radius: 12, y: 5)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Open Cowboy AI candidate review. 709 signals waiting.")
+        .accessibilityLabel("Open Cowboy AI confirmation list. 709 statements ready to scan.")
         .accessibilityIdentifier("personalAuthorityLaunchCard")
+    }
+}
+
+private enum PersonalAuthorityConferenceFilter: String, CaseIterable, Identifiable {
+    case all
+    case ready
+    case sourceCheck
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: "ALL"
+        case .ready: "READY"
+        case .sourceCheck: "CHECK SOURCE"
+        }
     }
 }
 
 struct PersonalAuthorityReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var store = PersonalAuthorityReviewStore()
-    @StateObject private var speech = PersonalAuthoritySpeechController()
-    @StateObject private var naturalSpeech = CowboyNaturalVoiceController()
-    @State private var position = 0
+    @State private var filter: PersonalAuthorityConferenceFilter = .all
+    @State private var searchText = ""
+    @State private var selectedCandidate: PersonalAuthorityCandidate?
 
-    private var current: PersonalAuthorityCandidate? {
-        guard store.candidates.indices.contains(position) else { return nil }
-        return store.candidates[position]
+    private var readyCount: Int {
+        store.candidates.filter { $0.conferenceStatus == .ready }.count
+    }
+
+    private var sourceCheckCount: Int {
+        store.candidates.filter { $0.conferenceStatus == .sourceCheck }.count
+    }
+
+    private var cleanedPrefixCount: Int {
+        store.candidates.filter(\.containsInjectedSystemPrefix).count
+    }
+
+    private var visibleCandidates: [PersonalAuthorityCandidate] {
+        store.candidates.filter { candidate in
+            let isInFilter: Bool
+            switch filter {
+            case .all: isInFilter = true
+            case .ready: isInFilter = candidate.conferenceStatus == .ready
+            case .sourceCheck: isInFilter = candidate.conferenceStatus == .sourceCheck
+            }
+
+            let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let matchesSearch = query.isEmpty
+                || candidate.authoredText.localizedCaseInsensitiveContains(query)
+                || candidate.sourceLabel.localizedCaseInsensitiveContains(query)
+                || String(candidate.index).contains(query)
+            return isInFilter && matchesSearch
+        }
     }
 
     var body: some View {
@@ -843,16 +953,20 @@ struct PersonalAuthorityReviewView: View {
                 VStack(spacing: 0) {
                     hero
                     statusBand
-                    reviewSurface
+                    conferenceSurface
                 }
-                .padding(.bottom, 42)
+                .padding(.bottom, 88)
             }
             .scrollIndicators(.hidden)
         }
         .preferredColorScheme(.light)
-        .onDisappear {
-            naturalSpeech.stop()
-            speech.stop()
+        .safeAreaInset(edge: .bottom) {
+            conferenceBoundary
+        }
+        .sheet(item: $selectedCandidate) { candidate in
+            PersonalAuthorityConferenceDetail(candidate: candidate)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .accessibilityIdentifier("personalAuthorityReview")
     }
@@ -866,8 +980,8 @@ struct PersonalAuthorityReviewView: View {
                         .tracking(2.2)
                         .foregroundStyle(SavyTheme.crimson)
 
-                    Text("Teach the model\nwhat is yours.")
-                        .font(SavyTypography.displaySerif(49, weight: .bold))
+                    Text("Confirm what\nyou said.")
+                        .font(SavyTypography.displaySerif(52, weight: .bold))
                         .foregroundStyle(Brand.card)
                         .lineSpacing(-6)
                         .minimumScaleFactor(0.8)
@@ -884,7 +998,7 @@ struct PersonalAuthorityReviewView: View {
                         .frame(width: 48, height: 48)
                         .background(Brand.card, in: Circle())
                 }
-                .accessibilityLabel("Close Cowboy AI review")
+                .accessibilityLabel("Close Cowboy AI confirmation list")
             }
 
             ZStack(alignment: .bottomTrailing) {
@@ -903,6 +1017,16 @@ struct PersonalAuthorityReviewView: View {
                     .overlay(Circle().stroke(SavyTheme.deepNavy, lineWidth: 5))
                     .padding(12)
             }
+
+            Text("“If I’ve said it, then it is approved.”")
+                .font(SavyTypography.displaySerif(27, weight: .bold))
+                .foregroundStyle(Brand.card)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("CONFIRMATION, NOT BELIEF REVIEW")
+                .font(SavyTheme.readingLabel(12))
+                .tracking(1.6)
+                .foregroundStyle(Brand.tan)
         }
         .padding(.horizontal, 20)
         .padding(.top, 22)
@@ -910,29 +1034,32 @@ struct PersonalAuthorityReviewView: View {
     }
 
     private var statusBand: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .lastTextBaseline) {
-                VStack(alignment: .leading, spacing: -8) {
-                    Text("\(store.candidates.count)")
-                        .font(SavyTypography.displaySerif(70, weight: .bold))
-                        .foregroundStyle(SavyTheme.crimson)
-                    Text("signals that might be you")
-                        .font(SavyTypography.displaySerif(26, weight: .bold))
-                        .foregroundStyle(SavyTheme.deepNavy)
-                }
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
+                conferenceMetric(
+                    count: readyCount,
+                    label: "DIRECT\nMESSAGES",
+                    color: SavyTheme.crimson,
+                    scale: 1
+                )
 
-                Spacer()
-
-                Text("\(Int((store.progress * 100).rounded()))%")
-                    .font(SavyTheme.readingLabel(23))
-                    .foregroundStyle(SavyTheme.crimson)
+                conferenceMetric(
+                    count: sourceCheckCount,
+                    label: "CHECK\nSOURCE",
+                    color: Color(hex: 0xE66F24),
+                    scale: 0.78
+                )
             }
 
-            ProgressView(value: store.progress)
-                .tint(SavyTheme.crimson)
-                .scaleEffect(x: 1, y: 1.8, anchor: .center)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "scissors")
+                    .foregroundStyle(SavyTheme.deepNavy)
+                Text("\(cleanedPrefixCount) Cursor system prefixes removed")
+                    .font(SavyTheme.readingTitle(15))
+                    .foregroundStyle(SavyTheme.deepNavy)
+            }
 
-            Text("\(store.reviewedCount) decided  ·  \(store.waitingCount) waiting")
+            Text("The cleanup count overlaps the two groups above. Your words after each injected prefix remain intact.")
                 .font(SavyTheme.readingBody(13))
                 .foregroundStyle(SavyTheme.secondaryText)
         }
@@ -944,292 +1071,311 @@ struct PersonalAuthorityReviewView: View {
         }
     }
 
+    private func conferenceMetric(
+        count: Int,
+        label: String,
+        color: Color,
+        scale: CGFloat
+    ) -> some View {
+        VStack(alignment: .leading, spacing: -4) {
+            Text("\(count)")
+                .font(SavyTypography.displaySerif(68 * scale, weight: .bold))
+                .foregroundStyle(color)
+                .minimumScaleFactor(0.7)
+            Text(label)
+                .font(SavyTheme.readingLabel(12))
+                .tracking(1.2)
+                .foregroundStyle(SavyTheme.deepNavy)
+        }
+        .frame(maxWidth: .infinity, minHeight: 110, alignment: .bottomLeading)
+    }
+
     @ViewBuilder
-    private var reviewSurface: some View {
+    private var conferenceSurface: some View {
         if let error = store.loadError {
             Text(error)
                 .font(SavyTheme.readingTitle(20))
                 .foregroundStyle(Brand.card)
                 .padding(28)
-        } else if let candidate = current {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack {
-                    Text("DOES THIS BELONG TO YOU?")
+        } else {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 9) {
+                    Text("SCAN THE EXACT WORDS")
                         .font(SavyTheme.readingLabel(13))
-                        .tracking(1.5)
+                        .tracking(1.7)
+                        .foregroundStyle(Brand.tan)
+
+                    Text("Nothing below is promoted by this screen. You are confirming authorship before Cowboy AI changes the graph.")
+                        .font(SavyTheme.readingBody(15))
+                        .foregroundStyle(Brand.card.opacity(0.82))
+                }
+
+                TextField("Search your words, source, or number", text: $searchText)
+                    .font(SavyTheme.readingBody(16))
+                    .foregroundStyle(SavyTheme.deepNavy)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 52)
+                    .background(Brand.card, in: RoundedRectangle(cornerRadius: 12))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                ScrollView(.horizontal) {
+                    HStack(spacing: 9) {
+                        ForEach(PersonalAuthorityConferenceFilter.allCases) { option in
+                            conferenceFilterButton(option)
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+
+                HStack {
+                    Text("\(visibleCandidates.count) shown")
+                        .font(SavyTheme.readingLabel(12))
                         .foregroundStyle(Brand.tan)
                     Spacer()
-                    Text(candidate.sourceLabel)
-                        .font(SavyTheme.readingLabel(15))
-                        .foregroundStyle(SavyTheme.crimson)
+                    Text("Tap any statement to read or listen")
+                        .font(SavyTheme.readingBody(12))
+                        .foregroundStyle(Brand.card.opacity(0.68))
                 }
 
-                candidateCard(candidate)
-
-                DisclosureGroup("Why Cowboy AI surfaced this") {
-                    Text("\(candidate.reason). This is still a candidate, not accepted authority.")
-                        .font(SavyTheme.readingBody(14))
-                        .foregroundStyle(Brand.card.opacity(0.78))
-                        .padding(.top, 8)
+                LazyVStack(spacing: 12) {
+                    ForEach(visibleCandidates) { candidate in
+                        conferenceRow(candidate)
+                    }
                 }
-                .font(SavyTheme.readingBody(13))
-                .tint(Brand.tan)
-                .foregroundStyle(Brand.tan)
-
-                listenControls(candidate)
-                decisionButtons(candidate)
-                candidateNavigation
+                .accessibilityIdentifier("personalAuthorityConferenceList")
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 26)
+            .padding(.vertical, 24)
         }
     }
 
-    private func listenControls(_ candidate: PersonalAuthorityCandidate) -> some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                Text("LOCAL NATURAL VOICE")
-                    .font(SavyTheme.readingLabel(12))
-                    .tracking(1.5)
-                    .foregroundStyle(Brand.tan)
-
-                Spacer()
-                Text(naturalSpeech.statusLabel)
-                    .font(SavyTheme.readingBody(12))
-                    .foregroundStyle(Brand.card)
-                    .multilineTextAlignment(.trailing)
-            }
-
-            HStack(spacing: 10) {
-                Button {
-                    SavyHapticFeedback.selection()
-                    naturalSpeech.toggle(text: candidate.text)
-                } label: {
-                    Label(naturalSpeech.buttonTitle, systemImage: naturalSpeech.buttonSymbol)
-                        .font(SavyTheme.readingTitle(18))
-                        .foregroundStyle(SavyTheme.deepNavy)
-                        .frame(maxWidth: .infinity, minHeight: 58)
-                        .background(Brand.tan, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-                .disabled(naturalSpeech.isWorking)
-                .accessibilityIdentifier("personalAuthorityListen")
-
-                if naturalSpeech.canStop {
-                    Button {
-                        naturalSpeech.stop()
-                    } label: {
-                        Image(systemName: "stop.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(Brand.card)
-                            .frame(width: 58, height: 58)
-                            .background(Brand.darkRed, in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Stop reading")
-                }
-            }
-
-            CowboyVoiceRateControl(
-                controller: naturalSpeech,
-                labelColor: Brand.tan,
-                accentColor: SavyTheme.crimson
-            )
-
-            if let error = naturalSpeech.errorMessage {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(error)
-                        .font(SavyTheme.readingBody(12))
-                        .foregroundStyle(Brand.card.opacity(0.78))
-
-                    HStack {
-                        Button("Use iPhone voice instead") {
-                            speech.toggle(text: candidate.text)
-                        }
-                        .font(SavyTheme.readingBody(12))
-                        .foregroundStyle(Brand.tan)
-
-                        Spacer()
-
-                        Menu("Choose iPhone voice") {
-                            ForEach(speech.voiceOptions) { voice in
-                                voiceMenuButton(voice)
-                            }
-                        }
-                        .font(SavyTheme.readingBody(12))
-                        .foregroundStyle(Brand.tan)
-                    }
-                }
-            }
-        }
-    }
-
-    private func voiceMenuButton(_ voice: PersonalAuthoritySpeechController.VoiceOption) -> some View {
-        Button {
-            speech.selectVoice(voice)
-        } label: {
-            Label(
-                voice.displayName,
-                systemImage: voice.id == speech.selectedVoiceID
-                    ? "checkmark.circle.fill"
-                    : "waveform"
-            )
-        }
-    }
-
-    private func candidateCard(_ candidate: PersonalAuthorityCandidate) -> some View {
-        VStack(alignment: .leading, spacing: 17) {
-            Label("CANDIDATE", systemImage: "sparkles")
-                .font(SavyTheme.readingLabel(13))
-                .tracking(1.8)
-                .foregroundStyle(SavyTheme.crimson)
-
-            ForEach(PersonalAuthorityTextFormatter.blocks(from: candidate.text)) { block in
-                switch block.style {
-                case .heading:
-                    HStack(alignment: .top, spacing: 12) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(SavyTheme.crimson)
-                            .frame(width: 4, height: 42)
-                        Text(block.text)
-                            .font(SavyTypography.displaySerif(29, weight: .bold))
-                            .foregroundStyle(SavyTheme.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.top, 4)
-                case .body:
-                    Text(block.text)
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(SavyTheme.ink)
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
-                case .bullet:
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Circle()
-                            .fill(Color(hex: 0xE66F24))
-                            .frame(width: 8, height: 8)
-                        Text(block.text)
-                            .font(.system(size: 18, weight: .medium))
-                            .lineSpacing(4)
-                    }
-                }
-            }
-        }
-        .padding(23)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Brand.card, in: RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.24), radius: 18, y: 8)
-    }
-
-    private func decisionButtons(_ candidate: PersonalAuthorityCandidate) -> some View {
-        VStack(spacing: 11) {
-            decisionButton(
-                title: "Yes, this is mine",
-                detail: "Mark it for validated promotion",
-                symbol: "checkmark",
-                color: SavyTheme.crimson,
-                decision: .mine,
-                candidate: candidate
-            )
-
-            HStack(spacing: 11) {
-                decisionButton(
-                    title: "Sometimes",
-                    detail: "It needs context",
-                    symbol: "minus",
-                    color: Brand.primaryYellow,
-                    decision: .context,
-                    candidate: candidate
-                )
-                decisionButton(
-                    title: "No",
-                    detail: "Evidence only",
-                    symbol: "xmark",
-                    color: Color(hex: 0x7D16D8),
-                    decision: .evidenceOnly,
-                    candidate: candidate
-                )
-            }
-        }
-    }
-
-    private func decisionButton(
-        title: String,
-        detail: String,
-        symbol: String,
-        color: Color,
-        decision: PersonalAuthorityDecision,
-        candidate: PersonalAuthorityCandidate
-    ) -> some View {
-        let isSelected = store.decision(for: candidate) == decision
-
+    private func conferenceFilterButton(_ option: PersonalAuthorityConferenceFilter) -> some View {
         return Button {
-            SavyHapticFeedback.primaryImpact()
-            naturalSpeech.stop()
-            speech.stop()
-            store.decide(decision, candidate: candidate)
-            withAnimation(.easeInOut(duration: 0.2)) {
-                position = min(position + 1, max(store.candidates.count - 1, 0))
-            }
+            SavyHapticFeedback.selection()
+            withAnimation(.easeInOut(duration: 0.18)) { filter = option }
         } label: {
-            HStack(spacing: 11) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : symbol)
-                    .font(.system(size: 20, weight: .bold))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(SavyTheme.readingTitle(16))
-                    Text(detail)
-                        .font(.system(size: 11, weight: .medium))
-                        .opacity(0.72)
-                }
-
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(decision == .context ? SavyTheme.deepNavy : .white)
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
-            .background(color, in: RoundedRectangle(cornerRadius: 12))
-            .overlay {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(.white, lineWidth: 3)
-                }
-            }
+            Text(option.title)
+                .font(SavyTheme.readingLabel(12))
+                .tracking(1.1)
+                .foregroundStyle(filter == option ? SavyTheme.deepNavy : Brand.card)
+                .padding(.horizontal, 15)
+                .frame(minHeight: 42)
+                .background(filter == option ? Brand.tan : SavyTheme.deepNavy.opacity(0.18))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Brand.tan.opacity(0.48), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
 
-    private var candidateNavigation: some View {
-        HStack {
-            Button {
-                naturalSpeech.stop()
-                speech.stop()
-                position = max(position - 1, 0)
-            } label: {
-                Label("Previous", systemImage: "arrow.left")
+    private func conferenceRow(_ candidate: PersonalAuthorityCandidate) -> some View {
+        let needsCheck = candidate.conferenceStatus == .sourceCheck
+
+        return Button {
+            selectedCandidate = candidate
+        } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 9) {
+                    Text("#\(candidate.index)")
+                        .font(SavyTheme.readingLabel(12))
+                        .foregroundStyle(SavyTheme.deepNavy)
+
+                    Text(candidate.sourceLabel.uppercased())
+                        .font(SavyTheme.readingLabel(11))
+                        .foregroundStyle(SavyTheme.secondaryText)
+
+                    Spacer()
+
+                    if candidate.containsInjectedSystemPrefix {
+                        Label("PREFIX CLEANED", systemImage: "scissors")
+                            .font(SavyTheme.readingLabel(10))
+                            .foregroundStyle(SavyTheme.deepNavy)
+                    }
+                }
+
+                Text(candidate.authoredText)
+                    .font(SavyTypography.displaySerif(21, weight: .bold))
+                    .foregroundStyle(SavyTheme.ink)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(5)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(needsCheck ? Color(hex: 0xE66F24) : SavyTheme.crimson)
+                        .frame(width: 8, height: 8)
+                    Text(candidate.conferenceStatus.title)
+                        .font(SavyTheme.readingLabel(11))
+                        .foregroundStyle(needsCheck ? Color(hex: 0xA44314) : SavyTheme.crimson)
+                    Spacer()
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(SavyTheme.deepNavy)
+                }
             }
-            .disabled(position == 0)
-
-            Spacer()
-
-            Text("\(position + 1) of \(store.candidates.count)")
-                .font(SavyTheme.readingBody(12))
-
-            Spacer()
-
-            Button {
-                naturalSpeech.stop()
-                speech.stop()
-                position = min(position + 1, max(store.candidates.count - 1, 0))
-            } label: {
-                Label("Next", systemImage: "arrow.right")
-                    .labelStyle(.titleAndIcon)
+            .padding(17)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Brand.card, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(needsCheck ? Color(hex: 0xE66F24) : SavyTheme.crimson)
+                    .frame(width: needsCheck ? 7 : 3)
             }
-            .disabled(position >= store.candidates.count - 1)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
         }
-        .font(SavyTheme.readingBody(13))
-        .foregroundStyle(Brand.tan)
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("personalAuthorityCandidateRow\(candidate.index)")
+    }
+
+    private var conferenceBoundary: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 18, weight: .bold))
+            VStack(alignment: .leading, spacing: 1) {
+                Text("0% PROMOTED")
+                    .font(SavyTheme.readingLabel(12))
+                    .tracking(1.2)
+                Text("This is the list before approval.")
+                    .font(SavyTheme.readingBody(12))
+            }
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .heavy))
+                    .frame(width: 40, height: 40)
+                    .background(SavyTheme.deepNavy.opacity(0.1), in: Circle())
+            }
+        }
+        .foregroundStyle(SavyTheme.deepNavy)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(Brand.tan)
+        .overlay(alignment: .top) {
+            Rectangle().fill(SavyTheme.crimson).frame(height: 4)
+        }
+    }
+}
+
+private struct PersonalAuthorityConferenceDetail: View {
+    @Environment(\.dismiss) private var dismiss
+    let candidate: PersonalAuthorityCandidate
+
+    var body: some View {
+        ZStack {
+            SavyTheme.deepNavy.ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("STATEMENT #\(candidate.index)")
+                                .font(SavyTheme.readingLabel(13))
+                                .tracking(1.5)
+                                .foregroundStyle(SavyTheme.crimson)
+                            Text(candidate.sourceLabel)
+                                .font(SavyTheme.readingBody(13))
+                                .foregroundStyle(Brand.tan)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 17, weight: .heavy))
+                                .foregroundStyle(SavyTheme.deepNavy)
+                                .frame(width: 44, height: 44)
+                                .background(Brand.card, in: Circle())
+                        }
+                        .accessibilityLabel("Close statement")
+                    }
+
+                    HStack(alignment: .top, spacing: 10) {
+                        Circle()
+                            .fill(candidate.conferenceStatus == .ready ? SavyTheme.crimson : Color(hex: 0xE66F24))
+                            .frame(width: 11, height: 11)
+                            .padding(.top, 4)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(candidate.conferenceStatus.title)
+                                .font(SavyTheme.readingLabel(13))
+                                .foregroundStyle(Brand.card)
+                            Text(candidate.conferenceStatus.explanation)
+                                .font(SavyTheme.readingBody(13))
+                                .foregroundStyle(Brand.card.opacity(0.74))
+                        }
+                    }
+
+                    if candidate.containsInjectedSystemPrefix {
+                        Label(
+                            "Cursor's injected system reminder is hidden here. The words below begin after that closing tag.",
+                            systemImage: "scissors"
+                        )
+                        .font(SavyTheme.readingBody(13))
+                        .foregroundStyle(SavyTheme.deepNavy)
+                        .padding(14)
+                        .background(Brand.tan, in: RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    VStack(alignment: .leading, spacing: 17) {
+                        ForEach(PersonalAuthorityTextFormatter.blocks(from: candidate.authoredText)) { block in
+                            formattedBlock(block)
+                        }
+                    }
+                    .padding(22)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Brand.card, in: RoundedRectangle(cornerRadius: 18))
+
+                    CowboyNaturalVoicePanel(
+                        text: candidate.authoredText,
+                        accessibilityIdentifier: "personalAuthority"
+                    )
+
+                    Text("No approval action exists on this screen. This statement remains candidate-only.")
+                        .font(SavyTheme.readingBody(13))
+                        .foregroundStyle(Brand.tan)
+                        .padding(.bottom, 30)
+                }
+                .padding(20)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .preferredColorScheme(.light)
+        .accessibilityIdentifier("personalAuthorityCandidateDetail")
+    }
+
+    @ViewBuilder
+    private func formattedBlock(_ block: PersonalAuthorityTextBlock) -> some View {
+        switch block.style {
+        case .heading:
+            HStack(alignment: .top, spacing: 11) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(SavyTheme.crimson)
+                    .frame(width: 4, height: 38)
+                Text(block.text)
+                    .font(SavyTypography.displaySerif(27, weight: .bold))
+                    .foregroundStyle(SavyTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .body:
+            Text(block.text)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(SavyTheme.ink)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        case .bullet:
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Circle()
+                    .fill(Color(hex: 0xE66F24))
+                    .frame(width: 8, height: 8)
+                Text(block.text)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(SavyTheme.ink)
+                    .lineSpacing(4)
+            }
+        }
     }
 }
 

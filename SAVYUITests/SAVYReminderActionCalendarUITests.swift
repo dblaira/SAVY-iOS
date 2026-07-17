@@ -205,9 +205,17 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(review.waitForExistence(timeout: 10), "Cowboy AI review did not open")
         dismissLocalNetworkPrompt()
 
+        let firstStatement = app.descendants(matching: .any)["personalAuthorityCandidateRow1"].firstMatch
+        let conferenceScroll = app.scrollViews.firstMatch
+        for _ in 0..<8 where !firstStatement.isHittable { conferenceScroll.swipeUp() }
+        XCTAssertTrue(firstStatement.waitForExistence(timeout: 10), "First authority statement missing")
+        firstStatement.tap()
+
+        let detail = app.descendants(matching: .any)["personalAuthorityCandidateDetail"].firstMatch
+        XCTAssertTrue(detail.waitForExistence(timeout: 10), "Authority statement detail did not open")
+
         let listen = app.buttons["personalAuthorityListen"].firstMatch
-        let scroll = app.scrollViews.firstMatch
-        for _ in 0..<8 where !listen.isHittable { scroll.swipeUp() }
+        for _ in 0..<8 where !listen.isHittable { app.swipeUp() }
         XCTAssertTrue(listen.waitForExistence(timeout: 10), "Natural Listen button missing")
         listen.tap()
 
