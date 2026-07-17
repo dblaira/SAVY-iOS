@@ -220,6 +220,29 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(pause.label.contains("Pause"), "Natural voice did not begin playing")
     }
 
+    func testCowboyNaturalVoiceIsReusableAndSpeedAdjustableInEntryForm() {
+        openComposer(.action)
+
+        let titleField = app.textFields["Title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 10), "Entry form did not open")
+        titleField.tap()
+        titleField.typeText("Hear this action in Cowboy AI")
+
+        let listen = app.buttons["entryFormNaturalVoiceListen"].firstMatch
+        for _ in 0..<6 where !listen.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(listen.waitForExistence(timeout: 10), "Reusable natural voice control missing")
+
+        let slider = app.sliders["Voice speed"].firstMatch
+        XCTAssertTrue(slider.waitForExistence(timeout: 10), "Voice speed slider missing")
+        slider.adjust(toNormalizedSliderPosition: 0.8)
+
+        let rate = app.staticTexts["cowboyVoicePlaybackRate"].firstMatch
+        XCTAssertTrue(rate.waitForExistence(timeout: 5), "Voice speed value missing")
+        XCTAssertFalse(rate.label.isEmpty, "Voice speed value did not update")
+    }
+
     func testActionCreateReopenSwipePinDoneDelete() {
         let title = "UI Test Action \(Int(Date().timeIntervalSince1970))"
         createItem(.action, title: title)

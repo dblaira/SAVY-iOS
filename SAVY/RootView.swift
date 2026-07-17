@@ -907,6 +907,17 @@ struct LeverageDetailView: View {
         return item.title
     }
 
+    private var spokenText: String {
+        var parts: [String] = [item.title]
+        if !item.summary.isEmpty, item.summary != item.title {
+            parts.append(item.summary)
+        }
+        if !item.body.isEmpty, item.body != item.title, item.body != item.summary {
+            parts.append(item.body)
+        }
+        return parts.joined(separator: "\n\n")
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -940,6 +951,12 @@ struct LeverageDetailView: View {
             .foregroundStyle(SavyTheme.ink)
             .fixedSize(horizontal: false, vertical: true)
 
+        CowboyNaturalVoicePanel(
+            text: spokenText,
+            accessibilityIdentifier: "leverageDetailNaturalVoice"
+        )
+        .padding(.top, 28)
+
         if let graphTrace {
             Rectangle()
                 .fill(SavyTheme.crimson)
@@ -964,6 +981,11 @@ struct LeverageDetailView: View {
                 .lineSpacing(8)
                 .foregroundStyle(SavyTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
+
+            CowboyNaturalVoicePanel(
+                text: spokenText,
+                accessibilityIdentifier: "leverageDetailNaturalVoice"
+            )
 
             legacyDetailBody
         }

@@ -286,6 +286,17 @@ final class CowboyNaturalVoiceController: NSObject, ObservableObject, AVAudioPla
 
     @Published private(set) var mode: Mode = .idle
     @Published private(set) var isDiscovered = false
+    @Published var playbackRate: Double {
+        didSet {
+            let clamped = min(max(playbackRate, Self.minimumPlaybackRate), Self.maximumPlaybackRate)
+            if playbackRate != clamped {
+                playbackRate = clamped
+                return
+            }
+            UserDefaults.standard.set(playbackRate, forKey: Self.playbackRateDefaultsKey)
+            player?.rate = Float(playbackRate)
+        }
+    }
 
     private var browser: NWBrowser?
     private var endpoint: NWEndpoint?
@@ -293,8 +304,15 @@ final class CowboyNaturalVoiceController: NSObject, ObservableObject, AVAudioPla
     private var requestID = UUID()
     private let transport = CowboyNaturalVoiceTransport()
     private static let cacheVersion = "qwen3-tts-voice-design-v1"
+    private static let playbackRateDefaultsKey = "savy.cowboy-natural-voice.playback-rate.v1"
+    static let minimumPlaybackRate = 0.75
+    static let maximumPlaybackRate = 1.50
 
     override init() {
+        let savedRate = UserDefaults.standard.double(forKey: Self.playbackRateDefaultsKey)
+        playbackRate = savedRate == 0
+            ? 1.0
+            : min(max(savedRate, Self.minimumPlaybackRate), Self.maximumPlaybackRate)
         super.init()
         startDiscovery()
     }
@@ -347,6 +365,7 @@ final class CowboyNaturalVoiceController: NSObject, ObservableObject, AVAudioPla
             player?.pause()
             mode = .paused
         case .paused:
+            player?.rate = Float(playbackRate)
             player?.play()
             mode = .playing
         case .findingMac, .generating:
@@ -425,6 +444,8 @@ final class CowboyNaturalVoiceController: NSObject, ObservableObject, AVAudioPla
             try session.setActive(true)
             let player = try AVAudioPlayer(data: data)
             player.delegate = self
+            player.enableRate = true
+            player.rate = Float(playbackRate)
             player.prepareToPlay()
             player.play()
             self.player = player
@@ -452,6 +473,112 @@ final class CowboyNaturalVoiceController: NSObject, ObservableObject, AVAudioPla
             self?.mode = .idle
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         }
+    }
+}
+
+struct CowboyVoiceRateControl: View {
+    @ObservedObject var controller: CowboyNaturalVoiceController
+    var labelColor: Color = SavyTheme.deepNavy
+    var accentColor: Color = SavyTheme.crimson
+
+    var body: some View {
+        VStack(spacing: 7) {
+            HStack {
+                Text("SLOWER")
+                Spacer()
+                Text(String(format: "%.2f×", controller.playbackRate))
+                    .accessibilityIdentifier("cowboyVoicePlaybackRate")
+                Spacer()
+                Text("FASTER")
+            }
+            .font(SavyTheme.readingLabel(11))
+            .tracking(1.2)
+            .foregroundStyle(labelColor)
+
+            Slider(
+                value: $controller.playbackRate,
+                in: CowboyNaturalVoiceController.minimumPlaybackRate...CowboyNaturalVoiceController.maximumPlaybackRate,
+                step: 0.05
+            )
+            .tint(accentColor)
+            .accessibilityLabel("Voice speed")
+            .accessibilityValue(String(format: "%.2f times", controller.playbackRate))
+        }
+    }
+}
+
+/// Reusable SAVY control for reading meaningful app content through Cowboy AI on Adam's Mac.
+struct CowboyNaturalVoicePanel: View {
+    let text: String
+    var accessibilityIdentifier = "cowboyNaturalVoicePanel"
+
+    @StateObject private var voice = CowboyNaturalVoiceController()
+
+    private var hasText: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Label("LISTEN WITH COWBOY AI", systemImage: "waveform")
+                    .font(SavyTheme.readingLabel(12))
+                    .tracking(1.3)
+                    .foregroundStyle(SavyTheme.crimson)
+
+                Spacer(minLength: 8)
+
+                Text(voice.statusLabel)
+                    .font(SavyTheme.readingBody(11))
+                    .foregroundStyle(SavyTheme.deepNavy.opacity(0.62))
+                    .multilineTextAlignment(.trailing)
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    SavyHapticFeedback.selection()
+                    voice.toggle(text: text)
+                } label: {
+                    Label(voice.buttonTitle, systemImage: voice.buttonSymbol)
+                        .font(SavyTheme.readingTitle(17))
+                        .foregroundStyle(Brand.card)
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                        .background(SavyTheme.deepNavy, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .disabled(voice.isWorking || !hasText)
+                .accessibilityIdentifier("\(accessibilityIdentifier)Listen")
+
+                if voice.canStop {
+                    Button {
+                        voice.stop()
+                    } label: {
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(Brand.card)
+                            .frame(width: 54, height: 54)
+                            .background(Brand.darkRed, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Stop reading")
+                }
+            }
+
+            CowboyVoiceRateControl(controller: voice)
+
+            if let error = voice.errorMessage {
+                Text(error)
+                    .font(SavyTheme.readingBody(12))
+                    .foregroundStyle(Brand.darkRed)
+            }
+        }
+        .padding(16)
+        .background(Brand.tan.opacity(0.72), in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(SavyTheme.crimson.opacity(0.22), lineWidth: 1)
+        }
+        .onDisappear { voice.stop() }
     }
 }
 
@@ -902,6 +1029,12 @@ struct PersonalAuthorityReviewView: View {
                     .accessibilityLabel("Stop reading")
                 }
             }
+
+            CowboyVoiceRateControl(
+                controller: naturalSpeech,
+                labelColor: Brand.tan,
+                accentColor: SavyTheme.crimson
+            )
 
             if let error = naturalSpeech.errorMessage {
                 VStack(alignment: .leading, spacing: 8) {
