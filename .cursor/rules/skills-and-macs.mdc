@@ -16,6 +16,7 @@ Load and obey when relevant:
 - `cognitive-fit` — tables/lists over spatial metaphors
 - `articulate-leadership-communication` — answer first, short; detail only if asked
 - `market-inefficiency` — when deciding whether to build a product/feature from a spotted gap
+- `data-visualization` — charts, not text; pick the graphic by the data shape; follow Adam's approved patterns (this repo: `docs/skills/data-visualization/SKILL.md`)
 
 ## When stuck or broken
 Use systematic debugging: reproduce → evidence → one hypothesis → fix. Do not spray random changes.
