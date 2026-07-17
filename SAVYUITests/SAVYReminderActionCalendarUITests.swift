@@ -20,6 +20,12 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         if allow.waitForExistence(timeout: 5) { allow.tap() }
     }
 
+    private func dismissLocalNetworkPrompt() {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons["Allow"]
+        if allow.waitForExistence(timeout: 5) { allow.tap() }
+    }
+
     private func openComposer(_ kind: ComposerKind) {
         let fab = app.descendants(matching: .any)["chargeFab"].firstMatch
         XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
@@ -188,6 +194,30 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         gentlySwipeRightThenLeft(title)
         pinAndUnpin(title)
         completeAndDelete(title, completedSectionId: "completedRemindersSection")
+    }
+
+    func testCowboyNaturalVoiceReachesPlayingState() {
+        let launchCard = app.descendants(matching: .any)["personalAuthorityLaunchCard"].firstMatch
+        XCTAssertTrue(launchCard.waitForExistence(timeout: 20), "Cowboy AI launch card missing")
+        launchCard.tap()
+
+        let review = app.descendants(matching: .any)["personalAuthorityReview"].firstMatch
+        XCTAssertTrue(review.waitForExistence(timeout: 10), "Cowboy AI review did not open")
+        dismissLocalNetworkPrompt()
+
+        let listen = app.buttons["personalAuthorityListen"].firstMatch
+        let scroll = app.scrollViews.firstMatch
+        for _ in 0..<8 where !listen.isHittable { scroll.swipeUp() }
+        XCTAssertTrue(listen.waitForExistence(timeout: 10), "Natural Listen button missing")
+        listen.tap()
+
+        let pause = app.buttons["personalAuthorityListen"].firstMatch
+        XCTAssertTrue(pause.waitForExistence(timeout: 300), "Natural voice never reached playback")
+        let deadline = Date().addingTimeInterval(300)
+        while Date() < deadline, !pause.label.contains("Pause") {
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
+        }
+        XCTAssertTrue(pause.label.contains("Pause"), "Natural voice did not begin playing")
     }
 
     func testActionCreateReopenSwipePinDoneDelete() {

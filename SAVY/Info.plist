@@ -26,6 +26,12 @@
 	<string>SAVY uses Face ID to unlock your private workspace after you sign in.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SAVY uses location only when a native entry needs place context.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>SAVY connects to Cowboy AI on Adam's Mac to create a private natural voice without the Internet.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_cowboyai._tcp</string>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SAVY lets you attach chosen images to native entries.</string>
 	<key>AWS_API_BASE_URL</key>

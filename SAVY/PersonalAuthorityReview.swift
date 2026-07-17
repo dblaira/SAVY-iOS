@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 import AVFoundation
+import CryptoKit
+import Network
 
 struct PersonalAuthorityCandidatePayload: Decodable {
     let generatedAt: String
@@ -272,6 +274,319 @@ final class PersonalAuthoritySpeechController: NSObject, ObservableObject, AVSpe
 }
 
 @MainActor
+final class CowboyNaturalVoiceController: NSObject, ObservableObject, AVAudioPlayerDelegate {
+    enum Mode: Equatable {
+        case idle
+        case findingMac
+        case generating
+        case playing
+        case paused
+        case failed(String)
+    }
+
+    @Published private(set) var mode: Mode = .idle
+    @Published private(set) var isDiscovered = false
+
+    private var browser: NWBrowser?
+    private var endpoint: NWEndpoint?
+    private var player: AVAudioPlayer?
+    private var requestID = UUID()
+    private let transport = CowboyNaturalVoiceTransport()
+    private static let cacheVersion = "qwen3-tts-voice-design-v1"
+
+    override init() {
+        super.init()
+        startDiscovery()
+    }
+
+    var statusLabel: String {
+        switch mode {
+        case .findingMac: "Finding Cowboy AI on this Mac"
+        case .generating: "Cowboy AI is creating the voice"
+        case .playing, .paused: "Qwen natural voice · local Mac"
+        case .failed: "Natural voice needs the Mac"
+        case .idle: isDiscovered ? "Qwen natural voice · local Mac" : "Finding Cowboy AI on this Mac"
+        }
+    }
+
+    var buttonTitle: String {
+        switch mode {
+        case .idle, .failed: "Listen"
+        case .findingMac: "Finding Mac"
+        case .generating: "Creating voice"
+        case .playing: "Pause"
+        case .paused: "Continue"
+        }
+    }
+
+    var buttonSymbol: String {
+        switch mode {
+        case .playing: "pause.fill"
+        case .paused: "play.fill"
+        case .findingMac, .generating: "waveform.badge.magnifyingglass"
+        case .idle, .failed: "waveform"
+        }
+    }
+
+    var isWorking: Bool {
+        mode == .findingMac || mode == .generating
+    }
+
+    var canStop: Bool {
+        mode == .playing || mode == .paused
+    }
+
+    var errorMessage: String? {
+        guard case .failed(let message) = mode else { return nil }
+        return message
+    }
+
+    func toggle(text: String) {
+        switch mode {
+        case .playing:
+            player?.pause()
+            mode = .paused
+        case .paused:
+            player?.play()
+            mode = .playing
+        case .findingMac, .generating:
+            break
+        case .idle, .failed:
+            let currentRequest = UUID()
+            requestID = currentRequest
+            Task { await generateAndPlay(text: text, requestID: currentRequest) }
+        }
+    }
+
+    func stop() {
+        requestID = UUID()
+        player?.stop()
+        player = nil
+        mode = .idle
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    private func startDiscovery() {
+        guard browser == nil else { return }
+        let browser = NWBrowser(for: .bonjour(type: "_cowboyai._tcp", domain: nil), using: .tcp)
+        browser.browseResultsChangedHandler = { [weak self] results, _ in
+            let endpoint = results.first?.endpoint
+            Task { @MainActor [weak self] in
+                self?.endpoint = endpoint
+                self?.isDiscovered = endpoint != nil
+            }
+        }
+        browser.stateUpdateHandler = { [weak self] state in
+            if case .failed = state {
+                Task { @MainActor [weak self] in self?.isDiscovered = false }
+            }
+        }
+        self.browser = browser
+        browser.start(queue: DispatchQueue(label: "savy.cowboyai.natural-voice"))
+    }
+
+    private func generateAndPlay(text: String, requestID: UUID) async {
+        if let cached = try? Data(contentsOf: cacheURL(for: text)) {
+            play(cached, requestID: requestID)
+            return
+        }
+
+        mode = .findingMac
+        for _ in 0..<40 where endpoint == nil {
+            try? await Task.sleep(for: .milliseconds(100))
+            guard self.requestID == requestID else { return }
+        }
+        guard let endpoint else {
+            mode = .failed("Cowboy AI could not find the Mac on this network.")
+            return
+        }
+
+        mode = .generating
+        do {
+            let audio = try await transport.synthesize(text: text, endpoint: endpoint)
+            guard self.requestID == requestID else { return }
+            try? FileManager.default.createDirectory(
+                at: cacheDirectory,
+                withIntermediateDirectories: true
+            )
+            try? audio.write(to: cacheURL(for: text), options: .atomic)
+            play(audio, requestID: requestID)
+        } catch {
+            guard self.requestID == requestID else { return }
+            mode = .failed(error.localizedDescription)
+        }
+    }
+
+    private func play(_ data: Data, requestID: UUID) {
+        guard self.requestID == requestID else { return }
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+            try session.setActive(true)
+            let player = try AVAudioPlayer(data: data)
+            player.delegate = self
+            player.prepareToPlay()
+            player.play()
+            self.player = player
+            mode = .playing
+        } catch {
+            mode = .failed("SAVY could not play the natural voice.")
+        }
+    }
+
+    private var cacheDirectory: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("CowboyNaturalVoice", isDirectory: true)
+    }
+
+    private func cacheURL(for text: String) -> URL {
+        let digest = SHA256.hash(data: Data("\(Self.cacheVersion)|\(text)".utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        return cacheDirectory.appendingPathComponent("\(digest).wav")
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor [weak self] in
+            self?.player = nil
+            self?.mode = .idle
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+    }
+}
+
+private enum CowboyNaturalVoiceError: LocalizedError {
+    case invalidResponse
+    case server(Int, String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse: "Cowboy AI returned unreadable audio."
+        case .server(_, let message): message
+        }
+    }
+}
+
+private final class CowboyNaturalVoiceTransport: @unchecked Sendable {
+    func synthesize(text: String, endpoint: NWEndpoint) async throws -> Data {
+        let body = try JSONEncoder().encode(["text": text])
+        return try await withCheckedThrowingContinuation { continuation in
+            let header = [
+                "POST /v1/voice/synthesize HTTP/1.1",
+                "Host: cowboyai.local",
+                "Accept: audio/wav",
+                "Content-Type: application/json",
+                "Content-Length: \(body.count)",
+                "Connection: close",
+                "",
+                "",
+            ].joined(separator: "\r\n")
+            var request = Data(header.utf8)
+            request.append(body)
+            CowboyNaturalVoiceHTTPExchange(
+                endpoint: endpoint,
+                request: request,
+                continuation: continuation
+            ).start()
+        }
+    }
+}
+
+private final class CowboyNaturalVoiceHTTPExchange: @unchecked Sendable {
+    private let connection: NWConnection
+    private let request: Data
+    private let continuation: CheckedContinuation<Data, Error>
+    private let state = CowboyNaturalVoiceExchangeState()
+    private let queue = DispatchQueue(label: "savy.cowboyai.natural-voice.http")
+
+    init(endpoint: NWEndpoint, request: Data, continuation: CheckedContinuation<Data, Error>) {
+        connection = NWConnection(to: endpoint, using: .tcp)
+        self.request = request
+        self.continuation = continuation
+    }
+
+    func start() {
+        connection.stateUpdateHandler = { [self] connectionState in
+            switch connectionState {
+            case .ready:
+                connection.send(content: request, completion: .contentProcessed { [self] error in
+                    if let error { finish(.failure(error)) }
+                    else { receiveNext() }
+                })
+            case .failed(let error):
+                finish(.failure(error))
+            case .cancelled:
+                finish(.failure(CowboyNaturalVoiceError.invalidResponse))
+            default:
+                break
+            }
+        }
+        connection.start(queue: queue)
+    }
+
+    private func receiveNext() {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1_048_576) { [self] data, _, complete, error in
+            if let data { state.append(data) }
+            if let error {
+                finish(.failure(error))
+            } else if complete {
+                do { finish(.success(try Self.parseHTTPResponse(state.data))) }
+                catch { finish(.failure(error)) }
+            } else {
+                receiveNext()
+            }
+        }
+    }
+
+    private func finish(_ result: Result<Data, Error>) {
+        guard state.markFinished() else { return }
+        connection.stateUpdateHandler = nil
+        connection.cancel()
+        continuation.resume(with: result)
+    }
+
+    private static func parseHTTPResponse(_ data: Data) throws -> Data {
+        let separator = Data("\r\n\r\n".utf8)
+        guard let range = data.range(of: separator),
+              let header = String(data: data[..<range.lowerBound], encoding: .utf8),
+              let statusLine = header.components(separatedBy: "\r\n").first,
+              let status = Int(statusLine.split(separator: " ").dropFirst().first ?? "") else {
+            throw CowboyNaturalVoiceError.invalidResponse
+        }
+        let body = Data(data[range.upperBound...])
+        guard (200..<300).contains(status) else {
+            let detail = (try? JSONSerialization.jsonObject(with: body) as? [String: Any])?["detail"] as? String
+                ?? "Cowboy AI could not create the natural voice."
+            throw CowboyNaturalVoiceError.server(status, detail)
+        }
+        guard body.starts(with: Data("RIFF".utf8)) else {
+            throw CowboyNaturalVoiceError.invalidResponse
+        }
+        return body
+    }
+}
+
+private nonisolated final class CowboyNaturalVoiceExchangeState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var finished = false
+    private var received = Data()
+
+    var data: Data { lock.withLock { received } }
+
+    func append(_ data: Data) {
+        lock.withLock { received.append(data) }
+    }
+
+    func markFinished() -> Bool {
+        lock.withLock {
+            guard !finished else { return false }
+            finished = true
+            return true
+        }
+    }
+}
+
+@MainActor
 final class PersonalAuthorityReviewStore: ObservableObject {
     static let reviewDefaultsKey = "savy.personal-authority-review.20260717.v1"
 
@@ -385,6 +700,7 @@ struct PersonalAuthorityReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var store = PersonalAuthorityReviewStore()
     @StateObject private var speech = PersonalAuthoritySpeechController()
+    @StateObject private var naturalSpeech = CowboyNaturalVoiceController()
     @State private var position = 0
 
     private var current: PersonalAuthorityCandidate? {
@@ -407,6 +723,10 @@ struct PersonalAuthorityReviewView: View {
             .scrollIndicators(.hidden)
         }
         .preferredColorScheme(.light)
+        .onDisappear {
+            naturalSpeech.stop()
+            speech.stop()
+        }
         .accessibilityIdentifier("personalAuthorityReview")
     }
 
@@ -541,56 +861,36 @@ struct PersonalAuthorityReviewView: View {
     private func listenControls(_ candidate: PersonalAuthorityCandidate) -> some View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
-                Text("READ ALOUD")
+                Text("LOCAL NATURAL VOICE")
                     .font(SavyTheme.readingLabel(12))
                     .tracking(1.5)
                     .foregroundStyle(Brand.tan)
 
                 Spacer()
-
-                Menu {
-                    if !speech.bestVoiceOptions.isEmpty {
-                        Section("Best Apple voices installed") {
-                            ForEach(speech.bestVoiceOptions) { voice in
-                                voiceMenuButton(voice)
-                            }
-                        }
-                    } else {
-                        Section("Best Apple voices") {
-                            Text("Install an Enhanced or Premium English voice in iPhone Settings")
-                        }
-                    }
-
-                    Section("Standard voices") {
-                        ForEach(speech.standardVoiceOptions) { voice in
-                            voiceMenuButton(voice)
-                        }
-                    }
-                } label: {
-                    Label(speech.selectedVoiceLabel, systemImage: "person.wave.2.fill")
-                        .font(SavyTheme.readingBody(13))
-                        .foregroundStyle(Brand.card)
-                        .lineLimit(1)
-                }
+                Text(naturalSpeech.statusLabel)
+                    .font(SavyTheme.readingBody(12))
+                    .foregroundStyle(Brand.card)
+                    .multilineTextAlignment(.trailing)
             }
 
             HStack(spacing: 10) {
                 Button {
                     SavyHapticFeedback.selection()
-                    speech.toggle(text: candidate.text)
+                    naturalSpeech.toggle(text: candidate.text)
                 } label: {
-                    Label(speech.buttonTitle, systemImage: speech.buttonSymbol)
+                    Label(naturalSpeech.buttonTitle, systemImage: naturalSpeech.buttonSymbol)
                         .font(SavyTheme.readingTitle(18))
                         .foregroundStyle(SavyTheme.deepNavy)
                         .frame(maxWidth: .infinity, minHeight: 58)
                         .background(Brand.tan, in: RoundedRectangle(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
+                .disabled(naturalSpeech.isWorking)
                 .accessibilityIdentifier("personalAuthorityListen")
 
-                if speech.mode != .idle {
+                if naturalSpeech.canStop {
                     Button {
-                        speech.stop()
+                        naturalSpeech.stop()
                     } label: {
                         Image(systemName: "stop.fill")
                             .font(.system(size: 18, weight: .bold))
@@ -600,6 +900,32 @@ struct PersonalAuthorityReviewView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Stop reading")
+                }
+            }
+
+            if let error = naturalSpeech.errorMessage {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(error)
+                        .font(SavyTheme.readingBody(12))
+                        .foregroundStyle(Brand.card.opacity(0.78))
+
+                    HStack {
+                        Button("Use iPhone voice instead") {
+                            speech.toggle(text: candidate.text)
+                        }
+                        .font(SavyTheme.readingBody(12))
+                        .foregroundStyle(Brand.tan)
+
+                        Spacer()
+
+                        Menu("Choose iPhone voice") {
+                            ForEach(speech.voiceOptions) { voice in
+                                voiceMenuButton(voice)
+                            }
+                        }
+                        .font(SavyTheme.readingBody(12))
+                        .foregroundStyle(Brand.tan)
+                    }
                 }
             }
         }
@@ -706,6 +1032,7 @@ struct PersonalAuthorityReviewView: View {
 
         return Button {
             SavyHapticFeedback.primaryImpact()
+            naturalSpeech.stop()
             speech.stop()
             store.decide(decision, candidate: candidate)
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -743,6 +1070,7 @@ struct PersonalAuthorityReviewView: View {
     private var candidateNavigation: some View {
         HStack {
             Button {
+                naturalSpeech.stop()
                 speech.stop()
                 position = max(position - 1, 0)
             } label: {
@@ -758,6 +1086,7 @@ struct PersonalAuthorityReviewView: View {
             Spacer()
 
             Button {
+                naturalSpeech.stop()
                 speech.stop()
                 position = min(position + 1, max(store.candidates.count - 1, 0))
             } label: {
