@@ -23,6 +23,7 @@ struct ReminderFormView: View {
     @State private var committed = false
     @State private var cancelled = false
     @State private var showSaved = false
+    @FocusState private var focusedSubtaskID: UUID?
 
     private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
 
@@ -317,18 +318,27 @@ struct ReminderFormView: View {
                 HStack {
                     Image(systemName: "circle").foregroundStyle(.secondary)
                     TextField("Step", text: $sub.title)
+                        .focused($focusedSubtaskID, equals: sub.id)
                     Button { r.subtasks.removeAll { $0.id == sub.id } } label: {
                         Image(systemName: "minus.circle.fill")
                     }.foregroundStyle(.secondary)
                 }
             }
-            Button { r.subtasks.append(Subtask()) } label: {
+            Button(action: addSubtask) {
                 Text(addLabel).foregroundStyle(Brand.crimson)
             }
         }
     }
 
     // MARK: - Actions
+
+    private func addSubtask() {
+        let subtask = Subtask()
+        var updatedReminder = r
+        updatedReminder.subtasks.append(subtask)
+        r = updatedReminder
+        DispatchQueue.main.async { focusedSubtaskID = subtask.id }
+    }
 
     private func addTag() {
         let t = tagDraft
