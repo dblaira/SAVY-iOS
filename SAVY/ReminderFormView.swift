@@ -24,6 +24,7 @@ struct ReminderFormView: View {
     @State private var cancelled = false
     @State private var showSaved = false
     @FocusState private var focusedSubtaskID: UUID?
+    @State private var subtasks: [Subtask]
 
     private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
 
@@ -44,6 +45,7 @@ struct ReminderFormView: View {
             if initialKind == .event { base.dueDate = Date() }
         }
         _r = State(initialValue: base)
+        _subtasks = State(initialValue: base.subtasks)
         _hasDate = State(initialValue: base.dueDate != nil)
         _hasDefer = State(initialValue: base.deferDate != nil)
         _date = State(initialValue: Self.dueDateTime(on: base.dueDate ?? Date(), at: base.dueTime))
@@ -121,9 +123,10 @@ struct ReminderFormView: View {
                 .accessibilityIdentifier("Title")
             TextField(EntryFormCopy.whenPrompt, text: whenIAmBinding, axis: .vertical).lineLimit(1...3)
             TextField(EntryFormCopy.donePrompt, text: $r.outcome, axis: .vertical).lineLimit(1...3)
-            subtasksEditor(EntryFormCopy.stepsTitle, addLabel: EntryFormCopy.addStepTitle)
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
         .listRowBackground(Brand.card)
+
+        stepsSection
 
         organizationSection
 
@@ -311,32 +314,35 @@ struct ReminderFormView: View {
         }
     }
 
-    private func subtasksEditor(_ title: String, addLabel: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: "checklist")
-            ForEach($r.subtasks) { $sub in
+    private var stepsSection: some View {
+        Section {
+            ForEach($subtasks) { $sub in
                 HStack {
                     Image(systemName: "circle").foregroundStyle(.secondary)
                     TextField("Step", text: $sub.title)
                         .focused($focusedSubtaskID, equals: sub.id)
-                    Button { r.subtasks.removeAll { $0.id == sub.id } } label: {
+                    Button { subtasks.removeAll { $0.id == sub.id } } label: {
                         Image(systemName: "minus.circle.fill")
-                    }.foregroundStyle(.secondary)
+                    }
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("removeStep")
                 }
             }
+
             Button(action: addSubtask) {
-                Text(addLabel).foregroundStyle(Brand.crimson)
+                Text(EntryFormCopy.addStepTitle).foregroundStyle(Brand.crimson)
             }
+        } header: {
+            sectionHeader(EntryFormCopy.stepsTitle)
         }
+        .listRowBackground(Brand.card)
     }
 
     // MARK: - Actions
 
     private func addSubtask() {
         let subtask = Subtask()
-        var updatedReminder = r
-        updatedReminder.subtasks.append(subtask)
-        r = updatedReminder
+        subtasks.append(subtask)
         DispatchQueue.main.async { focusedSubtaskID = subtask.id }
     }
 
@@ -384,7 +390,7 @@ struct ReminderFormView: View {
         if !r.notes.isEmpty || !r.outcome.isEmpty || !(r.whenIAm ?? "").isEmpty || !r.url.isEmpty { return true }
         if !r.locationName.isEmpty || !r.waitingOn.isEmpty { return true }
         if !r.tags.isEmpty { return true }
-        if r.subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
+        if subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
         if hasDate || hasDefer || pickedImage != nil { return true }
         return false
     }
@@ -398,7 +404,7 @@ struct ReminderFormView: View {
         r.dueTime = hasDate ? date : nil
         r.deferDate = hasDefer ? deferDate : nil
         r.endTime = nil
-        r.subtasks.removeAll { $0.title.trimmingCharacters(in: .whitespaces).isEmpty }
+        r.subtasks = subtasks.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
         if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(r.kind.label)" }
         onSave(r)
     }
