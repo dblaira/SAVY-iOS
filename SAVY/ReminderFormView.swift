@@ -119,10 +119,22 @@ struct ReminderFormView: View {
 
     @ViewBuilder private var unifiedEntrySections: some View {
         Section {
-            TextField(EntryFormCopy.wantPrompt, text: $r.title)
+            // Grow with content so every character stays visible — no mid-word "..." cutoff.
+            TextField(EntryFormCopy.wantPrompt, text: $r.title, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("Title")
-            TextField(EntryFormCopy.whenPrompt, text: whenIAmBinding, axis: .vertical).lineLimit(1...3)
-            TextField(EntryFormCopy.donePrompt, text: $r.outcome, axis: .vertical).lineLimit(1...3)
+            TextField(EntryFormCopy.whenPrompt, text: whenIAmBinding, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("WhenIAm")
+            TextField(EntryFormCopy.donePrompt, text: $r.outcome, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("DoneLooksLike")
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
         .listRowBackground(Brand.card)
 
