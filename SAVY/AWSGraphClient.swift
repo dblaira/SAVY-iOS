@@ -566,12 +566,10 @@ private struct GatewayReminderPayload: Encodable {
     let dueTime: String?
     let urgent: Bool
     let repeatRule: String
-    let earlyReminder: String
     let listName: String
     let flag: Bool
     let priority: String
     let locationName: String
-    let whenMessagingPerson: String
     let kind: String
     let endTime: String?
     let outcome: String?
@@ -595,12 +593,10 @@ private struct GatewayReminderPayload: Encodable {
         case dueDate = "due_date"
         case dueTime = "due_time"
         case repeatRule = "repeat_rule"
-        case earlyReminder = "early_reminder"
         case listName = "list_name"
         case flag
         case priority
         case locationName = "location_name"
-        case whenMessagingPerson = "when_messaging_person"
         case endTime = "end_time"
         case deferDate = "defer_date"
         case waitingOn = "waiting_on"
@@ -619,12 +615,10 @@ private struct GatewayReminderPayload: Encodable {
         dueTime = GatewayReminderDates.timeOnly(reminder.dueTime)
         urgent = reminder.urgent
         repeatRule = reminder.repeatRule.rawValue
-        earlyReminder = reminder.earlyReminder.rawValue
         listName = reminder.listName
         flag = reminder.flag
         priority = reminder.priority.rawValue
         locationName = reminder.locationName
-        whenMessagingPerson = reminder.whenMessagingPerson
         kind = reminder.kind.rawValue
         endTime = GatewayReminderDates.timeOnly(reminder.endTime)
         outcome = reminder.outcome.nilIfEmpty
@@ -661,12 +655,10 @@ private struct GatewayReminderRow: Decodable {
     let dueTime: String?
     let urgent: Bool
     let repeatRule: String
-    let earlyReminder: String
     let listName: String
     let flag: Bool
     let priority: String
     let locationName: String
-    let whenMessagingPerson: String
     let kind: String
     let endTime: String?
     let outcome: String?
@@ -691,12 +683,10 @@ private struct GatewayReminderRow: Decodable {
         case dueDate = "due_date"
         case dueTime = "due_time"
         case repeatRule = "repeat_rule"
-        case earlyReminder = "early_reminder"
         case listName = "list_name"
         case flag
         case priority
         case locationName = "location_name"
-        case whenMessagingPerson = "when_messaging_person"
         case endTime = "end_time"
         case deferDate = "defer_date"
         case waitingOn = "waiting_on"
@@ -720,7 +710,6 @@ private struct GatewayReminderRow: Decodable {
             endTime: GatewayReminderDates.parseTimeOnly(endTime),
             urgent: urgent,
             repeatRule: RepeatRule(rawValue: repeatRule) ?? .none,
-            earlyReminder: EarlyReminder(rawValue: earlyReminder) ?? .none,
             listName: listName,
             flag: flag,
             priority: Priority(rawValue: priority) ?? .none,
@@ -731,7 +720,6 @@ private struct GatewayReminderRow: Decodable {
             deferDate: GatewayReminderDates.parseDateOnly(deferDate),
             waitingOn: waitingOn ?? "",
             locationName: locationName,
-            whenMessagingPerson: whenMessagingPerson,
             seededFromTemplateID: seededFromTemplateID,
             pinned: pinned,
             upNextOrder: upNextOrder,

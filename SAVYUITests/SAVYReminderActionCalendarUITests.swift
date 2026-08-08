@@ -33,12 +33,19 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         center.press(forDuration: 0.2, thenDragTo: center.withOffset(kind.dragOffset))
     }
 
+    private func titleField() -> XCUIElement {
+        // Vertical TextFields surface as text views; keep textFields as a fallback.
+        let byId = app.descendants(matching: .any)["Title"].firstMatch
+        if byId.exists { return byId }
+        return app.textFields["Title"].firstMatch
+    }
+
     private func createItem(_ kind: ComposerKind, title: String) {
         openComposer(kind)
-        let titleField = app.textFields["Title"]
-        XCTAssertTrue(titleField.waitForExistence(timeout: 10), "Entry form did not open")
-        titleField.tap()
-        titleField.typeText(title)
+        let field = titleField()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "Entry form did not open")
+        field.tap()
+        field.typeText(title)
 
         if kind == .calendar {
             enableDueDateIfNeeded()
@@ -69,7 +76,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let item = app.staticTexts[title].firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 10), "\(title) missing before reopen")
         item.tap()
-        XCTAssertTrue(app.textFields["Title"].waitForExistence(timeout: 10), "Form did not reopen for \(title)")
+        XCTAssertTrue(titleField().waitForExistence(timeout: 10), "Form did not reopen for \(title)")
         app.buttons["Save"].tap()
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) missing after reopen/save")
     }
@@ -251,6 +258,74 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertFalse(rate.label.isEmpty, "Voice speed value did not update")
     }
 
+    func testSavySendsDelegationToCowboyAIAndShowsAnswerInsideSavy() {
+        app.terminate()
+        app.launchArguments = [
+            "SAVY_UI_TEST_UNLOCKED",
+            "SAVY_UI_TEST_RESET_REMINDERS",
+            "SAVY_UI_TEST_COWBOY_STUB",
+        ]
+        app.launch()
+        dismissNotificationPrompt()
+        openComposer(.action)
+
+        let title = titleField()
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "Entry form did not open")
+        title.tap()
+        title.typeText("Use SAVY every day")
+
+        let ask = app.buttons["askCowboyAI"].firstMatch
+        for _ in 0..<4 where !ask.isHittable { app.swipeUp() }
+        XCTAssertTrue(ask.waitForExistence(timeout: 10), "Ask CowboyAI action missing")
+        ask.tap()
+
+        let answer = app.descendants(matching: .any)["cowboyAIAnswer"].firstMatch
+        XCTAssertTrue(answer.waitForExistence(timeout: 10), "CowboyAI answer did not return inside SAVY")
+        XCTAssertTrue(app.staticTexts["Take the first visible step."].exists)
+        XCTAssertTrue(
+            app.staticTexts["Open the project and complete its smallest unfinished action."].exists
+        )
+
+        let keep = app.buttons["keepCowboyAIAnswer"].firstMatch
+        for _ in 0..<4 where !keep.isHittable { app.swipeUp() }
+        XCTAssertTrue(keep.waitForExistence(timeout: 5), "Keep in notes action missing")
+        keep.tap()
+        XCTAssertTrue(app.buttons["keepCowboyAIAnswer"].label.contains("Kept in notes"))
+    }
+
+    func testLiveSavyReceivesAuthorityHubAnswer() throws {
+        guard ProcessInfo.processInfo.environment["SAVY_LIVE_COWBOY_TEST"] == "1" else {
+            throw XCTSkip("Run explicitly while the private CowboyAI Authority Hub is reachable")
+        }
+
+        app.terminate()
+        app.launchArguments = [
+            "SAVY_UI_TEST_UNLOCKED",
+            "SAVY_UI_TEST_RESET_REMINDERS",
+        ]
+        app.launch()
+        dismissNotificationPrompt()
+        openComposer(.action)
+
+        let title = titleField()
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "Entry form did not open")
+        title.tap()
+        title.typeText("Use SAVY every day because it works")
+
+        let ask = app.buttons["askCowboyAI"].firstMatch
+        for _ in 0..<4 where !ask.isHittable { app.swipeUp() }
+        XCTAssertTrue(ask.waitForExistence(timeout: 10), "Ask CowboyAI action missing")
+        ask.tap()
+
+        let answer = app.descendants(matching: .any)["cowboyAIAnswer"].firstMatch
+        XCTAssertTrue(
+            answer.waitForExistence(timeout: 300),
+            "The live CowboyAI Authority Hub did not return an answer inside SAVY"
+        )
+        XCTAssertTrue(app.staticTexts["What changes now"].exists)
+        XCTAssertFalse(app.buttons["keepCowboyAIAnswer"].label.isEmpty)
+    }
+
     func testActionCreateReopenSwipePinDoneDelete() {
         let title = "UI Test Action \(Int(Date().timeIntervalSince1970))"
         createItem(.action, title: title)
@@ -270,7 +345,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let today = Calendar.current.component(.day, from: Date())
         XCTAssertTrue(app.buttons["calendarDay-\(today)"].label.contains("scheduled items"))
         event.tap()
-        XCTAssertTrue(app.textFields["Title"].waitForExistence(timeout: 10), "Calendar event did not reopen")
+        XCTAssertTrue(titleField().waitForExistence(timeout: 10), "Calendar event did not reopen")
         app.buttons["Save"].tap()
         let savedEvent = elementLabeled(title)
         XCTAssertTrue(savedEvent.waitForExistence(timeout: 10), "Calendar event missing after reopen/save")

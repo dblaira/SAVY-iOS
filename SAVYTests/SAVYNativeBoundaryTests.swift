@@ -3,6 +3,57 @@ import UIKit
 @testable import SAVY
 
 final class SAVYNativeBoundaryTests: XCTestCase {
+    func testCowboyAIRequestPreservesSavyWordsAndAuthorityBoundary() throws {
+        let exactWords = """
+        What do I want?
+        Use SAVY every day.
+
+        When I am...I like to
+        Sharpen the plan before I work.
+
+        Done looks like...
+        CowboyAI returns the next action inside SAVY.
+        """
+        let request = SavyCowboyAIRequest(
+            requestID: "request-1",
+            conversationID: "conversation-1",
+            rawWords: exactWords
+        )
+
+        let data = try JSONEncoder().encode(request)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        XCTAssertEqual(json["raw_words"] as? String, exactWords)
+        XCTAssertEqual(json["current_app_surface"] as? String, "savy_ios")
+        XCTAssertEqual(json["requested_operation"] as? String, "reason")
+        XCTAssertEqual(json["attachments"] as? [String], [])
+        XCTAssertNil(json["adam_directly_asserted"], "A SAVY request must not approve authority")
+    }
+
+    func testCowboyAIAnswerDecodesUsefulResultAndReceipt() throws {
+        let data = """
+        {
+          "request_id": "request-1",
+          "conversation_id": "conversation-1",
+          "adam_facing_story": {
+            "story": "The work is ready to begin.",
+            "why_it_matters": "The next action is visible.",
+            "what_changes_now": "Open SAVY and start the first step."
+          },
+          "final_answer": "Complete the smallest unfinished action.",
+          "route": "self_hosted_graph_plus_qwen",
+          "graph_revision": "revision-1"
+        }
+        """.data(using: .utf8)!
+
+        let answer = try JSONDecoder().decode(SavyCowboyAIAnswer.self, from: data)
+
+        XCTAssertEqual(answer.whatChangesNow, "Open SAVY and start the first step.")
+        XCTAssertEqual(answer.finalAnswer, "Complete the smallest unfinished action.")
+        XCTAssertTrue(answer.noteText.contains(answer.finalAnswer))
+        XCTAssertEqual(answer.graphRevision, "revision-1")
+    }
+
     func testPersonalAuthorityFormatterPreservesDelegationHierarchy() {
         let blocks = PersonalAuthorityTextFormatter.blocks(from: """
         What I want?

@@ -14,21 +14,28 @@ struct ReminderFormView: View {
 
     @State private var r: Reminder
     @State private var hasDate: Bool
-    @State private var hasTime: Bool
     @State private var hasDefer: Bool
-    @State private var hasEnd: Bool
     @State private var date: Date
-    @State private var time: Date
     @State private var deferDate: Date
-    @State private var endTime: Date
     @State private var tagDraft = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var pickedImage: UIImage?
     @State private var committed = false
     @State private var cancelled = false
     @State private var showSaved = false
+    @State private var showCowboyAnswer = false
+    @StateObject private var cowboyAI = SavyCowboyAIController()
+    @FocusState private var focusedSubtaskID: UUID?
+    @State private var subtasks: [Subtask]
 
     private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
+
+    private static func dueDateTime(on date: Date, at time: Date? = nil) -> Date {
+        let calendar = Calendar.current
+        let defaultTime = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: time ?? defaultTime)
+        return calendar.date(bySettingHour: timeComponents.hour ?? 12, minute: timeComponents.minute ?? 0, second: 0, of: date) ?? date
+    }
 
     init(initialKind: ReminderKind = .reminder, existing: Reminder?, existingTags: [String] = [], onSave: @escaping (Reminder) -> Void) {
         self.existing = existing
@@ -40,14 +47,11 @@ struct ReminderFormView: View {
             if initialKind == .event { base.dueDate = Date() }
         }
         _r = State(initialValue: base)
+        _subtasks = State(initialValue: base.subtasks)
         _hasDate = State(initialValue: base.dueDate != nil)
-        _hasTime = State(initialValue: base.dueTime != nil)
         _hasDefer = State(initialValue: base.deferDate != nil)
-        _hasEnd = State(initialValue: base.endTime != nil)
-        _date = State(initialValue: base.dueDate ?? Date())
-        _time = State(initialValue: base.dueTime ?? Date())
+        _date = State(initialValue: Self.dueDateTime(on: base.dueDate ?? Date(), at: base.dueTime))
         _deferDate = State(initialValue: base.deferDate ?? Date())
-        _endTime = State(initialValue: base.endTime ?? base.dueTime ?? Date())
         _pickedImage = State(initialValue: LocalImageStore.load(base.imageLocalPath))
     }
 
@@ -94,6 +98,13 @@ struct ReminderFormView: View {
             .onDisappear { autosaveIfNeeded() }
         }
         .overlay { if showSaved { savedToast } }
+        .sheet(isPresented: $showCowboyAnswer, onDismiss: cowboyAI.clearAnswer) {
+            if let answer = cowboyAI.answer {
+                SavyCowboyAIAnswerView(answer: answer) {
+                    keepCowboyAIAnswerInNotes(answer)
+                }
+            }
+        }
         .preferredColorScheme(.light)
     }
 
@@ -117,12 +128,57 @@ struct ReminderFormView: View {
 
     @ViewBuilder private var unifiedEntrySections: some View {
         Section {
-            TextField(EntryFormCopy.wantPrompt, text: $r.title)
+            // Grow with content so every character stays visible — no mid-word "..." cutoff.
+            TextField(EntryFormCopy.wantPrompt, text: $r.title, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("Title")
-            TextField(EntryFormCopy.whenPrompt, text: whenIAmBinding, axis: .vertical).lineLimit(1...3)
-            TextField(EntryFormCopy.donePrompt, text: $r.outcome, axis: .vertical).lineLimit(1...3)
-            subtasksEditor(EntryFormCopy.stepsTitle, addLabel: EntryFormCopy.addStepTitle)
+            TextField(EntryFormCopy.whenPrompt, text: whenIAmBinding, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("WhenIAm")
+            TextField(EntryFormCopy.donePrompt, text: $r.outcome, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("DoneLooksLike")
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
+        .listRowBackground(Brand.card)
+
+        Section {
+            Button {
+                Task {
+                    await cowboyAI.ask(rawWords: cowboyAIRawWords)
+                    showCowboyAnswer = cowboyAI.answer != nil
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "bolt.fill")
+                    Text(cowboyAI.isAsking ? "Asking CowboyAI…" : "Ask CowboyAI")
+                    Spacer()
+                    if cowboyAI.isAsking { ProgressView() }
+                }
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Brand.card)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .padding(.horizontal, 4)
+                .background(SavyTheme.deepNavy, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .disabled(cowboyAI.isAsking || !hasSpeakableEntryText)
+            .accessibilityIdentifier("askCowboyAI")
+
+            if let error = cowboyAI.errorMessage {
+                Text(error)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Brand.darkRed)
+                    .accessibilityIdentifier("cowboyAIError")
+            }
+        } header: {
+            sectionHeader("Use it")
+        }
         .listRowBackground(Brand.card)
 
         if hasSpeakableEntryText {
@@ -138,29 +194,21 @@ struct ReminderFormView: View {
             .listRowBackground(Color.clear)
         }
 
-        patternSection
+        stepsSection
+
+        organizationSection
 
         Section {
             priorityGroup
-            effortGroup
             energyGroup
         } header: { sectionHeader(EntryFormCopy.chooseHeader) }
         .listRowBackground(Brand.card)
 
         Section {
-            dateGroup("Due", icon: "calendar", isOn: $hasDate, date: $date)
-            dateGroup("Start / defer", icon: "calendar.badge.clock", isOn: $hasDefer, date: $deferDate)
+            dateGroup("Start", icon: "calendar.badge.clock", isOn: $hasDefer, date: $deferDate)
+            dueDateTimeGroup
             repeatGroup
-            timeGroup("Nudge", icon: "bell", isOn: $hasTime, time: $time)
-            timeGroup("End", icon: "clock.badge.checkmark", isOn: $hasEnd, time: $endTime)
         } header: { sectionHeader(EntryFormCopy.scheduleHeader) }
-        .listRowBackground(Brand.card)
-
-        Section {
-            listGroup
-            Toggle(isOn: $r.flag) { Label("Flag", systemImage: "flag") }
-            tagsEditor
-        } header: { sectionHeader("Organize") }
         .listRowBackground(Brand.card)
 
         Section {
@@ -216,6 +264,29 @@ struct ReminderFormView: View {
         !speakableEntryText.isEmpty
     }
 
+    private var cowboyAIRawWords: String {
+        [
+            (EntryFormCopy.wantPrompt, r.title),
+            (EntryFormCopy.whenPrompt, r.whenIAm ?? ""),
+            (EntryFormCopy.donePrompt, r.outcome),
+            ("Notes", r.notes),
+        ]
+        .compactMap { label, words in
+            let exactWords = words.trimmingCharacters(in: .whitespacesAndNewlines)
+            return exactWords.isEmpty ? nil : "\(label)\n\(exactWords)"
+        }
+        .joined(separator: "\n\n")
+    }
+
+    private func keepCowboyAIAnswerInNotes(_ answer: SavyCowboyAIAnswer) {
+        let block = "CowboyAI\n\(answer.noteText)"
+        if r.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            r.notes = block
+        } else if !r.notes.contains(block) {
+            r.notes += "\n\n\(block)"
+        }
+    }
+
     private var imageRow: some View {
         let hasPickedImage = pickedImage != nil
 
@@ -244,13 +315,6 @@ struct ReminderFormView: View {
         }
     }
 
-    private var messagingRow: some View {
-        HStack {
-            Image(systemName: "message").foregroundStyle(.secondary)
-            TextField("When messaging a person", text: $r.whenMessagingPerson)
-        }
-    }
-
     private func dateGroup(_ title: String, icon: String, isOn: Binding<Bool>, date: Binding<Date>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Toggle(isOn: isOn) { Label(title, systemImage: icon) }
@@ -259,11 +323,14 @@ struct ReminderFormView: View {
         }
     }
 
-    private func timeGroup(_ title: String, icon: String, isOn: Binding<Bool>, time: Binding<Date>) -> some View {
+    private var dueDateTimeGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: isOn) { Label(title, systemImage: icon) }
-            DatePicker(title, selection: time, displayedComponents: .hourAndMinute)
-                .labelsHidden().disabled(!isOn.wrappedValue).opacity(isOn.wrappedValue ? 1 : 0.45)
+            Toggle(isOn: $hasDate) { Label("Due", systemImage: "calendar") }
+            DatePicker("Due", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden().disabled(!hasDate).opacity(hasDate ? 1 : 0.45)
+        }
+        .onChange(of: hasDate) { _, isEnabled in
+            if isEnabled { date = Self.dueDateTime(on: date) }
         }
     }
 
@@ -283,22 +350,18 @@ struct ReminderFormView: View {
     private var repeatGroup: some View {
         enumMenu("Repeat", icon: "repeat", selection: $r.repeatRule) { $0.label }
     }
-    private var earlyReminderGroup: some View {
-        enumMenu("Early Reminder", icon: "bell", selection: $r.earlyReminder) { $0.label }
-    }
     private var priorityGroup: some View {
         enumMenu("Priority", icon: "exclamationmark.3", selection: $r.priority) { $0.label }
-    }
-    private var effortGroup: some View {
-        enumMenu("Effort", icon: "timer", selection: $r.effort) { $0.label }
     }
     private var energyGroup: some View {
         enumMenu("Energy", icon: "bolt", selection: $r.energy) { $0.label }
     }
-    /// Adam's 8-step success architecture — its own cream section, a clean dropdown.
-    private var patternSection: some View {
+    /// One organizing area: Pattern first, then Lift and Tags at the same hierarchy level.
+    private var organizationSection: some View {
         Section {
             enumMenu(EntryFormCopy.patternTitle, icon: "list.number", selection: $r.context) { $0.label }
+            listGroup
+            tagsEditor
         } header: { sectionHeader(EntryFormCopy.patternHeader) }
         .listRowBackground(Brand.card)
     }
@@ -358,25 +421,37 @@ struct ReminderFormView: View {
         }
     }
 
-    private func subtasksEditor(_ title: String, addLabel: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: "checklist")
-            ForEach($r.subtasks) { $sub in
+    private var stepsSection: some View {
+        Section {
+            ForEach($subtasks) { $sub in
                 HStack {
                     Image(systemName: "circle").foregroundStyle(.secondary)
                     TextField("Step", text: $sub.title)
-                    Button { r.subtasks.removeAll { $0.id == sub.id } } label: {
+                        .focused($focusedSubtaskID, equals: sub.id)
+                    Button { subtasks.removeAll { $0.id == sub.id } } label: {
                         Image(systemName: "minus.circle.fill")
-                    }.foregroundStyle(.secondary)
+                    }
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("removeStep")
                 }
             }
-            Button { r.subtasks.append(Subtask()) } label: {
-                Text(addLabel).foregroundStyle(Brand.crimson)
+
+            Button(action: addSubtask) {
+                Text(EntryFormCopy.addStepTitle).foregroundStyle(Brand.crimson)
             }
+        } header: {
+            sectionHeader(EntryFormCopy.stepsTitle)
         }
+        .listRowBackground(Brand.card)
     }
 
     // MARK: - Actions
+
+    private func addSubtask() {
+        let subtask = Subtask()
+        subtasks.append(subtask)
+        DispatchQueue.main.async { focusedSubtaskID = subtask.id }
+    }
 
     private func addTag() {
         let t = tagDraft
@@ -432,8 +507,8 @@ struct ReminderFormView: View {
         if !r.notes.isEmpty || !r.outcome.isEmpty || !(r.whenIAm ?? "").isEmpty || !r.url.isEmpty { return true }
         if !r.locationName.isEmpty || !r.waitingOn.isEmpty { return true }
         if !r.tags.isEmpty { return true }
-        if r.subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
-        if hasDate || hasTime || hasDefer || hasEnd || pickedImage != nil { return true }
+        if subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
+        if hasDate || hasDefer || pickedImage != nil { return true }
         return false
     }
 
@@ -443,10 +518,10 @@ struct ReminderFormView: View {
             r.imageLocalPath = LocalImageStore.save(pickedImage)
         }
         r.dueDate = hasDate ? date : nil
-        r.dueTime = hasTime ? time : nil
+        r.dueTime = hasDate ? date : nil
         r.deferDate = hasDefer ? deferDate : nil
-        r.endTime = hasEnd ? endTime : nil
-        r.subtasks.removeAll { $0.title.trimmingCharacters(in: .whitespaces).isEmpty }
+        r.endTime = nil
+        r.subtasks = subtasks.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
         if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(r.kind.label)" }
         onSave(r)
     }

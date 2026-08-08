@@ -36,37 +36,6 @@ enum RepeatRule: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum EarlyReminder: String, Codable, CaseIterable, Identifiable {
-    case none
-    case m5 = "5m"
-    case m10 = "10m"
-    case m30 = "30m"
-    case h1 = "1h"
-    case d1 = "1d"
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .none: return "None"
-        case .m5: return "5 minutes before"
-        case .m10: return "10 minutes before"
-        case .m30: return "30 minutes before"
-        case .h1: return "1 hour before"
-        case .d1: return "1 day before"
-        }
-    }
-    /// Seconds to subtract from the fire date.
-    var lead: TimeInterval {
-        switch self {
-        case .none: return 0
-        case .m5: return 300
-        case .m10: return 600
-        case .m30: return 1800
-        case .h1: return 3600
-        case .d1: return 86400
-        }
-    }
-}
-
 enum ReminderStatus: String, Codable { case active, completed, deleted }
 
 /// What an item *is*: a timed nudge, a thing you do, or a time block. One model, three faces.
@@ -155,7 +124,6 @@ struct Reminder: Identifiable, Codable, Equatable {
     var endTime: Date? = nil                    // event end (time-only meaning); local-first for now
     var urgent: Bool = false
     var repeatRule: RepeatRule = .none
-    var earlyReminder: EarlyReminder = .none
     // Organization
     var listName: String = ""           // no list until the user picks one
     var flag: Bool = false
@@ -170,7 +138,6 @@ struct Reminder: Identifiable, Codable, Equatable {
     var waitingOn: String = ""
     // Places & People
     var locationName: String = ""
-    var whenMessagingPerson: String = ""
     // Graph + lifecycle
     var seededFromTemplateID: String? = nil
     var pinned: Bool = false                    // sorts to the top of the list
