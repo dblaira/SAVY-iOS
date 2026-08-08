@@ -301,7 +301,6 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         app.terminate()
         app.launchArguments = [
             "SAVY_UI_TEST_UNLOCKED",
-            "SAVY_UI_TEST_RESET_REMINDERS",
         ]
         app.launch()
         dismissNotificationPrompt()
