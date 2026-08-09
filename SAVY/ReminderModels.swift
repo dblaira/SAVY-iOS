@@ -134,6 +134,8 @@ struct Reminder: Identifiable, Codable, Equatable {
     var effort: Effort = .none
     var energy: Energy = .none
     var context: SuccessStep = .none      // the Adam Pattern step this item advances (DB column: context)
+    var marksClearSignOfSuccess: Bool? = nil
+    var marksCompounding: Bool? = nil
     var deferDate: Date? = nil
     var waitingOn: String = ""
     // Places & People
@@ -152,6 +154,16 @@ struct Reminder: Identifiable, Codable, Equatable {
 }
 
 extension Reminder {
+    /// Independent success markers. The legacy single Pattern value still counts so existing
+    /// entries keep their meaning, while a new entry can now carry both markers at once.
+    var isClearSignOfSuccess: Bool {
+        (marksClearSignOfSuccess ?? false) || context == .clearSign
+    }
+
+    var isCompounding: Bool {
+        (marksCompounding ?? false) || context == .compound
+    }
+
     /// The concrete moment a notification should fire, if this reminder carries a date and/or time.
     var fireDate: Date? {
         if dueDate == nil && dueTime == nil { return nil }

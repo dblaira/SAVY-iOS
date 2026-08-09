@@ -20,6 +20,12 @@ struct TechnicalCaptureExactWords: Codable, Equatable, Sendable {
     var want: String
     var whenIAm: String
     var doneLooksLike: String
+
+    enum CodingKeys: String, CodingKey {
+        case want
+        case whenIAm = "when_i_am"
+        case doneLooksLike = "done_looks_like"
+    }
 }
 
 struct TechnicalCaptureFlags: Codable, Equatable, Sendable {
@@ -39,6 +45,18 @@ struct TechnicalCaptureFlags: Codable, Equatable, Sendable {
             isClearSignOfSuccess: successStep == .clearSign,
             isCompound: successStep == .compound
         )
+    }
+
+    init(reminder: Reminder) {
+        self.init(
+            isClearSignOfSuccess: reminder.isClearSignOfSuccess,
+            isCompound: reminder.isCompounding
+        )
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case isClearSignOfSuccess = "clear_sign"
+        case isCompound = "compound"
     }
 }
 
@@ -63,7 +81,7 @@ struct TechnicalCaptureMetadata: Codable, Equatable, Sendable {
         self.kind = reminder.kind
         self.priority = reminder.priority
         self.energy = reminder.energy
-        self.flags = TechnicalCaptureFlags(successStep: reminder.context)
+        self.flags = TechnicalCaptureFlags(reminder: reminder)
         self.listName = reminder.listName
         self.pinned = reminder.pinned
         self.urgent = reminder.urgent

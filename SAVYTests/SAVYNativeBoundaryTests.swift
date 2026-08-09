@@ -178,6 +178,86 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertTrue(flags.isCompound)
     }
 
+    func testReminderCreatesOneCaptureWithBothSuccessMarkers() {
+        var reminder = Reminder(
+            kind: .action,
+            title: "Notice what already works.",
+            whenIAm: "Reviewing recent entries.",
+            outcome: "The pattern is obvious."
+        )
+        reminder.marksClearSignOfSuccess = true
+        reminder.marksCompounding = true
+
+        let capture = TechnicalCapture.from(reminder: reminder)
+
+        XCTAssertTrue(capture.flags.isClearSignOfSuccess)
+        XCTAssertTrue(capture.flags.isCompound)
+    }
+
+    func testLegacyReminderCacheStillDecodesWithoutIndependentSuccessMarkers() throws {
+        let json = """
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "kind": "action",
+          "title": "Existing clear sign",
+          "notes": "",
+          "url": "",
+          "urgent": false,
+          "repeatRule": "none",
+          "listName": "",
+          "flag": false,
+          "priority": "none",
+          "outcome": "",
+          "effort": "none",
+          "energy": "none",
+          "context": "clearSign",
+          "waitingOn": "",
+          "locationName": "",
+          "pinned": false,
+          "tags": [],
+          "subtasks": [],
+          "status": "active",
+          "createdAt": "2026-08-08T12:00:00Z",
+          "updatedAt": "2026-08-08T12:00:00Z",
+          "needsSync": false
+        }
+        """
+
+        let reminder = try JSONDecoder.recall.decode(Reminder.self, from: Data(json.utf8))
+
+        XCTAssertTrue(reminder.isClearSignOfSuccess)
+        XCTAssertFalse(reminder.isCompounding)
+    }
+
+    func testCandidatePayloadUsesCowboyAIGatewayFieldNames() throws {
+        var reminder = Reminder(
+            kind: .action,
+            title: "Use SAVY every day.",
+            whenIAm: "Closing loops at the end of the day.",
+            outcome: "CowboyAI returns the next action inside SAVY."
+        )
+        reminder.marksClearSignOfSuccess = true
+        reminder.marksCompounding = true
+        let payload = CowboyCandidateIntakePayload(
+            requestID: "savy-capture-contract",
+            capture: TechnicalCapture.from(reminder: reminder),
+            createdAt: Date(timeIntervalSince1970: 0)
+        )
+
+        let data = try JSONEncoder.recall.encode(payload)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let exactWords = try XCTUnwrap(json["exact_words"] as? [String: Any])
+        let metadata = try XCTUnwrap(json["metadata"] as? [String: Any])
+        let flags = try XCTUnwrap(metadata["flags"] as? [String: Any])
+
+        XCTAssertEqual(exactWords["when_i_am"] as? String, "Closing loops at the end of the day.")
+        XCTAssertEqual(exactWords["done_looks_like"] as? String, "CowboyAI returns the next action inside SAVY.")
+        XCTAssertNil(exactWords["whenIAm"])
+        XCTAssertNil(exactWords["doneLooksLike"])
+        XCTAssertEqual(flags["clear_sign"] as? Bool, true)
+        XCTAssertEqual(flags["compound"] as? Bool, true)
+    }
+
     func testTechnicalCapturePromptPreservesExactWordsAndStableMetadataOrder() {
         var reminder = Reminder(
             kind: .action,

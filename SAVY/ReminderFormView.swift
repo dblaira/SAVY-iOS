@@ -360,11 +360,28 @@ struct ReminderFormView: View {
     private var organizationSection: some View {
         Section {
             enumMenu(EntryFormCopy.patternTitle, icon: "list.number", selection: $r.context) { $0.label }
+            Toggle("Clear Signs of Success", isOn: clearSignOfSuccessBinding)
+            Toggle("Compounding", isOn: compoundingBinding)
             listGroup
             tagsEditor
         } header: { sectionHeader(EntryFormCopy.patternHeader) }
         .listRowBackground(Brand.card)
     }
+
+    private var clearSignOfSuccessBinding: Binding<Bool> {
+        Binding(
+            get: { r.isClearSignOfSuccess },
+            set: { r.marksClearSignOfSuccess = $0 }
+        )
+    }
+
+    private var compoundingBinding: Binding<Bool> {
+        Binding(
+            get: { r.isCompounding },
+            set: { r.marksCompounding = $0 }
+        )
+    }
+
     private var listGroup: some View {
         Picker(selection: $r.listName) {
             Text("None").tag("")
