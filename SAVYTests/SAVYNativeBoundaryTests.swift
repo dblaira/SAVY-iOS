@@ -721,15 +721,15 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.floatingCaptureCenterAboveBottom, 96)
         XCTAssertEqual(RootHomeLayout.radialMenuBottomPadding, 138)
         XCTAssertEqual(RootHomeLayout.heroTopPadding, 0)
-        XCTAssertEqual(RootHomeLayout.heroHeight, 248)
+        XCTAssertEqual(RootHomeLayout.heroHeight, 204)
         XCTAssertEqual(RootHomeLayout.heroContentTopPadding, 34)
-        XCTAssertEqual(RootHomeLayout.heroWordmarkEyebrowSpacing, 10)
         XCTAssertEqual(RootHomeLayout.heroDividerHeight, 3)
         XCTAssertEqual(RootHomeLayout.heroWordmarkFontSize, 64)
-        XCTAssertEqual(RootHomeLayout.carouselTopPadding, 20)
         XCTAssertEqual(RootHomeLayout.carouselHorizontalPadding, 2)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
-        XCTAssertEqual(RootHomeLayout.carouselCardHeight, 236)
+        XCTAssertEqual(RootHomeLayout.carouselCardHeight, 182)
+        XCTAssertEqual(RootHomeLayout.contentSectionMinHeight, 220)
+        XCTAssertEqual(RootHomeLayout.contentSectionDividerHeight, 3)
         XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 96)
         XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 14)
         XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 36)
@@ -737,7 +737,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.accountMenuTopPadding, 88)
         XCTAssertEqual(RootHomeLayout.radialMenuButtonSize, 56)
         XCTAssertEqual(RootHomeLayout.radialMenuIconSize, 20)
-        XCTAssertEqual(RootHomeLayout.latestSectionBandHeight, 92)
+        XCTAssertEqual(RootHomeLayout.latestSectionBandHeight, 80)
         XCTAssertEqual(RootHomeLayout.pinnedEntryRowHeight, 96)
         XCTAssertEqual(RootHomeLayout.pinnedEntryTrailingInset, 17)
         XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 24)
@@ -748,16 +748,16 @@ final class SAVYNativeBoundaryTests: XCTestCase {
             limit: 4
         ).count, 4)
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.title), [
-            "News Channel",
-            "Field Essays",
+            "Connection",
             "Adam's Ontology",
-            "Connection"
+            "Field Essays",
+            "News Channel"
         ])
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.sectionID), [
-            "news-channel",
-            "field-essays",
+            "beliefs",
             "ontology",
-            "beliefs"
+            "field-essays",
+            "news-channel"
         ])
     }
 

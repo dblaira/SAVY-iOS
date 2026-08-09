@@ -8,21 +8,20 @@ enum RootHomeLayout {
     )
     static let horizontalPadding: CGFloat = 24
     static let heroTopPadding: CGFloat = 0
-    static let heroHeight: CGFloat = 248
+    static let heroHeight: CGFloat = 204
     static let heroContentTopPadding: CGFloat = 34
-    static let heroWordmarkEyebrowSpacing: CGFloat = 10
     static let heroDividerHeight: CGFloat = 3
     static let heroWordmarkFontSize: CGFloat = 64
-    static let heroEyebrowFontSize: CGFloat = 20
-    static let carouselTopPadding: CGFloat = 20
     static let carouselHorizontalPadding: CGFloat = 2
     static let carouselCardWidth: CGFloat = 282
-    static let carouselCardHeight: CGFloat = 236
+    static let carouselCardHeight: CGFloat = 182
     static let carouselCardTitleFontSize: CGFloat = 24
-    static let latestSectionBandHeight: CGFloat = 92
+    static let latestSectionBandHeight: CGFloat = 80
     static let pinnedEntryRowHeight: CGFloat = 96
     static let pinnedEntryTrailingInset: CGFloat = 17
     static let pinnedEntryFontSize: CGFloat = 24
+    static let contentSectionMinHeight: CGFloat = 220
+    static let contentSectionDividerHeight: CGFloat = 3
     static let bottomNavigationHeight: CGFloat = 96
     /// Navy band painted above the tan bar (FAB overflow zone); does not add layout height.
     static let bottomNavNavyRiserHeight: CGFloat = 44
@@ -217,10 +216,9 @@ struct EditorialHomeView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header(topInset: proxy.safeAreaInsets.top)
 
-                    leverageCarousel
-                        .padding(.top, RootHomeLayout.carouselTopPadding)
+                    greatestLeverageSection
 
-                    latestSection
+                    homeContentSections
 
                     contentSourceBand
                         .padding(.horizontal, RootHomeLayout.horizontalPadding)
@@ -228,6 +226,7 @@ struct EditorialHomeView: View {
                 }
                 .padding(.bottom, 40)
             }
+            .accessibilityIdentifier("editorialHomeScroll")
             .ignoresSafeArea(edges: .top)
             .refreshable {
                 await leverageStore.refresh()
@@ -289,17 +288,11 @@ struct EditorialHomeView: View {
 
     private func header(topInset: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 0) {
-            VStack(alignment: .leading, spacing: RootHomeLayout.heroWordmarkEyebrowSpacing) {
-                Text("SAVY")
-                    .font(SavyTypography.displaySerif(RootHomeLayout.heroWordmarkFontSize, weight: .bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-
-                Text("The Adam Pattern")
-                    .font(SavyTheme.readingLabel(RootHomeLayout.heroEyebrowFontSize))
-                    .foregroundStyle(SavyTheme.bottomNavTan)
-            }
+            Text("SAVY")
+                .font(SavyTypography.displaySerif(RootHomeLayout.heroWordmarkFontSize, weight: .bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
 
             Spacer(minLength: 0)
 
@@ -327,39 +320,7 @@ struct EditorialHomeView: View {
         }
     }
 
-    private var leverageCarousel: some View {
-        let quote = leverageStore.featuredQuote
-
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 16) {
-                principleCard(quote: quote)
-
-                ForEach(HomeLeverageCard.referenceCards) { card in
-                    if let section = leverageStore.section(id: card.sectionID) {
-                        NavigationLink {
-                            LeverageSectionView(section: section)
-                        } label: {
-                            HomeLeverageCardView(card: card, count: section.items.count)
-                                .frame(
-                                    width: RootHomeLayout.carouselCardWidth,
-                                    height: RootHomeLayout.carouselCardHeight
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        HomeLeverageCardView(card: card, count: 0)
-                            .frame(
-                                width: RootHomeLayout.carouselCardWidth,
-                                height: RootHomeLayout.carouselCardHeight
-                            )
-                    }
-                }
-            }
-            .padding(.horizontal, RootHomeLayout.carouselHorizontalPadding)
-        }
-    }
-
-    private var latestSection: some View {
+    private var greatestLeverageSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("GREATEST LEVERAGE")
                 .font(SavyTheme.readingLabel(20))
@@ -368,58 +329,64 @@ struct EditorialHomeView: View {
                 .padding(.horizontal, 18)
                 .background(Color.white)
 
-            ForEach(feedRows) { entry in
-                switch entry.source {
-                case let .reminder(reminder):
-                    Button {
-                        editingReminder = reminder
-                    } label: {
-                        HomeFeedRowView(entry: entry)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("greatestLeverageReminder")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(feedRows) { entry in
+                        switch entry.source {
+                        case let .reminder(reminder):
+                            Button {
+                                editingReminder = reminder
+                            } label: {
+                                HomeFeedRowView(entry: entry)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("greatestLeverageReminder")
 
-                case let .leverage(section, item):
+                        case let .leverage(section, item):
+                            NavigationLink {
+                                LeverageDetailView(section: section, item: item)
+                            } label: {
+                                HomeFeedRowView(entry: entry)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("greatestLeverageEntry")
+                        }
+                    }
+                }
+                .padding(.horizontal, RootHomeLayout.carouselHorizontalPadding)
+                .padding(.bottom, 24)
+            }
+            .accessibilityIdentifier("greatestLeverageCarousel")
+        }
+        .background(Color.white)
+    }
+
+    private var homeContentSections: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(HomeLeverageCard.referenceCards.enumerated()), id: \.element.id) { index, card in
+                if let section = leverageStore.section(id: card.sectionID) {
                     NavigationLink {
-                        LeverageDetailView(section: section, item: item)
+                        LeverageSectionView(section: section)
                     } label: {
-                        HomeFeedRowView(entry: entry)
+                        HomeContentSectionView(card: card, section: section)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("greatestLeverageEntry")
+                    .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
+                } else {
+                    HomeContentSectionView(card: card, section: nil)
+                        .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
+                }
+
+                if index < HomeLeverageCard.referenceCards.count - 1 {
+                    Rectangle()
+                        .fill(SavyTheme.crimson)
+                        .frame(height: RootHomeLayout.contentSectionDividerHeight)
+                        .accessibilityElement()
+                        .accessibilityLabel("Red section divider")
+                        .accessibilityIdentifier("homeContentDivider-after-\(card.sectionID)")
                 }
             }
         }
-    }
-
-    private func principleCard(quote: LeverageItem) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(alignment: .top, spacing: 14) {
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(SavyTheme.crimson)
-                    .frame(width: 4, height: 74)
-
-                Text("“\(quote.title)”")
-                    .font(SavyTheme.carouselCardTitle(22))
-                    .lineSpacing(3)
-                    .foregroundStyle(SavyTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Text("FEATURED SIGNAL")
-                .font(SavyTheme.readingLabel(12))
-                .tracking(1.8)
-                .foregroundStyle(SavyTheme.tertiaryText)
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 22)
-        .frame(
-            width: RootHomeLayout.carouselCardWidth,
-            height: RootHomeLayout.carouselCardHeight,
-            alignment: .leading
-        )
-        .background(.white, in: RoundedRectangle(cornerRadius: 8))
-        .shadow(color: .black.opacity(0.06), radius: 12, y: 5)
     }
 }
 
@@ -502,15 +469,14 @@ private struct HomeFeedRowView: View {
         .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)
         .padding(.vertical, 16)
         .frame(
-            maxWidth: .infinity,
-            minHeight: RootHomeLayout.pinnedEntryRowHeight,
-            alignment: .top
+            width: RootHomeLayout.carouselCardWidth,
+            height: RootHomeLayout.carouselCardHeight,
+            alignment: .topLeading
         )
-        .background(Brand.card)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Color.black.opacity(0.08))
-                .frame(height: 1)
+        .background(Brand.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.black.opacity(0.08), lineWidth: 1)
         }
     }
 
@@ -573,43 +539,55 @@ struct HomeLeverageCard: Identifiable {
     let title: String
 
     static let referenceCards: [HomeLeverageCard] = [
-        HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: "NEWS CHANNEL", title: "News Channel"),
-        HomeLeverageCard(id: "essays", sectionID: "field-essays", eyebrow: "FIELD ESSAYS", title: "Field Essays"),
+        HomeLeverageCard(id: "beliefs", sectionID: "beliefs", eyebrow: "CONNECTION", title: "Connection"),
         HomeLeverageCard(id: "ontology", sectionID: "ontology", eyebrow: "ONTOLOGY", title: "Adam's Ontology"),
-        HomeLeverageCard(id: "beliefs", sectionID: "beliefs", eyebrow: "CONNECTION", title: "Connection")
+        HomeLeverageCard(id: "essays", sectionID: "field-essays", eyebrow: "FIELD ESSAYS", title: "Field Essays"),
+        HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: "NEWS CHANNEL", title: "News Channel")
     ]
 }
 
-private struct HomeLeverageCardView: View {
+private struct HomeContentSectionView: View {
     let card: HomeLeverageCard
-    let count: Int
+    let section: LeverageSection?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 34) {
+        VStack(alignment: .leading, spacing: 18) {
             Text(card.eyebrow)
                 .font(SavyTheme.readingLabel(12))
                 .tracking(1.8)
-                .foregroundStyle(SavyTheme.secondaryText)
+                .foregroundStyle(SavyTheme.crimson)
 
             Text(card.title)
-                .font(SavyTheme.carouselCardTitle())
+                .font(SavyTheme.carouselCardTitle(34))
                 .lineSpacing(3)
                 .foregroundStyle(SavyTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Spacer(minLength: 0)
+            if let headline = section?.headline, !headline.isEmpty {
+                Text(headline)
+                    .font(SavyTheme.readingBody(17))
+                    .lineSpacing(4)
+                    .foregroundStyle(SavyTheme.secondaryText)
+                    .lineLimit(3)
+            }
 
-            Text("\(count) ITEMS")
-                .font(SavyTheme.readingLabel(12))
-                .tracking(1.4)
-                .foregroundStyle(SavyTheme.tertiaryText)
+            HStack {
+                Text("\(section?.items.count ?? 0) ITEMS")
+                    .font(SavyTheme.readingLabel(12))
+                    .tracking(1.4)
+                    .foregroundStyle(SavyTheme.tertiaryText)
+
+                Spacer()
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(SavyTheme.crimson)
+            }
         }
-        .padding(.top, 28)
-        .padding(.horizontal, 30)
-        .padding(.bottom, 22)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+        .padding(.horizontal, RootHomeLayout.horizontalPadding)
+        .padding(.vertical, 30)
+        .frame(maxWidth: .infinity, minHeight: RootHomeLayout.contentSectionMinHeight, alignment: .topLeading)
+        .background(Color.white)
     }
 }
 

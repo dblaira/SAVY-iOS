@@ -9,6 +9,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         app.launchArguments = ["SAVY_UI_TEST_UNLOCKED"]
         let preservesExistingData = name.contains("testEntryFormHasNoManualCowboyAIAction")
             || name.contains("testHomepageRemovesHistoricalCowboyCard")
+            || name.contains("testHomepageUsesGreatestLeverageCarouselAndVerticalContentOrder")
         if !preservesExistingData {
             app.launchArguments.append("SAVY_UI_TEST_RESET_REMINDERS")
         }
@@ -258,6 +259,42 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         add(screenshot)
 
         openPersonalAuthorityReview()
+    }
+
+    func testHomepageUsesGreatestLeverageCarouselAndVerticalContentOrder() {
+        let heading = app.staticTexts["GREATEST LEVERAGE"].firstMatch
+        let carousel = app.scrollViews["greatestLeverageCarousel"].firstMatch
+        XCTAssertTrue(heading.waitForExistence(timeout: 12), "Greatest Leverage did not begin the white area")
+        XCTAssertFalse(app.staticTexts["The Adam Pattern"].exists)
+        XCTAssertTrue(carousel.waitForExistence(timeout: 12), "Greatest Leverage entries were not presented as a carousel")
+        XCTAssertLessThan(heading.frame.minY, carousel.frame.minY)
+
+        let topScreenshot = XCTAttachment(screenshot: app.screenshot())
+        topScreenshot.name = "homepage-greatest-leverage-carousel"
+        topScreenshot.lifetime = .keepAlways
+        add(topScreenshot)
+
+        let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
+        let connection = app.descendants(matching: .any)["homeContentSection-beliefs"].firstMatch
+        let ontology = app.descendants(matching: .any)["homeContentSection-ontology"].firstMatch
+        let essays = app.descendants(matching: .any)["homeContentSection-field-essays"].firstMatch
+        let news = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
+        XCTAssertTrue(connection.waitForExistence(timeout: 5), "Connection did not begin the vertical content area")
+        XCTAssertTrue(app.descendants(matching: .any)["homeContentDivider-after-beliefs"].exists)
+
+        for section in [ontology, essays, news] {
+            for _ in 0..<5 where !(section.exists && section.isHittable) {
+                homeScroll.swipeUp()
+            }
+            XCTAssertTrue(section.exists && section.isHittable, "A vertical homepage content area could not be reached")
+        }
+
+        XCTAssertTrue(app.descendants(matching: .any)["homeContentDivider-after-field-essays"].exists)
+
+        let contentScreenshot = XCTAttachment(screenshot: app.screenshot())
+        contentScreenshot.name = "homepage-vertical-content-with-red-dividers"
+        contentScreenshot.lifetime = .keepAlways
+        add(contentScreenshot)
     }
 
     func testCowboyNaturalVoiceIsReusableAndSpeedAdjustableInEntryForm() {
