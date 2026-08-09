@@ -733,6 +733,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 8)
         XCTAssertEqual(RootHomeLayout.bottomNavigationBottomPadding, 28)
         XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 34)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationIconWeight, .regular)
         XCTAssertEqual(RootHomeLayout.bottomNavigationLabelSize, 15)
         XCTAssertEqual(RootHomeLayout.bottomNavigationIconLabelSpacing, 7)
         XCTAssertEqual(RootHomeLayout.bottomNavigationHorizontalPadding, 0)

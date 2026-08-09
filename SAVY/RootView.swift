@@ -27,6 +27,7 @@ enum RootHomeLayout {
     static let bottomNavigationTopPadding: CGFloat = 8
     static let bottomNavigationBottomPadding: CGFloat = 28
     static let bottomNavigationIconSize: CGFloat = 34
+    static let bottomNavigationIconWeight: Font.Weight = .regular
     static let bottomNavigationLabelSize: CGFloat = 15
     static let bottomNavigationIconLabelSpacing: CGFloat = 7
     static let bottomNavigationHorizontalPadding: CGFloat = 0

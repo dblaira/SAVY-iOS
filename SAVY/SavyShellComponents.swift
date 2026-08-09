@@ -305,7 +305,7 @@ struct SavyBottomNavigationBar: View {
                 Image(systemName: section.symbolName)
                     .font(.system(
                         size: RootHomeLayout.bottomNavigationIconSize,
-                        weight: isActive ? .bold : .semibold
+                        weight: RootHomeLayout.bottomNavigationIconWeight
                     ))
 
                 Text(section.title)
