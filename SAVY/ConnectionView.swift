@@ -1,276 +1,216 @@
 import SwiftUI
 
 enum ConnectionLayout {
-    static let horizontalPadding: CGFloat = 20
-    static let gridSpacing: CGFloat = 8
-    static let gridColumnCount = 3
-    static let gridCardSide: CGFloat = 108
-    static let featuredCardWidth: CGFloat = 336
-    static let featuredCardHeight: CGFloat = 196
+    /// These heights reproduce the hierarchy measured from the Reminders screen.
+    static let fullCardHeight: CGFloat = 186
+    static let mediumCardHeight: CGFloat = 167
+    static let minimalCardHeight: CGFloat = 124
+    static let horizontalPadding: CGFloat = 16
+    static let cardSpacing: CGFloat = 11
+    static let cardCornerRadius: CGFloat = 8
+    static let headerHorizontalPadding: CGFloat = 24
 }
 
-enum ConnectionCardStyle {
-    case black
-    case crimson
-    case white
+enum ConnectionCardDetail {
+    case full
+    case medium
+    case minimal
 
-    static func style(for index: Int) -> ConnectionCardStyle {
-        switch index % 3 {
-        case 0: .black
-        case 1: .crimson
-        default: .white
+    var height: CGFloat {
+        switch self {
+        case .full: ConnectionLayout.fullCardHeight
+        case .medium: ConnectionLayout.mediumCardHeight
+        case .minimal: ConnectionLayout.minimalCardHeight
         }
-    }
-}
-
-enum ConnectionDisplayText {
-    static func gridPhrase(_ text: String, maxWords: Int = 3) -> String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return trimmed }
-
-        let words = trimmed.split(separator: " ")
-        guard words.count > maxWords else { return trimmed }
-        return words.prefix(maxWords).joined(separator: " ")
-    }
-
-    static func featuredTitle(_ text: String, maxWords: Int = 14) -> String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return trimmed }
-
-        let words = trimmed.split(separator: " ")
-        guard words.count > maxWords else { return trimmed }
-        return words.prefix(maxWords).joined(separator: " ")
     }
 }
 
 struct ConnectionView: View {
+    @Environment(\.dismiss) private var dismiss
+
     let section: LeverageSection
     var onSignOut: (() -> Void)?
 
-    private var gridColumns: [GridItem] {
-        Array(
-            repeating: GridItem(.flexible(), spacing: ConnectionLayout.gridSpacing),
-            count: ConnectionLayout.gridColumnCount
-        )
+    private var pinnedItems: [LeverageItem] {
+        Array(section.items.prefix(2))
     }
 
-    private var featuredItems: [LeverageItem] {
-        guard section.items.count > 3 else { return [] }
-        return Array(section.items.prefix(3))
-    }
-
-    private var gridItems: [LeverageItem] {
-        if section.items.count > 3 {
-            return Array(section.items.dropFirst(3))
-        }
-        return section.items
+    private var remainingItems: [LeverageItem] {
+        Array(section.items.dropFirst(pinnedItems.count))
     }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 connectionHeader
-
-                if !featuredItems.isEmpty {
-                    featuredSection
-                }
-
-                if !gridItems.isEmpty {
-                    gridSection
-                }
+                connectionList
             }
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .accessibilityIdentifier("connectionScreen")
     }
 
     private var connectionHeader: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                Text("CONNECTION")
-                    .font(SavyTypography.displaySerif(34, weight: .bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                Spacer(minLength: 0)
-
-                headerIconButton(symbol: "magnifyingglass")
-
-                if let onSignOut {
-                    Menu {
-                        Button("Sign Out", role: .destructive, action: onSignOut)
-                    } label: {
-                        headerIconButton(symbol: "line.3.horizontal")
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 21, weight: .bold))
+                    .foregroundStyle(SavyTheme.crimson)
+                    .frame(width: 48, height: 48)
+                    .overlay {
+                        Circle()
+                            .stroke(SavyTheme.crimson.opacity(0.85), lineWidth: 1)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Account menu")
-                }
             }
-            .padding(.horizontal, ConnectionLayout.horizontalPadding)
-            .padding(.top, 56)
-            .padding(.bottom, 18)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back")
 
+            Text(section.title)
+                .font(SavyTypography.bodoniModa(56, weight: 400, opticalSize: 56))
+                .foregroundStyle(SavyTheme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .padding(.top, 24)
+
+            Text(section.headline)
+                .font(SavyTypography.bodoniModa(22, weight: 400, opticalSize: 22))
+                .foregroundStyle(SavyTheme.ink.opacity(0.62))
+                .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, ConnectionLayout.headerHorizontalPadding)
+        .padding(.top, 18)
+        .padding(.bottom, 30)
+        .background(Color.white)
+        .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(SavyTheme.crimson)
                 .frame(height: 2)
         }
-        .background(Color.black)
     }
 
-    private func headerIconButton(symbol: String) -> some View {
-        Image(systemName: symbol)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.9))
-            .frame(width: 40, height: 40)
-            .background(Color.white.opacity(0.14), in: Circle())
-    }
+    private var connectionList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            connectionSectionHeading("PINNED", count: pinnedItems.count)
 
-    private var gridSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Connection")
-                .font(.system(size: 22, weight: .heavy))
-                .foregroundStyle(.black)
-                .padding(.horizontal, ConnectionLayout.horizontalPadding)
-                .padding(.top, 24)
-
-            LazyVGrid(columns: gridColumns, spacing: ConnectionLayout.gridSpacing) {
-                ForEach(Array(gridItems.enumerated()), id: \.element.id) { index, item in
+            VStack(spacing: ConnectionLayout.cardSpacing) {
+                ForEach(Array(pinnedItems.enumerated()), id: \.element.id) { index, item in
                     NavigationLink {
                         LeverageDetailView(section: section, item: item)
                     } label: {
-                        ConnectionGridCard(
+                        ConnectionBandCard(
                             item: item,
-                            style: ConnectionCardStyle.style(for: index)
+                            background: index == 0 ? .white : Brand.darkRed,
+                            foreground: index == 0 ? SavyTheme.deepNavy : .white,
+                            accent: index == 0 ? SavyTheme.crimson : .white,
+                            detail: index == 0 ? .full : .medium,
+                            showsPin: true
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("connectionCard-\(index)")
                 }
             }
-            .padding(.horizontal, ConnectionLayout.horizontalPadding)
-            .padding(.bottom, 20)
-        }
-        .background(Color.white)
-    }
 
-    private var featuredSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Connection")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.55))
+            if !remainingItems.isEmpty {
+                connectionSectionHeading("ALL CONNECTIONS", count: remainingItems.count)
+                    .padding(.top, 24)
 
-                Spacer()
-
-                Text("See all")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(SavyTheme.crimson)
-            }
-            .padding(.horizontal, ConnectionLayout.horizontalPadding)
-            .padding(.top, 20)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
-                    ForEach(featuredItems) { item in
+                VStack(spacing: ConnectionLayout.cardSpacing) {
+                    ForEach(Array(remainingItems.enumerated()), id: \.element.id) { index, item in
                         NavigationLink {
                             LeverageDetailView(section: section, item: item)
                         } label: {
-                            ConnectionFeaturedCard(item: item)
+                            ConnectionBandCard(
+                                item: item,
+                                background: SavyTheme.bottomNavTan,
+                                foreground: SavyTheme.deepNavy,
+                                accent: SavyTheme.crimson,
+                                detail: .minimal,
+                                showsPin: false
+                            )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("connectionCard-\(index + pinnedItems.count)")
                     }
                 }
-                .padding(.horizontal, ConnectionLayout.horizontalPadding)
             }
-            .padding(.bottom, 28)
         }
-        .background(Color.black)
+        .padding(.horizontal, ConnectionLayout.horizontalPadding)
+        .padding(.top, 22)
+        .padding(.bottom, 48)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SavyTheme.deepNavy)
+    }
+
+    private func connectionSectionHeading(_ title: String, count: Int) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 13, weight: .heavy))
+                .tracking(2.6)
+                .foregroundStyle(SavyTheme.bottomNavTan)
+
+            Spacer()
+
+            Text("\(count)")
+                .font(.system(size: 13, weight: .heavy))
+                .foregroundStyle(SavyTheme.bottomNavTan.opacity(0.72))
+        }
+        .padding(.horizontal, 2)
+        .padding(.bottom, 12)
     }
 }
 
-private struct ConnectionFeaturedCard: View {
+private struct ConnectionBandCard: View {
     let item: LeverageItem
+    let background: Color
+    let foreground: Color
+    let accent: Color
+    let detail: ConnectionCardDetail
+    let showsPin: Bool
 
     var body: some View {
-        HStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 7) {
+            if showsPin {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(foreground.opacity(0.68))
+            }
+
+            Text(item.title)
+                .font(SavyTypography.displaySerif(detail == .minimal ? 25 : 27, weight: .regular))
+                .foregroundStyle(foreground)
+                .lineLimit(detail == .minimal ? 2 : 3)
+                .minimumScaleFactor(0.82)
+                .multilineTextAlignment(.leading)
+
             Rectangle()
-                .fill(Color.white.opacity(0.12))
-                .frame(width: 56, height: 56)
+                .fill(accent)
+                .frame(width: 36, height: 2)
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text(ConnectionDisplayText.featuredTitle(item.title))
-                    .font(SavyTypography.displaySerif(26, weight: .bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(3)
+            if detail != .minimal, !item.summary.isEmpty {
+                Text(item.summary)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(foreground.opacity(0.72))
+                    .lineLimit(detail == .full ? 3 : 1)
                     .multilineTextAlignment(.leading)
-
-                Rectangle()
-                    .fill(SavyTheme.crimson)
-                    .frame(width: 36, height: 2)
-
-                if !item.summary.isEmpty {
-                    Text(item.summary)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
             }
 
             Spacer(minLength: 0)
         }
-        .padding(20)
-        .frame(width: ConnectionLayout.featuredCardWidth, height: ConnectionLayout.featuredCardHeight, alignment: .leading)
-        .background(Color.black)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(height: detail.height)
+        .background(background)
+        .clipShape(RoundedRectangle(cornerRadius: ConnectionLayout.cardCornerRadius, style: .continuous))
         .overlay {
-            Rectangle()
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-        }
-    }
-}
-
-private struct ConnectionGridCard: View {
-    let item: LeverageItem
-    let style: ConnectionCardStyle
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Rectangle()
-                .fill(foregroundColor.opacity(0.35))
-                .frame(width: 14, height: 10)
-                .padding(.bottom, 8)
-
-            Text(ConnectionDisplayText.gridPhrase(item.title))
-                .font(.system(size: 13, weight: .heavy))
-                .foregroundStyle(foregroundColor)
-                .lineSpacing(0)
-                .minimumScaleFactor(0.8)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity)
-        .aspectRatio(1, contentMode: .fit)
-        .background(cardBackground)
-        .overlay {
-            if style == .white {
-                Rectangle()
-                    .stroke(Color.black.opacity(0.14), lineWidth: 1)
-            }
-        }
-    }
-
-    private var foregroundColor: Color {
-        switch style {
-        case .black, .crimson: .white
-        case .white: .black
-        }
-    }
-
-    private var cardBackground: Color {
-        switch style {
-        case .black: .black
-        case .crimson: SavyTheme.crimson
-        case .white: .white
+            RoundedRectangle(cornerRadius: ConnectionLayout.cardCornerRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         }
     }
 }

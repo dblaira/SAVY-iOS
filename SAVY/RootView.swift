@@ -370,7 +370,11 @@ struct EditorialHomeView: View {
             ForEach(HomeLeverageCard.referenceCards) { card in
                 if let section = leverageStore.section(id: card.sectionID) {
                     NavigationLink {
-                        LeverageSectionView(section: section)
+                        if section.id == "beliefs" {
+                            ConnectionView(section: section)
+                        } else {
+                            LeverageSectionView(section: section)
+                        }
                     } label: {
                         HomeContentSectionView(card: card, section: section)
                     }

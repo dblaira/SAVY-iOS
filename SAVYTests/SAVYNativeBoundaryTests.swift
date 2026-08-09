@@ -751,6 +751,12 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.pinnedEntryRowHeight, 96)
         XCTAssertEqual(RootHomeLayout.pinnedEntryTrailingInset, 17)
         XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 24)
+        XCTAssertEqual(ConnectionLayout.fullCardHeight, 186)
+        XCTAssertEqual(ConnectionLayout.mediumCardHeight, 167)
+        XCTAssertEqual(ConnectionLayout.minimalCardHeight, 124)
+        XCTAssertEqual(ConnectionLayout.cardSpacing, 11)
+        XCTAssertGreaterThan(ConnectionLayout.fullCardHeight, ConnectionLayout.mediumCardHeight)
+        XCTAssertGreaterThan(ConnectionLayout.mediumCardHeight, ConnectionLayout.minimalCardHeight)
         XCTAssertEqual(SavyHapticFeedback.primaryImpactIntensity, 1.0)
         XCTAssertEqual(HomeFeedRow.rows(
             reminderStore: ReminderStore(),

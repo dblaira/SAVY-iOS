@@ -298,6 +298,36 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         add(contentScreenshot)
     }
 
+    func testConnectionUsesMeasuredReminderCardHierarchy() {
+        let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
+        let connection = app.descendants(matching: .any)["homeContentSection-beliefs"].firstMatch
+        XCTAssertTrue(connection.waitForExistence(timeout: 12), "Connection is missing from the homepage")
+
+        for _ in 0..<4 where !connection.isHittable {
+            homeScroll.swipeUp()
+        }
+        XCTAssertTrue(connection.isHittable, "Connection could not be reached")
+        connection.tap()
+
+        let full = app.descendants(matching: .any)["connectionCard-0"].firstMatch
+        let medium = app.descendants(matching: .any)["connectionCard-1"].firstMatch
+        let minimal = app.descendants(matching: .any)["connectionCard-2"].firstMatch
+        XCTAssertTrue(full.waitForExistence(timeout: 12), "The first Connection card is missing")
+        XCTAssertTrue(medium.waitForExistence(timeout: 5), "The second Connection card is missing")
+        XCTAssertTrue(minimal.waitForExistence(timeout: 5), "The standard Connection card is missing")
+
+        XCTAssertEqual(full.frame.height, 186, accuracy: 2)
+        XCTAssertEqual(medium.frame.height, 167, accuracy: 2)
+        XCTAssertEqual(minimal.frame.height, 124, accuracy: 2)
+        XCTAssertGreaterThan(full.frame.height, medium.frame.height)
+        XCTAssertGreaterThan(medium.frame.height, minimal.frame.height)
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "connection-measured-reminder-card-hierarchy"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
     func testBottomNavigationHasLargeRaisedEdgeToEdgeTargets() {
         let now = app.buttons["Now"].firstMatch
         let reminders = app.buttons["Reminders"].firstMatch
