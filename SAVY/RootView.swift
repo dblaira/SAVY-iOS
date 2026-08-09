@@ -332,8 +332,6 @@ struct EditorialHomeView: View {
 
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 16) {
-                PersonalAuthorityLaunchCard(onOpen: onOpenPersonalAuthorityReview)
-
                 principleCard(quote: quote)
 
                 ForEach(HomeLeverageCard.referenceCards) { card in

@@ -860,48 +860,6 @@ final class PersonalAuthorityReviewStore: ObservableObject {
     }
 }
 
-struct PersonalAuthorityLaunchCard: View {
-    let onOpen: () -> Void
-
-    var body: some View {
-        Button(action: onOpen) {
-            ZStack(alignment: .bottomLeading) {
-                Image("RetroSignals")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: RootHomeLayout.carouselCardWidth, height: RootHomeLayout.carouselCardHeight)
-                    .clipped()
-
-                LinearGradient(
-                    colors: [.clear, SavyTheme.deepNavy.opacity(0.94)],
-                    startPoint: .center,
-                    endPoint: .bottom
-                )
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("COWBOY AI")
-                        .font(SavyTheme.readingLabel(12))
-                        .tracking(1.8)
-                        .foregroundStyle(SavyTheme.crimson)
-
-                    Text("709 statements\nready to scan")
-                        .font(SavyTypography.displaySerif(28, weight: .bold))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.leading)
-                        .lineSpacing(-2)
-                }
-                .padding(20)
-            }
-            .frame(width: RootHomeLayout.carouselCardWidth, height: RootHomeLayout.carouselCardHeight)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .shadow(color: .black.opacity(0.16), radius: 12, y: 5)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open Cowboy AI confirmation list. 709 statements ready to scan.")
-        .accessibilityIdentifier("personalAuthorityLaunchCard")
-    }
-}
-
 private enum PersonalAuthorityConferenceFilter: String, CaseIterable, Identifiable {
     case all
     case toDecide

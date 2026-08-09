@@ -7,7 +7,9 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["SAVY_UI_TEST_UNLOCKED"]
-        if !name.contains("testEntryFormHasNoManualCowboyAIAction") {
+        let preservesExistingData = name.contains("testEntryFormHasNoManualCowboyAIAction")
+            || name.contains("testHomepageRemovesHistoricalCowboyCard")
+        if !preservesExistingData {
             app.launchArguments.append("SAVY_UI_TEST_RESET_REMINDERS")
         }
         app.launch()
@@ -193,6 +195,19 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) tab did not open")
     }
 
+    private func openPersonalAuthorityReview() {
+        let menu = app.buttons["SAVY menu"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 20), "SAVY menu missing")
+        menu.tap()
+
+        let teachCowboyAI = app.buttons["Teach Cowboy AI"].firstMatch
+        XCTAssertTrue(teachCowboyAI.waitForExistence(timeout: 5), "Teach Cowboy AI menu action missing")
+        teachCowboyAI.tap()
+
+        let review = app.descendants(matching: .any)["personalAuthorityReview"].firstMatch
+        XCTAssertTrue(review.waitForExistence(timeout: 10), "Cowboy AI review did not open")
+    }
+
     func testReminderCreateReopenSwipePinDoneDelete() {
         let title = "UI Test Reminder \(Int(Date().timeIntervalSince1970))"
         createItem(.reminder, title: title)
@@ -204,12 +219,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     }
 
     func testCowboyNaturalVoiceReachesPlayingState() {
-        let launchCard = app.descendants(matching: .any)["personalAuthorityLaunchCard"].firstMatch
-        XCTAssertTrue(launchCard.waitForExistence(timeout: 20), "Cowboy AI launch card missing")
-        launchCard.tap()
-
-        let review = app.descendants(matching: .any)["personalAuthorityReview"].firstMatch
-        XCTAssertTrue(review.waitForExistence(timeout: 10), "Cowboy AI review did not open")
+        openPersonalAuthorityReview()
         dismissLocalNetworkPrompt()
 
         let firstStatement = app.descendants(matching: .any)["personalAuthorityCandidateRow1"].firstMatch
@@ -233,6 +243,21 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(1))
         }
         XCTAssertTrue(pause.label.contains("Pause"), "Natural voice did not begin playing")
+    }
+
+    func testHomepageRemovesHistoricalCowboyCard() {
+        let historicalCard = app.descendants(matching: .any)["personalAuthorityLaunchCard"].firstMatch
+        XCTAssertFalse(
+            historicalCard.waitForExistence(timeout: 2),
+            "Historical 709-statement card is still on the homepage"
+        )
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "homepage-without-historical-cowboy-card"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+
+        openPersonalAuthorityReview()
     }
 
     func testCowboyNaturalVoiceIsReusableAndSpeedAdjustableInEntryForm() {
