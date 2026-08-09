@@ -23,8 +23,6 @@ struct ReminderFormView: View {
     @State private var committed = false
     @State private var cancelled = false
     @State private var showSaved = false
-    @State private var showCowboyAnswer = false
-    @StateObject private var cowboyAI = SavyCowboyAIController()
     @FocusState private var focusedSubtaskID: UUID?
     @State private var subtasks: [Subtask]
 
@@ -98,13 +96,6 @@ struct ReminderFormView: View {
             .onDisappear { autosaveIfNeeded() }
         }
         .overlay { if showSaved { savedToast } }
-        .sheet(isPresented: $showCowboyAnswer, onDismiss: cowboyAI.clearAnswer) {
-            if let answer = cowboyAI.answer {
-                SavyCowboyAIAnswerView(answer: answer) {
-                    keepCowboyAIAnswerInNotes(answer)
-                }
-            }
-        }
         .preferredColorScheme(.light)
     }
 
@@ -145,40 +136,6 @@ struct ReminderFormView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("DoneLooksLike")
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
-        .listRowBackground(Brand.card)
-
-        Section {
-            Button {
-                Task {
-                    await cowboyAI.ask(rawWords: cowboyAIRawWords)
-                    showCowboyAnswer = cowboyAI.answer != nil
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "bolt.fill")
-                    Text(cowboyAI.isAsking ? "Asking CowboyAI…" : "Ask CowboyAI")
-                    Spacer()
-                    if cowboyAI.isAsking { ProgressView() }
-                }
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Brand.card)
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .padding(.horizontal, 4)
-                .background(SavyTheme.deepNavy, in: RoundedRectangle(cornerRadius: 12))
-            }
-            .buttonStyle(.plain)
-            .disabled(cowboyAI.isAsking || !hasSpeakableEntryText)
-            .accessibilityIdentifier("askCowboyAI")
-
-            if let error = cowboyAI.errorMessage {
-                Text(error)
-                    .font(.system(size: 13))
-                    .foregroundStyle(Brand.darkRed)
-                    .accessibilityIdentifier("cowboyAIError")
-            }
-        } header: {
-            sectionHeader("Use it")
-        }
         .listRowBackground(Brand.card)
 
         if hasSpeakableEntryText {
@@ -262,29 +219,6 @@ struct ReminderFormView: View {
 
     private var hasSpeakableEntryText: Bool {
         !speakableEntryText.isEmpty
-    }
-
-    private var cowboyAIRawWords: String {
-        [
-            (EntryFormCopy.wantPrompt, r.title),
-            (EntryFormCopy.whenPrompt, r.whenIAm ?? ""),
-            (EntryFormCopy.donePrompt, r.outcome),
-            ("Notes", r.notes),
-        ]
-        .compactMap { label, words in
-            let exactWords = words.trimmingCharacters(in: .whitespacesAndNewlines)
-            return exactWords.isEmpty ? nil : "\(label)\n\(exactWords)"
-        }
-        .joined(separator: "\n\n")
-    }
-
-    private func keepCowboyAIAnswerInNotes(_ answer: SavyCowboyAIAnswer) {
-        let block = "CowboyAI\n\(answer.noteText)"
-        if r.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            r.notes = block
-        } else if !r.notes.contains(block) {
-            r.notes += "\n\n\(block)"
-        }
     }
 
     private var imageRow: some View {

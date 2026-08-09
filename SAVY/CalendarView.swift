@@ -185,13 +185,15 @@ struct CalendarView: View {
     // MARK: Day header + all-day
 
     private var dayHeader: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 4) {
             Text(cal.isDateInToday(selected) ? "Today" : selected.formatted(.dateTime.weekday(.wide)))
                 .font(.system(size: 22, weight: .heavy)).foregroundStyle(.black)
-            Spacer()
             Text(selected.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
                 .font(.system(size: 16, weight: .heavy)).foregroundStyle(Brand.crimson)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder private var allDayRow: some View {

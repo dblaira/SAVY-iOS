@@ -447,6 +447,41 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(store.pinnedHomepageEntries(limit: 2).map(\.title), ["First pinned", "Second pinned"])
     }
 
+    @MainActor
+    func testGreatestLeverageRowRetainsItsOriginalReminder() throws {
+        let directory = try makeTemporaryDirectory()
+        let store = ReminderStore(
+            repo: LocalReminderRepository(),
+            cacheURL: directory.appendingPathComponent("reminders.json"),
+            technicalCaptureStore: try TechnicalCaptureStore(
+                fileURL: directory.appendingPathComponent("technical-captures.json")
+            ),
+            candidateOutbox: try CowboyCandidateOutbox(
+                fileURL: directory.appendingPathComponent("cowboy-candidate-outbox.json")
+            ),
+            candidateClient: StubCowboyCandidateClient()
+        )
+
+        var reminder = Reminder(kind: .action, title: "Open the original")
+        reminder.pinned = true
+        reminder.dueDate = Date(timeIntervalSince1970: 1_800)
+        store.save(reminder)
+
+        let row = try XCTUnwrap(
+            HomeFeedRow.rows(
+                reminderStore: store,
+                leverageStore: LeverageDataStore(),
+                limit: 1
+            ).first
+        )
+        guard case let .reminder(original) = row.source else {
+            return XCTFail("Pinned Greatest Leverage row lost its original reminder")
+        }
+        XCTAssertEqual(original.id, reminder.id)
+        XCTAssertEqual(original.title, reminder.title)
+        XCTAssertEqual(row.subtitle, reminder.whenLabel)
+    }
+
     func testAWSGraphConfigurationRequiresConcreteBackendValues() {
         XCTAssertNil(AWSGraphConfiguration(baseURLString: "", apiKey: "abc"))
         XCTAssertNil(AWSGraphConfiguration(baseURLString: "https://api.example.com", apiKey: ""))

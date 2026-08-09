@@ -202,6 +202,7 @@ struct EditorialHomeView: View {
     @ObservedObject var reminderStore: ReminderStore
     let onSignOut: (() -> Void)?
     let onOpenPersonalAuthorityReview: () -> Void
+    @State private var editingReminder: Reminder?
 
     private var feedRows: [HomeFeedRow] {
         HomeFeedRow.rows(
@@ -236,6 +237,11 @@ struct EditorialHomeView: View {
             }
         }
         .background(Color.white.ignoresSafeArea())
+        .sheet(item: $editingReminder) { reminder in
+            ReminderFormView(existing: reminder, existingTags: reminderStore.recentTags) { updated in
+                reminderStore.save(updated)
+            }
+        }
     }
 
     private var contentSourceBand: some View {
@@ -365,7 +371,25 @@ struct EditorialHomeView: View {
                 .background(Color.white)
 
             ForEach(feedRows) { entry in
-                HomeFeedRowView(entry: entry)
+                switch entry.source {
+                case let .reminder(reminder):
+                    Button {
+                        editingReminder = reminder
+                    } label: {
+                        HomeFeedRowView(entry: entry)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("greatestLeverageReminder")
+
+                case let .leverage(section, item):
+                    NavigationLink {
+                        LeverageDetailView(section: section, item: item)
+                    } label: {
+                        HomeFeedRowView(entry: entry)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("greatestLeverageEntry")
+                }
             }
         }
     }
@@ -402,16 +426,16 @@ struct EditorialHomeView: View {
 }
 
 struct HomeFeedRow: Identifiable {
-    enum Kind {
-        case pinnedReminder
-        case leverageBelief
+    enum Source {
+        case reminder(Reminder)
+        case leverage(section: LeverageSection, item: LeverageItem)
     }
 
     let id: String
     let title: String
     let subtitle: String?
     let alignment: Alignment
-    let kind: Kind
+    let source: Source
 
     @MainActor
     static func rows(
@@ -428,13 +452,16 @@ struct HomeFeedRow: Identifiable {
                     title: reminder.title.isEmpty ? reminder.kind.label : reminder.title,
                     subtitle: reminder.whenLabel,
                     alignment: index.isMultiple(of: 2) ? .leading : .center,
-                    kind: .pinnedReminder
+                    source: .reminder(reminder)
                 )
             )
         }
 
         if rows.count < limit {
             for (offset, item) in leverageStore.greatestLeverageItems(limit: limit - rows.count).enumerated() {
+                guard let section = leverageStore.sections.first(where: { section in
+                    section.items.contains(where: { $0.id == item.id })
+                }) else { continue }
                 let index = rows.count + offset
                 rows.append(
                     HomeFeedRow(
@@ -442,7 +469,7 @@ struct HomeFeedRow: Identifiable {
                         title: item.title,
                         subtitle: item.kicker,
                         alignment: index.isMultiple(of: 2) ? .leading : .center,
-                        kind: .leverageBelief
+                        source: .leverage(section: section, item: item)
                     )
                 )
             }
@@ -469,7 +496,9 @@ private struct HomeFeedRowView: View {
                     .font(SavyTheme.readingLabel(12))
                     .tracking(1.4)
                     .foregroundStyle(SavyTheme.crimson)
-                    .frame(maxWidth: .infinity, alignment: entry.alignment)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("greatestLeverageDate")
             }
         }
         .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)

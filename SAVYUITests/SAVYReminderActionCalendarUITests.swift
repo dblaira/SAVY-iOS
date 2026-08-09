@@ -6,10 +6,10 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = [
-            "SAVY_UI_TEST_UNLOCKED",
-            "SAVY_UI_TEST_RESET_REMINDERS",
-        ]
+        app.launchArguments = ["SAVY_UI_TEST_UNLOCKED"]
+        if !name.contains("testEntryFormHasNoManualCowboyAIAction") {
+            app.launchArguments.append("SAVY_UI_TEST_RESET_REMINDERS")
+        }
         app.launch()
         dismissNotificationPrompt()
     }
@@ -258,71 +258,58 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertFalse(rate.label.isEmpty, "Voice speed value did not update")
     }
 
-    func testSavySendsDelegationToCowboyAIAndShowsAnswerInsideSavy() {
-        app.terminate()
-        app.launchArguments = [
-            "SAVY_UI_TEST_UNLOCKED",
-            "SAVY_UI_TEST_RESET_REMINDERS",
-            "SAVY_UI_TEST_COWBOY_STUB",
-        ]
-        app.launch()
-        dismissNotificationPrompt()
+    func testEntryFormHasNoManualCowboyAIAction() {
         openComposer(.action)
 
         let title = titleField()
         XCTAssertTrue(title.waitForExistence(timeout: 10), "Entry form did not open")
-        title.tap()
-        title.typeText("Use SAVY every day")
+        XCTAssertFalse(app.staticTexts["Use it"].exists)
+        XCTAssertFalse(app.buttons["askCowboyAI"].exists)
 
-        let ask = app.buttons["askCowboyAI"].firstMatch
-        for _ in 0..<4 where !ask.isHittable { app.swipeUp() }
-        XCTAssertTrue(ask.waitForExistence(timeout: 10), "Ask CowboyAI action missing")
-        ask.tap()
-
-        let answer = app.descendants(matching: .any)["cowboyAIAnswer"].firstMatch
-        XCTAssertTrue(answer.waitForExistence(timeout: 10), "CowboyAI answer did not return inside SAVY")
-        XCTAssertTrue(app.staticTexts["Take the first visible step."].exists)
-        XCTAssertTrue(
-            app.staticTexts["Open the project and complete its smallest unfinished action."].exists
-        )
-
-        let keep = app.buttons["keepCowboyAIAnswer"].firstMatch
-        for _ in 0..<4 where !keep.isHittable { app.swipeUp() }
-        XCTAssertTrue(keep.waitForExistence(timeout: 5), "Keep in notes action missing")
-        keep.tap()
-        XCTAssertTrue(app.buttons["keepCowboyAIAnswer"].label.contains("Kept in notes"))
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "rule-5-entry-form-without-manual-cowboy-action"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
     }
 
-    func testLiveSavyReceivesAuthorityHubAnswer() throws {
-        guard ProcessInfo.processInfo.environment["SAVY_LIVE_COWBOY_TEST"] == "1" else {
-            throw XCTSkip("Run explicitly while the private CowboyAI Authority Hub is reachable")
-        }
+    func testGreatestLeverageCardOpensOriginalEntry() {
+        let title = "Pinned Leverage \(Int(Date().timeIntervalSince1970))"
+        // The Event composer begins with a date. Changing its shared destination to Action
+        // proves the common form retains that date while routing the saved entry to Actions.
+        openComposer(.calendar)
 
-        app.terminate()
-        app.launchArguments = [
-            "SAVY_UI_TEST_UNLOCKED",
-        ]
-        app.launch()
-        dismissNotificationPrompt()
-        openComposer(.action)
+        let actionDestination = app.buttons["Action"].firstMatch
+        XCTAssertTrue(actionDestination.waitForExistence(timeout: 10), "Shared destination picker was missing")
+        actionDestination.tap()
 
-        let title = titleField()
-        XCTAssertTrue(title.waitForExistence(timeout: 10), "Entry form did not open")
-        title.tap()
-        title.typeText("Use SAVY every day because it works")
+        let field = titleField()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "Entry form did not open")
+        field.tap()
+        field.typeText(title)
+        app.buttons["Save"].tap()
 
-        let ask = app.buttons["askCowboyAI"].firstMatch
-        for _ in 0..<4 where !ask.isHittable { app.swipeUp() }
-        XCTAssertTrue(ask.waitForExistence(timeout: 10), "Ask CowboyAI action missing")
-        ask.tap()
+        openTab("Actions")
+        let savedTitle = app.staticTexts[title].firstMatch
+        XCTAssertTrue(savedTitle.waitForExistence(timeout: 12), "Saved action did not appear")
+        revealActions(title)
+        tapVisibleButton("swipePin")
 
-        let answer = app.descendants(matching: .any)["cowboyAIAnswer"].firstMatch
-        XCTAssertTrue(
-            answer.waitForExistence(timeout: 300),
-            "The live CowboyAI Authority Hub did not return an answer inside SAVY"
-        )
-        XCTAssertTrue(app.staticTexts["What changes now"].exists)
-        XCTAssertFalse(app.buttons["keepCowboyAIAnswer"].label.isEmpty)
+        openTab("Now")
+        let card = app.buttons["greatestLeverageReminder"].firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 12), "Pinned entry did not appear under Greatest Leverage")
+        XCTAssertTrue(card.label.contains(title), "Greatest Leverage card did not retain the original title")
+
+        let date = app.descendants(matching: .any)["greatestLeverageDate"].firstMatch
+        XCTAssertTrue(date.waitForExistence(timeout: 5), "Pinned entry date was not visible")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "greatest-leverage-card-left-aligned-date"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+
+        card.tap()
+        let reopenedTitle = titleField()
+        XCTAssertTrue(reopenedTitle.waitForExistence(timeout: 10), "Greatest Leverage card did not open its entry")
+        XCTAssertEqual(reopenedTitle.value as? String, title, "Greatest Leverage opened a different entry")
     }
 
     func testActionCreateReopenSwipePinDoneDelete() {
