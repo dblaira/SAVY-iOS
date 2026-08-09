@@ -274,10 +274,10 @@ struct SavyBottomNavigationBar: View {
     private func borderedSymbol(_ name: String) -> some View {
         ZStack {
             Image(systemName: name)
-                .font(.system(size: 30, weight: .bold))
+                .font(.system(size: RootHomeLayout.floatingCaptureSymbolOuterSize, weight: .bold))
                 .foregroundStyle(.black)
             Image(systemName: name)
-                .font(.system(size: 25, weight: .bold))
+                .font(.system(size: RootHomeLayout.floatingCaptureSymbolInnerSize, weight: .bold))
                 .foregroundStyle(.white)
         }
     }

@@ -718,6 +718,8 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.leverageGridColumnCount, 2)
         XCTAssertEqual(RootHomeLayout.floatingCaptureBackground, SavyTheme.crimson)
         XCTAssertEqual(RootHomeLayout.floatingCaptureSize, 64)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureSymbolOuterSize, 30)
+        XCTAssertEqual(RootHomeLayout.floatingCaptureSymbolInnerSize, 25)
         XCTAssertEqual(RootHomeLayout.floatingCaptureCenterAboveBottom, 128)
         XCTAssertEqual(RootHomeLayout.radialMenuBottomPadding, 170)
         XCTAssertEqual(RootHomeLayout.heroTopPadding, 0)
@@ -732,7 +734,11 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 128)
         XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 8)
         XCTAssertEqual(RootHomeLayout.bottomNavigationBottomPadding, 28)
-        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 34)
+        XCTAssertEqual(RootHomeLayout.bottomNavigationIconSize, 25)
+        XCTAssertLessThan(
+            RootHomeLayout.bottomNavigationIconSize,
+            RootHomeLayout.floatingCaptureSymbolOuterSize
+        )
         XCTAssertEqual(RootHomeLayout.bottomNavigationIconWeight, .regular)
         XCTAssertEqual(RootHomeLayout.bottomNavigationLabelSize, 15)
         XCTAssertEqual(RootHomeLayout.bottomNavigationIconLabelSpacing, 7)

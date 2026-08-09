@@ -26,12 +26,14 @@ enum RootHomeLayout {
     static let bottomNavNavyRiserHeight: CGFloat = 44
     static let bottomNavigationTopPadding: CGFloat = 8
     static let bottomNavigationBottomPadding: CGFloat = 28
-    static let bottomNavigationIconSize: CGFloat = 34
+    static let bottomNavigationIconSize: CGFloat = 25
     static let bottomNavigationIconWeight: Font.Weight = .regular
     static let bottomNavigationLabelSize: CGFloat = 15
     static let bottomNavigationIconLabelSpacing: CGFloat = 7
     static let bottomNavigationHorizontalPadding: CGFloat = 0
     static let floatingCaptureSize: CGFloat = 64
+    static let floatingCaptureSymbolOuterSize: CGFloat = 30
+    static let floatingCaptureSymbolInnerSize: CGFloat = 25
     static var floatingCaptureBackground: Color { SavyTheme.crimson }
     /// FAB center sits on the top edge of the bottom navigation bar.
     static var floatingCaptureCenterAboveBottom: CGFloat {
