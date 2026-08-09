@@ -40,11 +40,14 @@ struct ConnectionView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                connectionHeader
-                connectionList
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    connectionHeader(topInset: proxy.safeAreaInsets.top)
+                    connectionList
+                }
             }
+            .ignoresSafeArea(edges: .top)
         }
         .background(SavyTheme.deepNavy.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
@@ -52,7 +55,7 @@ struct ConnectionView: View {
         .accessibilityIdentifier("connectionScreen")
     }
 
-    private var connectionHeader: some View {
+    private func connectionHeader(topInset: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
                 dismiss()
@@ -83,9 +86,9 @@ struct ConnectionView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, ConnectionLayout.headerHorizontalPadding)
-        .padding(.top, 18)
+        .padding(.top, topInset + 18)
         .padding(.bottom, 30)
-        .background(Color.white)
+        .background(SavyTheme.bottomNavTan)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(SavyTheme.crimson)
