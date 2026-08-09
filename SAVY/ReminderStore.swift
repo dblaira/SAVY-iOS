@@ -10,15 +10,27 @@ final class ReminderStore: ObservableObject {
 
     private let repo: ReminderRepository
     private let cacheURL: URL
+    private let technicalCaptureStore: TechnicalCaptureStore
+    private let candidateOutbox: CowboyCandidateOutbox
+    private let candidateClient: any CowboyCandidateSubmitting
 
     // SAVY runs the reminder system on-device first, then syncs through GatewayReminderRepository.
-    init(repo: ReminderRepository = LocalReminderRepository()) {
+    init(
+        repo: ReminderRepository = LocalReminderRepository(),
+        cacheURL: URL? = nil,
+        technicalCaptureStore: TechnicalCaptureStore = .live(),
+        candidateOutbox: CowboyCandidateOutbox = .live(),
+        candidateClient: any CowboyCandidateSubmitting = CowboyCandidateClient()
+    ) {
         self.repo = repo
+        self.technicalCaptureStore = technicalCaptureStore
+        self.candidateOutbox = candidateOutbox
+        self.candidateClient = candidateClient
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        cacheURL = dir.appendingPathComponent("reminders.json")
+        self.cacheURL = cacheURL ?? dir.appendingPathComponent("reminders.json")
         if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
-            try? FileManager.default.removeItem(at: cacheURL)
+            try? FileManager.default.removeItem(at: self.cacheURL)
         }
         loadCache()
         if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_DEMO_REMINDERS"), reminders.isEmpty {
@@ -38,6 +50,14 @@ final class ReminderStore: ObservableObject {
 
     var pendingSyncCount: Int {
         reminders.filter(\.needsSync).count
+    }
+
+    var technicalCaptures: [TechnicalCapture] {
+        technicalCaptureStore.captures
+    }
+
+    var candidateOutboxItems: [CowboyCandidateOutboxItem] {
+        candidateOutbox.items
     }
 
     var syncStatusLabel: String {
@@ -71,6 +91,7 @@ final class ReminderStore: ObservableObject {
     private func sortKey(_ r: Reminder) -> Date { r.fireDate ?? r.createdAt }
 
     func bootstrap() async {
+        await flushCandidateOutbox()
         guard await repo.ensureReady() else { return }
         await pushPending()
         await refresh()
@@ -93,8 +114,12 @@ final class ReminderStore: ObservableObject {
         r.updatedAt = Date()
         r.needsSync = true
         upsertLocal(r)
+        enqueueCandidateCapture(for: r)
         NotificationScheduler.schedule(r)
-        Task { await sync(r) }
+        Task {
+            await sync(r)
+            await flushCandidateOutbox()
+        }
     }
 
     func complete(_ reminder: Reminder) {
@@ -183,6 +208,22 @@ final class ReminderStore: ObservableObject {
         Task { await sync(r) }
     }
 
+    func recentClearSignEntries(limit: Int) -> [TechnicalCapture] {
+        technicalCaptureStore.recentClearSignEntries(limit: limit)
+    }
+
+    func recentCompoundEntries(limit: Int) -> [TechnicalCapture] {
+        technicalCaptureStore.recentCompoundEntries(limit: limit)
+    }
+
+    func recentClearSignOrCompoundEntries(limit: Int) -> [TechnicalCapture] {
+        technicalCaptureStore.recentClearSignOrCompoundEntries(limit: limit)
+    }
+
+    func pinnedHomepageEntries(limit: Int) -> [Reminder] {
+        Array(pinnedFeed.prefix(limit))
+    }
+
     // MARK: - sync
 
     private func sync(_ r: Reminder) async {
@@ -203,6 +244,28 @@ final class ReminderStore: ObservableObject {
 
     private func pushPending() async {
         for r in reminders where r.needsSync { await sync(r) }
+    }
+
+    private func enqueueCandidateCapture(for reminder: Reminder) {
+        let existing = technicalCaptureStore.capture(forReminderID: reminder.id)
+        let capture = TechnicalCapture.from(reminder: reminder, existing: existing)
+        technicalCaptureStore.save(capture)
+        candidateOutbox.enqueue(capture)
+    }
+
+    private func flushCandidateOutbox(now: Date = Date()) async {
+        for item in candidateOutbox.dueItems(now: now) {
+            do {
+                let receipt = try await candidateClient.submit(item.payload)
+                candidateOutbox.recordReceipt(itemID: item.id, receipt: receipt, now: now)
+            } catch {
+                candidateOutbox.recordFailure(
+                    itemID: item.id,
+                    message: error.localizedDescription,
+                    now: now
+                )
+            }
+        }
     }
 
     private func upsertLocal(_ r: Reminder) {

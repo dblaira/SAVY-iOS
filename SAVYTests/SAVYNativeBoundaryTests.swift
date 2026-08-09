@@ -171,6 +171,202 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(entry.status, .active)
     }
 
+    func testTechnicalCaptureFlagsAllowClearSignAndCompoundTogether() {
+        let flags = TechnicalCaptureFlags(isClearSignOfSuccess: true, isCompound: true)
+
+        XCTAssertTrue(flags.isClearSignOfSuccess)
+        XCTAssertTrue(flags.isCompound)
+    }
+
+    func testTechnicalCapturePromptPreservesExactWordsAndStableMetadataOrder() {
+        var reminder = Reminder(
+            kind: .action,
+            title: "Use SAVY every day.",
+            notes: "Keep the proof local.",
+            dueDate: Date(timeIntervalSince1970: 1_234),
+            urgent: true,
+            listName: "Delegation",
+            priority: .high,
+            whenIAm: "Sharpening the plan before I work.",
+            outcome: "CowboyAI returns the next action inside SAVY.",
+            energy: .medium,
+            waitingOn: "Studio",
+            locationName: "Mac Studio",
+            pinned: true,
+            tags: ["focus", "native"]
+        )
+        reminder.context = .clearSign
+
+        let capture = TechnicalCapture.from(reminder: reminder)
+
+        XCTAssertEqual(
+            capture.promptText,
+            """
+            What do I want?
+            Use SAVY every day.
+
+            When I am...I like to
+            Sharpening the plan before I work.
+
+            Done looks like...
+            CowboyAI returns the next action inside SAVY.
+
+            Metadata
+            Kind: action
+            Priority: high
+            Energy: medium
+            Success Flags: clear_sign=true compound=false
+            Lift: Delegation
+            Pinned: true
+            Urgent: true
+            Tags: focus, native
+            Due At: 1970-01-01T00:20:34Z
+            Defer Until: none
+            Waiting On: Studio
+            Location: Mac Studio
+            URL: none
+            Notes: Keep the proof local.
+            Steps: none
+            """
+        )
+    }
+
+    @MainActor
+    func testSavingReminderAlsoCreatesLocalTechnicalCaptureAndOutboxItem() throws {
+        let directory = try makeTemporaryDirectory()
+        let reminderURL = directory.appendingPathComponent("reminders.json")
+        let captureURL = directory.appendingPathComponent("technical-captures.json")
+        let outboxURL = directory.appendingPathComponent("cowboy-candidate-outbox.json")
+
+        let store = ReminderStore(
+            repo: LocalReminderRepository(),
+            cacheURL: reminderURL,
+            technicalCaptureStore: try TechnicalCaptureStore(fileURL: captureURL),
+            candidateOutbox: try CowboyCandidateOutbox(fileURL: outboxURL),
+            candidateClient: StubCowboyCandidateClient()
+        )
+        var reminder = Reminder(
+            kind: .action,
+            title: "Protect the native save path.",
+            notes: "Keep Adam's exact words.",
+            whenIAm: "Closing loops at the end of the day.",
+            outcome: "The candidate queue has a durable local receipt."
+        )
+        reminder.context = .compound
+        reminder.pinned = true
+        reminder.tags = ["exact-words"]
+
+        store.save(reminder)
+
+        XCTAssertEqual(store.reminders.count, 1)
+        XCTAssertEqual(store.technicalCaptures.count, 1)
+        XCTAssertEqual(store.candidateOutboxItems.count, 1)
+        XCTAssertEqual(store.technicalCaptures[0].reminderID, reminder.id)
+        XCTAssertTrue(store.technicalCaptures[0].flags.isCompound)
+        XCTAssertEqual(store.candidateOutboxItems[0].payload.authorityStatus, .candidateOnly)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: reminderURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: captureURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outboxURL.path))
+    }
+
+    @MainActor
+    func testOutboxRetryStatePersistsReceiptAndFailureMetadata() throws {
+        let directory = try makeTemporaryDirectory()
+        let fileURL = directory.appendingPathComponent("cowboy-candidate-outbox.json")
+        let outbox = try CowboyCandidateOutbox(fileURL: fileURL)
+        var reminder = Reminder(
+            kind: .action,
+            title: "Retry without losing the capture.",
+            whenIAm: "The network is gone.",
+            outcome: "The queue keeps the exact words."
+        )
+        reminder.context = .clearSign
+
+        let capture = TechnicalCapture.from(reminder: reminder)
+        let item = outbox.enqueue(capture, now: Date(timeIntervalSince1970: 100))
+        outbox.recordFailure(
+            itemID: item.id,
+            message: "offline",
+            now: Date(timeIntervalSince1970: 160)
+        )
+
+        let reloaded = try CowboyCandidateOutbox(fileURL: fileURL)
+        let persisted = try XCTUnwrap(reloaded.items.first)
+
+        XCTAssertEqual(persisted.attemptCount, 1)
+        XCTAssertEqual(persisted.lastError, "offline")
+        XCTAssertEqual(persisted.state, .retryScheduled)
+        XCTAssertEqual(persisted.nextAttemptAt, Date(timeIntervalSince1970: 460))
+        XCTAssertNil(persisted.receipt)
+    }
+
+    @MainActor
+    func testReminderStoreQueriesRecentClearSignAndCompoundEntriesIndependently() throws {
+        let directory = try makeTemporaryDirectory()
+        let store = ReminderStore(
+            repo: LocalReminderRepository(),
+            cacheURL: directory.appendingPathComponent("reminders.json"),
+            technicalCaptureStore: try TechnicalCaptureStore(
+                fileURL: directory.appendingPathComponent("technical-captures.json")
+            ),
+            candidateOutbox: try CowboyCandidateOutbox(
+                fileURL: directory.appendingPathComponent("cowboy-candidate-outbox.json")
+            ),
+            candidateClient: StubCowboyCandidateClient()
+        )
+
+        var clear = Reminder(kind: .action, title: "Clear sign")
+        clear.context = .clearSign
+        clear.updatedAt = Date(timeIntervalSince1970: 10)
+
+        var compound = Reminder(kind: .action, title: "Compound")
+        compound.context = .compound
+        compound.updatedAt = Date(timeIntervalSince1970: 20)
+
+        store.save(clear)
+        store.save(compound)
+
+        XCTAssertEqual(store.recentClearSignEntries(limit: 10).map(\.exactWords.want), ["Clear sign"])
+        XCTAssertEqual(store.recentCompoundEntries(limit: 10).map(\.exactWords.want), ["Compound"])
+        XCTAssertEqual(
+            store.recentClearSignOrCompoundEntries(limit: 10).map(\.exactWords.want),
+            ["Compound", "Clear sign"]
+        )
+    }
+
+    @MainActor
+    func testPinnedHomepageEntriesPreservePinnedFeedOrdering() throws {
+        let directory = try makeTemporaryDirectory()
+        let store = ReminderStore(
+            repo: LocalReminderRepository(),
+            cacheURL: directory.appendingPathComponent("reminders.json"),
+            technicalCaptureStore: try TechnicalCaptureStore(
+                fileURL: directory.appendingPathComponent("technical-captures.json")
+            ),
+            candidateOutbox: try CowboyCandidateOutbox(
+                fileURL: directory.appendingPathComponent("cowboy-candidate-outbox.json")
+            ),
+            candidateClient: StubCowboyCandidateClient()
+        )
+
+        var first = Reminder(kind: .action, title: "First pinned")
+        first.pinned = true
+        first.upNextOrder = 0
+
+        var second = Reminder(kind: .action, title: "Second pinned")
+        second.pinned = true
+        second.upNextOrder = 1
+
+        var third = Reminder(kind: .action, title: "Unpinned")
+        third.pinned = false
+
+        store.save(first)
+        store.save(second)
+        store.save(third)
+
+        XCTAssertEqual(store.pinnedHomepageEntries(limit: 2).map(\.title), ["First pinned", "Second pinned"])
+    }
+
     func testAWSGraphConfigurationRequiresConcreteBackendValues() {
         XCTAssertNil(AWSGraphConfiguration(baseURLString: "", apiKey: "abc"))
         XCTAssertNil(AWSGraphConfiguration(baseURLString: "https://api.example.com", apiKey: ""))
@@ -532,5 +728,24 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertTrue(sections.first { $0.id == "field-essays" }?.items.contains { $0.id == "the-lesson-is-in-the-eye-of-the-beholder" } == true)
         XCTAssertTrue(sections.first { $0.id == "ontology" }?.items.contains { $0.title.contains("13 categories") } == true)
         XCTAssertTrue(sections.first { $0.id == "beliefs" }?.items.contains { $0.title == "Focus on What's in Your Control" } == true)
+    }
+
+    private func makeTemporaryDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+}
+
+private struct StubCowboyCandidateClient: CowboyCandidateSubmitting {
+    func submit(_ payload: CowboyCandidateIntakePayload) async throws -> CowboyCandidateReceipt {
+        CowboyCandidateReceipt(
+            requestID: payload.requestID,
+            candidateID: "candidate-\(payload.captureID.uuidString.lowercased())",
+            conversationID: nil,
+            status: "candidate-only",
+            receivedAt: Date(timeIntervalSince1970: 200)
+        )
     }
 }
