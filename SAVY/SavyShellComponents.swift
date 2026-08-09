@@ -144,8 +144,8 @@ struct SavyBottomNavigationBar: View {
                         navigationButton(for: section)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.top, RootHomeLayout.bottomNavigationTopPadding)
+                .padding(.horizontal, RootHomeLayout.bottomNavigationHorizontalPadding)
+                .frame(maxHeight: .infinity, alignment: .top)
 
                 ZStack {
                     if navigationState.isRadialMenuPresented {
@@ -301,20 +301,25 @@ struct SavyBottomNavigationBar: View {
                 navigationState.dismissRadialMenu()
             }
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: RootHomeLayout.bottomNavigationIconLabelSpacing) {
                 Image(systemName: section.symbolName)
-                    .font(.system(size: 22, weight: isActive ? .semibold : .regular))
+                    .font(.system(
+                        size: RootHomeLayout.bottomNavigationIconSize,
+                        weight: isActive ? .bold : .semibold
+                    ))
 
                 Text(section.title)
                     .font(.system(size: RootHomeLayout.bottomNavigationLabelSize, weight: isActive ? .bold : .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: RootHomeLayout.bottomNavigationHeight - RootHomeLayout.bottomNavigationTopPadding)
+            .padding(.top, RootHomeLayout.bottomNavigationTopPadding)
+            .padding(.bottom, RootHomeLayout.bottomNavigationBottomPadding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .foregroundStyle(isActive ? SavyTheme.crimson : inactiveColor)
             .contentShape(Rectangle())
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .buttonStyle(.plain)
         .accessibilityLabel(section.title)
     }

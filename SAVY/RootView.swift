@@ -21,14 +21,15 @@ enum RootHomeLayout {
     static let pinnedEntryTrailingInset: CGFloat = 17
     static let pinnedEntryFontSize: CGFloat = 24
     static let contentSectionMinHeight: CGFloat = 220
-    static let contentSectionDividerHeight: CGFloat = 3
-    static let bottomNavigationHeight: CGFloat = 96
+    static let bottomNavigationHeight: CGFloat = 128
     /// Navy band painted above the tan bar (FAB overflow zone); does not add layout height.
     static let bottomNavNavyRiserHeight: CGFloat = 44
-    static let bottomNavigationTopPadding: CGFloat = 14
-    static let bottomNavigationIconSize: CGFloat = 36
-    static let bottomNavigationLabelSize: CGFloat = 11
-    static let bottomNavigationHorizontalPadding: CGFloat = 4
+    static let bottomNavigationTopPadding: CGFloat = 8
+    static let bottomNavigationBottomPadding: CGFloat = 28
+    static let bottomNavigationIconSize: CGFloat = 34
+    static let bottomNavigationLabelSize: CGFloat = 15
+    static let bottomNavigationIconLabelSpacing: CGFloat = 7
+    static let bottomNavigationHorizontalPadding: CGFloat = 0
     static let floatingCaptureSize: CGFloat = 64
     static var floatingCaptureBackground: Color { SavyTheme.crimson }
     /// FAB center sits on the top edge of the bottom navigation bar.
@@ -363,7 +364,7 @@ struct EditorialHomeView: View {
 
     private var homeContentSections: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(HomeLeverageCard.referenceCards.enumerated()), id: \.element.id) { index, card in
+            ForEach(HomeLeverageCard.referenceCards) { card in
                 if let section = leverageStore.section(id: card.sectionID) {
                     NavigationLink {
                         LeverageSectionView(section: section)
@@ -375,15 +376,6 @@ struct EditorialHomeView: View {
                 } else {
                     HomeContentSectionView(card: card, section: nil)
                         .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
-                }
-
-                if index < HomeLeverageCard.referenceCards.count - 1 {
-                    Rectangle()
-                        .fill(SavyTheme.crimson)
-                        .frame(height: RootHomeLayout.contentSectionDividerHeight)
-                        .accessibilityElement()
-                        .accessibilityLabel("Red section divider")
-                        .accessibilityIdentifier("homeContentDivider-after-\(card.sectionID)")
                 }
             }
         }
@@ -576,12 +568,6 @@ private struct HomeContentSectionView: View {
                     .font(SavyTheme.readingLabel(12))
                     .tracking(1.4)
                     .foregroundStyle(SavyTheme.tertiaryText)
-
-                Spacer()
-
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(SavyTheme.crimson)
             }
         }
         .padding(.horizontal, RootHomeLayout.horizontalPadding)

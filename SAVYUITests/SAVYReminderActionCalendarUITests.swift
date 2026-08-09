@@ -10,6 +10,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let preservesExistingData = name.contains("testEntryFormHasNoManualCowboyAIAction")
             || name.contains("testHomepageRemovesHistoricalCowboyCard")
             || name.contains("testHomepageUsesGreatestLeverageCarouselAndVerticalContentOrder")
+            || name.contains("testBottomNavigationHasLargeRaisedEdgeToEdgeTargets")
         if !preservesExistingData {
             app.launchArguments.append("SAVY_UI_TEST_RESET_REMINDERS")
         }
@@ -280,7 +281,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let essays = app.descendants(matching: .any)["homeContentSection-field-essays"].firstMatch
         let news = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
         XCTAssertTrue(connection.waitForExistence(timeout: 5), "Connection did not begin the vertical content area")
-        XCTAssertTrue(app.descendants(matching: .any)["homeContentDivider-after-beliefs"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["homeContentDivider-after-beliefs"].exists)
 
         for section in [ontology, essays, news] {
             for _ in 0..<5 where !(section.exists && section.isHittable) {
@@ -289,12 +290,41 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
             XCTAssertTrue(section.exists && section.isHittable, "A vertical homepage content area could not be reached")
         }
 
-        XCTAssertTrue(app.descendants(matching: .any)["homeContentDivider-after-field-essays"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["homeContentDivider-after-field-essays"].exists)
 
         let contentScreenshot = XCTAttachment(screenshot: app.screenshot())
-        contentScreenshot.name = "homepage-vertical-content-with-red-dividers"
+        contentScreenshot.name = "homepage-vertical-content-with-clean-spacing"
         contentScreenshot.lifetime = .keepAlways
         add(contentScreenshot)
+    }
+
+    func testBottomNavigationHasLargeRaisedEdgeToEdgeTargets() {
+        let now = app.buttons["Now"].firstMatch
+        let reminders = app.buttons["Reminders"].firstMatch
+        let actions = app.buttons["Actions"].firstMatch
+        let calendar = app.buttons["Calendar"].firstMatch
+        let buttons = [now, reminders, actions, calendar]
+
+        for button in buttons {
+            XCTAssertTrue(button.waitForExistence(timeout: 12), "A bottom navigation control is missing")
+            XCTAssertGreaterThanOrEqual(button.frame.height, 100, "Bottom navigation tap target is still too short")
+        }
+
+        XCTAssertLessThanOrEqual(now.frame.minX, 1, "Now does not reach the left phone edge")
+        XCTAssertGreaterThanOrEqual(calendar.frame.maxX, app.frame.maxX - 1, "Calendar does not reach the right phone edge")
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "large-raised-edge-to-edge-bottom-navigation"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+
+        let calendarTapY = (calendar.frame.midY - app.frame.minY) / app.frame.height
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.995, dy: calendarTapY)).tap()
+        XCTAssertTrue(app.staticTexts["Calendar"].waitForExistence(timeout: 10), "The right phone edge did not open Calendar")
+
+        let nowTapY = (now.frame.midY - app.frame.minY) / app.frame.height
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: nowTapY)).tap()
+        XCTAssertTrue(app.staticTexts["GREATEST LEVERAGE"].waitForExistence(timeout: 10), "The left phone edge did not return to Now")
     }
 
     func testCowboyNaturalVoiceIsReusableAndSpeedAdjustableInEntryForm() {

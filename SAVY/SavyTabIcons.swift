@@ -5,7 +5,7 @@ struct SavyTabIcon: View {
 
     var body: some View {
         Image(systemName: section.symbolName)
-            .font(.system(size: 22, weight: .regular))
+            .font(.system(size: RootHomeLayout.bottomNavigationIconSize, weight: .semibold))
             .frame(width: RootHomeLayout.bottomNavigationIconSize, height: RootHomeLayout.bottomNavigationIconSize)
             .accessibilityHidden(true)
     }
