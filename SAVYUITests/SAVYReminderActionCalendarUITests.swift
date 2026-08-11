@@ -220,6 +220,16 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         completeAndDelete(title, completedSectionId: "completedRemindersSection")
     }
 
+    func testSparkComposerShowsFrictionlessCaptureAndVoiceControl() {
+        openComposer(.spark)
+
+        XCTAssertTrue(app.textFields["Title"].waitForExistence(timeout: 10), "Spark title field missing")
+        XCTAssertTrue(app.descendants(matching: .any)["sparkNotes"].firstMatch.exists, "Spark notes field missing")
+        XCTAssertTrue(app.buttons["sparkVoiceRecord"].waitForExistence(timeout: 5), "Spark voice control missing")
+        XCTAssertFalse(app.switches["Due"].exists, "Spark should not require a date")
+        XCTAssertFalse(app.buttons["Priority"].exists, "Spark should not require a priority")
+    }
+
     func testCowboyNaturalVoiceReachesPlayingState() {
         openPersonalAuthorityReview()
         dismissLocalNetworkPrompt()
@@ -529,15 +539,17 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
 }
 
 private enum ComposerKind {
+    case spark
     case reminder
     case action
     case calendar
 
     var dragOffset: CGVector {
         switch self {
-        case .reminder: return CGVector(dx: -120, dy: 0)
-        case .action: return CGVector(dx: 0, dy: -140)
-        case .calendar: return CGVector(dx: 120, dy: 0)
+        case .spark: return CGVector(dx: -145, dy: -85)
+        case .reminder: return CGVector(dx: -60, dy: -145)
+        case .action: return CGVector(dx: 60, dy: -145)
+        case .calendar: return CGVector(dx: 145, dy: -85)
         }
     }
 }
