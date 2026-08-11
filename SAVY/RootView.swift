@@ -165,7 +165,7 @@ struct RootView: View {
         switch kind {
         case .spark:
             SparkComposerView { title, notes, audioRelativePath, audioDuration in
-                try? metadataStore.save(
+                try metadataStore.save(
                     MetadataEntry(
                         kind: .spark,
                         title: title,
@@ -1116,9 +1116,11 @@ struct SparkComposerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var notes = ""
+    @State private var saveError: String?
+    @State private var didSave = false
     @StateObject private var audio = SparkAudioController()
 
-    let onSave: (String, String, String?, TimeInterval?) -> Void
+    let onSave: (String, String, String?, TimeInterval?) throws -> Void
 
     var body: some View {
         NavigationStack {
@@ -1178,6 +1180,10 @@ struct SparkComposerView: View {
                     Text(error)
                         .font(SavyTheme.readingBody(14))
                         .foregroundStyle(SavyTheme.crimson)
+                } else if let saveError {
+                    Text(saveError)
+                        .font(SavyTheme.readingBody(14))
+                        .foregroundStyle(SavyTheme.crimson)
                 } else if let duration = audio.duration {
                     Text("Voice attached • \(duration.formatted(.number.precision(.fractionLength(0)))) sec")
                         .font(SavyTheme.readingBody(14))
@@ -1199,14 +1205,25 @@ struct SparkComposerView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        audio.stopRecording()
-                        onSave(title, notes, audio.audioRelativePath, audio.duration)
-                        dismiss()
+                        audio.finishCapture()
+                        do {
+                            try onSave(title, notes, audio.audioRelativePath, audio.duration)
+                            didSave = true
+                            dismiss()
+                        } catch {
+                            audio.discard()
+                            saveError = "Spark could not save."
+                        }
                     }
                     .fontWeight(.semibold)
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityIdentifier("saveSpark")
                 }
+            }
+        }
+        .onDisappear {
+            if !didSave {
+                audio.discard()
             }
         }
     }
@@ -1273,10 +1290,32 @@ final class SparkAudioController: NSObject, ObservableObject, AVAudioPlayerDeleg
 
     private var recorder: AVAudioRecorder?
     private var player: AVAudioPlayer?
+    private var acceptsRecording = true
+
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioSessionInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioSessionRouteChange(_:)),
+            name: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 
     var hasAudio: Bool { audioRelativePath != nil }
 
     func toggleRecording() {
+        guard acceptsRecording else { return }
         if isRecording {
             stopRecording()
         } else {
@@ -1324,6 +1363,7 @@ final class SparkAudioController: NSObject, ObservableObject, AVAudioPlayerDeleg
     }
 
     func discard() {
+        acceptsRecording = false
         stopRecording()
         stopPlayback()
         if let audioRelativePath {
@@ -1331,6 +1371,11 @@ final class SparkAudioController: NSObject, ObservableObject, AVAudioPlayerDeleg
         }
         audioRelativePath = nil
         duration = nil
+    }
+
+    func finishCapture() {
+        acceptsRecording = false
+        stopRecording()
     }
 
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
@@ -1342,6 +1387,7 @@ final class SparkAudioController: NSObject, ObservableObject, AVAudioPlayerDeleg
     private func startRecording() async {
         errorMessage = nil
         let granted = await requestPermission()
+        guard acceptsRecording else { return }
         guard granted else {
             errorMessage = "Microphone access is required to attach voice."
             return
@@ -1385,6 +1431,16 @@ final class SparkAudioController: NSObject, ObservableObject, AVAudioPlayerDeleg
     private static func fileURL(for relativePath: String) -> URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent(relativePath)
+    }
+
+    @objc private func handleAudioSessionInterruption(_ notification: Notification) {
+        stopRecording()
+        stopPlayback()
+    }
+
+    @objc private func handleAudioSessionRouteChange(_ notification: Notification) {
+        stopRecording()
+        stopPlayback()
     }
 }
 
