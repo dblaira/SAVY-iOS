@@ -1,6 +1,7 @@
 import Foundation
 
 enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
+    case spark
     case reminder
     case action
     case calendar
@@ -9,6 +10,8 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
 
     var menuTitle: String {
         switch self {
+        case .spark:
+            "Spark"
         case .reminder:
             "Reminder"
         case .action:
@@ -20,6 +23,8 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
 
     var symbolName: String {
         switch self {
+        case .spark:
+            "sparkles"
         case .reminder:
             "bell"
         case .action:
@@ -32,6 +37,8 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
     /// Icons used in the radial FAB fan — matches Notorious Recall.
     var fabMenuSymbolName: String {
         switch self {
+        case .spark:
+            "lightbulb.fill"
         case .reminder:
             "clock"
         case .action:
@@ -74,6 +81,8 @@ struct MetadataEntry: Identifiable, Codable, Equatable {
     var priority: MetadataEntryPriority
     var cadence: String
     var syncState: MetadataSyncState
+    var audioRelativePath: String?
+    var audioDuration: TimeInterval?
 
     init(
         id: UUID = UUID(),
@@ -87,7 +96,9 @@ struct MetadataEntry: Identifiable, Codable, Equatable {
         context: String = "",
         priority: MetadataEntryPriority = .medium,
         cadence: String = "",
-        syncState: MetadataSyncState = .pendingSync
+        syncState: MetadataSyncState = .pendingSync,
+        audioRelativePath: String? = nil,
+        audioDuration: TimeInterval? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -103,6 +114,8 @@ struct MetadataEntry: Identifiable, Codable, Equatable {
         self.priority = priority
         self.cadence = cadence.trimmedForMetadata()
         self.syncState = syncState
+        self.audioRelativePath = audioRelativePath?.trimmedForMetadata()
+        self.audioDuration = audioDuration
     }
 }
 

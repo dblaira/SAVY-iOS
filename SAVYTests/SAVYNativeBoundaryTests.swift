@@ -816,6 +816,27 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(reloadedStore.entries, [entry])
     }
 
+    func testSparkMetadataPersistsLocalAudioReference() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let store = try MetadataEntryStore(fileURL: directory.appendingPathComponent("metadata-entries.json"))
+        let spark = MetadataEntry(
+            kind: .spark,
+            title: "Record this idea",
+            notes: "Voice makes the thought easier to keep.",
+            audioRelativePath: "SAVY/Sparks/voice.m4a",
+            audioDuration: 12.5
+        )
+
+        try store.save(spark)
+
+        let reloaded = try MetadataEntryStore(fileURL: directory.appendingPathComponent("metadata-entries.json"))
+        XCTAssertEqual(reloaded.entries.first?.kind, .spark)
+        XCTAssertEqual(reloaded.entries.first?.audioRelativePath, "SAVY/Sparks/voice.m4a")
+        XCTAssertEqual(reloaded.entries.first?.audioDuration, 12.5)
+    }
+
     func testNavigationStateDeclaresLeverageSectionsInsteadOfProductivityTabs() {
         XCTAssertEqual(SavyNavigationSection.allCases.map(\.title), [
             "Now",
@@ -833,8 +854,9 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         ])
     }
 
-    func testRadialFabMenuExposesBehaviorAndTimeMetadataOptions() {
+    func testRadialFabMenuExposesSparkAlongsideBehaviorAndTimeMetadataOptions() {
         XCTAssertEqual(MetadataEntryKind.allCases.map(\.menuTitle), [
+            "Spark",
             "Reminder",
             "Action",
             "Calendar"

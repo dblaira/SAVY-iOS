@@ -149,9 +149,10 @@ struct SavyBottomNavigationBar: View {
 
                 ZStack {
                     if navigationState.isRadialMenuPresented {
-                        fabOption(.reminder).offset(x: -76, y: -40)
-                        fabOption(.action).offset(x: 0, y: -116)
-                        fabOption(.calendar).offset(x: 76, y: -40)
+                        fabOption(.spark).offset(x: -126, y: -72)
+                        fabOption(.reminder).offset(x: -50, y: -136)
+                        fabOption(.action).offset(x: 50, y: -136)
+                        fabOption(.calendar).offset(x: 126, y: -72)
                     }
 
                     captureFab
@@ -269,6 +270,7 @@ struct SavyBottomNavigationBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(kind.menuTitle)
+        .accessibilityIdentifier("\(kind.rawValue)FabOption")
     }
 
     private func borderedSymbol(_ name: String) -> some View {
@@ -283,12 +285,20 @@ struct SavyBottomNavigationBar: View {
     }
 
     private func targetKind(for translation: CGSize) -> MetadataEntryKind? {
-        guard hypot(translation.width, translation.height) > 30 else { return nil }
+        guard translation.height < -30, hypot(translation.width, translation.height) > 30 else { return nil }
         let angle = atan2(-translation.height, translation.width) * 180 / .pi
-        if angle >= 45 && angle < 135 { return .action }
-        if angle >= -45 && angle < 45 { return .calendar }
-        if angle >= 135 || angle < -135 { return .reminder }
-        return nil
+        switch angle {
+        case 0..<50:
+            .calendar
+        case 50..<90:
+            .action
+        case 90..<130:
+            .reminder
+        case 130...180:
+            .spark
+        default:
+            nil
+        }
     }
 
     private func navigationButton(for section: SavyNavigationSection) -> some View {

@@ -26,6 +26,8 @@
 	<string>SAVY uses Face ID to unlock your private workspace after you sign in.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SAVY uses location only when a native entry needs place context.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SAVY records voice attached to a Spark capture.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>SAVY connects to CowboyAI on Adam's private network for reasoning and natural voice.</string>
 	<key>NSBonjourServices</key>

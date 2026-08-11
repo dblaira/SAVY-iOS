@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 
 enum RootHomeLayout {
@@ -94,6 +95,7 @@ struct RootView: View {
                     case .now:
                         EditorialHomeView(
                             leverageStore: leverageStore,
+                            metadataStore: metadataStore,
                             reminderStore: reminderStore,
                             onSignOut: onSignOut,
                             onOpenPersonalAuthorityReview: {
@@ -161,6 +163,19 @@ struct RootView: View {
     @ViewBuilder
     private func reminderEntrySheet(for kind: MetadataEntryKind) -> some View {
         switch kind {
+        case .spark:
+            SparkComposerView { title, notes, audioRelativePath, audioDuration in
+                try? metadataStore.save(
+                    MetadataEntry(
+                        kind: .spark,
+                        title: title,
+                        notes: notes,
+                        audioRelativePath: audioRelativePath,
+                        audioDuration: audioDuration
+                    )
+                )
+                navigationState.activeSection = .now
+            }
         case .reminder:
             ReminderFormView(initialKind: .reminder, existing: nil, existingTags: reminderStore.recentTags) { reminder in
                 reminderStore.save(reminder)
@@ -202,14 +217,17 @@ struct RootView: View {
 
 struct EditorialHomeView: View {
     @ObservedObject var leverageStore: LeverageDataStore
+    @ObservedObject var metadataStore: MetadataEntryStore
     @ObservedObject var reminderStore: ReminderStore
     let onSignOut: (() -> Void)?
     let onOpenPersonalAuthorityReview: () -> Void
     @State private var editingReminder: Reminder?
+    @State private var viewingSpark: MetadataEntry?
 
     private var feedRows: [HomeFeedRow] {
         HomeFeedRow.rows(
             reminderStore: reminderStore,
+            metadataEntries: metadataStore.entries,
             leverageStore: leverageStore,
             limit: 4
         )
@@ -244,6 +262,9 @@ struct EditorialHomeView: View {
             ReminderFormView(existing: reminder, existingTags: reminderStore.recentTags) { updated in
                 reminderStore.save(updated)
             }
+        }
+        .sheet(item: $viewingSpark) { spark in
+            SparkDetailView(entry: spark)
         }
     }
 
@@ -337,6 +358,14 @@ struct EditorialHomeView: View {
                 HStack(spacing: 16) {
                     ForEach(feedRows) { entry in
                         switch entry.source {
+                        case let .spark(spark):
+                            Button {
+                                viewingSpark = spark
+                            } label: {
+                                HomeFeedRowView(entry: entry)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("greatestLeverageSpark")
                         case let .reminder(reminder):
                             Button {
                                 editingReminder = reminder
@@ -391,6 +420,7 @@ struct EditorialHomeView: View {
 
 struct HomeFeedRow: Identifiable {
     enum Source {
+        case spark(MetadataEntry)
         case reminder(Reminder)
         case leverage(section: LeverageSection, item: LeverageItem)
     }
@@ -404,12 +434,28 @@ struct HomeFeedRow: Identifiable {
     @MainActor
     static func rows(
         reminderStore: ReminderStore,
+        metadataEntries: [MetadataEntry] = [],
         leverageStore: LeverageDataStore,
         limit: Int = 4
     ) -> [HomeFeedRow] {
         var rows: [HomeFeedRow] = []
 
-        for (index, reminder) in reminderStore.pinnedFeed.prefix(limit).enumerated() {
+        for spark in metadataEntries
+            .filter({ $0.kind == .spark })
+            .sorted(by: { $0.updatedAt > $1.updatedAt })
+            .prefix(limit) {
+            rows.append(
+                HomeFeedRow(
+                    id: spark.id.uuidString,
+                    title: spark.title,
+                    subtitle: "Spark",
+                    alignment: .leading,
+                    source: .spark(spark)
+                )
+            )
+        }
+
+        for (index, reminder) in reminderStore.pinnedFeed.prefix(max(0, limit - rows.count)).enumerated() {
             rows.append(
                 HomeFeedRow(
                     id: reminder.id.uuidString,
@@ -1063,6 +1109,282 @@ struct LeverageDetailView: View {
 
         return path.antecedentLabel?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? "Unknown pathway"
+    }
+}
+
+struct SparkComposerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var notes = ""
+    @StateObject private var audio = SparkAudioController()
+
+    let onSave: (String, String, String?, TimeInterval?) -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Capture the thought before it leaves.")
+                    .font(SavyTheme.beliefSerif(28))
+                    .foregroundStyle(SavyTheme.ink)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField("Title", text: $title)
+                        .font(SavyTheme.readingTitle(22))
+                        .accessibilityIdentifier("sparkTitle")
+
+                    Divider()
+
+                    TextEditor(text: $notes)
+                        .font(SavyTheme.readingBody(17))
+                        .frame(minHeight: 150)
+                        .scrollContentBackground(.hidden)
+                        .accessibilityIdentifier("sparkNotes")
+                }
+                .padding(18)
+                .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                HStack(spacing: 14) {
+                    Button {
+                        audio.toggleRecording()
+                    } label: {
+                        Label(
+                            audio.isRecording ? "Stop recording" : "Record voice",
+                            systemImage: audio.isRecording ? "stop.fill" : "mic.fill"
+                        )
+                        .font(SavyTheme.readingLabel(15))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background(audio.isRecording ? SavyTheme.deepNavy : SavyTheme.crimson, in: Capsule())
+                    }
+                    .accessibilityIdentifier("sparkVoiceRecord")
+
+                    if audio.hasAudio {
+                        Button {
+                            audio.togglePlayback()
+                        } label: {
+                            Label(
+                                audio.isPlaying ? "Pause" : "Play",
+                                systemImage: audio.isPlaying ? "pause.fill" : "play.fill"
+                            )
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(SavyTheme.deepNavy)
+                        .accessibilityIdentifier("sparkVoicePlayback")
+                    }
+                }
+
+                if let error = audio.errorMessage {
+                    Text(error)
+                        .font(SavyTheme.readingBody(14))
+                        .foregroundStyle(SavyTheme.crimson)
+                } else if let duration = audio.duration {
+                    Text("Voice attached • \(duration.formatted(.number.precision(.fractionLength(0)))) sec")
+                        .font(SavyTheme.readingBody(14))
+                        .foregroundStyle(SavyTheme.secondaryText)
+                }
+
+                Spacer()
+            }
+            .padding(24)
+            .background(SavyTheme.paper.ignoresSafeArea())
+            .navigationTitle("Spark")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        audio.discard()
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        audio.stopRecording()
+                        onSave(title, notes, audio.audioRelativePath, audio.duration)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("saveSpark")
+                }
+            }
+        }
+    }
+}
+
+struct SparkDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let entry: MetadataEntry
+    @StateObject private var audio = SparkAudioController()
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text(entry.title)
+                        .font(SavyTheme.beliefSerif(32))
+                        .foregroundStyle(SavyTheme.ink)
+
+                    if !entry.notes.isEmpty {
+                        Text(entry.notes)
+                            .font(SavyTheme.readingBody(18))
+                            .foregroundStyle(SavyTheme.secondaryText)
+                    }
+
+                    if let path = entry.audioRelativePath {
+                        Button {
+                            audio.togglePlayback(relativePath: path)
+                        } label: {
+                            Label(
+                                audio.isPlaying ? "Pause voice" : "Play voice",
+                                systemImage: audio.isPlaying ? "pause.fill" : "play.fill"
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(SavyTheme.crimson)
+                        .accessibilityIdentifier("sparkDetailPlayback")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24)
+            }
+            .background(SavyTheme.paper.ignoresSafeArea())
+            .navigationTitle("Spark")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .onDisappear {
+            audio.stopPlayback()
+        }
+    }
+}
+
+@MainActor
+final class SparkAudioController: NSObject, ObservableObject, AVAudioPlayerDelegate {
+    @Published private(set) var isRecording = false
+    @Published private(set) var isPlaying = false
+    @Published private(set) var audioRelativePath: String?
+    @Published private(set) var duration: TimeInterval?
+    @Published private(set) var errorMessage: String?
+
+    private var recorder: AVAudioRecorder?
+    private var player: AVAudioPlayer?
+
+    var hasAudio: Bool { audioRelativePath != nil }
+
+    func toggleRecording() {
+        if isRecording {
+            stopRecording()
+        } else {
+            Task { await startRecording() }
+        }
+    }
+
+    func stopRecording() {
+        guard let recorder, isRecording else { return }
+        recorder.stop()
+        duration = recorder.currentTime
+        isRecording = false
+        self.recorder = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    func togglePlayback(relativePath: String? = nil) {
+        if isPlaying {
+            stopPlayback()
+            return
+        }
+
+        let path = relativePath ?? audioRelativePath
+        guard let path else { return }
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .default)
+            try session.setActive(true)
+            let player = try AVAudioPlayer(contentsOf: Self.fileURL(for: path))
+            player.delegate = self
+            player.prepareToPlay()
+            player.play()
+            self.player = player
+            isPlaying = true
+        } catch {
+            errorMessage = "Voice recording could not play."
+        }
+    }
+
+    func stopPlayback() {
+        player?.stop()
+        player = nil
+        isPlaying = false
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    func discard() {
+        stopRecording()
+        stopPlayback()
+        if let audioRelativePath {
+            try? FileManager.default.removeItem(at: Self.fileURL(for: audioRelativePath))
+        }
+        audioRelativePath = nil
+        duration = nil
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            stopPlayback()
+        }
+    }
+
+    private func startRecording() async {
+        errorMessage = nil
+        let granted = await requestPermission()
+        guard granted else {
+            errorMessage = "Microphone access is required to attach voice."
+            return
+        }
+
+        let relativePath = "SAVY/Sparks/\(UUID().uuidString).m4a"
+        let url = Self.fileURL(for: relativePath)
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.record, mode: .default)
+            try session.setActive(true)
+            let recorder = try AVAudioRecorder(
+                url: url,
+                settings: [
+                    AVFormatIDKey: kAudioFormatMPEG4AAC,
+                    AVSampleRateKey: 44_100,
+                    AVNumberOfChannelsKey: 1,
+                    AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+                ]
+            )
+            recorder.prepareToRecord()
+            recorder.record()
+            self.recorder = recorder
+            audioRelativePath = relativePath
+            duration = nil
+            isRecording = true
+        } catch {
+            errorMessage = "Voice recording could not start."
+        }
+    }
+
+    private func requestPermission() async -> Bool {
+        await withCheckedContinuation { continuation in
+            AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                continuation.resume(returning: granted)
+            }
+        }
+    }
+
+    private static func fileURL(for relativePath: String) -> URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(relativePath)
     }
 }
 
