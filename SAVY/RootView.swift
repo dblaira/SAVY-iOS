@@ -158,8 +158,8 @@ struct RootView: View {
         }
     }
 
-    /// Routes the radial "+" menu to the shared Re_Call-style entry form, backed by the
-    /// shared `reminderStore`. The output tabs stay separate; entry stays identical.
+    /// Routes the radial "+" menu to a focused Spark capture or the shared Re_Call-style
+    /// reminder form. Sparks stay in `MetadataEntryStore`; behavior/time entries use `reminderStore`.
     @ViewBuilder
     private func reminderEntrySheet(for kind: MetadataEntryKind) -> some View {
         switch kind {

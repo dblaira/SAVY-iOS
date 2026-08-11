@@ -176,7 +176,7 @@ struct SavyBottomNavigationBar: View {
     }
 
     private var captureFab: some View {
-        borderedSymbol(navigationState.isRadialMenuPresented ? "xmark" : "bolt.fill")
+        borderedSymbol(navigationState.isRadialMenuPresented ? "xmark" : "plus")
             .frame(
                 width: RootHomeLayout.floatingCaptureSize,
                 height: RootHomeLayout.floatingCaptureSize
