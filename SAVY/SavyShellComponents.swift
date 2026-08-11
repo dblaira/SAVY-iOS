@@ -289,15 +289,15 @@ struct SavyBottomNavigationBar: View {
         let angle = atan2(-translation.height, translation.width) * 180 / .pi
         switch angle {
         case 0..<50:
-            .calendar
+            return .calendar
         case 50..<90:
-            .action
+            return .action
         case 90..<130:
-            .reminder
+            return .reminder
         case 130...180:
-            .spark
+            return .spark
         default:
-            nil
+            return nil
         }
     }
 
