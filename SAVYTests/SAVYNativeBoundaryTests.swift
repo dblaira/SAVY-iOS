@@ -3,6 +3,47 @@ import UIKit
 @testable import SAVY
 
 final class SAVYNativeBoundaryTests: XCTestCase {
+    func testCowboyAIPointsAtTheMachineThatRunsIt() {
+        SavyCowboyAIClient.useAuthorityHub(at: nil)
+        XCTAssertEqual(
+            SavyCowboyAIClient.authorityHubURL,
+            SavyCowboyAIClient.defaultAuthorityHubURL
+        )
+        XCTAssertEqual(
+            SavyCowboyAIClient.authorityHubURL.absoluteString,
+            "http://100.111.154.126:8765"
+        )
+        XCTAssertEqual(
+            CowboyCandidateClient.authorityHubURL,
+            SavyCowboyAIClient.authorityHubURL
+        )
+    }
+
+    func testCowboyAIAddressCanBeMovedWithoutRebuilding() {
+        SavyCowboyAIClient.useAuthorityHub(at: "http://192.168.1.50:8765")
+        XCTAssertEqual(
+            SavyCowboyAIClient.authorityHubURL.absoluteString,
+            "http://192.168.1.50:8765"
+        )
+        SavyCowboyAIClient.useAuthorityHub(at: nil)
+        XCTAssertEqual(
+            SavyCowboyAIClient.authorityHubURL,
+            SavyCowboyAIClient.defaultAuthorityHubURL
+        )
+    }
+
+    func testNonsenseAddressFallsBackToTheMachineThatRunsIt() {
+        for nonsense in ["   ", "not a url", "8765"] {
+            SavyCowboyAIClient.useAuthorityHub(at: nonsense)
+            XCTAssertEqual(
+                SavyCowboyAIClient.authorityHubURL,
+                SavyCowboyAIClient.defaultAuthorityHubURL,
+                "\(nonsense) should not become the address"
+            )
+        }
+        SavyCowboyAIClient.useAuthorityHub(at: nil)
+    }
+
     func testCowboyAIRequestPreservesSavyWordsAndAuthorityBoundary() throws {
         let exactWords = """
         What do I want?
@@ -645,6 +686,24 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     }
 
     func testAWSGraphStaticFallbackReturnsSeedWithoutConfiguredClient() async {
+        // This asked for the seed and then called the live gateway to get it,
+        // so it passed or failed depending on whether Adam's Mac was answering.
+        // A test may never reach the network. When the app is configured — and
+        // in this build it is — the seed path is only reachable directly.
+        guard AWSGraphClient.fromBundleConfiguration() == nil else {
+            XCTAssertFalse(
+                AWSGraphSeed.entries.isEmpty,
+                "The seed must exist for the app to show anything before the graph answers."
+            )
+            XCTAssertFalse(AWSGraphSeed.captures.isEmpty)
+            XCTAssertFalse(AWSGraphSeed.correlations.correlations.isEmpty)
+            XCTAssertFalse(
+                AWSGraphSeed.ontologyItems.isEmpty,
+                "The ontology seed must be readable without the graph."
+            )
+            return
+        }
+
         let entries = await AWSGraphClient.entriesOrSeed()
         let captures = await AWSGraphClient.capturesOrSeed()
         let correlations = await AWSGraphClient.correlationsOrSeed()

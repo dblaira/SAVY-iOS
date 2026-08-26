@@ -393,7 +393,37 @@ extension URLSession: SavyCowboyAIHTTPDataLoading {
 }
 
 struct SavyCowboyAIClient: Sendable {
-    static let authorityHubURL = URL(string: "http://100.102.153.54:8765")!
+    /// Where CowboyAI actually runs.
+    ///
+    /// This was pinned to the Mac Studio, which no longer runs CowboyAI, so the
+    /// phone called a machine that could never answer and nothing said why. The
+    /// address now names the MacBook Pro that runs it, and can be replaced
+    /// without rebuilding the app so a move can never silently break it again.
+    static let defaultAuthorityHubURL = URL(string: "http://100.111.154.126:8765")!
+
+    static let authorityHubAddressKey = "cowboyAIAuthorityHubURL"
+
+    static var authorityHubURL: URL {
+        guard
+            let saved = UserDefaults.standard.string(forKey: authorityHubAddressKey)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            !saved.isEmpty,
+            let url = URL(string: saved),
+            url.scheme != nil,
+            url.host != nil
+        else {
+            return defaultAuthorityHubURL
+        }
+        return url
+    }
+
+    static func useAuthorityHub(at address: String?) {
+        let trimmed = address?.trimmingCharacters(in: .whitespacesAndNewlines)
+        UserDefaults.standard.set(
+            (trimmed?.isEmpty ?? true) ? nil : trimmed,
+            forKey: authorityHubAddressKey
+        )
+    }
 
     let baseURL: URL
     let session: any SavyCowboyAIHTTPDataLoading
