@@ -39,19 +39,6 @@ enum PostPlatform: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-/// Gary V's terms. Jab: give something useful, no ask. Hook: the ask.
-/// The play keeps jabs ahead of hooks at least 3 to 1.
-enum PostMove: String, Codable, CaseIterable, Identifiable {
-    case jab, hook
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .jab: return "Jab"
-        case .hook: return "Hook"
-        }
-    }
-}
-
 enum PostStatus: String, Codable, CaseIterable, Identifiable {
     case draft, ready, posted
     var id: String { rawValue }
@@ -96,7 +83,6 @@ struct SocialPost: Identifiable, Codable, Equatable {
     // Choose.
     var door: PostDoor = .adam
     var platform: PostPlatform = .x
-    var move: PostMove = .jab
     var pattern: SuccessStep = .none
 
     // Status.
@@ -125,7 +111,6 @@ struct SocialPost: Identifiable, Codable, Equatable {
         areas = try c.decodeIfPresent([String].self, forKey: .areas) ?? []
         door = try c.decodeIfPresent(PostDoor.self, forKey: .door) ?? .adam
         platform = try c.decodeIfPresent(PostPlatform.self, forKey: .platform) ?? .x
-        move = try c.decodeIfPresent(PostMove.self, forKey: .move) ?? .jab
         pattern = try c.decodeIfPresent(SuccessStep.self, forKey: .pattern) ?? .none
         status = try c.decodeIfPresent(PostStatus.self, forKey: .status) ?? .draft
         postedAt = try c.decodeIfPresent(Date.self, forKey: .postedAt)
@@ -222,15 +207,6 @@ final class SocialPostStore: ObservableObject {
     var posted: [SocialPost] {
         posts.filter { $0.status == .posted }
             .sorted { ($0.postedAt ?? $0.updatedAt) > ($1.postedAt ?? $1.updatedAt) }
-    }
-
-    /// Jabs and hooks among posted items — the 3 to 1 rule, visible.
-    var postedJabCount: Int {
-        posted.filter { $0.move == .jab }.count
-    }
-
-    var postedHookCount: Int {
-        posted.filter { $0.move == .hook }.count
     }
 
     /// Kill switch input. Adam: "If I don't use something for two days, then it's not working."

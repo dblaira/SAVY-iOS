@@ -172,13 +172,6 @@ struct SocialPostFormView: View {
 
     private var chooseSection: some View {
         Section {
-            Picker(selection: $post.move) {
-                ForEach(PostMove.allCases) { Text($0.label).tag($0) }
-            } label: {
-                Label("Jab or Hook", systemImage: "hand.raised")
-            }
-            .pickerStyle(.segmented)
-
             enumMenu("Door", icon: "door.left.hand.open", selection: $post.door) { $0.label }
             enumMenu("Platform", icon: "paperplane", selection: $post.platform) { $0.label }
             enumMenu("Pattern", icon: "list.number", selection: $post.pattern) { $0.label }
