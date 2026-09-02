@@ -1,183 +1,19 @@
 import Foundation
 
-// MARK: - Post model
+// MARK: - Posts store
 //
-// Adam's words, 2026-09-01: "X posts are incredibly important, and any truncated
-// summarization of sources I visit is immediately discouraging. Details. Random
-// connections and details between what I consume each morning ... are interesting
-// when shared based on how seemingly disparate areas connect, or overlap in some way."
+// A post is an entry on Adam's entry form with the destination set to Post. Adam,
+// 2026-09-02: "I have an entry form. That's good ... Everything on this page matters."
+// So a post carries every field that form carries — the three sentences, Steps, Pattern,
+// Clear Signs of Success, Compounding, Lift, Tags, Priority, Energy, Schedule, Details,
+// Place / People. Posted = his Done. Nothing posts on its own; Adam presses Post in X.
 //
-// Every field below holds one of those parts whole: the post in his words, the
-// source he is reacting to, the exact line that struck him, and where it touches
-// something else. Nothing posts on its own — Adam presses Post.
-
-/// Which account the post goes out under. Adam: "using different accounts" — his name,
-/// Cowboy AI, the Understood Suite, News Calm — "possible doors", opened one at a time.
-enum PostDoor: String, Codable, CaseIterable, Identifiable {
-    case adam, cowboyAI, understood, newsCalm
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .adam: return "Adam Blair"
-        case .cowboyAI: return "Cowboy AI"
-        case .understood: return "Understood Suite"
-        case .newsCalm: return "News Calm"
-        }
-    }
-}
-
-/// Where it is posted. X first; YouTube and Instagram enter with the posting phase.
-enum PostPlatform: String, Codable, CaseIterable, Identifiable {
-    case x, youtube, instagram
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .x: return "X"
-        case .youtube: return "YouTube"
-        case .instagram: return "Instagram"
-        }
-    }
-}
-
-enum PostStatus: String, Codable, CaseIterable, Identifiable {
-    case draft, ready, posted
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .draft: return "Draft"
-        case .ready: return "Ready"
-        case .posted: return "Posted"
-        }
-    }
-}
-
-/// The areas Adam watches each morning, his words: "the persistent narrative surrounding
-/// peptides, a.i., entrepreneurship, and public perception in general (pace of change,
-/// opportunities for new college grads, etc.)"
-enum PostAreas {
-    static let suggested: [String] = [
-        "Peptides",
-        "AI",
-        "Entrepreneurship",
-        "Public perception",
-        "Pace of change",
-        "New college grads",
-    ]
-}
-
-struct SocialPost: Identifiable, Codable, Equatable {
-    var id: UUID = UUID()
-
-    // The post — his point of view, word for word.
-    var text: String = ""
-
-    // The source he is reacting to.
-    var sourceLink: String = ""
-    var sourceName: String = ""     // who made it
-    var sourceLine: String = ""     // the specific line, the number, the name — verbatim
-
-    // The connection.
-    var connection: String = ""     // where this touches something else
-    var areas: [String] = []
-
-    // Choose.
-    var door: PostDoor = .adam
-    var platform: PostPlatform = .x
-    var pattern: SuccessStep = .none
-
-    // Status.
-    var status: PostStatus = .draft
-    var postedAt: Date? = nil
-    var postLink: String = ""       // link to the live post
-    var clearSign: Bool = false     // Clear Sign: a creator he respects replied, unprompted
-    var replies: Int = 0
-    var likes: Int = 0
-    var profileTaps: Int = 0
-
-    var createdAt: Date = Date()
-    var updatedAt: Date = Date()
-
-    init() {}
-
-    /// Every key is optional on read so the form can grow without losing saved posts.
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
-        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
-        sourceLink = try c.decodeIfPresent(String.self, forKey: .sourceLink) ?? ""
-        sourceName = try c.decodeIfPresent(String.self, forKey: .sourceName) ?? ""
-        sourceLine = try c.decodeIfPresent(String.self, forKey: .sourceLine) ?? ""
-        connection = try c.decodeIfPresent(String.self, forKey: .connection) ?? ""
-        areas = try c.decodeIfPresent([String].self, forKey: .areas) ?? []
-        door = try c.decodeIfPresent(PostDoor.self, forKey: .door) ?? .adam
-        platform = try c.decodeIfPresent(PostPlatform.self, forKey: .platform) ?? .x
-        pattern = try c.decodeIfPresent(SuccessStep.self, forKey: .pattern) ?? .none
-        status = try c.decodeIfPresent(PostStatus.self, forKey: .status) ?? .draft
-        postedAt = try c.decodeIfPresent(Date.self, forKey: .postedAt)
-        postLink = try c.decodeIfPresent(String.self, forKey: .postLink) ?? ""
-        clearSign = try c.decodeIfPresent(Bool.self, forKey: .clearSign) ?? false
-        replies = try c.decodeIfPresent(Int.self, forKey: .replies) ?? 0
-        likes = try c.decodeIfPresent(Int.self, forKey: .likes) ?? 0
-        profileTaps = try c.decodeIfPresent(Int.self, forKey: .profileTaps) ?? 0
-        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
-        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
-    }
-}
-
-extension SocialPost {
-    var trimmedText: String {
-        text.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    /// First line of the post — the row title and the form header.
-    var headline: String {
-        let first = trimmedText
-            .components(separatedBy: .newlines)
-            .first?
-            .trimmingCharacters(in: .whitespaces) ?? ""
-        return first.isEmpty ? "Post" : first
-    }
-
-    var hasContent: Bool {
-        if !trimmedText.isEmpty { return true }
-        if !sourceLink.isEmpty || !sourceName.isEmpty || !sourceLine.isEmpty { return true }
-        if !connection.isEmpty || !areas.isEmpty { return true }
-        return false
-    }
-
-    /// X's line for a post without Premium.
-    static let xCharacterLine = 280
-
-    var characterCount: Int {
-        trimmedText.count
-    }
-
-    /// Compact "Sep 2" / "Sep 2 1:14 PM" label for rows.
-    var whenLabel: String? {
-        guard let date = postedAt ?? (status == .posted ? updatedAt : nil) else { return nil }
-        let fmt = DateFormatter()
-        fmt.dateFormat = "MMM d h:mm a"
-        return fmt.string(from: date)
-    }
-
-    /// The X compose page with this post already in the box. Adam presses Post.
-    var xComposeURL: URL? {
-        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
-        guard let encoded = trimmedText.addingPercentEncoding(withAllowedCharacters: allowed) else {
-            return nil
-        }
-        return URL(string: "https://x.com/intent/post?text=\(encoded)")
-    }
-}
-
-// MARK: - Store
-//
-// Local-first, on this phone: posts.json under Application Support/SAVY, the same
-// pocket the technical captures use. No gateway, no sync — "Manual at First".
+// Local-first, on this phone: posts.json under Application Support/SAVY. No gateway, no
+// sync — "Manual at First".
 
 @MainActor
 final class SocialPostStore: ObservableObject {
-    @Published private(set) var posts: [SocialPost]
+    @Published private(set) var posts: [Reminder]
 
     private let fileURL: URL
 
@@ -196,63 +32,88 @@ final class SocialPostStore: ObservableObject {
 
     // MARK: Reading
 
-    var drafts: [SocialPost] {
-        posts.filter { $0.status == .draft }.sorted { $0.updatedAt > $1.updatedAt }
+    /// Not posted yet. Pinned first, then newest.
+    var drafts: [Reminder] {
+        posts.filter { $0.status == .active }
+            .sorted {
+                if $0.pinned != $1.pinned { return $0.pinned }
+                return $0.updatedAt > $1.updatedAt
+            }
     }
 
-    var ready: [SocialPost] {
-        posts.filter { $0.status == .ready }.sorted { $0.updatedAt > $1.updatedAt }
-    }
-
-    var posted: [SocialPost] {
-        posts.filter { $0.status == .posted }
-            .sorted { ($0.postedAt ?? $0.updatedAt) > ($1.postedAt ?? $1.updatedAt) }
+    /// Posted = Done on his form. Newest first.
+    var posted: [Reminder] {
+        posts.filter { $0.status == .completed }
+            .sorted { ($0.completedAt ?? $0.updatedAt) > ($1.completedAt ?? $1.updatedAt) }
     }
 
     /// Kill switch input. Adam: "If I don't use something for two days, then it's not working."
     var lastPostedAt: Date? {
-        posted.first.map { $0.postedAt ?? $0.updatedAt }
+        posted.first.map { $0.completedAt ?? $0.updatedAt }
     }
 
+    /// His toggle on the form: Clear Signs of Success.
     var clearSignCount: Int {
-        posted.filter(\.clearSign).count
+        posted.filter(\.isClearSignOfSuccess).count
     }
 
-    /// Areas used before, most-used first, ahead of the standing suggestions.
-    var recentAreas: [String] {
-        let counts = Dictionary(grouping: posts.flatMap(\.areas), by: { $0 }).mapValues(\.count)
-        let used = counts.sorted { $0.value > $1.value }.map(\.key)
-        return used + PostAreas.suggested.filter { !used.contains($0) }
+    /// Tags used on posts, most-used first — fed to the form's recent-tag menu.
+    var recentTags: [String] {
+        let counts = Dictionary(grouping: posts.flatMap(\.tags), by: { $0 }).mapValues(\.count)
+        return counts.sorted { $0.value > $1.value }.map(\.key)
     }
 
     // MARK: Writing
 
-    func save(_ post: SocialPost) {
+    func save(_ post: Reminder) {
         var p = post
+        p.kind = .post
         p.updatedAt = Date()
-        if p.status == .posted, p.postedAt == nil {
-            p.postedAt = p.updatedAt
-        }
+        p.needsSync = false
         posts.removeAll { $0.id == p.id }
         posts.insert(p, at: 0)
         persist()
     }
 
-    func markPosted(_ post: SocialPost) {
+    func markPosted(_ post: Reminder) {
         var p = post
-        p.status = .posted
-        if p.postedAt == nil { p.postedAt = Date() }
+        p.status = .completed
+        p.completedAt = Date()
         save(p)
     }
 
-    func delete(_ post: SocialPost) {
+    func unpost(_ post: Reminder) {
+        var p = post
+        p.status = .active
+        p.completedAt = nil
+        save(p)
+    }
+
+    func togglePin(_ post: Reminder) {
+        var p = post
+        p.pinned.toggle()
+        save(p)
+    }
+
+    func delete(_ post: Reminder) {
         posts.removeAll { $0.id == post.id }
         persist()
     }
 
+    // MARK: X
+
+    /// The X compose page with the post already in the box. Adam presses Post.
+    static func xComposeURL(for text: String) -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
+        guard let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: allowed) else { return nil }
+        return URL(string: "https://x.com/intent/post?text=\(encoded)")
+    }
+
     // MARK: Disk
 
-    private init(posts: [SocialPost], fileURL: URL) {
+    private init(posts: [Reminder], fileURL: URL) {
         self.posts = posts
         self.fileURL = fileURL
     }
@@ -263,11 +124,17 @@ final class SocialPostStore: ObservableObject {
         return directory.appendingPathComponent("posts.json")
     }
 
-    private static func load(from fileURL: URL) throws -> [SocialPost] {
+    private static func load(from fileURL: URL) throws -> [Reminder] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
         let data = try Data(contentsOf: fileURL)
         guard !data.isEmpty else { return [] }
-        return try JSONDecoder.recall.decode([SocialPost].self, from: data)
+        if let entries = try? JSONDecoder.recall.decode([Reminder].self, from: data) {
+            return entries
+        }
+        // Posts saved by the first form, 2026-09-02, before Post became an entry destination.
+        // His words are kept: the post text becomes the title, the rest lands in his fields.
+        let legacy = try JSONDecoder.recall.decode([LegacySocialPost].self, from: data)
+        return legacy.map { $0.asEntry }
     }
 
     private func persist() {
@@ -276,5 +143,44 @@ final class SocialPostStore: ObservableObject {
         if let data = try? JSONEncoder.recall.encode(posts) {
             try? data.write(to: fileURL, options: .atomic)
         }
+    }
+}
+
+/// Shape of posts.json from the first Post form. Read only, never written.
+private struct LegacySocialPost: Decodable {
+    var id: UUID?
+    var text: String?
+    var sourceLink: String?
+    var sourceName: String?
+    var sourceLine: String?
+    var connection: String?
+    var areas: [String]?
+    var pattern: SuccessStep?
+    var status: String?
+    var postedAt: Date?
+    var clearSign: Bool?
+    var createdAt: Date?
+    var updatedAt: Date?
+
+    var asEntry: Reminder {
+        var r = Reminder()
+        r.id = id ?? UUID()
+        r.kind = .post
+        r.title = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        r.url = sourceLink ?? ""
+        r.notes = [sourceName, sourceLine, connection]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        r.tags = areas ?? []
+        r.context = pattern ?? .none
+        r.marksClearSignOfSuccess = clearSign
+        if status == "posted" {
+            r.status = .completed
+            r.completedAt = postedAt ?? updatedAt ?? Date()
+        }
+        r.createdAt = createdAt ?? Date()
+        r.updatedAt = updatedAt ?? r.createdAt
+        return r
     }
 }

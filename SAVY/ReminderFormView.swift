@@ -6,6 +6,7 @@ import UIKit
 /// the top selector changes where the saved item lands, while the field order stays identical.
 struct ReminderFormView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @StateObject private var location = LocationProvider()
 
     let existing: Reminder?
@@ -120,7 +121,7 @@ struct ReminderFormView: View {
     @ViewBuilder private var unifiedEntrySections: some View {
         Section {
             // Grow with content so every character stays visible — no mid-word "..." cutoff.
-            TextField(EntryFormCopy.wantPrompt, text: $r.title, axis: .vertical)
+            TextField(r.kind == .post ? EntryFormCopy.postPrompt : EntryFormCopy.wantPrompt, text: $r.title, axis: .vertical)
                 .lineLimit(1...)
                 .textFieldStyle(.plain)
                 .fixedSize(horizontal: false, vertical: true)
@@ -137,6 +138,10 @@ struct ReminderFormView: View {
                 .accessibilityIdentifier("DoneLooksLike")
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
         .listRowBackground(Brand.card)
+
+        if r.kind == .post {
+            postSection
+        }
 
         stepsSection
 
@@ -169,6 +174,38 @@ struct ReminderFormView: View {
                 TextField("Waiting on / delegate to", text: $r.waitingOn)
             }
         } header: { sectionHeader("Place / People") }
+        .listRowBackground(Brand.card)
+    }
+
+    /// Post destination only. Nothing posts on its own: these hand the words to X; Adam presses Post.
+    private var postSection: some View {
+        Section {
+            HStack {
+                Text("\(r.title.trimmingCharacters(in: .whitespacesAndNewlines).count) / 280")
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundStyle(r.title.count > 280 ? Brand.crimson : .black.opacity(0.45))
+                    .accessibilityIdentifier("PostCharacterCount")
+                Spacer()
+            }
+            Button {
+                UIPasteboard.general.string = r.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            } label: {
+                Label("Copy the post", systemImage: "doc.on.doc").foregroundStyle(Brand.crimson)
+            }
+            .disabled(r.title.trimmingCharacters(in: .whitespaces).isEmpty)
+            .accessibilityIdentifier("CopyPost")
+            if let url = SocialPostStore.xComposeURL(for: r.title) {
+                Button {
+                    UIPasteboard.general.string = r.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                    openURL(url)
+                } label: {
+                    Label("Open X with this post — you press Post", systemImage: "arrow.up.right.square")
+                        .foregroundStyle(Brand.crimson)
+                }
+                .accessibilityIdentifier("OpenX")
+            }
+        } header: { sectionHeader(EntryFormCopy.postHeader) }
         .listRowBackground(Brand.card)
     }
 
@@ -456,6 +493,8 @@ private enum EntryFormCopy {
     static let chooseHeader = "Choose"
     static let scheduleHeader = "Schedule"
     static let wantPrompt = "What do I want?"
+    static let postPrompt = "The post, word for word"
+    static let postHeader = "Post"
     static let whenPrompt = "When I am...I like to"
     static let donePrompt = "Done looks like..."
     static let stepsTitle = "Steps"

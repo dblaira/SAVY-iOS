@@ -22,7 +22,6 @@
 		1F81165E193B169485545DDD /* AWSGraphClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17179B6886F43D8A8BB3911C /* AWSGraphClient.swift */; };
 		A17A6E6B721A49DCA9B44A01 /* CowboyAIReasoning.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */; };
 		A17A6E6B721A49DCA9B44B05 /* NewsChannelPosts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B06 /* NewsChannelPosts.swift */; };
-		A17A6E6B721A49DCA9B44B03 /* SocialPostFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */; };
 		A17A6E6B721A49DCA9B44B01 /* SocialPost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */; };
 		248A9C5F73ABF9BB58FDD8AF /* LeverageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451BB5DA28F4CB244411B091 /* LeverageModels.swift */; };
 		2557A7638646B33DDAD75CA8 /* PersonalAuthorityCandidates.json in Resources */ = {isa = PBXBuildFile; fileRef = 6DC7E0E10C3DC45A574F62B0 /* PersonalAuthorityCandidates.json */; };
@@ -126,7 +125,6 @@
 		C471C0DAFF40B2987170667F /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
 		A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CowboyAIReasoning.swift; sourceTree = "<group>"; };
 		A17A6E6B721A49DCA9B44B06 /* NewsChannelPosts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsChannelPosts.swift; sourceTree = "<group>"; };
-		A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialPostFormView.swift; sourceTree = "<group>"; };
 		A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialPost.swift; sourceTree = "<group>"; };
 		CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYReminderActionCalendarUITests.swift; sourceTree = "<group>"; };
 		FA030C3F6BA943F3A8F324EA /* SAVYDelegateTextExpansionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYDelegateTextExpansionUITests.swift; sourceTree = "<group>"; };
@@ -211,7 +209,6 @@
 				C471C0DAFF40B2987170667F /* ConnectionView.swift */,
 				A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */,
 				A17A6E6B721A49DCA9B44B06 /* NewsChannelPosts.swift */,
-				A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */,
 				A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */,
 				801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */,
 				44B158E4E3B37B90666E0541 /* Info.plist */,
@@ -434,7 +431,6 @@
 				EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */,
 				A17A6E6B721A49DCA9B44A01 /* CowboyAIReasoning.swift in Sources */,
 				A17A6E6B721A49DCA9B44B05 /* NewsChannelPosts.swift in Sources */,
-				A17A6E6B721A49DCA9B44B03 /* SocialPostFormView.swift in Sources */,
 				A17A6E6B721A49DCA9B44B01 /* SocialPost.swift in Sources */,
 				EF5F11DC0E410FB3E004478D /* HarnessDelegationCapture.swift in Sources */,
 				B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */,

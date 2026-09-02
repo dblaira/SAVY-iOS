@@ -2,10 +2,11 @@ import SwiftUI
 
 /// Posts live on the News Channel page. Adam, 2026-09-02: "wants posts to be found in the News
 /// Channel page. We may change the name or intent of the News Channel page, but for now, add
-/// the results of the form there." Same paper page, same white cards as the stories below.
+/// the results of the form there." A post is an entry from his form; it opens in that form.
 struct NewsChannelPostsGroup: View {
     @ObservedObject var store: SocialPostStore
-    @State private var editing: SocialPost?
+    @ObservedObject var reminderStore: ReminderStore
+    @State private var editing: Reminder?
     @State private var isComposing = false
 
     var body: some View {
@@ -15,23 +16,32 @@ struct NewsChannelPostsGroup: View {
             if store.posts.isEmpty {
                 emptyRow
             } else {
-                group(store.ready)
                 group(store.drafts)
                 group(store.posted)
             }
         }
         .sheet(item: $editing) { post in
-            SocialPostFormView(existing: post, recentAreas: store.recentAreas) { updated in
-                store.save(updated)
+            ReminderFormView(existing: post, existingTags: store.recentTags + reminderStore.recentTags) { updated in
+                route(updated, previous: post)
             }
         }
         .sheet(isPresented: $isComposing) {
-            SocialPostFormView(existing: nil, recentAreas: store.recentAreas) { post in
-                store.save(post)
+            ReminderFormView(initialKind: .post, existing: nil, existingTags: store.recentTags + reminderStore.recentTags) { entry in
+                route(entry, previous: nil)
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("newsChannelPosts")
+    }
+
+    /// The destination picker on the form decides where a saved entry lands.
+    private func route(_ entry: Reminder, previous: Reminder?) {
+        if entry.kind == .post {
+            store.save(entry)
+        } else {
+            if let previous { store.delete(previous) }
+            reminderStore.save(entry)
+        }
     }
 
     private var header: some View {
@@ -55,7 +65,6 @@ struct NewsChannelPostsGroup: View {
                 .accessibilityIdentifier("newPost")
             }
 
-            // The tally underneath: Clear Signs, and when the last one went out.
             Text(tallyLine)
                 .font(.system(size: 12, weight: .bold))
                 .tracking(1.2)
@@ -86,7 +95,7 @@ struct NewsChannelPostsGroup: View {
         }
     }
 
-    private func group(_ items: [SocialPost]) -> some View {
+    private func group(_ items: [Reminder]) -> some View {
         ForEach(items) { post in
             SavySwipeRow(
                 actions: actions(for: post),
@@ -113,11 +122,19 @@ struct NewsChannelPostsGroup: View {
         .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
     }
 
-    private func actions(for post: SocialPost) -> [SavySwipeAction] {
+    /// Same swipe set as his tabs: Done means Posted here.
+    private func actions(for post: Reminder) -> [SavySwipeAction] {
         var list: [SavySwipeAction] = []
-        if post.status != .posted {
+        if post.status == .completed {
+            list.append(SavySwipeAction(title: "Reopen", icon: "arrow.uturn.backward", bg: SavyTheme.crimson) {
+                store.unpost(post)
+            })
+        } else {
             list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.crimson) {
                 store.markPosted(post)
+            })
+            list.append(SavySwipeAction(title: post.pinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) {
+                store.togglePin(post)
             })
         }
         list.append(SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
@@ -127,15 +144,15 @@ struct NewsChannelPostsGroup: View {
     }
 }
 
-/// One post as a story-style card: status dot, kicker, his words, then where it came from.
+/// One post as a story-style card: status dot, his signals, his words, then when.
 struct NewsChannelPostRow: View {
-    let post: SocialPost
+    let post: Reminder
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Circle()
-                    .fill(statusColor)
+                    .fill(post.status == .completed ? SavyTheme.crimson : SavyTheme.bottomNavTan)
                     .frame(width: 9, height: 9)
 
                 Text(kickerText)
@@ -144,26 +161,38 @@ struct NewsChannelPostRow: View {
                     .foregroundStyle(.black.opacity(0.4))
                     .lineLimit(1)
 
-                if post.clearSign {
+                if post.pinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundStyle(.black.opacity(0.4))
+                }
+
+                if post.isClearSignOfSuccess {
                     Spacer(minLength: 4)
                     Image(systemName: "star.fill")
                         .font(.system(size: 11, weight: .heavy))
                         .foregroundStyle(SavyTheme.crimson)
-                        .accessibilityLabel("Clear Sign")
+                        .accessibilityLabel("Clear Sign of Success")
                 }
             }
 
-            Text(post.trimmedText.isEmpty ? "Untitled" : post.trimmedText)
+            Text(post.title.isEmpty ? "Untitled" : post.title)
                 .font(SavyTheme.beliefSerif(24, weight: .regular))
                 .lineSpacing(3)
                 .foregroundStyle(SavyTheme.ink)
                 .lineLimit(8)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if !signalText.isEmpty {
+                Text(signalText)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.black.opacity(0.6))
+                    .lineLimit(2)
+            }
+
             if !secondaryText.isEmpty {
                 Text(secondaryText)
                     .font(.system(size: 14))
-                    .lineSpacing(2)
                     .foregroundStyle(.black.opacity(0.55))
                     .lineLimit(2)
             }
@@ -174,28 +203,30 @@ struct NewsChannelPostRow: View {
         .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
     }
 
-    private var statusColor: Color {
-        switch post.status {
-        case .draft: return SavyTheme.bottomNavTan
-        case .ready: return SavyTheme.green
-        case .posted: return SavyTheme.crimson
-        }
+    private var kickerText: String {
+        post.status == .completed ? "POSTED" : "DRAFT"
     }
 
-    private var kickerText: String {
-        [post.status.label, post.platform.label, post.door.label]
-            .map { $0.uppercased() }
-            .joined(separator: " · ")
+    /// The same signals his tab cards show: Pattern step, priority marks, tags.
+    private var signalText: String {
+        var parts: [String] = []
+        if post.context != .none { parts.append(post.context.label) }
+        if post.isCompounding { parts.append("Compounding") }
+        if post.priority != .none { parts.append(post.priority.marks) }
+        parts.append(contentsOf: post.tags.map { "#\($0)" })
+        return parts.joined(separator: "   ·   ")
     }
 
     private var secondaryText: String {
         var parts: [String] = []
-        if !post.sourceName.isEmpty { parts.append(post.sourceName) }
-        if let when = post.whenLabel { parts.append(when) }
-        if post.status == .posted, post.likes + post.replies + post.profileTaps > 0 {
-            parts.append("\(post.replies) replies · \(post.likes) likes · \(post.profileTaps) taps")
+        if post.status == .completed, let date = post.completedAt {
+            let fmt = DateFormatter(); fmt.dateFormat = "MMM d h:mm a"
+            parts.append("Posted \(fmt.string(from: date))")
+        } else if let when = post.whenLabel {
+            parts.append(when)
         }
-        parts.append(contentsOf: post.areas.map { "#\($0)" })
+        if !post.listName.isEmpty { parts.append(post.listName) }
+        if !post.locationName.isEmpty { parts.append(post.locationName) }
         return parts.joined(separator: "   ·   ")
     }
 }

@@ -165,7 +165,8 @@ struct RootView: View {
                 // Posts live on the News Channel page for now.
                 LeverageSectionView(
                     section: leverageStore.section(id: "news-channel") ?? LeverageContent.newsChannel,
-                    postStore: postStore
+                    postStore: postStore,
+                    reminderStore: reminderStore
                 )
             }
             .task {
@@ -174,32 +175,43 @@ struct RootView: View {
         }
     }
 
-    /// Routes the radial "+" menu to the shared Re_Call-style entry form, backed by the
-    /// shared `reminderStore`. The output tabs stay separate; entry stays identical.
+    /// Routes the radial "+" menu to the shared Re_Call-style entry form. One form, four
+    /// destinations; the destination picker's final choice decides where the entry lands.
     @ViewBuilder
     private func reminderEntrySheet(for kind: MetadataEntryKind) -> some View {
+        ReminderFormView(
+            initialKind: initialReminderKind(for: kind),
+            existing: nil,
+            existingTags: reminderStore.recentTags
+        ) { entry in
+            routeSavedEntry(entry)
+        }
+    }
+
+    private func initialReminderKind(for kind: MetadataEntryKind) -> ReminderKind {
         switch kind {
+        case .reminder: return .reminder
+        case .action: return .action
+        case .post: return .post
+        case .calendar: return .event
+        }
+    }
+
+    private func routeSavedEntry(_ entry: Reminder) {
+        switch entry.kind {
         case .reminder:
-            ReminderFormView(initialKind: .reminder, existing: nil, existingTags: reminderStore.recentTags) { reminder in
-                reminderStore.save(reminder)
-                navigationState.activeSection = .reminders
-            }
+            reminderStore.save(entry)
+            navigationState.activeSection = .reminders
         case .action:
-            ReminderFormView(initialKind: .action, existing: nil, existingTags: reminderStore.recentTags) { reminder in
-                reminderStore.save(reminder)
-                navigationState.activeSection = .actions
-            }
+            reminderStore.save(entry)
+            navigationState.activeSection = .actions
+        case .event:
+            reminderStore.save(entry)
+            navigationState.activeSection = .calendar
         case .post:
-            // Posts keep their own store and their own screen; nothing posts on its own.
-            SocialPostFormView(existing: nil, recentAreas: postStore.recentAreas) { post in
-                postStore.save(post)
-                opensPostsAfterComposer = true
-            }
-        case .calendar:
-            ReminderFormView(initialKind: .event, existing: nil, existingTags: reminderStore.recentTags) { reminder in
-                reminderStore.save(reminder)
-                navigationState.activeSection = .calendar
-            }
+            // Posts stay on this phone and show on the News Channel page.
+            postStore.save(entry)
+            opensPostsAfterComposer = true
         }
     }
 
@@ -399,7 +411,7 @@ struct EditorialHomeView: View {
                             ConnectionView(section: section)
                         } else if section.id == "news-channel" {
                             // Adam: posts are "to be found in the News Channel page."
-                            LeverageSectionView(section: section, postStore: postStore)
+                            LeverageSectionView(section: section, postStore: postStore, reminderStore: reminderStore)
                         } else {
                             LeverageSectionView(section: section)
                         }
@@ -806,6 +818,7 @@ private struct NewsMoreStoryRow: View {
 private struct LeverageSectionView: View {
     let section: LeverageSection
     var postStore: SocialPostStore? = nil
+    var reminderStore: ReminderStore? = nil
 
     private var isBeliefs: Bool { section.id == "beliefs" }
 
@@ -848,8 +861,8 @@ private struct LeverageSectionView: View {
                         .foregroundStyle(SavyTheme.ink)
                 }
 
-                if let postStore {
-                    NewsChannelPostsGroup(store: postStore)
+                if let postStore, let reminderStore {
+                    NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore)
 
                     Text("STORIES")
                         .font(.system(size: 12, weight: .bold))
