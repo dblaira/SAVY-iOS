@@ -220,33 +220,6 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         completeAndDelete(title, completedSectionId: "completedRemindersSection")
     }
 
-    func testCowboyNaturalVoiceReachesPlayingState() {
-        openPersonalAuthorityReview()
-        dismissLocalNetworkPrompt()
-
-        let firstStatement = app.descendants(matching: .any)["personalAuthorityCandidateRow1"].firstMatch
-        let conferenceScroll = app.scrollViews.firstMatch
-        for _ in 0..<8 where !firstStatement.isHittable { conferenceScroll.swipeUp() }
-        XCTAssertTrue(firstStatement.waitForExistence(timeout: 10), "First authority statement missing")
-        firstStatement.tap()
-
-        let detail = app.descendants(matching: .any)["personalAuthorityCandidateDetail"].firstMatch
-        XCTAssertTrue(detail.waitForExistence(timeout: 10), "Authority statement detail did not open")
-
-        let listen = app.buttons["personalAuthorityListen"].firstMatch
-        for _ in 0..<8 where !listen.isHittable { app.swipeUp() }
-        XCTAssertTrue(listen.waitForExistence(timeout: 10), "Natural Listen button missing")
-        listen.tap()
-
-        let pause = app.buttons["personalAuthorityListen"].firstMatch
-        XCTAssertTrue(pause.waitForExistence(timeout: 300), "Natural voice never reached playback")
-        let deadline = Date().addingTimeInterval(300)
-        while Date() < deadline, !pause.label.contains("Pause") {
-            RunLoop.current.run(until: Date().addingTimeInterval(1))
-        }
-        XCTAssertTrue(pause.label.contains("Pause"), "Natural voice did not begin playing")
-    }
-
     func testHomepageRemovesHistoricalCowboyCard() {
         let historicalCard = app.descendants(matching: .any)["personalAuthorityLaunchCard"].firstMatch
         XCTAssertFalse(
@@ -355,29 +328,6 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let nowTapY = (now.frame.midY - app.frame.minY) / app.frame.height
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: nowTapY)).tap()
         XCTAssertTrue(app.staticTexts["GREATEST LEVERAGE"].waitForExistence(timeout: 10), "The left phone edge did not return to Now")
-    }
-
-    func testCowboyNaturalVoiceIsReusableAndSpeedAdjustableInEntryForm() {
-        openComposer(.action)
-
-        let titleField = app.textFields["Title"]
-        XCTAssertTrue(titleField.waitForExistence(timeout: 10), "Entry form did not open")
-        titleField.tap()
-        titleField.typeText("Hear this action in Cowboy AI")
-
-        let listen = app.buttons["entryFormNaturalVoiceListen"].firstMatch
-        for _ in 0..<6 where !listen.isHittable {
-            app.swipeUp()
-        }
-        XCTAssertTrue(listen.waitForExistence(timeout: 10), "Reusable natural voice control missing")
-
-        let slider = app.sliders["Voice speed"].firstMatch
-        XCTAssertTrue(slider.waitForExistence(timeout: 10), "Voice speed slider missing")
-        slider.adjust(toNormalizedSliderPosition: 0.8)
-
-        let rate = app.staticTexts["cowboyVoicePlaybackRate"].firstMatch
-        XCTAssertTrue(rate.waitForExistence(timeout: 5), "Voice speed value missing")
-        XCTAssertFalse(rate.label.isEmpty, "Voice speed value did not update")
     }
 
     func testEntryFormHasNoManualCowboyAIAction() {

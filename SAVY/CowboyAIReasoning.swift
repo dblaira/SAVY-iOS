@@ -569,11 +569,6 @@ struct SavyCowboyAIAnswerView: View {
                             .textSelection(.enabled)
                     }
 
-                    CowboyNaturalVoicePanel(
-                        text: answer.noteText,
-                        accessibilityIdentifier: "cowboyAIAnswerVoice"
-                    )
-
                     Button {
                         onKeepInNotes()
                         keptInNotes = true

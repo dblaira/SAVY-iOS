@@ -162,7 +162,11 @@ struct RootView: View {
                 PersonalAuthorityReviewView()
             }
             .navigationDestination(isPresented: $isPostsPresented) {
-                SocialPostsView(store: postStore)
+                // Posts live on the News Channel page for now.
+                LeverageSectionView(
+                    section: leverageStore.section(id: "news-channel") ?? LeverageContent.newsChannel,
+                    postStore: postStore
+                )
             }
             .task {
                 await reminderStore.bootstrap()
@@ -388,20 +392,14 @@ struct EditorialHomeView: View {
 
     private var homeContentSections: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Adam: "This social media thing is the leverage play for me right now." Posts sit first.
-            NavigationLink {
-                SocialPostsView(store: postStore)
-            } label: {
-                SocialPostsHomeCard(store: postStore)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("homeContentSection-posts")
-
             ForEach(HomeLeverageCard.referenceCards) { card in
                 if let section = leverageStore.section(id: card.sectionID) {
                     NavigationLink {
                         if section.id == "beliefs" {
                             ConnectionView(section: section)
+                        } else if section.id == "news-channel" {
+                            // Adam: posts are "to be found in the News Channel page."
+                            LeverageSectionView(section: section, postStore: postStore)
                         } else {
                             LeverageSectionView(section: section)
                         }
@@ -807,6 +805,7 @@ private struct NewsMoreStoryRow: View {
 
 private struct LeverageSectionView: View {
     let section: LeverageSection
+    var postStore: SocialPostStore? = nil
 
     private var isBeliefs: Bool { section.id == "beliefs" }
 
@@ -847,6 +846,16 @@ private struct LeverageSectionView: View {
                     Text(section.headline)
                         .font(.system(size: 24, weight: .regular, design: .serif))
                         .foregroundStyle(SavyTheme.ink)
+                }
+
+                if let postStore {
+                    NewsChannelPostsGroup(store: postStore)
+
+                    Text("STORIES")
+                        .font(.system(size: 12, weight: .bold))
+                        .tracking(2.4)
+                        .foregroundStyle(.black.opacity(0.42))
+                        .padding(.top, 6)
                 }
 
                 VStack(alignment: .leading, spacing: isBeliefs ? 10 : 14) {
@@ -935,17 +944,6 @@ struct LeverageDetailView: View {
         return item.title
     }
 
-    private var spokenText: String {
-        var parts: [String] = [item.title]
-        if !item.summary.isEmpty, item.summary != item.title {
-            parts.append(item.summary)
-        }
-        if !item.body.isEmpty, item.body != item.title, item.body != item.summary {
-            parts.append(item.body)
-        }
-        return parts.joined(separator: "\n\n")
-    }
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -979,12 +977,6 @@ struct LeverageDetailView: View {
             .foregroundStyle(SavyTheme.ink)
             .fixedSize(horizontal: false, vertical: true)
 
-        CowboyNaturalVoicePanel(
-            text: spokenText,
-            accessibilityIdentifier: "leverageDetailNaturalVoice"
-        )
-        .padding(.top, 28)
-
         if let graphTrace {
             Rectangle()
                 .fill(SavyTheme.crimson)
@@ -1009,11 +1001,6 @@ struct LeverageDetailView: View {
                 .lineSpacing(8)
                 .foregroundStyle(SavyTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
-
-            CowboyNaturalVoicePanel(
-                text: spokenText,
-                accessibilityIdentifier: "leverageDetailNaturalVoice"
-            )
 
             legacyDetailBody
         }

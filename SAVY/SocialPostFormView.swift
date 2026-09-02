@@ -38,7 +38,6 @@ struct SocialPostFormView: View {
                 postSection
 
                 if hasText {
-                    hearItBackSection
                     sendSection
                 }
 
@@ -109,19 +108,6 @@ struct SocialPostFormView: View {
             }
         } header: { sectionHeader(PostFormCopy.postHeader) }
         .listRowBackground(Brand.card)
-    }
-
-    private var hearItBackSection: some View {
-        Section {
-            CowboyNaturalVoicePanel(
-                text: post.trimmedText,
-                accessibilityIdentifier: "postFormNaturalVoice"
-            )
-            .listRowInsets(EdgeInsets())
-        } header: {
-            sectionHeader("Hear it back")
-        }
-        .listRowBackground(Color.clear)
     }
 
     /// Nothing posts on its own. These hand the words to X; Adam presses Post there.

@@ -1,8 +1,9 @@
 import XCTest
 
 /// Adam, 2026-09-02: "get a form set up for me to use and improve upon when planning and
-/// writing social media posts." The test is the sentence: the bolt opens a Post form, his
-/// words go in whole, Save lands the post on the Posts screen, and Now carries a Posts card.
+/// writing social media posts" — and posts are "to be found in the News Channel page."
+/// The test is the sentence: the bolt opens a Post form, his words go in whole, Save lands
+/// the post on the News Channel page, and the News Channel card on Now opens the same page.
 final class SAVYPostFormUITests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -27,7 +28,7 @@ final class SAVYPostFormUITests: XCTestCase {
         add(shot)
     }
 
-    func testBoltOpensPostFormAndSaveLandsOnPostsScreen() {
+    func testBoltOpensPostFormAndSaveLandsOnNewsChannel() {
         let fab = app.descendants(matching: .any)["chargeFab"].firstMatch
         XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
 
@@ -52,26 +53,27 @@ final class SAVYPostFormUITests: XCTestCase {
 
         app.buttons["Save"].tap()
 
-        let opened = app.descendants(matching: .any)["postsHome"].firstMatch.waitForExistence(timeout: 12)
-        attach("04 after save")
-        XCTAssertTrue(opened, "Posts screen did not open after Save")
-        XCTAssertTrue(app.staticTexts["Building meaning in public."].firstMatch.waitForExistence(timeout: 5))
+        let opened = app.descendants(matching: .any)["newsChannelPosts"].firstMatch.waitForExistence(timeout: 12)
+        attach("04 news channel after save")
+        XCTAssertTrue(opened, "News Channel page did not open after Save")
+        XCTAssertTrue(app.staticTexts["STORIES"].firstMatch.waitForExistence(timeout: 5), "Stories still missing below the posts")
     }
 
-    func testNowCarriesPostsCard() {
-        let card = app.descendants(matching: .any)["homeContentSection-posts"].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "Posts card missing from Now")
+    func testNewsChannelCardOpensPosts() {
+        let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "News Channel card missing from Now")
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
         var swipes = 0
         while !card.isHittable, swipes < 6 {
             homeScroll.swipeUp()
             swipes += 1
         }
-        XCTAssertTrue(card.isHittable, "Posts card never scrolled into view")
-        attach("05 now with posts card")
+        XCTAssertTrue(card.isHittable, "News Channel card never scrolled into view")
+        attach("05 now with news channel card")
         card.tap()
-        let opened = app.descendants(matching: .any)["postsHome"].firstMatch.waitForExistence(timeout: 12)
-        attach("06 posts screen from card")
-        XCTAssertTrue(opened, "Posts card did not open the Posts screen")
+        let opened = app.descendants(matching: .any)["newsChannelPosts"].firstMatch.waitForExistence(timeout: 12)
+        attach("06 news channel with posts")
+        XCTAssertTrue(opened, "News Channel card did not open the posts")
+        XCTAssertFalse(app.buttons["Listen"].exists, "Audio control is still on the page")
     }
 }

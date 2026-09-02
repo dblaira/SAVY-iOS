@@ -1155,7 +1155,7 @@ struct PersonalAuthorityReviewView: View {
                         .font(SavyTheme.readingLabel(12))
                         .foregroundStyle(Brand.tan)
                     Spacer()
-                    Text("Decide here or tap words to read and listen")
+                    Text("Decide here or tap words to read")
                         .font(SavyTheme.readingBody(12))
                         .foregroundStyle(Brand.card.opacity(0.68))
                 }
@@ -1452,11 +1452,6 @@ private struct PersonalAuthorityConferenceDetail: View {
                     .padding(22)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Brand.card, in: RoundedRectangle(cornerRadius: 18))
-
-                    CowboyNaturalVoicePanel(
-                        text: candidate.authoredText,
-                        accessibilityIdentifier: "personalAuthority"
-                    )
 
                     PersonalAuthorityDecisionControls(store: store, candidate: candidate, compact: false)
 

@@ -138,19 +138,6 @@ struct ReminderFormView: View {
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
         .listRowBackground(Brand.card)
 
-        if hasSpeakableEntryText {
-            Section {
-                CowboyNaturalVoicePanel(
-                    text: speakableEntryText,
-                    accessibilityIdentifier: "entryFormNaturalVoice"
-                )
-                .listRowInsets(EdgeInsets())
-            } header: {
-                sectionHeader("Hear it back")
-            }
-            .listRowBackground(Color.clear)
-        }
-
         stepsSection
 
         organizationSection
@@ -203,22 +190,6 @@ struct ReminderFormView: View {
             get: { r.whenIAm ?? "" },
             set: { r.whenIAm = $0 }
         )
-    }
-
-    private var speakableEntryText: String {
-        [
-            r.title,
-            r.whenIAm ?? "",
-            r.outcome,
-            r.notes,
-        ]
-        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .filter { !$0.isEmpty }
-        .joined(separator: "\n\n")
-    }
-
-    private var hasSpeakableEntryText: Bool {
-        !speakableEntryText.isEmpty
     }
 
     private var imageRow: some View {
