@@ -62,7 +62,10 @@ struct RootView: View {
     @StateObject private var leverageStore = LeverageDataStore()
     @StateObject private var metadataStore = MetadataEntryStore.live()
     @StateObject private var reminderStore: ReminderStore
+    @StateObject private var postStore = SocialPostStore.live()
     @State private var isPersonalAuthorityReviewPresented = false
+    @State private var isPostsPresented = false
+    @State private var opensPostsAfterComposer = false
 
     init(
         session: AuthSession,
@@ -95,6 +98,7 @@ struct RootView: View {
                         EditorialHomeView(
                             leverageStore: leverageStore,
                             reminderStore: reminderStore,
+                            postStore: postStore,
                             onSignOut: onSignOut,
                             onOpenPersonalAuthorityReview: {
                                 isPersonalAuthorityReviewPresented = true
@@ -144,11 +148,21 @@ struct RootView: View {
             .animation(SavyFabMenuMotion.open, value: navigationState.isRadialMenuPresented)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(item: $navigationState.activeComposerKind) { kind in
+            .sheet(item: $navigationState.activeComposerKind, onDismiss: {
+                // Push the Posts screen only once the composer is gone, so the push is not
+                // swallowed by the sheet's own dismissal.
+                if opensPostsAfterComposer {
+                    opensPostsAfterComposer = false
+                    isPostsPresented = true
+                }
+            }) { kind in
                 reminderEntrySheet(for: kind)
             }
             .fullScreenCover(isPresented: $isPersonalAuthorityReviewPresented) {
                 PersonalAuthorityReviewView()
+            }
+            .navigationDestination(isPresented: $isPostsPresented) {
+                SocialPostsView(store: postStore)
             }
             .task {
                 await reminderStore.bootstrap()
@@ -170,6 +184,12 @@ struct RootView: View {
             ReminderFormView(initialKind: .action, existing: nil, existingTags: reminderStore.recentTags) { reminder in
                 reminderStore.save(reminder)
                 navigationState.activeSection = .actions
+            }
+        case .post:
+            // Posts keep their own store and their own screen; nothing posts on its own.
+            SocialPostFormView(existing: nil, recentAreas: postStore.recentAreas) { post in
+                postStore.save(post)
+                opensPostsAfterComposer = true
             }
         case .calendar:
             ReminderFormView(initialKind: .event, existing: nil, existingTags: reminderStore.recentTags) { reminder in
@@ -203,6 +223,7 @@ struct RootView: View {
 struct EditorialHomeView: View {
     @ObservedObject var leverageStore: LeverageDataStore
     @ObservedObject var reminderStore: ReminderStore
+    @ObservedObject var postStore: SocialPostStore
     let onSignOut: (() -> Void)?
     let onOpenPersonalAuthorityReview: () -> Void
     @State private var editingReminder: Reminder?
@@ -367,6 +388,15 @@ struct EditorialHomeView: View {
 
     private var homeContentSections: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Adam: "This social media thing is the leverage play for me right now." Posts sit first.
+            NavigationLink {
+                SocialPostsView(store: postStore)
+            } label: {
+                SocialPostsHomeCard(store: postStore)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("homeContentSection-posts")
+
             ForEach(HomeLeverageCard.referenceCards) { card in
                 if let section = leverageStore.section(id: card.sectionID) {
                     NavigationLink {

@@ -3,6 +3,7 @@ import Foundation
 enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
     case reminder
     case action
+    case post
     case calendar
 
     var id: String { rawValue }
@@ -13,6 +14,8 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
             "Reminder"
         case .action:
             "Action"
+        case .post:
+            "Post"
         case .calendar:
             "Calendar"
         }
@@ -24,6 +27,8 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
             "bell"
         case .action:
             "checkmark.circle"
+        case .post:
+            "text.bubble"
         case .calendar:
             "calendar"
         }
@@ -36,6 +41,8 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
             "clock"
         case .action:
             "bolt.fill"
+        case .post:
+            "text.bubble.fill"
         case .calendar:
             "calendar"
         }

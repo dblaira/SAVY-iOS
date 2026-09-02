@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		6598482208EF487B92392914 /* SAVYDelegateTextExpansionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA030C3F6BA943F3A8F324EA /* SAVYDelegateTextExpansionUITests.swift */; };
+		A17A6E6B721A49DCA9B44B07 /* SAVYPostFormUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B08 /* SAVYPostFormUITests.swift */; };
 		09B7E4626804496E1984EDFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 78F623BD250D3308A5C58730 /* Assets.xcassets */; };
 		0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */; };
 		0DEC481DE44FA8A87924CE5F /* PersonalAuthorityReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A499383C68DF06FF84C7D0BE /* PersonalAuthorityReview.swift */; };
@@ -20,6 +21,9 @@
 		1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA56611B45F0D0FC844211C /* CaptureEntry.swift */; };
 		1F81165E193B169485545DDD /* AWSGraphClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17179B6886F43D8A8BB3911C /* AWSGraphClient.swift */; };
 		A17A6E6B721A49DCA9B44A01 /* CowboyAIReasoning.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */; };
+		A17A6E6B721A49DCA9B44B05 /* SocialPostsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B06 /* SocialPostsView.swift */; };
+		A17A6E6B721A49DCA9B44B03 /* SocialPostFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */; };
+		A17A6E6B721A49DCA9B44B01 /* SocialPost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */; };
 		248A9C5F73ABF9BB58FDD8AF /* LeverageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451BB5DA28F4CB244411B091 /* LeverageModels.swift */; };
 		2557A7638646B33DDAD75CA8 /* PersonalAuthorityCandidates.json in Resources */ = {isa = PBXBuildFile; fileRef = 6DC7E0E10C3DC45A574F62B0 /* PersonalAuthorityCandidates.json */; };
 		2F99A401D34AE9874D9DC0C1 /* AuthenticationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE0950195FA99739FEAC0D6 /* AuthenticationStore.swift */; };
@@ -121,8 +125,12 @@
 		C37D6C6C19501D7A09690DBC /* AuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSession.swift; sourceTree = "<group>"; };
 		C471C0DAFF40B2987170667F /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
 		A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CowboyAIReasoning.swift; sourceTree = "<group>"; };
+		A17A6E6B721A49DCA9B44B06 /* SocialPostsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialPostsView.swift; sourceTree = "<group>"; };
+		A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialPostFormView.swift; sourceTree = "<group>"; };
+		A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialPost.swift; sourceTree = "<group>"; };
 		CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYReminderActionCalendarUITests.swift; sourceTree = "<group>"; };
 		FA030C3F6BA943F3A8F324EA /* SAVYDelegateTextExpansionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYDelegateTextExpansionUITests.swift; sourceTree = "<group>"; };
+		A17A6E6B721A49DCA9B44B08 /* SAVYPostFormUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYPostFormUITests.swift; sourceTree = "<group>"; };
 		D831D78FD50C7055D086693B /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		DA7BB7AA8C7BCE337E18D90E /* ReminderLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderLocationProvider.swift; sourceTree = "<group>"; };
 		DBF301632E7B7DDBCB4E2E96 /* ReminderNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderNotificationScheduler.swift; sourceTree = "<group>"; };
@@ -202,6 +210,9 @@
 				7E869D9555384C4E876A5056 /* CaptureStore.swift */,
 				C471C0DAFF40B2987170667F /* ConnectionView.swift */,
 				A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */,
+				A17A6E6B721A49DCA9B44B06 /* SocialPostsView.swift */,
+				A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */,
+				A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */,
 				801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */,
 				44B158E4E3B37B90666E0541 /* Info.plist */,
 				834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */,
@@ -240,6 +251,7 @@
 			children = (
 				CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */,
 				FA030C3F6BA943F3A8F324EA /* SAVYDelegateTextExpansionUITests.swift */,
+				A17A6E6B721A49DCA9B44B08 /* SAVYPostFormUITests.swift */,
 			);
 			path = SAVYUITests;
 			sourceTree = "<group>";
@@ -391,6 +403,7 @@
 			files = (
 				E7F5F0E200B631EE00F748F4 /* SAVYReminderActionCalendarUITests.swift in Sources */,
 				6598482208EF487B92392914 /* SAVYDelegateTextExpansionUITests.swift in Sources */,
+				A17A6E6B721A49DCA9B44B07 /* SAVYPostFormUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -420,6 +433,9 @@
 				5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */,
 				EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */,
 				A17A6E6B721A49DCA9B44A01 /* CowboyAIReasoning.swift in Sources */,
+				A17A6E6B721A49DCA9B44B05 /* SocialPostsView.swift in Sources */,
+				A17A6E6B721A49DCA9B44B03 /* SocialPostFormView.swift in Sources */,
+				A17A6E6B721A49DCA9B44B01 /* SocialPost.swift in Sources */,
 				EF5F11DC0E410FB3E004478D /* HarnessDelegationCapture.swift in Sources */,
 				B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */,
 				57E78791EDB9525E26984968 /* LeverageContent.swift in Sources */,

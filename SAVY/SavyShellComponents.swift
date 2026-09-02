@@ -149,9 +149,11 @@ struct SavyBottomNavigationBar: View {
 
                 ZStack {
                     if navigationState.isRadialMenuPresented {
-                        fabOption(.reminder).offset(x: -76, y: -40)
-                        fabOption(.action).offset(x: 0, y: -116)
-                        fabOption(.calendar).offset(x: 76, y: -40)
+                        // Four doors on one arc, left to right: Reminder, Action, Post, Calendar.
+                        fabOption(.reminder).offset(x: -92, y: -62)
+                        fabOption(.action).offset(x: -40, y: -122)
+                        fabOption(.post).offset(x: 40, y: -122)
+                        fabOption(.calendar).offset(x: 92, y: -62)
                     }
 
                     captureFab
@@ -285,7 +287,8 @@ struct SavyBottomNavigationBar: View {
     private func targetKind(for translation: CGSize) -> MetadataEntryKind? {
         guard hypot(translation.width, translation.height) > 30 else { return nil }
         let angle = atan2(-translation.height, translation.width) * 180 / .pi
-        if angle >= 45 && angle < 135 { return .action }
+        if angle >= 90 && angle < 135 { return .action }
+        if angle >= 45 && angle < 90 { return .post }
         if angle >= -45 && angle < 45 { return .calendar }
         if angle >= 135 || angle < -135 { return .reminder }
         return nil
