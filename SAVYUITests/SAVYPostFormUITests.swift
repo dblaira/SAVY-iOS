@@ -39,18 +39,17 @@ final class SAVYPostFormUITests: XCTestCase {
 
         app.buttons["Post"].tap()
 
-        let field = app.descendants(matching: .any)["Title"].firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10), "Entry form did not open for Post")
-        XCTAssertTrue(app.staticTexts["Post"].firstMatch.waitForExistence(timeout: 5), "Post destination missing")
-        attach("02 entry form as Post")
+        let field = app.descendants(matching: .any)["PostText"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "Post form did not open")
+        attach("02 empty post form")
 
         field.tap()
         field.typeText("A peptide video and an AI hiring story said the same thing this morning: the cost of trying just fell to zero.")
 
-        // Everything on his form rides along: Pattern, Clear Signs of Success, Compounding, Lift, Tags.
-        XCTAssertTrue(app.descendants(matching: .any)["CopyPost"].firstMatch.waitForExistence(timeout: 5), "Copy button missing")
-        XCTAssertTrue(app.descendants(matching: .any)["PostCharacterCount"].firstMatch.exists, "Character count missing")
-        attach("03 entry form as Post with words")
+        let count = app.descendants(matching: .any)["PostCharacterCount"].firstMatch
+        XCTAssertTrue(count.waitForExistence(timeout: 5), "Character count missing")
+        XCTAssertTrue(app.descendants(matching: .any)["CopyPost"].firstMatch.waitForExistence(timeout: 5), "Copy button missing once there is text")
+        attach("03 post form with words")
 
         app.buttons["Save"].tap()
 

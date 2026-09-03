@@ -38,18 +38,15 @@ enum RepeatRule: String, Codable, CaseIterable, Identifiable {
 
 enum ReminderStatus: String, Codable { case active, completed, deleted }
 
-/// What an item *is*: a timed nudge, a thing you do, a time block, or a post. One model, four faces.
-/// Adam, 2026-09-02: "I have an entry form. That's good ... Everything on this page matters." — a
-/// post is an entry on the same form; it lands on the News Channel page instead of a tab.
+/// What an item *is*: a timed nudge, a thing you do, or a time block. One model, three faces.
 enum ReminderKind: String, Codable, CaseIterable, Identifiable {
-    case reminder, action, event, post
+    case reminder, action, event
     var id: String { rawValue }
     var label: String {
         switch self {
         case .reminder: return "Reminder"
         case .action: return "Action"
         case .event: return "Event"
-        case .post: return "Post"
         }
     }
 }

@@ -49,7 +49,6 @@ struct SavyReminderKindTabScreen: View {
         case .reminder: return "Reminders"
         case .action: return "Actions"
         case .event: return "Calendar"
-        case .post: return "Posts"
         }
     }
 
@@ -58,7 +57,6 @@ struct SavyReminderKindTabScreen: View {
         case .reminder: return "What matters next."
         case .action: return "Choose the move that matters."
         case .event: return "Time blocks live on the calendar."
-        case .post: return "Posts live on the News Channel page."
         }
     }
 
@@ -252,7 +250,6 @@ struct SavyReminderKindTabScreen: View {
         case (.action, 0): return "topActionCard"
         case (.action, _): return "actionCard"
         case (.event, _): return "eventCard"
-        case (.post, _): return "postCard"
         }
     }
 }
@@ -645,7 +642,6 @@ struct SavyReminderBandCard: View {
         case .reminder: return "bell"
         case .action: return "bolt"
         case .event: return "calendar"
-        case .post: return "text.bubble"
         }
     }
 
