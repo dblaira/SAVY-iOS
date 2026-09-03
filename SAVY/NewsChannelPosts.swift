@@ -3,6 +3,11 @@ import SwiftUI
 /// Posts live on the News Channel page. Adam, 2026-09-02: "wants posts to be found in the News
 /// Channel page. We may change the name or intent of the News Channel page, but for now, add
 /// the results of the form there." Same paper page, same white cards as the stories below.
+///
+/// No tally line under POSTS. Adam, 2026-09-03, after his first quote post went out through Grok
+/// Bot: "the small news, advertising and clean signs numbers below the posts label don't make
+/// sense. When I post through Grok Bot that doesn't tie to the app, so the numbers aren't honest."
+
 struct NewsChannelPostsGroup: View {
     @ObservedObject var store: SocialPostStore
     @State private var editing: SocialPost?
@@ -55,36 +60,6 @@ struct NewsChannelPostsGroup: View {
                 .accessibilityIdentifier("newPost")
             }
 
-            // The tally underneath: News, Advertising, Clear Signs, and when the last one went out.
-            Text(tallyLine)
-                .font(.system(size: 12, weight: .bold))
-                .tracking(1.2)
-                .foregroundStyle(.black.opacity(0.42))
-                .accessibilityIdentifier("postsTally")
-        }
-    }
-
-    private var tallyLine: String {
-        [
-            "NEWS \(store.postedNewsCount)",
-            "ADVERTISING \(store.postedAdvertisingCount)",
-            "CLEAR SIGNS \(store.clearSignCount)",
-            "LAST POST \(lastPostLabel.uppercased())",
-        ].joined(separator: "  ·  ")
-    }
-
-    private var lastPostLabel: String {
-        guard let date = store.lastPostedAt else { return "none yet" }
-        let calendar = Calendar.current
-        let days = calendar.dateComponents(
-            [.day],
-            from: calendar.startOfDay(for: date),
-            to: calendar.startOfDay(for: Date())
-        ).day ?? 0
-        switch days {
-        case 0: return "today"
-        case 1: return "yesterday"
-        default: return "\(days) days ago"
         }
     }
 
