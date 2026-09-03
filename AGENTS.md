@@ -47,7 +47,6 @@ When Adam's iPhone is connected, carry native work through Xcode build, device i
 - No JavaScript or TypeScript application runtime in the iOS app.
 - No simulator-first workflow unless Adam explicitly asks for it.
 - No audio in the app for now — Adam, 2026-09-02: "remove the listen with Cowboyai feature. I don't want to include an audio feature on the app for now." The voice panel and its controllers stay in the code with no entry points; do not wire them back in without Adam saying so.
-- Gary V's system is inspiration only, never a feature — Adam, 2026-09-02: "I have explicitly expressed that I would only use Gary's system as inspiration. Delete that shit." No jab or hook, no $1.80 language anywhere in the app.
 - Posts live on the News Channel page for now — Adam, 2026-09-02: "wants posts to be found in the News Channel page. We may change the name or intent of the News Channel page, but for now, add the results of the form there." Nothing posts on its own; Adam presses Post in X.
 
 ## Current Lane
