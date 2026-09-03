@@ -39,15 +39,15 @@ enum PostPlatform: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-/// Gary V's terms. Jab: give something useful, no ask. Hook: the ask.
-/// The play keeps jabs ahead of hooks at least 3 to 1.
+/// Adam's words, 2026-09-03: "News" and "Advertising". News gives something and asks for
+/// nothing. Advertising is the ask. The raw values stay as stored so saved posts still load.
 enum PostMove: String, Codable, CaseIterable, Identifiable {
     case jab, hook
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .jab: return "Jab"
-        case .hook: return "Hook"
+        case .jab: return "News"
+        case .hook: return "Advertising"
         }
     }
 }
@@ -224,12 +224,12 @@ final class SocialPostStore: ObservableObject {
             .sorted { ($0.postedAt ?? $0.updatedAt) > ($1.postedAt ?? $1.updatedAt) }
     }
 
-    /// Jabs and hooks among posted items — the 3 to 1 rule, visible.
-    var postedJabCount: Int {
+    /// News and Advertising among posted items.
+    var postedNewsCount: Int {
         posted.filter { $0.move == .jab }.count
     }
 
-    var postedHookCount: Int {
+    var postedAdvertisingCount: Int {
         posted.filter { $0.move == .hook }.count
     }
 

@@ -175,7 +175,7 @@ struct SocialPostFormView: View {
             Picker(selection: $post.move) {
                 ForEach(PostMove.allCases) { Text($0.label).tag($0) }
             } label: {
-                Label("Jab or Hook", systemImage: "hand.raised")
+                Label("News or Advertising", systemImage: "hand.raised")
             }
             .pickerStyle(.segmented)
 

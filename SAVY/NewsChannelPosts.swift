@@ -55,7 +55,7 @@ struct NewsChannelPostsGroup: View {
                 .accessibilityIdentifier("newPost")
             }
 
-            // The tally underneath: jabs to hooks, Clear Signs, and when the last one went out.
+            // The tally underneath: News, Advertising, Clear Signs, and when the last one went out.
             Text(tallyLine)
                 .font(.system(size: 12, weight: .bold))
                 .tracking(1.2)
@@ -66,8 +66,8 @@ struct NewsChannelPostsGroup: View {
 
     private var tallyLine: String {
         [
-            "JABS \(store.postedJabCount)",
-            "HOOKS \(store.postedHookCount)",
+            "NEWS \(store.postedNewsCount)",
+            "ADVERTISING \(store.postedAdvertisingCount)",
             "CLEAR SIGNS \(store.clearSignCount)",
             "LAST POST \(lastPostLabel.uppercased())",
         ].joined(separator: "  ·  ")
