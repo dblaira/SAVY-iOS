@@ -63,6 +63,7 @@ struct RootView: View {
     @StateObject private var metadataStore = MetadataEntryStore.live()
     @StateObject private var reminderStore: ReminderStore
     @StateObject private var postStore = SocialPostStore.live()
+    @StateObject private var storyStore = StoryStore.live()
     @State private var isPersonalAuthorityReviewPresented = false
     @State private var isPostsPresented = false
     @State private var opensPostsAfterComposer = false
@@ -99,6 +100,7 @@ struct RootView: View {
                             leverageStore: leverageStore,
                             reminderStore: reminderStore,
                             postStore: postStore,
+                            storyStore: storyStore,
                             onSignOut: onSignOut,
                             onOpenPersonalAuthorityReview: {
                                 isPersonalAuthorityReviewPresented = true
@@ -165,7 +167,8 @@ struct RootView: View {
                 // Posts live on the News Channel page for now.
                 LeverageSectionView(
                     section: leverageStore.section(id: "news-channel") ?? LeverageContent.newsChannel,
-                    postStore: postStore
+                    postStore: postStore,
+                    storyStore: storyStore
                 )
             }
             .task {
@@ -228,6 +231,7 @@ struct EditorialHomeView: View {
     @ObservedObject var leverageStore: LeverageDataStore
     @ObservedObject var reminderStore: ReminderStore
     @ObservedObject var postStore: SocialPostStore
+    @ObservedObject var storyStore: StoryStore
     let onSignOut: (() -> Void)?
     let onOpenPersonalAuthorityReview: () -> Void
     @State private var editingReminder: Reminder?
@@ -399,7 +403,7 @@ struct EditorialHomeView: View {
                             ConnectionView(section: section)
                         } else if section.id == "news-channel" {
                             // Adam: posts are "to be found in the News Channel page."
-                            LeverageSectionView(section: section, postStore: postStore)
+                            LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore)
                         } else {
                             LeverageSectionView(section: section)
                         }
@@ -806,6 +810,7 @@ private struct NewsMoreStoryRow: View {
 private struct LeverageSectionView: View {
     let section: LeverageSection
     var postStore: SocialPostStore? = nil
+    var storyStore: StoryStore? = nil
 
     private var isBeliefs: Bool { section.id == "beliefs" }
 
@@ -850,12 +855,12 @@ private struct LeverageSectionView: View {
 
                 if let postStore {
                     NewsChannelPostsGroup(store: postStore)
+                }
 
-                    Text("STORIES")
-                        .font(.system(size: 12, weight: .bold))
-                        .tracking(2.4)
-                        .foregroundStyle(.black.opacity(0.42))
-                        .padding(.top, 6)
+                if let storyStore {
+                    // Adam: "Add a plus button to the Stories area of the News Channel page and
+                    // have that open to different form."
+                    NewsChannelStoriesGroup(store: storyStore)
                 }
 
                 VStack(alignment: .leading, spacing: isBeliefs ? 10 : 14) {

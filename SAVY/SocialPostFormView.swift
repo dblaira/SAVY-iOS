@@ -87,8 +87,9 @@ struct SocialPostFormView: View {
 
     private var postSection: some View {
         Section {
+            // Grows with the words so all 280 characters stay on screen — no "..." cutoff.
             TextField(PostFormCopy.postPrompt, text: $post.text, axis: .vertical)
-                .lineLimit(3...)
+                .lineLimit(4...)
                 .textFieldStyle(.plain)
                 .font(SavyTypography.displaySerif(22, weight: .regular))
                 .fixedSize(horizontal: false, vertical: true)

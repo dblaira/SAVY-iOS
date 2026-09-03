@@ -21,6 +21,9 @@
 		1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA56611B45F0D0FC844211C /* CaptureEntry.swift */; };
 		1F81165E193B169485545DDD /* AWSGraphClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17179B6886F43D8A8BB3911C /* AWSGraphClient.swift */; };
 		A17A6E6B721A49DCA9B44A01 /* CowboyAIReasoning.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */; };
+		A17A6E6B721A49DCA9B44C05 /* NewsChannelStories.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44C06 /* NewsChannelStories.swift */; };
+		A17A6E6B721A49DCA9B44C03 /* StoryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44C04 /* StoryFormView.swift */; };
+		A17A6E6B721A49DCA9B44C01 /* Story.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44C02 /* Story.swift */; };
 		A17A6E6B721A49DCA9B44B05 /* NewsChannelPosts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B06 /* NewsChannelPosts.swift */; };
 		A17A6E6B721A49DCA9B44B03 /* SocialPostFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */; };
 		A17A6E6B721A49DCA9B44B01 /* SocialPost.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */; };
@@ -125,6 +128,9 @@
 		C37D6C6C19501D7A09690DBC /* AuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSession.swift; sourceTree = "<group>"; };
 		C471C0DAFF40B2987170667F /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
 		A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CowboyAIReasoning.swift; sourceTree = "<group>"; };
+		A17A6E6B721A49DCA9B44C06 /* NewsChannelStories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsChannelStories.swift; sourceTree = "<group>"; };
+		A17A6E6B721A49DCA9B44C04 /* StoryFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryFormView.swift; sourceTree = "<group>"; };
+		A17A6E6B721A49DCA9B44C02 /* Story.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Story.swift; sourceTree = "<group>"; };
 		A17A6E6B721A49DCA9B44B06 /* NewsChannelPosts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsChannelPosts.swift; sourceTree = "<group>"; };
 		A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialPostFormView.swift; sourceTree = "<group>"; };
 		A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialPost.swift; sourceTree = "<group>"; };
@@ -210,6 +216,9 @@
 				7E869D9555384C4E876A5056 /* CaptureStore.swift */,
 				C471C0DAFF40B2987170667F /* ConnectionView.swift */,
 				A17A6E6B721A49DCA9B44A02 /* CowboyAIReasoning.swift */,
+				A17A6E6B721A49DCA9B44C06 /* NewsChannelStories.swift */,
+				A17A6E6B721A49DCA9B44C04 /* StoryFormView.swift */,
+				A17A6E6B721A49DCA9B44C02 /* Story.swift */,
 				A17A6E6B721A49DCA9B44B06 /* NewsChannelPosts.swift */,
 				A17A6E6B721A49DCA9B44B04 /* SocialPostFormView.swift */,
 				A17A6E6B721A49DCA9B44B02 /* SocialPost.swift */,
@@ -433,6 +442,9 @@
 				5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */,
 				EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */,
 				A17A6E6B721A49DCA9B44A01 /* CowboyAIReasoning.swift in Sources */,
+				A17A6E6B721A49DCA9B44C05 /* NewsChannelStories.swift in Sources */,
+				A17A6E6B721A49DCA9B44C03 /* StoryFormView.swift in Sources */,
+				A17A6E6B721A49DCA9B44C01 /* Story.swift in Sources */,
 				A17A6E6B721A49DCA9B44B05 /* NewsChannelPosts.swift in Sources */,
 				A17A6E6B721A49DCA9B44B03 /* SocialPostFormView.swift in Sources */,
 				A17A6E6B721A49DCA9B44B01 /* SocialPost.swift in Sources */,
