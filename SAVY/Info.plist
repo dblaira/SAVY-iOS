@@ -22,6 +22,10 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCalendarsUsageDescription</key>
+	<string>SAVY reads your Apple Calendar — your iCloud calendars — so your real schedule sits beside your own entries on the SAVY calendar.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>SAVY reads your Apple Calendar — your iCloud calendars — so your real schedule sits beside your own entries on the SAVY calendar.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>SAVY uses Face ID to unlock your private workspace after you sign in.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

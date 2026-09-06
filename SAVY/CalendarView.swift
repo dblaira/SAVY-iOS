@@ -1,10 +1,13 @@
 import SwiftUI
+import UIKit
 
 /// The Calendar tab: a black "Calendar" hero (Today button + month chevrons), a white month grid,
 /// and a full day timeline — 24 hour rows with reminders placed at their actual times, a crimson
-/// "now" line, and an all-day row. Backed by the real store.
+/// "now" line, and an all-day row. Backed by the real store, with Adam's iCloud Apple Calendar
+/// read in beside it.
 struct CalendarView: View {
     @EnvironmentObject var store: ReminderStore
+    @EnvironmentObject var appleCalendar: AppleCalendarStore
     var onOpen: (Reminder) -> Void = { _ in }
 
     @State private var month: Date = Date()      // any date inside the displayed month
@@ -23,6 +26,7 @@ struct CalendarView: View {
                     hero(proxy)
                     Rectangle().fill(Brand.crimson).frame(height: 2)
                     VStack(spacing: 18) {
+                        appleCalendarBanner
                         monthCard
                         dayHeader
                         allDayRow
@@ -39,6 +43,10 @@ struct CalendarView: View {
                 if shouldScrollToNow {
                     scrollToNow(proxy, animated: false)
                 }
+                Task { await appleCalendar.connect(around: month) }
+            }
+            .onChange(of: month) { _, newMonth in
+                appleCalendar.loadIfNeeded(around: newMonth)
             }
         }
     }
@@ -110,7 +118,8 @@ struct CalendarView: View {
         let isToday = cal.isDateInToday(day)
         let isSelected = cal.isDate(day, inSameDayAs: selected)
         let events = reminders(on: day)
-        let importance = dayImportance(events)
+        let appleEvents = appleCalendar.events(on: day)
+        let importance = dayImportance(events) + appleEvents.count
         let weight = dayWeight(importance)
         let markSize = dayMarkSize(weight)
         return Button {
@@ -124,18 +133,29 @@ struct CalendarView: View {
                     .frame(width: markSize, height: markSize)
                     .background { dayBackground(isToday: isToday, isSelected: isSelected, weight: weight) }
                     .overlay { dayBorder(isToday: isToday, isSelected: isSelected, weight: weight) }
-                daySignal(events, importance: importance, weight: weight)
+                daySignal(
+                    count: events.count + appleEvents.count,
+                    hot: dayIsHot(events),
+                    importance: importance,
+                    weight: weight
+                )
             }
             .frame(maxWidth: .infinity)
             .frame(height: 62)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("calendarDay-\(cal.component(.day, from: day))")
-        .accessibilityLabel(dayAccessibilityLabel(day: day, events: events, importance: importance))
+        .accessibilityLabel(
+            dayAccessibilityLabel(
+                day: day,
+                count: events.count + appleEvents.count,
+                importance: importance
+            )
+        )
     }
 
-    @ViewBuilder private func daySignal(_ events: [Reminder], importance: Int, weight: Int) -> some View {
-        if events.isEmpty {
+    @ViewBuilder private func daySignal(count: Int, hot: Bool, importance: Int, weight: Int) -> some View {
+        if count == 0 {
             Circle().fill(Color.clear).frame(width: 5, height: 5)
         } else if weight >= 3 {
             HStack(spacing: 2) {
@@ -146,12 +166,12 @@ struct CalendarView: View {
                 }
             }
             .frame(height: 9)
-        } else if events.count == 1 {
+        } else if count == 1 {
             Circle()
-                .fill(dotColor(events))
+                .fill(hot ? Brand.crimson : .black)
                 .frame(width: weight >= 2 ? 7 : 5, height: weight >= 2 ? 7 : 5)
         } else {
-            Text("\(events.count)")
+            Text("\(count)")
                 .font(.system(size: 9, weight: .heavy))
                 .foregroundStyle(importance >= 3 ? Brand.crimson : .black.opacity(0.55))
                 .frame(height: 9)
@@ -198,7 +218,8 @@ struct CalendarView: View {
 
     @ViewBuilder private var allDayRow: some View {
         let items = reminders(on: selected).filter { $0.dueTime == nil }
-        if !items.isEmpty {
+        let appleItems = appleCalendar.events(on: selected).filter { $0.sitsInAllDayRow(on: selected) }
+        if !items.isEmpty || !appleItems.isEmpty {
             HStack(alignment: .top, spacing: 8) {
                 Text("all-day")
                     .font(.system(size: 13, weight: .heavy))
@@ -207,6 +228,9 @@ struct CalendarView: View {
                 VStack(spacing: 6) {
                     ForEach(items) { reminder in
                         calendarEventRow(reminder, compact: true)
+                    }
+                    ForEach(appleItems) { event in
+                        appleEventBlock(event, compact: true)
                     }
                 }
             }
@@ -217,6 +241,7 @@ struct CalendarView: View {
 
     private var timeline: some View {
         let timed = reminders(on: selected).filter { $0.dueTime != nil }
+        let appleTimed = appleCalendar.events(on: selected).filter { !$0.sitsInAllDayRow(on: selected) }
         return ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
                 ForEach(0..<24, id: \.self) { h in
@@ -239,6 +264,13 @@ struct CalendarView: View {
                     .padding(.trailing, 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .offset(y: yOffset(r))
+            }
+            ForEach(appleTimed) { event in
+                appleEventBlock(event, compact: false)
+                    .padding(.leading, gutter)
+                    .padding(.trailing, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .offset(y: yOffset(event.start))
             }
             if cal.isDateInToday(selected) { nowLine }
         }
@@ -276,6 +308,106 @@ struct CalendarView: View {
         .background((hot ? Brand.crimson : Color.black).opacity(hot ? 0.12 : 0.06))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke((hot ? Brand.crimson : Color.black).opacity(0.15)))
+    }
+
+    // MARK: Apple Calendar
+
+    /// The one line that tells Adam whether his iCloud Apple Calendar is actually coming through,
+    /// with the way back if it is not.
+    private var appleCalendarBanner: some View {
+        let connection = appleCalendar.connection
+        return HStack(alignment: .center, spacing: 10) {
+            Image(systemName: connection.isReading ? "checkmark.seal.fill" : "calendar.badge.plus")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(connection.isReading ? Brand.tileBlue : Brand.crimson)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(connection.headline)
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(.black)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail = connection.detail {
+                    Text(detail)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.black.opacity(0.5))
+                        .lineLimit(2)
+                }
+            }
+            Spacer(minLength: 0)
+            if connection.status == .notDetermined {
+                bannerButton("Connect") {
+                    Task { await appleCalendar.connect(around: month) }
+                }
+            } else if connection.needsSettings {
+                bannerButton("Settings", action: openCalendarSettings)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.08)))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("appleCalendarConnection")
+    }
+
+    private func bannerButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .heavy))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(Brand.crimson)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("appleCalendar\(title)")
+    }
+
+    private func openCalendarSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    /// An Apple Calendar event, read-only: SAVY shows it, SAVY does not edit it.
+    private func appleEventBlock(_ event: AppleCalendarEvent, compact: Bool) -> some View {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 2).fill(Brand.tileBlue).frame(width: 3)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(event.title.isEmpty ? "Untitled" : event.title)
+                    .font(.system(size: 15, weight: .bold)).foregroundStyle(.black)
+                    .lineLimit(1)
+                if let sub = appleSubtitle(event, compact: compact) {
+                    Text(sub).font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.black.opacity(0.5)).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "calendar")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Brand.tileBlue.opacity(0.8))
+        }
+        .padding(.vertical, 6).padding(.horizontal, 8)
+        .frame(height: compact ? 46 : hourHeight - 8, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Brand.tileBlue.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Brand.tileBlue.opacity(0.25)))
+        .accessibilityIdentifier("appleCalendarEvent-\(event.id)")
+    }
+
+    /// Time first on the timeline, calendar name in the all-day row — the calendar name always
+    /// rides along so Adam can see which iCloud calendar an event came from.
+    private func appleSubtitle(_ event: AppleCalendarEvent, compact: Bool) -> String? {
+        var parts: [String] = []
+        if !compact {
+            var time = Self.timeFmt.string(from: event.start)
+            if let end = event.end, end > event.start {
+                time += " – " + Self.timeFmt.string(from: end)
+            }
+            parts.append(time)
+        }
+        if !event.calendarName.isEmpty { parts.append(event.calendarName) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func calendarEventRow(_ reminder: Reminder, compact: Bool) -> some View {
@@ -327,8 +459,8 @@ struct CalendarView: View {
         reminders(on: selected).allSatisfy { $0.dueTime != nil }
     }
 
-    private func dotColor(_ events: [Reminder]) -> Color {
-        events.contains { $0.urgent || $0.flag || $0.priority == .high } ? Brand.crimson : .black
+    private func dayIsHot(_ events: [Reminder]) -> Bool {
+        events.contains { $0.urgent || $0.flag || $0.priority == .high }
     }
 
     private func dayImportance(_ events: [Reminder]) -> Int {
@@ -386,10 +518,10 @@ struct CalendarView: View {
         return weight >= 3 ? Brand.crimson : .black
     }
 
-    private func dayAccessibilityLabel(day: Date, events: [Reminder], importance: Int) -> String {
+    private func dayAccessibilityLabel(day: Date, count: Int, importance: Int) -> String {
         let date = day.formatted(.dateTime.weekday(.wide).month(.wide).day())
-        guard !events.isEmpty else { return "\(date), no scheduled items" }
-        return "\(date), \(events.count) scheduled items, importance \(importance)"
+        guard count > 0 else { return "\(date), no scheduled items" }
+        return "\(date), \(count) scheduled items, importance \(importance)"
     }
 
     private func subtitle(_ r: Reminder) -> String? {
@@ -401,7 +533,11 @@ struct CalendarView: View {
 
     private func yOffset(_ r: Reminder) -> CGFloat {
         guard let t = r.dueTime else { return 0 }
-        let c = cal.dateComponents([.hour, .minute], from: t)
+        return yOffset(t)
+    }
+
+    private func yOffset(_ time: Date) -> CGFloat {
+        let c = cal.dateComponents([.hour, .minute], from: time)
         return (CGFloat(c.hour ?? 0) + CGFloat(c.minute ?? 0) / 60) * hourHeight
     }
 

@@ -62,6 +62,7 @@ struct RootView: View {
     @StateObject private var leverageStore = LeverageDataStore()
     @StateObject private var metadataStore = MetadataEntryStore.live()
     @StateObject private var reminderStore: ReminderStore
+    @StateObject private var appleCalendarStore = AppleCalendarStore()
     @StateObject private var postStore = SocialPostStore.live()
     @StateObject private var storyStore = StoryStore.live()
     @State private var isPersonalAuthorityReviewPresented = false
@@ -115,6 +116,7 @@ struct RootView: View {
                     case .calendar:
                         SavyCalendarTabScreen()
                             .environmentObject(reminderStore)
+                            .environmentObject(appleCalendarStore)
                     }
                 }
                 .padding(.bottom, RootHomeLayout.bottomNavigationHeight)
