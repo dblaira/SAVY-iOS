@@ -14,13 +14,17 @@ final class ReminderStore: ObservableObject {
     private let candidateOutbox: CowboyCandidateOutbox
     private let candidateClient: any CowboyCandidateSubmitting
 
+    static let calendarSeedDeliveredKeyPrefix = "savy.calendarSeed.delivered."
+
     // SAVY runs the reminder system on-device first, then syncs through GatewayReminderRepository.
     init(
         repo: ReminderRepository = LocalReminderRepository(),
         cacheURL: URL? = nil,
         technicalCaptureStore: TechnicalCaptureStore = .live(),
         candidateOutbox: CowboyCandidateOutbox = .live(),
-        candidateClient: any CowboyCandidateSubmitting = CowboyCandidateClient()
+        candidateClient: any CowboyCandidateSubmitting = CowboyCandidateClient(),
+        calendarSeed: [SavyCalendarSeed.Event] = SavyCalendarSeed.all,
+        calendarSeedDefaults: UserDefaults = .standard
     ) {
         self.repo = repo
         self.technicalCaptureStore = technicalCaptureStore
@@ -36,6 +40,24 @@ final class ReminderStore: ObservableObject {
         if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_DEMO_REMINDERS"), reminders.isEmpty {
             reminders = Self.uiTestDemoReminders
             saveCache()
+        }
+        deliverCalendarSeed(calendarSeed, defaults: calendarSeedDefaults)
+    }
+
+    /// Put the outside events Adam asked SAVY to carry on the calendar — once each. The delivered
+    /// flag is what makes a delete stick: the row goes, the flag stays, so it never comes back.
+    private func deliverCalendarSeed(_ events: [SavyCalendarSeed.Event], defaults: UserDefaults) {
+        for event in events {
+            let deliveredKey = Self.calendarSeedDeliveredKeyPrefix + event.key
+            guard !defaults.bool(forKey: deliveredKey) else { continue }
+            // Already in the cache from an earlier launch: mark it delivered, don't send it twice.
+            if reminders.contains(where: { $0.id == event.id }) {
+                defaults.set(true, forKey: deliveredKey)
+                continue
+            }
+            guard let reminder = event.reminder() else { continue }
+            save(reminder)
+            defaults.set(true, forKey: deliveredKey)
         }
     }
 
