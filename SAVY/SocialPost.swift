@@ -81,6 +81,14 @@ enum PostAreas {
 struct SocialPost: Identifiable, Codable, Equatable {
     var id: UUID = UUID()
 
+    // Delegate — the same three sentences the Reminder form opens with.
+    var want: String = ""           // What do I want?
+    var whenIAm: String = ""        // When I am...I like to
+    var doneLooksLike: String = ""  // Done looks like...
+
+    // Steps — same shape as Reminder subtasks.
+    var steps: [Subtask] = []
+
     // The post — his point of view, word for word.
     var text: String = ""
 
@@ -97,7 +105,15 @@ struct SocialPost: Identifiable, Codable, Equatable {
     var door: PostDoor = .adam
     var platform: PostPlatform = .x
     var move: PostMove = .jab
+    var priority: Priority = .none
+    var energy: Energy = .none
+
+    // Pattern — the same block the Reminder form carries.
     var pattern: SuccessStep = .none
+    var marksClearSignOfSuccess: Bool? = nil    // "Clear Signs of Success" toggle
+    var marksCompounding: Bool? = nil           // "Compounding" toggle
+    var listName: String = ""                   // Lift; no list until the user picks one
+    var tags: [String] = []
 
     // Status.
     var status: PostStatus = .draft
@@ -117,6 +133,10 @@ struct SocialPost: Identifiable, Codable, Equatable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        want = try c.decodeIfPresent(String.self, forKey: .want) ?? ""
+        whenIAm = try c.decodeIfPresent(String.self, forKey: .whenIAm) ?? ""
+        doneLooksLike = try c.decodeIfPresent(String.self, forKey: .doneLooksLike) ?? ""
+        steps = try c.decodeIfPresent([Subtask].self, forKey: .steps) ?? []
         text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
         sourceLink = try c.decodeIfPresent(String.self, forKey: .sourceLink) ?? ""
         sourceName = try c.decodeIfPresent(String.self, forKey: .sourceName) ?? ""
@@ -126,7 +146,13 @@ struct SocialPost: Identifiable, Codable, Equatable {
         door = try c.decodeIfPresent(PostDoor.self, forKey: .door) ?? .adam
         platform = try c.decodeIfPresent(PostPlatform.self, forKey: .platform) ?? .x
         move = try c.decodeIfPresent(PostMove.self, forKey: .move) ?? .jab
+        priority = try c.decodeIfPresent(Priority.self, forKey: .priority) ?? .none
+        energy = try c.decodeIfPresent(Energy.self, forKey: .energy) ?? .none
         pattern = try c.decodeIfPresent(SuccessStep.self, forKey: .pattern) ?? .none
+        marksClearSignOfSuccess = try c.decodeIfPresent(Bool.self, forKey: .marksClearSignOfSuccess)
+        marksCompounding = try c.decodeIfPresent(Bool.self, forKey: .marksCompounding)
+        listName = try c.decodeIfPresent(String.self, forKey: .listName) ?? ""
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
         status = try c.decodeIfPresent(PostStatus.self, forKey: .status) ?? .draft
         postedAt = try c.decodeIfPresent(Date.self, forKey: .postedAt)
         postLink = try c.decodeIfPresent(String.self, forKey: .postLink) ?? ""
@@ -155,9 +181,22 @@ extension SocialPost {
 
     var hasContent: Bool {
         if !trimmedText.isEmpty { return true }
+        if !want.trimmingCharacters(in: .whitespaces).isEmpty { return true }
+        if !whenIAm.isEmpty || !doneLooksLike.isEmpty { return true }
+        if steps.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
         if !sourceLink.isEmpty || !sourceName.isEmpty || !sourceLine.isEmpty { return true }
-        if !connection.isEmpty || !areas.isEmpty { return true }
+        if !connection.isEmpty || !areas.isEmpty || !tags.isEmpty { return true }
         return false
+    }
+
+    /// Independent success markers, same reading as Reminder: the legacy single Pattern
+    /// value still counts, while a new entry can carry both markers at once.
+    var isClearSignOfSuccess: Bool {
+        (marksClearSignOfSuccess ?? false) || pattern == .clearSign
+    }
+
+    var isCompounding: Bool {
+        (marksCompounding ?? false) || pattern == .compound
     }
 
     /// X's line for a post without Premium.
@@ -247,6 +286,12 @@ final class SocialPostStore: ObservableObject {
         let counts = Dictionary(grouping: posts.flatMap(\.areas), by: { $0 }).mapValues(\.count)
         let used = counts.sorted { $0.value > $1.value }.map(\.key)
         return used + PostAreas.suggested.filter { !used.contains($0) }
+    }
+
+    /// Tags used before, most-used first — feeds "Add a recent tag" on the form.
+    var recentTags: [String] {
+        let counts = Dictionary(grouping: posts.flatMap(\.tags), by: { $0 }).mapValues(\.count)
+        return counts.sorted { $0.value > $1.value }.map(\.key)
     }
 
     // MARK: Writing
