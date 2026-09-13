@@ -59,6 +59,8 @@ struct SocialPostFormView: View {
                 statusSection
             }
             .scrollContentBackground(.hidden)
+            // The form is long now — a scroll puts the keyboard away so every section is reachable.
+            .scrollDismissesKeyboard(.immediately)
             .background(Color.white.ignoresSafeArea())
             .tint(Brand.crimson)
             .navigationTitle(post.headline)
