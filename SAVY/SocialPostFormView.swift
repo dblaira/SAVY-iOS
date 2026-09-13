@@ -13,28 +13,39 @@ struct SocialPostFormView: View {
 
     let existing: SocialPost?
     let recentAreas: [String]
+    let recentTags: [String]
     var onSave: (SocialPost) -> Void
 
     @State private var post: SocialPost
     @State private var postedDate: Date
     @State private var areaDraft = ""
+    @State private var tagDraft = ""
+    @State private var steps: [Subtask]
+    @FocusState private var focusedStepID: UUID?
     @State private var committed = false
     @State private var cancelled = false
     @State private var showSaved = false
     @State private var showCopied = false
 
-    init(existing: SocialPost?, recentAreas: [String] = [], onSave: @escaping (SocialPost) -> Void) {
+    private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
+
+    init(existing: SocialPost?, recentAreas: [String] = [], recentTags: [String] = [], onSave: @escaping (SocialPost) -> Void) {
         self.existing = existing
         self.recentAreas = recentAreas
+        self.recentTags = recentTags
         self.onSave = onSave
         let base = existing ?? SocialPost()
         _post = State(initialValue: base)
         _postedDate = State(initialValue: base.postedAt ?? Date())
+        _steps = State(initialValue: base.steps)
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                delegateSection
+                stepsSection
+
                 postSection
 
                 if hasText {
@@ -43,6 +54,7 @@ struct SocialPostFormView: View {
 
                 sourceSection
                 connectionSection
+                patternSection
                 chooseSection
                 statusSection
             }
@@ -84,6 +96,132 @@ struct SocialPostFormView: View {
     }
 
     // MARK: - Sections
+
+    /// The same three sentences the Reminder form opens with — what he thinks and feels.
+    private var delegateSection: some View {
+        Section {
+            TextField(PostFormCopy.wantPrompt, text: $post.want, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("PostWant")
+            TextField(PostFormCopy.whenPrompt, text: $post.whenIAm, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("PostWhenIAm")
+            TextField(PostFormCopy.donePrompt, text: $post.doneLooksLike, axis: .vertical)
+                .lineLimit(1...)
+                .textFieldStyle(.plain)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("PostDoneLooksLike")
+        } header: { sectionHeader(PostFormCopy.delegateHeader) }
+        .listRowBackground(Brand.card)
+    }
+
+    private var stepsSection: some View {
+        Section {
+            ForEach($steps) { $step in
+                HStack {
+                    Image(systemName: "circle").foregroundStyle(.secondary)
+                    TextField("Step", text: $step.title)
+                        .focused($focusedStepID, equals: step.id)
+                    Button { steps.removeAll { $0.id == step.id } } label: {
+                        Image(systemName: "minus.circle.fill")
+                    }
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("removeStep")
+                }
+            }
+
+            Button(action: addStep) {
+                Text(PostFormCopy.addStepTitle).foregroundStyle(Brand.crimson)
+            }
+        } header: { sectionHeader(PostFormCopy.stepsTitle) }
+        .listRowBackground(Brand.card)
+    }
+
+    /// One organizing area, same as the Reminder form: Pattern first, then Lift and Tags.
+    private var patternSection: some View {
+        Section {
+            enumMenu(PostFormCopy.patternTitle, icon: "list.number", selection: $post.pattern) { $0.label }
+            Toggle("Clear Signs of Success", isOn: clearSignOfSuccessBinding)
+            Toggle("Compounding", isOn: compoundingBinding)
+            liftGroup
+            tagsEditor
+        } header: { sectionHeader(PostFormCopy.patternHeader) }
+        .listRowBackground(Brand.card)
+    }
+
+    private var clearSignOfSuccessBinding: Binding<Bool> {
+        Binding(
+            get: { post.isClearSignOfSuccess },
+            set: { post.marksClearSignOfSuccess = $0 }
+        )
+    }
+
+    private var compoundingBinding: Binding<Bool> {
+        Binding(
+            get: { post.isCompounding },
+            set: { post.marksCompounding = $0 }
+        )
+    }
+
+    private var liftGroup: some View {
+        Picker(selection: $post.listName) {
+            Text("None").tag("")
+            ForEach(listChoices, id: \.self) { Text($0).tag($0) }
+        } label: {
+            Label("Lift", systemImage: "sparkles")
+        }
+        .pickerStyle(.menu)
+        .tint(Brand.crimson)
+    }
+
+    private var tagsEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Tags", systemImage: "tag")
+            HStack {
+                TextField("Add a tag", text: $tagDraft)
+                    .onSubmit(addTag)
+                    .onChange(of: tagDraft) { _, value in if value.contains(",") { addTag() } }
+                Button("Add", action: addTag)
+                    .foregroundStyle(Brand.crimson)
+                    .disabled(tagDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            if !suggestedTags.isEmpty {
+                Menu {
+                    ForEach(suggestedTags, id: \.self) { tag in
+                        Button(tag) { addExistingTag(tag) }
+                    }
+                } label: {
+                    HStack {
+                        Label("Add a recent tag", systemImage: "clock.arrow.circlepath")
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                    }
+                }
+                .tint(Brand.crimson)
+            }
+            if !post.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(post.tags, id: \.self) { tag in
+                            HStack(spacing: 4) {
+                                Text(tag).font(.system(size: 15, weight: .semibold))
+                                Button { post.tags.removeAll { $0 == tag } } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                }.foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 5).padding(.horizontal, 10)
+                            .background(Color(white: 0.92)).clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     private var postSection: some View {
         Section {
@@ -182,7 +320,8 @@ struct SocialPostFormView: View {
 
             enumMenu("Door", icon: "door.left.hand.open", selection: $post.door) { $0.label }
             enumMenu("Platform", icon: "paperplane", selection: $post.platform) { $0.label }
-            enumMenu("Pattern", icon: "list.number", selection: $post.pattern) { $0.label }
+            enumMenu("Priority", icon: "exclamationmark.3", selection: $post.priority) { $0.label }
+            enumMenu("Energy", icon: "bolt", selection: $post.energy) { $0.label }
         } header: { sectionHeader(PostFormCopy.chooseHeader) }
         .listRowBackground(Brand.card)
     }
@@ -325,6 +464,28 @@ struct SocialPostFormView: View {
         areaDraft = ""
     }
 
+    private func addStep() {
+        let step = Subtask()
+        steps.append(step)
+        DispatchQueue.main.async { focusedStepID = step.id }
+    }
+
+    private func addTag() {
+        let t = tagDraft
+            .replacingOccurrences(of: ",", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "#", with: "")
+        if !t.isEmpty && !post.tags.contains(t) { post.tags.append(t) }
+        tagDraft = ""
+    }
+
+    /// Previously-used tags not already on this post (most-used first, supplied by the caller).
+    private var suggestedTags: [String] { recentTags.filter { !post.tags.contains($0) } }
+
+    private func addExistingTag(_ tag: String) {
+        if !post.tags.contains(tag) { post.tags.append(tag) }
+    }
+
     private func copyPost(showToast: Bool = true) {
         UIPasteboard.general.string = post.trimmedText
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -344,12 +505,15 @@ struct SocialPostFormView: View {
     }
 
     private func autosaveIfNeeded() {
-        guard !committed, !cancelled, post.hasContent else { return }
+        let stepsHaveContent = steps.contains { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !committed, !cancelled, post.hasContent || stepsHaveContent else { return }
         persist()
     }
 
     private func persist() {
         addArea()
+        addTag()
+        post.steps = steps.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
         if post.status == .posted {
             post.postedAt = postedDate
         }
@@ -358,6 +522,16 @@ struct SocialPostFormView: View {
 }
 
 private enum PostFormCopy {
+    // Same wording as the Reminder form's EntryFormCopy — one entry language everywhere.
+    static let delegateHeader = "Delegate"
+    static let wantPrompt = "What do I want?"
+    static let whenPrompt = "When I am...I like to"
+    static let donePrompt = "Done looks like..."
+    static let stepsTitle = "Steps"
+    static let addStepTitle = "Add Step"
+    static let patternHeader = "Pattern"
+    static let patternTitle = "Pattern"
+
     static let postHeader = "Post"
     static let postPrompt = "My point of view, word for word"
     static let sourceHeader = "Source"

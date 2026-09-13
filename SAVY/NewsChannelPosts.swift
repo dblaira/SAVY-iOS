@@ -26,12 +26,12 @@ struct NewsChannelPostsGroup: View {
             }
         }
         .sheet(item: $editing) { post in
-            SocialPostFormView(existing: post, recentAreas: store.recentAreas) { updated in
+            SocialPostFormView(existing: post, recentAreas: store.recentAreas, recentTags: store.recentTags) { updated in
                 store.save(updated)
             }
         }
         .sheet(isPresented: $isComposing) {
-            SocialPostFormView(existing: nil, recentAreas: store.recentAreas) { post in
+            SocialPostFormView(existing: nil, recentAreas: store.recentAreas, recentTags: store.recentTags) { post in
                 store.save(post)
             }
         }

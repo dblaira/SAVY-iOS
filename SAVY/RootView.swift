@@ -194,7 +194,7 @@ struct RootView: View {
             }
         case .post:
             // Posts keep their own store and their own screen; nothing posts on its own.
-            SocialPostFormView(existing: nil, recentAreas: postStore.recentAreas) { post in
+            SocialPostFormView(existing: nil, recentAreas: postStore.recentAreas, recentTags: postStore.recentTags) { post in
                 postStore.save(post)
                 opensPostsAfterComposer = true
             }
