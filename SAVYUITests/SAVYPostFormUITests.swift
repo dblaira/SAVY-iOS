@@ -2,8 +2,10 @@ import XCTest
 
 /// Adam, 2026-09-02: "get a form set up for me to use and improve upon when planning and
 /// writing social media posts" — and posts are "to be found in the News Channel page."
-/// The test is the sentence: the bolt opens a Post form, his words go in whole, Save lands
-/// the post on the News Channel page, and the News Channel card on Now opens the same page.
+/// Adam, 2026-09-13, approving the Post-on-the-entry-form mockup: "That looks good. Let's
+/// build that." The test is the sentence: the bolt's Post door opens the entry form with
+/// Theme + Decide above the full Reminder body, Save lands the post on the News Channel
+/// page, and reopening the row brings the data back.
 final class SAVYPostFormUITests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -28,7 +30,10 @@ final class SAVYPostFormUITests: XCTestCase {
         add(shot)
     }
 
-    func testBoltOpensPostFormAndSaveLandsOnNewsChannel() {
+    /// Adam approved the Post mockup on the Reminder form path (2026-09-13: "That looks good.
+    /// Let's build that."): the bolt's Post door opens the entry form as its fourth face —
+    /// Theme, then the theme's Decide questions, then everything the Reminder form already has.
+    func testBoltOpensPostFormWithThemeDecideAndFullReminderBody() {
         let fab = app.descendants(matching: .any)["chargeFab"].firstMatch
         XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
 
@@ -39,34 +44,68 @@ final class SAVYPostFormUITests: XCTestCase {
 
         app.buttons["Post"].tap()
 
-        let field = app.descendants(matching: .any)["PostText"].firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10), "Post form did not open")
-        attach("02 empty post form")
+        // Theme leads, defaulting to The 5 Ws.
+        let theme = app.descendants(matching: .any)["PostTheme"].firstMatch
+        XCTAssertTrue(theme.waitForExistence(timeout: 10), "Theme picker missing from the Post form")
+        XCTAssertTrue(app.staticTexts["The 5 Ws"].firstMatch.exists, "The 5 Ws is not the starting theme")
 
-        field.tap()
-        field.typeText("A peptide video and an AI hiring story said the same thing this morning: the cost of trying just fell to zero.")
+        // Decide shows the theme's questions as rows to answer.
+        let firstAnswer = app.descendants(matching: .any)["DecideAnswer0"].firstMatch
+        XCTAssertTrue(firstAnswer.waitForExistence(timeout: 5), "Decide questions missing")
 
-        let count = app.descendants(matching: .any)["PostCharacterCount"].firstMatch
-        XCTAssertTrue(count.waitForExistence(timeout: 5), "Character count missing")
-        XCTAssertTrue(app.descendants(matching: .any)["CopyPost"].firstMatch.waitForExistence(timeout: 5), "Copy button missing once there is text")
-        attach("03 post form with words")
+        // The full Reminder body stays below — Delegate is the first of Adam's sections.
+        XCTAssertTrue(app.descendants(matching: .any)["Title"].firstMatch.exists, "Delegate's 'What do I want?' row missing")
+        attach("02 post form with theme, decide, delegate")
+
+        firstAnswer.tap()
+        firstAnswer.typeText("A peptide video and an AI hiring story said the same thing this morning: the cost of trying just fell to zero.")
+
+        let who = app.descendants(matching: .any)["DecideAnswer1"].firstMatch
+        who.tap()
+        who.typeText("Me, this morning.")
+        attach("03 post form with answers")
 
         app.buttons["Save"].tap()
 
+        // Save lands the post on the News Channel page.
         let opened = app.descendants(matching: .any)["newsChannelPosts"].firstMatch.waitForExistence(timeout: 12)
         attach("04 news channel after save")
         XCTAssertTrue(opened, "News Channel page did not open after Save")
-        XCTAssertTrue(app.staticTexts["STORIES"].firstMatch.waitForExistence(timeout: 5), "Stories still missing below the posts")
+        let row = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'postEntryRow-'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8), "Saved post entry missing from the News Channel page")
+
+        // Reopen: the same entry comes back with the theme and the answers intact.
+        row.tap()
+        XCTAssertTrue(theme.waitForExistence(timeout: 10), "Reopened post lost its Theme row")
+        XCTAssertTrue(app.staticTexts["The 5 Ws"].firstMatch.exists, "Reopened post lost its theme")
+        let reopenedAnswer = app.descendants(matching: .any)["DecideAnswer0"].firstMatch
+        XCTAssertTrue(reopenedAnswer.waitForExistence(timeout: 5), "Reopened post lost its Decide rows")
+        XCTAssertEqual(
+            reopenedAnswer.value as? String,
+            "A peptide video and an AI hiring story said the same thing this morning: the cost of trying just fell to zero.",
+            "Reopened post lost the first answer"
+        )
+        attach("05 reopened post with data intact")
     }
 
     /// Adam: "make sure that in the Post entry box at the top of the page all 280 characters will be
     /// visible. I don't want any words cut off at the end or a ..."
+    /// The 280-character box lives on the SocialPost form, now reached through the News Channel's +.
     func testPostEntryShowsAll280Characters() {
-        let fab = app.descendants(matching: .any)["chargeFab"].firstMatch
-        XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
-        fab.tap()
-        XCTAssertTrue(app.buttons["Post"].waitForExistence(timeout: 5), "Post door missing from the fan")
-        app.buttons["Post"].tap()
+        let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "News Channel card missing from Now")
+        let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
+        var swipes = 0
+        while !card.isHittable, swipes < 6 {
+            homeScroll.swipeUp()
+            swipes += 1
+        }
+        card.tap()
+
+        let plus = app.descendants(matching: .any)["newPost"].firstMatch
+        XCTAssertTrue(plus.waitForExistence(timeout: 12), "News Channel + button missing")
+        plus.tap()
 
         let field = app.descendants(matching: .any)["PostText"].firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10), "Post form did not open")
