@@ -38,16 +38,24 @@ enum RepeatRule: String, Codable, CaseIterable, Identifiable {
 
 enum ReminderStatus: String, Codable { case active, completed, deleted }
 
-/// What an item *is*: a timed nudge, a thing you do, or a time block. One model, three faces.
+/// What an item *is*: a timed nudge, a thing you do, a time block, or a post draft.
+/// One model, four faces. Post rides the same form with Theme + Decide added on top.
 enum ReminderKind: String, Codable, CaseIterable, Identifiable {
-    case reminder, action, event
+    case reminder, action, event, post
     var id: String { rawValue }
     var label: String {
         switch self {
         case .reminder: return "Reminder"
         case .action: return "Action"
         case .event: return "Event"
+        case .post: return "Post"
         }
+    }
+
+    /// What the entry form's segmented control shows. Adam's approved Post mockup names the
+    /// third door "Calendar" (matching the bolt fan); the model keeps `event` underneath.
+    var segmentLabel: String {
+        self == .event ? "Calendar" : label
     }
 }
 
@@ -140,6 +148,12 @@ struct Reminder: Identifiable, Codable, Equatable {
     var waitingOn: String = ""
     // Places & People
     var locationName: String = ""
+    // Post (kind == .post; local-first like whenIAm). Theme id + name from PostThemeCatalog,
+    // and the user's answers to the theme's Decide questions in question order.
+    // Optionals so cached JSON written before Post existed still decodes.
+    var postThemeID: String? = nil
+    var postThemeName: String? = nil
+    var postAnswers: [String]? = nil
     // Graph + lifecycle
     var seededFromTemplateID: String? = nil
     var pinned: Bool = false                    // sorts to the top of the list

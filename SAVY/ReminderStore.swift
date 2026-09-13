@@ -306,6 +306,11 @@ final class ReminderStore: ObservableObject {
             if reminder.imageLocalPath == nil {
                 reminder.imageLocalPath = localCopy.imageLocalPath
             }
+            // Post theme + answers are local-first (the gateway doesn't carry them yet);
+            // a remote refresh must not erase them.
+            if reminder.postThemeID == nil { reminder.postThemeID = localCopy.postThemeID }
+            if reminder.postThemeName == nil { reminder.postThemeName = localCopy.postThemeName }
+            if reminder.postAnswers == nil { reminder.postAnswers = localCopy.postAnswers }
             return reminder
         }
 

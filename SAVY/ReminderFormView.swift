@@ -25,6 +25,9 @@ struct ReminderFormView: View {
     @State private var showSaved = false
     @FocusState private var focusedSubtaskID: UUID?
     @State private var subtasks: [Subtask]
+    // Post-only state: the picked theme and the answers to its Decide questions, in question order.
+    @State private var postThemeID: String
+    @State private var postAnswers: [String]
 
     private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
 
@@ -46,6 +49,13 @@ struct ReminderFormView: View {
         }
         _r = State(initialValue: base)
         _subtasks = State(initialValue: base.subtasks)
+        let theme = PostThemeCatalog.theme(id: base.postThemeID) ?? PostThemeCatalog.defaultTheme
+        var answers = base.postAnswers ?? []
+        if answers.count < theme.questions.count {
+            answers += Array(repeating: "", count: theme.questions.count - answers.count)
+        }
+        _postThemeID = State(initialValue: theme.id)
+        _postAnswers = State(initialValue: answers)
         _hasDate = State(initialValue: base.dueDate != nil)
         _hasDefer = State(initialValue: base.deferDate != nil)
         _date = State(initialValue: Self.dueDateTime(on: base.dueDate ?? Date(), at: base.dueTime))
@@ -58,7 +68,7 @@ struct ReminderFormView: View {
             Form {
                 Section {
                     Picker(EntryFormCopy.destinationPickerTitle, selection: $r.kind) {
-                        ForEach(ReminderKind.allCases) { Text($0.label).tag($0) }
+                        ForEach(ReminderKind.allCases) { Text($0.segmentLabel).tag($0) }
                     }
                     .pickerStyle(.segmented)
                 }
@@ -118,6 +128,13 @@ struct ReminderFormView: View {
     // MARK: - Shared entry flow
 
     @ViewBuilder private var unifiedEntrySections: some View {
+        // Post leads with its theme and the theme's Decide questions; everything the Reminder
+        // form already carries stays below, untouched.
+        if r.kind == .post {
+            postThemeSection
+            postDecideSection
+        }
+
         Section {
             // Grow with content so every character stays visible — no mid-word "..." cutoff.
             TextField(EntryFormCopy.wantPrompt, text: $r.title, axis: .vertical)
@@ -170,6 +187,60 @@ struct ReminderFormView: View {
             }
         } header: { sectionHeader("Place / People") }
         .listRowBackground(Brand.card)
+    }
+
+    // MARK: - Post: Theme + Decide
+
+    private var selectedPostTheme: PostTheme {
+        PostThemeCatalog.theme(id: postThemeID) ?? PostThemeCatalog.defaultTheme
+    }
+
+    private var postThemeSection: some View {
+        Section {
+            Picker(selection: $postThemeID) {
+                ForEach(PostThemeCatalog.themes) { Text($0.name).tag($0.id) }
+            } label: {
+                Label(EntryFormCopy.themeTitle, systemImage: "list.bullet")
+            }
+            .pickerStyle(.menu)
+            .tint(Brand.crimson)
+            .accessibilityIdentifier("PostTheme")
+        } header: { sectionHeader(EntryFormCopy.themeHeader) }
+        .listRowBackground(Brand.card)
+        .onChange(of: postThemeID) { _, _ in
+            // A new theme means new questions; start its answers fresh, in the new order.
+            postAnswers = Array(repeating: "", count: selectedPostTheme.questions.count)
+        }
+    }
+
+    private var postDecideSection: some View {
+        Section {
+            ForEach(Array(selectedPostTheme.questions.enumerated()), id: \.element.id) { index, question in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: question.symbol)
+                        .font(.system(size: 16))
+                        .foregroundStyle(Brand.crimson)
+                        .frame(width: 24)
+                    TextField(question.prompt, text: postAnswerBinding(index), axis: .vertical)
+                        .lineLimit(1...)
+                        .textFieldStyle(.plain)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("DecideAnswer\(index)")
+                }
+            }
+        } header: { sectionHeader(EntryFormCopy.decideHeader) }
+        .listRowBackground(Brand.card)
+    }
+
+    /// Answers array can momentarily lag the question list during a theme switch; guard the index.
+    private func postAnswerBinding(_ index: Int) -> Binding<String> {
+        Binding(
+            get: { postAnswers.indices.contains(index) ? postAnswers[index] : "" },
+            set: { value in
+                while postAnswers.count <= index { postAnswers.append("") }
+                postAnswers[index] = value
+            }
+        )
     }
 
     // MARK: - Reusable field groups
@@ -427,6 +498,7 @@ struct ReminderFormView: View {
     private var hasContent: Bool {
         if !r.title.trimmingCharacters(in: .whitespaces).isEmpty { return true }
         if !r.notes.isEmpty || !r.outcome.isEmpty || !(r.whenIAm ?? "").isEmpty || !r.url.isEmpty { return true }
+        if r.kind == .post, postAnswers.contains(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
         if !r.locationName.isEmpty || !r.waitingOn.isEmpty { return true }
         if !r.tags.isEmpty { return true }
         if subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
@@ -444,6 +516,21 @@ struct ReminderFormView: View {
         r.deferDate = hasDefer ? deferDate : nil
         r.endTime = nil
         r.subtasks = subtasks.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
+        if r.kind == .post {
+            let theme = selectedPostTheme
+            r.postThemeID = theme.id
+            r.postThemeName = theme.name
+            // His words, verbatim, in question order — padded so answer N always means question N.
+            var answers = postAnswers
+            if answers.count < theme.questions.count {
+                answers += Array(repeating: "", count: theme.questions.count - answers.count)
+            }
+            r.postAnswers = Array(answers.prefix(theme.questions.count))
+        } else {
+            r.postThemeID = nil
+            r.postThemeName = nil
+            r.postAnswers = nil
+        }
         if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(r.kind.label)" }
         onSave(r)
     }
@@ -461,6 +548,9 @@ private enum EntryFormCopy {
     static let stepsTitle = "Steps"
     static let addStepTitle = "Add Step"
     static let patternTitle = "Pattern"
+    static let themeHeader = "Theme"
+    static let themeTitle = "Theme"
+    static let decideHeader = "Decide"
 }
 
 // MARK: - Save (floppy disk) icon

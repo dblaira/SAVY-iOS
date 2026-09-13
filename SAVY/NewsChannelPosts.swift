@@ -10,24 +10,47 @@ import SwiftUI
 
 struct NewsChannelPostsGroup: View {
     @ObservedObject var store: SocialPostStore
+    /// Post entries saved through the bolt's Post door (the Reminder form's fourth face).
+    var reminderStore: ReminderStore? = nil
     @State private var editing: SocialPost?
+    @State private var editingEntry: Reminder?
     @State private var isComposing = false
+
+    private var postEntries: [Reminder] {
+        guard let reminderStore else { return [] }
+        return reminderStore.active.filter { $0.kind == .post }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var postedEntries: [Reminder] {
+        guard let reminderStore else { return [] }
+        return reminderStore.completed.filter { $0.kind == .post }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
 
-            if store.posts.isEmpty {
+            if store.posts.isEmpty && postEntries.isEmpty && postedEntries.isEmpty {
                 emptyRow
             } else {
+                entryGroup(postEntries)
                 group(store.ready)
                 group(store.drafts)
+                entryGroup(postedEntries)
                 group(store.posted)
             }
         }
         .sheet(item: $editing) { post in
             SocialPostFormView(existing: post, recentAreas: store.recentAreas) { updated in
                 store.save(updated)
+            }
+        }
+        .sheet(item: $editingEntry) { entry in
+            if let reminderStore {
+                ReminderFormView(existing: entry, existingTags: reminderStore.recentTags) { updated in
+                    reminderStore.save(updated)
+                }
             }
         }
         .sheet(isPresented: $isComposing) {
@@ -73,6 +96,32 @@ struct NewsChannelPostsGroup: View {
                 NewsChannelPostRow(post: post)
             }
         }
+    }
+
+    private func entryGroup(_ items: [Reminder]) -> some View {
+        ForEach(items) { entry in
+            SavySwipeRow(
+                actions: actions(for: entry),
+                gestureAccessibilityIdentifier: "postEntryRow-\(entry.id.uuidString)",
+                onTap: { editingEntry = entry }
+            ) {
+                NewsChannelPostEntryRow(entry: entry)
+            }
+        }
+    }
+
+    private func actions(for entry: Reminder) -> [SavySwipeAction] {
+        guard let reminderStore else { return [] }
+        var list: [SavySwipeAction] = []
+        if entry.status != .completed {
+            list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.crimson) {
+                reminderStore.complete(entry)
+            })
+        }
+        list.append(SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
+            reminderStore.delete(entry)
+        })
+        return list
     }
 
     private var emptyRow: some View {
@@ -173,6 +222,72 @@ struct NewsChannelPostRow: View {
             parts.append("\(post.replies) replies · \(post.likes) likes · \(post.profileTaps) taps")
         }
         parts.append(contentsOf: post.areas.map { "#\($0)" })
+        return parts.joined(separator: "   ·   ")
+    }
+}
+
+/// A Post entry from the bolt's Post door — same white card as the SocialPost rows, with the
+/// theme name in the kicker and the first answered Decide line as the preview.
+struct NewsChannelPostEntryRow: View {
+    let entry: Reminder
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(entry.status == .completed ? SavyTheme.crimson : SavyTheme.bottomNavTan)
+                    .frame(width: 9, height: 9)
+
+                Text(kickerText)
+                    .font(.system(size: 12, weight: .bold))
+                    .tracking(1.6)
+                    .foregroundStyle(.black.opacity(0.4))
+                    .lineLimit(1)
+            }
+
+            Text(headlineText)
+                .font(SavyTheme.beliefSerif(24, weight: .regular))
+                .lineSpacing(3)
+                .foregroundStyle(SavyTheme.ink)
+                .lineLimit(8)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !secondaryText.isEmpty {
+                Text(secondaryText)
+                    .font(.system(size: 14))
+                    .lineSpacing(2)
+                    .foregroundStyle(.black.opacity(0.55))
+                    .lineLimit(2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(22)
+        .background(.white, in: RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+    }
+
+    private var kickerText: String {
+        var parts = [entry.status == .completed ? "Posted" : "Post"]
+        if let theme = entry.postThemeName, !theme.isEmpty { parts.append(theme) }
+        return parts.map { $0.uppercased() }.joined(separator: " · ")
+    }
+
+    private var headlineText: String {
+        let title = entry.title.trimmingCharacters(in: .whitespaces)
+        if !title.isEmpty, title != "New Post" { return title }
+        let firstAnswer = (entry.postAnswers ?? [])
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        return firstAnswer ?? "Untitled"
+    }
+
+    private var secondaryText: String {
+        var parts: [String] = []
+        let answered = (entry.postAnswers ?? [])
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .count
+        if answered > 0 { parts.append("\(answered) answered") }
+        if let when = entry.whenLabel { parts.append(when) }
+        parts.append(contentsOf: entry.tags.map { "#\($0)" })
         return parts.joined(separator: "   ·   ")
     }
 }

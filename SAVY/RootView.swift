@@ -168,7 +168,8 @@ struct RootView: View {
                 LeverageSectionView(
                     section: leverageStore.section(id: "news-channel") ?? LeverageContent.newsChannel,
                     postStore: postStore,
-                    storyStore: storyStore
+                    storyStore: storyStore,
+                    reminderStore: reminderStore
                 )
             }
             .task {
@@ -193,9 +194,11 @@ struct RootView: View {
                 navigationState.activeSection = .actions
             }
         case .post:
-            // Posts keep their own store and their own screen; nothing posts on its own.
-            SocialPostFormView(existing: nil, recentAreas: postStore.recentAreas) { post in
-                postStore.save(post)
+            // Adam approved the Post mockup on the Reminder form path (2026-09-13: "That looks
+            // good. Let's build that.") — Post is the fourth face of the same entry form.
+            // Nothing posts on its own; saved entries land on the News Channel page.
+            ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags) { reminder in
+                reminderStore.save(reminder)
                 opensPostsAfterComposer = true
             }
         case .calendar:
@@ -403,7 +406,7 @@ struct EditorialHomeView: View {
                             ConnectionView(section: section)
                         } else if section.id == "news-channel" {
                             // Adam: posts are "to be found in the News Channel page."
-                            LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore)
+                            LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore, reminderStore: reminderStore)
                         } else {
                             LeverageSectionView(section: section)
                         }
@@ -811,6 +814,7 @@ private struct LeverageSectionView: View {
     let section: LeverageSection
     var postStore: SocialPostStore? = nil
     var storyStore: StoryStore? = nil
+    var reminderStore: ReminderStore? = nil
 
     private var isBeliefs: Bool { section.id == "beliefs" }
 
@@ -854,7 +858,7 @@ private struct LeverageSectionView: View {
                 }
 
                 if let postStore {
-                    NewsChannelPostsGroup(store: postStore)
+                    NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore)
                 }
 
                 if let storyStore {
