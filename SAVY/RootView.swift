@@ -857,7 +857,7 @@ private struct LeverageSectionView: View {
                         .foregroundStyle(SavyTheme.ink)
                 }
 
-                if let postStore {
+                if let postStore, let reminderStore {
                     NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore)
                 }
 

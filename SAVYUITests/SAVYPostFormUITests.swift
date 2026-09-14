@@ -89,10 +89,11 @@ final class SAVYPostFormUITests: XCTestCase {
         attach("05 reopened post with data intact")
     }
 
-    /// Adam: "make sure that in the Post entry box at the top of the page all 280 characters will be
-    /// visible. I don't want any words cut off at the end or a ..."
-    /// The 280-character box lives on the SocialPost form, now reached through the News Channel's +.
-    func testPostEntryShowsAll280Characters() {
+    /// Adam, 2026-09-13: "update the older short news/advertiser composer to the post styling"
+    /// — the News Channel's + opens the same Post form as the bolt's Post door: Theme + Decide
+    /// above the full Reminder body, not the old 280-character News/Advertising box. Save lands
+    /// the post under POSTS and reopening the row brings the data back.
+    func testNewsChannelPlusOpensPostFormAndSaves() {
         let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 20), "News Channel card missing from Now")
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
@@ -107,24 +108,39 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(plus.waitForExistence(timeout: 12), "News Channel + button missing")
         plus.tap()
 
-        let field = app.descendants(matching: .any)["PostText"].firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10), "Post form did not open")
-        field.tap()
+        // The Post form leads with Theme and Decide; the old short composer must not open.
+        let theme = app.descendants(matching: .any)["PostTheme"].firstMatch
+        XCTAssertTrue(theme.waitForExistence(timeout: 10), "Theme picker missing — the + did not open the Post form")
+        XCTAssertFalse(app.descendants(matching: .any)["PostText"].firstMatch.exists,
+                       "The old short News/Advertising composer opened instead of the Post form")
 
-        let sentence = "Peptides and AI hiring moved the same direction this morning and nobody said so out loud. "
-        var text = ""
-        while text.count < 280 { text += sentence }
-        text = String(text.prefix(280))
-        XCTAssertEqual(text.count, 280)
-        field.typeText(text)
+        let firstAnswer = app.descendants(matching: .any)["DecideAnswer0"].firstMatch
+        XCTAssertTrue(firstAnswer.waitForExistence(timeout: 5), "Decide questions missing")
+        XCTAssertTrue(app.descendants(matching: .any)["Title"].firstMatch.exists, "Delegate's 'What do I want?' row missing")
+        attach("20 news channel plus opens the post form")
 
-        let count = app.descendants(matching: .any)["PostCharacterCount"].firstMatch
-        XCTAssertTrue(count.waitForExistence(timeout: 5), "Character count missing")
-        XCTAssertEqual(count.label, "280 / 280")
-        XCTAssertEqual(field.value as? String, text, "The entry box does not hold all 280 characters")
-        XCTAssertTrue(field.isHittable)
-        XCTAssertGreaterThan(field.frame.height, 120, "The entry box did not grow for 280 characters")
-        attach("20 post entry with 280 characters")
+        firstAnswer.tap()
+        firstAnswer.typeText("The cost of trying fell to zero again this morning.")
+
+        app.buttons["Save"].tap()
+
+        // Save lands the entry under POSTS on the same page.
+        let row = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'postEntryRow-'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 12), "Saved post missing from the POSTS list")
+        attach("21 posts list after save")
+
+        // Reopen: the same entry comes back with the answer intact.
+        row.tap()
+        XCTAssertTrue(theme.waitForExistence(timeout: 10), "Reopened post lost its Theme row")
+        let reopenedAnswer = app.descendants(matching: .any)["DecideAnswer0"].firstMatch
+        XCTAssertTrue(reopenedAnswer.waitForExistence(timeout: 5), "Reopened post lost its Decide rows")
+        XCTAssertEqual(
+            reopenedAnswer.value as? String,
+            "The cost of trying fell to zero again this morning.",
+            "Reopened post lost the answer"
+        )
+        attach("22 reopened post with data intact")
     }
 
     /// Adam: "Add a plus button to the Stories area of the News Channel page and have that open to
