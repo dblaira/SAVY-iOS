@@ -41,6 +41,8 @@ struct NewsChannelPostsGroup: View {
                 group(store.posted)
             }
         }
+        // Legacy short posts (News/Advertising, 280-character box) still reopen in the
+        // SocialPost form so old drafts are never trapped. New posts do not start here.
         .sheet(item: $editing) { post in
             SocialPostFormView(existing: post, recentAreas: store.recentAreas) { updated in
                 store.save(updated)
@@ -53,9 +55,14 @@ struct NewsChannelPostsGroup: View {
                 }
             }
         }
+        // Adam, 2026-09-13: "update the older short news/advertiser composer to the post
+        // styling" — the + opens the same Post form as the bolt's Post door (Theme + Decide
+        // above the full Reminder body), not the old SocialPost composer.
         .sheet(isPresented: $isComposing) {
-            SocialPostFormView(existing: nil, recentAreas: store.recentAreas) { post in
-                store.save(post)
+            if let reminderStore {
+                ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags) { reminder in
+                    reminderStore.save(reminder)
+                }
             }
         }
         .accessibilityElement(children: .contain)
