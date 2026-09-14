@@ -10,21 +10,20 @@ import SwiftUI
 
 struct NewsChannelPostsGroup: View {
     @ObservedObject var store: SocialPostStore
-    /// Post entries saved through the bolt's Post door (the Reminder form's fourth face).
-    var reminderStore: ReminderStore? = nil
+    /// Post entries saved through the bolt's Post door or the POSTS + (the Reminder form's
+    /// fourth face). Observed so a save from the + sheet shows up without leaving the page.
+    @ObservedObject var reminderStore: ReminderStore
     @State private var editing: SocialPost?
     @State private var editingEntry: Reminder?
     @State private var isComposing = false
 
     private var postEntries: [Reminder] {
-        guard let reminderStore else { return [] }
-        return reminderStore.active.filter { $0.kind == .post }
+        reminderStore.active.filter { $0.kind == .post }
             .sorted { $0.createdAt > $1.createdAt }
     }
 
     private var postedEntries: [Reminder] {
-        guard let reminderStore else { return [] }
-        return reminderStore.completed.filter { $0.kind == .post }
+        reminderStore.completed.filter { $0.kind == .post }
     }
 
     var body: some View {
@@ -49,20 +48,16 @@ struct NewsChannelPostsGroup: View {
             }
         }
         .sheet(item: $editingEntry) { entry in
-            if let reminderStore {
-                ReminderFormView(existing: entry, existingTags: reminderStore.recentTags) { updated in
-                    reminderStore.save(updated)
-                }
+            ReminderFormView(existing: entry, existingTags: reminderStore.recentTags) { updated in
+                reminderStore.save(updated)
             }
         }
         // Adam, 2026-09-13: "update the older short news/advertiser composer to the post
         // styling" — the + opens the same Post form as the bolt's Post door (Theme + Decide
         // above the full Reminder body), not the old SocialPost composer.
         .sheet(isPresented: $isComposing) {
-            if let reminderStore {
-                ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags) { reminder in
-                    reminderStore.save(reminder)
-                }
+            ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags) { reminder in
+                reminderStore.save(reminder)
             }
         }
         .accessibilityElement(children: .contain)
@@ -118,7 +113,6 @@ struct NewsChannelPostsGroup: View {
     }
 
     private func actions(for entry: Reminder) -> [SavySwipeAction] {
-        guard let reminderStore else { return [] }
         var list: [SavySwipeAction] = []
         if entry.status != .completed {
             list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.crimson) {
