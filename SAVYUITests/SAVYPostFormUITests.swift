@@ -89,6 +89,48 @@ final class SAVYPostFormUITests: XCTestCase {
         attach("05 reopened post with data intact")
     }
 
+    /// Adam, 2026-09-15: "Let's add more themes to choose from." Themes 11–30, his questions
+    /// verbatim. The test is the sentence: open the Theme picker, see the new themes, pick one,
+    /// and its four questions appear in Decide.
+    func testThemePickerOffersAdamsNewThemesAndLoadsTheirQuestions() {
+        let fab = app.descendants(matching: .any)["chargeFab"].firstMatch
+        XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
+        fab.tap()
+        XCTAssertTrue(app.buttons["Post"].waitForExistence(timeout: 5), "Post door missing from the fan")
+        app.buttons["Post"].tap()
+
+        let theme = app.descendants(matching: .any)["PostTheme"].firstMatch
+        XCTAssertTrue(theme.waitForExistence(timeout: 10), "Theme picker missing from the Post form")
+        theme.tap()
+
+        // The menu shows the grown catalog in order; rows further down materialize as a person
+        // scrolls (the unit test proves all 28 by name — this test proves the screen).
+        let myths = app.buttons["Myths vs. Facts"].firstMatch
+        XCTAssertTrue(myths.waitForExistence(timeout: 5), "Myths vs. Facts missing from the Theme menu")
+        attach("30 theme menu with Adam's new themes")
+
+        // Pick a new theme that sits in plain view.
+        let successStory = app.buttons["Customer Success Story"].firstMatch
+        XCTAssertTrue(successStory.waitForExistence(timeout: 5), "Customer Success Story missing from the Theme menu")
+        successStory.tap()
+
+        // Its four questions, verbatim, take over the Decide section.
+        let firstAnswer = app.descendants(matching: .any)["DecideAnswer0"].firstMatch
+        XCTAssertTrue(firstAnswer.waitForExistence(timeout: 5), "Decide rows missing after theme change")
+        XCTAssertEqual(
+            firstAnswer.placeholderValue,
+            "What did the customer want to achieve?",
+            "The first Customer Success Story question is not Adam's wording"
+        )
+        let lastAnswer = app.descendants(matching: .any)["DecideAnswer3"].firstMatch
+        XCTAssertTrue(lastAnswer.exists, "Customer Success Story should ask four questions")
+        XCTAssertFalse(
+            app.descendants(matching: .any)["DecideAnswer4"].firstMatch.exists,
+            "Customer Success Story asks exactly four questions"
+        )
+        attach("31 customer success story questions in decide")
+    }
+
     /// Adam: "make sure that in the Post entry box at the top of the page all 280 characters will be
     /// visible. I don't want any words cut off at the end or a ..."
     /// The 280-character box lives on the SocialPost form, now reached through the News Channel's +.

@@ -21,7 +21,7 @@ final class SAVYPostEntryThemeTests: XCTestCase {
     }
 
     func testEveryThemeHasAtLeastFourQuestionsAndAUniqueID() {
-        XCTAssertGreaterThanOrEqual(PostThemeCatalog.themes.count, 5, "Seed catalog ships 5–10 themes")
+        XCTAssertGreaterThanOrEqual(PostThemeCatalog.themes.count, 5, "Seed catalog ships the original 8 plus Adam's 11–30")
         for theme in PostThemeCatalog.themes {
             XCTAssertGreaterThanOrEqual(
                 theme.questions.count, 4,
@@ -30,6 +30,69 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         }
         let ids = PostThemeCatalog.themes.map(\.id)
         XCTAssertEqual(ids.count, Set(ids).count, "Theme ids must be unique")
+    }
+
+    func testCatalogCarriesAdamsThemes11Through30Verbatim() {
+        // Adam's list (2026-09-15): 20 themes — the image skips #14, and its two #26 titles
+        // are both their own themes. They follow the original 8, in his order.
+        let expectedNewNames = [
+            "Frequently Asked Questions",
+            "Customer Success Story",
+            "Key Challenges & Solutions",
+            "Myths vs. Facts",
+            "The Ultimate Checklist",
+            "Quick Hack or Shortcut",
+            "Recommended Tools & Resources",
+            "Essential Terminology",
+            "Before & After Scenarios",
+            "Audience Poll or Survey Results",
+            "Core Principles Explained",
+            "Debunking Popular Industry Beliefs",
+            "History of the Topic",
+            "Alternative Approaches",
+            "Step-by-Step Breakdown",
+            "Checklist for Breakdown",
+            "Checklist for Beginners",
+            "Advanced Strategies",
+            "Frequently Misunderstood Concepts",
+            "Your Personal Take & Lessons Learned",
+        ]
+        XCTAssertEqual(PostThemeCatalog.themes.count, 28, "8 original themes + Adam's 20")
+        XCTAssertEqual(Array(PostThemeCatalog.themes.suffix(20).map(\.name)), expectedNewNames)
+        for theme in PostThemeCatalog.themes.suffix(20) {
+            XCTAssertEqual(theme.questions.count, 4, "\(theme.name) asks exactly four questions")
+        }
+
+        // Spot-checks, verbatim to his message — including the curly quotes he wrote.
+        XCTAssertEqual(
+            PostThemeCatalog.theme(id: "frequently-asked-questions")?.questions.map(\.prompt),
+            [
+                "What questions do people repeatedly ask?",
+                "What uncertainty is behind each question?",
+                "What is the clearest answer to each?",
+                "What follow-up question naturally comes after each answer?",
+            ]
+        )
+        XCTAssertEqual(
+            PostThemeCatalog.theme(id: "before-after-scenarios")?.questions.first?.prompt,
+            "What starting condition will the “before” show?"
+        )
+        XCTAssertEqual(
+            PostThemeCatalog.theme(id: "your-personal-take-lessons-learned")?.questions.map(\.prompt),
+            [
+                "What did you believe before?",
+                "What experience changed or confirmed your view?",
+                "What do you believe now?",
+                "What do you do differently because of it?",
+            ]
+        )
+
+        // The two #26 titles stay distinct themes with distinct question sets.
+        let stepByStep = PostThemeCatalog.theme(id: "step-by-step-breakdown")
+        let checklistBreakdown = PostThemeCatalog.theme(id: "checklist-for-breakdown")
+        XCTAssertEqual(stepByStep?.questions.first?.prompt, "What stages make up the process?")
+        XCTAssertEqual(checklistBreakdown?.questions.first?.prompt, "Which parts of the process must be accounted for?")
+        XCTAssertNotEqual(stepByStep?.questions, checklistBreakdown?.questions)
     }
 
     func testThemeLookupByIDAndUnknownIDFallsThrough() {
