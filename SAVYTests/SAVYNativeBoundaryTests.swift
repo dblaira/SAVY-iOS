@@ -787,6 +787,8 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.heroDividerHeight, 3)
         XCTAssertEqual(RootHomeLayout.heroWordmarkFontSize, 64)
         XCTAssertEqual(RootHomeLayout.carouselHorizontalPadding, 2)
+        XCTAssertEqual(RootHomeLayout.carouselTopPadding, 24)
+        XCTAssertEqual(RootHomeLayout.carouselBottomPadding, 24)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
         XCTAssertEqual(RootHomeLayout.carouselCardHeight, 182)
         XCTAssertEqual(RootHomeLayout.homeBandCardSpacing, 10)

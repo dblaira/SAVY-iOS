@@ -13,6 +13,8 @@ enum RootHomeLayout {
     static let heroDividerHeight: CGFloat = 3
     static let heroWordmarkFontSize: CGFloat = 64
     static let carouselHorizontalPadding: CGFloat = 2
+    static let carouselTopPadding: CGFloat = 24
+    static let carouselBottomPadding: CGFloat = 24
     static let carouselCardWidth: CGFloat = 282
     static let carouselCardHeight: CGFloat = 182
     static let carouselCardTitleFontSize: CGFloat = 24
@@ -387,7 +389,8 @@ struct EditorialHomeView: View {
                 }
             }
             .padding(.horizontal, RootHomeLayout.carouselHorizontalPadding)
-            .padding(.bottom, 24)
+            .padding(.top, RootHomeLayout.carouselTopPadding)
+            .padding(.bottom, RootHomeLayout.carouselBottomPadding)
         }
         .accessibilityIdentifier("greatestLeverageCarousel")
         .background(Color.white)
