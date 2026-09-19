@@ -397,10 +397,10 @@ struct EditorialHomeView: View {
     }
 
     private var homeContentSections: some View {
-        VStack(alignment: .leading, spacing: RootHomeLayout.homeBandCardSpacing) {
+        VStack(alignment: .leading, spacing: ConnectionLayout.cardSpacing) {
             ForEach(Array(sectionPinStore.orderedCards().enumerated()), id: \.element.id) { index, card in
                 let isPinned = sectionPinStore.pinnedSectionID == card.sectionID
-                let colors = Self.homeBandCardColors(for: index)
+                let detail = Self.homeBandCardDetail(for: index)
                 if let section = leverageStore.section(id: card.sectionID) {
                     NavigationLink {
                         if section.id == "beliefs" {
@@ -415,9 +415,7 @@ struct EditorialHomeView: View {
                             card: card,
                             section: section,
                             isPinned: isPinned,
-                            bg: colors.bg,
-                            fg: colors.fg,
-                            accent: colors.accent
+                            detail: detail
                         )
                     }
                     .buttonStyle(.plain)
@@ -432,9 +430,7 @@ struct EditorialHomeView: View {
                         card: card,
                         section: nil,
                         isPinned: isPinned,
-                        bg: colors.bg,
-                        fg: colors.fg,
-                        accent: colors.accent
+                        detail: detail
                     )
                         .contextMenu {
                             Button(isPinned ? "Unpin" : "Pin") {
@@ -449,14 +445,16 @@ struct EditorialHomeView: View {
         .padding(.bottom, RootHomeLayout.homeBandBottomPadding)
         .padding(.horizontal, RootHomeLayout.homeBandHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SavyTheme.deepNavy)
+        .background(Color.white)
     }
 
-    private static func homeBandCardColors(for index: Int) -> (bg: Color, fg: Color, accent: Color) {
+    /// Understood: first card is full, second is medium, the rest are minimal.
+    /// ConnectionView already measured those heights from the Reminders screen.
+    private static func homeBandCardDetail(for index: Int) -> ConnectionCardDetail {
         switch index {
-        case 0: return (.white, SavyTheme.deepNavy, SavyTheme.crimson)
-        case 1: return (Brand.darkRed, .white, .white)
-        default: return (SavyTheme.bottomNavTan, SavyTheme.deepNavy, SavyTheme.crimson)
+        case 0: return .full
+        case 1: return .medium
+        default: return .minimal
         }
     }
 }
@@ -671,44 +669,52 @@ private struct HomeContentSectionView: View {
     let card: HomeLeverageCard
     let section: LeverageSection?
     var isPinned = false
-    let bg: Color
-    let fg: Color
-    let accent: Color
+    let detail: ConnectionCardDetail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 6) {
                 Text(card.eyebrow)
                     .font(.system(size: 11, weight: .heavy))
                     .tracking(1.5)
                 if isPinned {
                     Image(systemName: "pin.fill")
-                        .font(.system(size: 10, weight: .heavy))
+                        .font(.system(size: 13, weight: .bold))
                 }
             }
-            .foregroundStyle(fg.opacity(0.7))
+            .foregroundStyle(SavyTheme.ink.opacity(0.68))
 
             Text(card.title)
-                .font(SavyTypography.displaySerif(26, weight: .regular))
-                .foregroundStyle(fg)
-                .fixedSize(horizontal: false, vertical: true)
+                .font(SavyTypography.displaySerif(detail == .minimal ? 25 : 27, weight: .regular))
+                .foregroundStyle(SavyTheme.ink)
+                .lineLimit(detail == .minimal ? 2 : 3)
+                .minimumScaleFactor(0.82)
+                .multilineTextAlignment(.leading)
 
-            Rectangle().fill(accent).frame(width: 36, height: 2)
+            Rectangle()
+                .fill(SavyTheme.crimson)
+                .frame(width: 36, height: 2)
 
-            if let headline = section?.headline, !headline.isEmpty {
+            if detail != .minimal, let headline = section?.headline, !headline.isEmpty {
                 Text(headline)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(fg.opacity(0.8))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(SavyTheme.ink.opacity(0.72))
+                    .lineLimit(detail == .full ? 3 : 1)
+                    .multilineTextAlignment(.leading)
             }
+
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(bg)
-        .clipShape(RoundedRectangle(cornerRadius: RootHomeLayout.homeBandCardCornerRadius))
-        .overlay(RoundedRectangle(cornerRadius: RootHomeLayout.homeBandCardCornerRadius).stroke(Color.white.opacity(0.08)))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(height: detail.height)
+        .background(Brand.card)
+        .clipShape(RoundedRectangle(cornerRadius: ConnectionLayout.cardCornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: ConnectionLayout.cardCornerRadius, style: .continuous)
+                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+        }
     }
 }
 
