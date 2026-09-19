@@ -70,7 +70,7 @@ final class SAVYPostFormUITests: XCTestCase {
         // Save lands the post on the News Channel page.
         let opened = app.descendants(matching: .any)["newsChannelPosts"].firstMatch.waitForExistence(timeout: 12)
         attach("04 news channel after save")
-        XCTAssertTrue(opened, "News Channel page did not open after Save")
+        XCTAssertTrue(opened, "Social Media Posts page did not open after Save")
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'postEntryRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 8), "Saved post entry missing from the News Channel page")
@@ -136,7 +136,7 @@ final class SAVYPostFormUITests: XCTestCase {
     /// The 280-character box lives on the SocialPost form, now reached through the News Channel's +.
     func testPostEntryShowsAll280Characters() {
         let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "News Channel card missing from Now")
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
         var swipes = 0
         while !card.isHittable, swipes < 6 {
@@ -174,7 +174,7 @@ final class SAVYPostFormUITests: XCTestCase {
     /// past formatted writing (bullet points, numbers lists, quotes, in the body portion of the form."
     func testStoriesPlusOpensStoryFormAndSaves() {
         let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "News Channel card missing from Now")
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
         var swipes = 0
         while !card.isHittable, swipes < 6 {
@@ -215,7 +215,7 @@ final class SAVYPostFormUITests: XCTestCase {
 
     func testNewsChannelCardOpensPosts() {
         let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "News Channel card missing from Now")
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
         var swipes = 0
         while !card.isHittable, swipes < 6 {

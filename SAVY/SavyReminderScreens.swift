@@ -58,7 +58,7 @@ struct SavyReminderKindTabScreen: View {
         case .reminder: return "What matters next."
         case .action: return "Choose the move that matters."
         case .event: return "Time blocks live on the calendar."
-        case .post: return "Posts live on the News Channel page."
+        case .post: return "Posts live on the Social Media Posts page."
         }
     }
 

@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Posts live on the News Channel page. Adam, 2026-09-02: "wants posts to be found in the News
-/// Channel page. We may change the name or intent of the News Channel page, but for now, add
-/// the results of the form there." Same paper page, same white cards as the stories below.
+/// Posts live on the Social Media Posts page. Adam, 2026-09-19: "Let's call news channel
+/// social media posts." Same paper page, same white cards as the stories below.
 ///
 /// No tally line under POSTS. Adam, 2026-09-03, after his first quote post went out through Grok
 /// Bot: "the small news, advertising and clean signs numbers below the posts label don't make

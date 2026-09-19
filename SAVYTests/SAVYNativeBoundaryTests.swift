@@ -789,7 +789,11 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.carouselHorizontalPadding, 2)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
         XCTAssertEqual(RootHomeLayout.carouselCardHeight, 182)
-        XCTAssertEqual(RootHomeLayout.contentSectionMinHeight, 220)
+        XCTAssertEqual(RootHomeLayout.homeBandCardSpacing, 10)
+        XCTAssertEqual(RootHomeLayout.homeBandTopPadding, 14)
+        XCTAssertEqual(RootHomeLayout.homeBandBottomPadding, 16)
+        XCTAssertEqual(RootHomeLayout.homeBandHorizontalPadding, 16)
+        XCTAssertEqual(RootHomeLayout.homeBandCardCornerRadius, 8)
         XCTAssertEqual(RootHomeLayout.bottomNavigationHeight, 128)
         XCTAssertEqual(RootHomeLayout.bottomNavigationTopPadding, 8)
         XCTAssertEqual(RootHomeLayout.bottomNavigationBottomPadding, 28)
@@ -826,7 +830,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
             "Connection",
             "Adam's Ontology",
             "Field Essays",
-            "News Channel"
+            "Social Media Posts"
         ])
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.sectionID), [
             "beliefs",
@@ -908,6 +912,30 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.capacitor))
         XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.expo))
         XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.typeScriptFrontend))
+    }
+
+    func testHomeSectionPinMovesOneCardToTheTop() {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let store = HomeSectionPinStore(defaults: defaults)
+        XCTAssertEqual(store.orderedCards().map(\.sectionID).first, "news-channel")
+        XCTAssertEqual(store.orderedCards().map(\.title).first, "Social Media Posts")
+        store.pin("beliefs")
+        XCTAssertEqual(store.orderedCards().map(\.sectionID), [
+            "beliefs",
+            "ontology",
+            "field-essays",
+            "news-channel"
+        ])
+        store.pin("field-essays")
+        XCTAssertEqual(store.orderedCards().filter { $0.sectionID == "field-essays" }.count, 1)
+        XCTAssertEqual(store.orderedCards().map(\.sectionID).first, "field-essays")
+        store.unpin()
+        XCTAssertEqual(store.orderedCards().map(\.sectionID), [
+            "beliefs",
+            "ontology",
+            "field-essays",
+            "news-channel"
+        ])
     }
 
     func testWebsiteContentSeedsEveryNativeLeveragePage() {

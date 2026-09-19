@@ -236,15 +236,13 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     }
 
     func testHomepageUsesGreatestLeverageCarouselAndVerticalContentOrder() {
-        let heading = app.staticTexts["GREATEST LEVERAGE"].firstMatch
+        XCTAssertFalse(app.staticTexts["GREATEST LEVERAGE"].exists)
         let carousel = app.scrollViews["greatestLeverageCarousel"].firstMatch
-        XCTAssertTrue(heading.waitForExistence(timeout: 12), "Greatest Leverage did not begin the white area")
         XCTAssertFalse(app.staticTexts["The Adam Pattern"].exists)
-        XCTAssertTrue(carousel.waitForExistence(timeout: 12), "Greatest Leverage entries were not presented as a carousel")
-        XCTAssertLessThan(heading.frame.minY, carousel.frame.minY)
+        XCTAssertTrue(carousel.waitForExistence(timeout: 12), "The homepage carousel was missing")
 
         let topScreenshot = XCTAttachment(screenshot: app.screenshot())
-        topScreenshot.name = "homepage-greatest-leverage-carousel"
+        topScreenshot.name = "homepage-carousel-without-greatest-leverage"
         topScreenshot.lifetime = .keepAlways
         add(topScreenshot)
 
@@ -253,10 +251,12 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let ontology = app.descendants(matching: .any)["homeContentSection-ontology"].firstMatch
         let essays = app.descendants(matching: .any)["homeContentSection-field-essays"].firstMatch
         let news = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
-        XCTAssertTrue(connection.waitForExistence(timeout: 5), "Connection did not begin the vertical content area")
+        XCTAssertTrue(news.waitForExistence(timeout: 5), "Social Media Posts did not begin the vertical content area")
+        XCTAssertTrue(app.staticTexts["Social Media Posts"].waitForExistence(timeout: 5))
+        XCTAssertLessThan(carousel.frame.maxY, news.frame.minY)
         XCTAssertFalse(app.descendants(matching: .any)["homeContentDivider-after-beliefs"].exists)
 
-        for section in [ontology, essays, news] {
+        for section in [connection, ontology, essays] {
             for _ in 0..<5 where !(section.exists && section.isHittable) {
                 homeScroll.swipeUp()
             }
@@ -327,7 +327,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
 
         let nowTapY = (now.frame.midY - app.frame.minY) / app.frame.height
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: nowTapY)).tap()
-        XCTAssertTrue(app.staticTexts["GREATEST LEVERAGE"].waitForExistence(timeout: 10), "The left phone edge did not return to Now")
+        XCTAssertTrue(app.scrollViews["greatestLeverageCarousel"].waitForExistence(timeout: 10), "The left phone edge did not return to Now")
     }
 
     func testEntryFormHasNoManualCowboyAIAction() {
@@ -368,8 +368,8 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
 
         openTab("Now")
         let card = app.buttons["greatestLeverageReminder"].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 12), "Pinned entry did not appear under Greatest Leverage")
-        XCTAssertTrue(card.label.contains(title), "Greatest Leverage card did not retain the original title")
+        XCTAssertTrue(card.waitForExistence(timeout: 12), "Pinned entry did not appear in the homepage carousel")
+        XCTAssertTrue(card.label.contains(title), "The homepage carousel card did not retain the original title")
 
         let date = app.descendants(matching: .any)["greatestLeverageDate"].firstMatch
         XCTAssertTrue(date.waitForExistence(timeout: 5), "Pinned entry date was not visible")
@@ -380,8 +380,8 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
 
         card.tap()
         let reopenedTitle = titleField()
-        XCTAssertTrue(reopenedTitle.waitForExistence(timeout: 10), "Greatest Leverage card did not open its entry")
-        XCTAssertEqual(reopenedTitle.value as? String, title, "Greatest Leverage opened a different entry")
+        XCTAssertTrue(reopenedTitle.waitForExistence(timeout: 10), "The homepage carousel card did not open its entry")
+        XCTAssertEqual(reopenedTitle.value as? String, title, "The homepage carousel opened a different entry")
     }
 
     func testActionCreateReopenSwipePinDoneDelete() {

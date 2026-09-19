@@ -20,7 +20,11 @@ enum RootHomeLayout {
     static let pinnedEntryRowHeight: CGFloat = 96
     static let pinnedEntryTrailingInset: CGFloat = 17
     static let pinnedEntryFontSize: CGFloat = 24
-    static let contentSectionMinHeight: CGFloat = 220
+    static let homeBandCardSpacing: CGFloat = 10
+    static let homeBandTopPadding: CGFloat = 14
+    static let homeBandBottomPadding: CGFloat = 16
+    static let homeBandHorizontalPadding: CGFloat = 16
+    static let homeBandCardCornerRadius: CGFloat = 8
     static let bottomNavigationHeight: CGFloat = 128
     /// Navy band painted above the tan bar (FAB overflow zone); does not add layout height.
     static let bottomNavNavyRiserHeight: CGFloat = 44
@@ -164,7 +168,7 @@ struct RootView: View {
                 PersonalAuthorityReviewView()
             }
             .navigationDestination(isPresented: $isPostsPresented) {
-                // Posts live on the News Channel page for now.
+                // Posts live on the Social Media Posts page.
                 LeverageSectionView(
                     section: leverageStore.section(id: "news-channel") ?? LeverageContent.newsChannel,
                     postStore: postStore,
@@ -196,7 +200,7 @@ struct RootView: View {
         case .post:
             // Adam approved the Post mockup on the Reminder form path (2026-09-13: "That looks
             // good. Let's build that.") — Post is the fourth face of the same entry form.
-            // Nothing posts on its own; saved entries land on the News Channel page.
+            // Nothing posts on its own; saved entries land on the Social Media Posts page.
             ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags) { reminder in
                 reminderStore.save(reminder)
                 opensPostsAfterComposer = true
@@ -238,6 +242,7 @@ struct EditorialHomeView: View {
     let onSignOut: (() -> Void)?
     let onOpenPersonalAuthorityReview: () -> Void
     @State private var editingReminder: Reminder?
+    @StateObject private var sectionPinStore = HomeSectionPinStore()
 
     private var feedRows: [HomeFeedRow] {
         HomeFeedRow.rows(
@@ -252,7 +257,7 @@ struct EditorialHomeView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header(topInset: proxy.safeAreaInsets.top)
 
-                    greatestLeverageSection
+                    homeCarousel
 
                     homeContentSections
 
@@ -356,70 +361,99 @@ struct EditorialHomeView: View {
         }
     }
 
-    private var greatestLeverageSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("GREATEST LEVERAGE")
-                .font(SavyTheme.readingLabel(20))
-                .foregroundStyle(SavyTheme.ink)
-                .frame(maxWidth: .infinity, minHeight: RootHomeLayout.latestSectionBandHeight, alignment: .leading)
-                .padding(.horizontal, 18)
-                .background(Color.white)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(feedRows) { entry in
-                        switch entry.source {
-                        case let .reminder(reminder):
-                            Button {
-                                editingReminder = reminder
-                            } label: {
-                                HomeFeedRowView(entry: entry)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("greatestLeverageReminder")
-
-                        case let .leverage(section, item):
-                            NavigationLink {
-                                LeverageDetailView(section: section, item: item)
-                            } label: {
-                                HomeFeedRowView(entry: entry)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("greatestLeverageEntry")
+    private var homeCarousel: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                ForEach(feedRows) { entry in
+                    switch entry.source {
+                    case let .reminder(reminder):
+                        Button {
+                            editingReminder = reminder
+                        } label: {
+                            HomeFeedRowView(entry: entry)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("greatestLeverageReminder")
+
+                    case let .leverage(section, item):
+                        NavigationLink {
+                            LeverageDetailView(section: section, item: item)
+                        } label: {
+                            HomeFeedRowView(entry: entry)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("greatestLeverageEntry")
                     }
                 }
-                .padding(.horizontal, RootHomeLayout.carouselHorizontalPadding)
-                .padding(.bottom, 24)
             }
-            .accessibilityIdentifier("greatestLeverageCarousel")
+            .padding(.horizontal, RootHomeLayout.carouselHorizontalPadding)
+            .padding(.bottom, 24)
         }
+        .accessibilityIdentifier("greatestLeverageCarousel")
         .background(Color.white)
     }
 
     private var homeContentSections: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(HomeLeverageCard.referenceCards) { card in
+        VStack(alignment: .leading, spacing: RootHomeLayout.homeBandCardSpacing) {
+            ForEach(Array(sectionPinStore.orderedCards().enumerated()), id: \.element.id) { index, card in
+                let isPinned = sectionPinStore.pinnedSectionID == card.sectionID
+                let colors = Self.homeBandCardColors(for: index)
                 if let section = leverageStore.section(id: card.sectionID) {
                     NavigationLink {
                         if section.id == "beliefs" {
                             ConnectionView(section: section)
                         } else if section.id == "news-channel" {
-                            // Adam: posts are "to be found in the News Channel page."
                             LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore, reminderStore: reminderStore)
                         } else {
                             LeverageSectionView(section: section)
                         }
                     } label: {
-                        HomeContentSectionView(card: card, section: section)
+                        HomeContentSectionView(
+                            card: card,
+                            section: section,
+                            isPinned: isPinned,
+                            bg: colors.bg,
+                            fg: colors.fg,
+                            accent: colors.accent
+                        )
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(isPinned ? "Unpin" : "Pin") {
+                            sectionPinStore.toggle(card.sectionID)
+                        }
+                    }
                     .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
                 } else {
-                    HomeContentSectionView(card: card, section: nil)
+                    HomeContentSectionView(
+                        card: card,
+                        section: nil,
+                        isPinned: isPinned,
+                        bg: colors.bg,
+                        fg: colors.fg,
+                        accent: colors.accent
+                    )
+                        .contextMenu {
+                            Button(isPinned ? "Unpin" : "Pin") {
+                                sectionPinStore.toggle(card.sectionID)
+                            }
+                        }
                         .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
                 }
             }
+        }
+        .padding(.top, RootHomeLayout.homeBandTopPadding)
+        .padding(.bottom, RootHomeLayout.homeBandBottomPadding)
+        .padding(.horizontal, RootHomeLayout.homeBandHorizontalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SavyTheme.deepNavy)
+    }
+
+    private static func homeBandCardColors(for index: Int) -> (bg: Color, fg: Color, accent: Color) {
+        switch index {
+        case 0: return (.white, SavyTheme.deepNavy, SavyTheme.crimson)
+        case 1: return (Brand.darkRed, .white, .white)
+        default: return (SavyTheme.bottomNavTan, SavyTheme.deepNavy, SavyTheme.crimson)
         }
     }
 }
@@ -566,7 +600,7 @@ private struct HomePinnedEntryRow: View {
     }
 }
 
-struct HomeLeverageCard: Identifiable {
+struct HomeLeverageCard: Identifiable, Equatable {
     let id: String
     let sectionID: String
     let eyebrow: String
@@ -576,46 +610,102 @@ struct HomeLeverageCard: Identifiable {
         HomeLeverageCard(id: "beliefs", sectionID: "beliefs", eyebrow: "CONNECTION", title: "Connection"),
         HomeLeverageCard(id: "ontology", sectionID: "ontology", eyebrow: "ONTOLOGY", title: "Adam's Ontology"),
         HomeLeverageCard(id: "essays", sectionID: "field-essays", eyebrow: "FIELD ESSAYS", title: "Field Essays"),
-        HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: "NEWS CHANNEL", title: "News Channel")
+        HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: "SOCIAL MEDIA POSTS", title: "Social Media Posts")
     ]
+}
+
+/// One of the homepage navigation cards can sit at the top of that area.
+/// Adam, 2026-09-19: "give me the option to pin one of those to the top of that area,
+/// that way as my taste change I can have different top areas to view first"
+final class HomeSectionPinStore: ObservableObject {
+    static let defaultsKey = "savy.homePinnedSectionID"
+    static let defaultPinnedSectionID = "news-channel"
+
+    @Published private(set) var pinnedSectionID: String?
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        let saved = defaults.string(forKey: Self.defaultsKey)
+        if let saved, HomeLeverageCard.referenceCards.contains(where: { $0.sectionID == saved }) {
+            pinnedSectionID = saved
+        } else if saved == nil {
+            pinnedSectionID = Self.defaultPinnedSectionID
+        } else {
+            pinnedSectionID = nil
+        }
+    }
+
+    func pin(_ sectionID: String) {
+        pinnedSectionID = sectionID
+        defaults.set(sectionID, forKey: Self.defaultsKey)
+    }
+
+    func unpin() {
+        pinnedSectionID = nil
+        defaults.set("", forKey: Self.defaultsKey)
+    }
+
+    func toggle(_ sectionID: String) {
+        if pinnedSectionID == sectionID {
+            unpin()
+        } else {
+            pin(sectionID)
+        }
+    }
+
+    func orderedCards() -> [HomeLeverageCard] {
+        let cards = HomeLeverageCard.referenceCards
+        guard let pinnedSectionID,
+              let pinned = cards.first(where: { $0.sectionID == pinnedSectionID }) else {
+            return cards
+        }
+        return [pinned] + cards.filter { $0.sectionID != pinnedSectionID }
+    }
 }
 
 private struct HomeContentSectionView: View {
     let card: HomeLeverageCard
     let section: LeverageSection?
+    var isPinned = false
+    let bg: Color
+    let fg: Color
+    let accent: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text(card.eyebrow)
-                .font(SavyTheme.readingLabel(12))
-                .tracking(1.8)
-                .foregroundStyle(SavyTheme.crimson)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(card.eyebrow)
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(1.5)
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 10, weight: .heavy))
+                }
+            }
+            .foregroundStyle(fg.opacity(0.7))
 
             Text(card.title)
-                .font(SavyTheme.carouselCardTitle(34))
-                .lineSpacing(3)
-                .foregroundStyle(SavyTheme.ink)
+                .font(SavyTypography.displaySerif(26, weight: .regular))
+                .foregroundStyle(fg)
                 .fixedSize(horizontal: false, vertical: true)
+
+            Rectangle().fill(accent).frame(width: 36, height: 2)
 
             if let headline = section?.headline, !headline.isEmpty {
                 Text(headline)
-                    .font(SavyTheme.readingBody(17))
-                    .lineSpacing(4)
-                    .foregroundStyle(SavyTheme.secondaryText)
-                    .lineLimit(3)
-            }
-
-            HStack {
-                Text("\(section?.items.count ?? 0) ITEMS")
-                    .font(SavyTheme.readingLabel(12))
-                    .tracking(1.4)
-                    .foregroundStyle(SavyTheme.tertiaryText)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(fg.opacity(0.8))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, RootHomeLayout.horizontalPadding)
-        .padding(.vertical, 30)
-        .frame(maxWidth: .infinity, minHeight: RootHomeLayout.contentSectionMinHeight, alignment: .topLeading)
-        .background(Color.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(bg)
+        .clipShape(RoundedRectangle(cornerRadius: RootHomeLayout.homeBandCardCornerRadius))
+        .overlay(RoundedRectangle(cornerRadius: RootHomeLayout.homeBandCardCornerRadius).stroke(Color.white.opacity(0.08)))
     }
 }
 
