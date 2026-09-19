@@ -397,9 +397,10 @@ struct EditorialHomeView: View {
     }
 
     private var homeContentSections: some View {
-        VStack(alignment: .leading, spacing: ConnectionLayout.cardSpacing) {
+        VStack(alignment: .leading, spacing: RootHomeLayout.homeBandCardSpacing) {
             ForEach(Array(sectionPinStore.orderedCards().enumerated()), id: \.element.id) { index, card in
                 let isPinned = sectionPinStore.pinnedSectionID == card.sectionID
+                let colors = Self.homeBandCardColors(for: index)
                 let detail = Self.homeBandCardDetail(for: index)
                 if let section = leverageStore.section(id: card.sectionID) {
                     NavigationLink {
@@ -415,8 +416,12 @@ struct EditorialHomeView: View {
                             card: card,
                             section: section,
                             isPinned: isPinned,
+                            bg: colors.bg,
+                            fg: colors.fg,
+                            accent: colors.accent,
                             detail: detail
                         )
+                        .scaleEffect(x: 1, y: Self.homeBandCardScale(for: index), anchor: .top)
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
@@ -430,8 +435,12 @@ struct EditorialHomeView: View {
                         card: card,
                         section: nil,
                         isPinned: isPinned,
+                        bg: colors.bg,
+                        fg: colors.fg,
+                        accent: colors.accent,
                         detail: detail
                     )
+                        .scaleEffect(x: 1, y: Self.homeBandCardScale(for: index), anchor: .top)
                         .contextMenu {
                             Button(isPinned ? "Unpin" : "Pin") {
                                 sectionPinStore.toggle(card.sectionID)
@@ -448,13 +457,26 @@ struct EditorialHomeView: View {
         .background(Color.white)
     }
 
-    /// Understood: first card is full, second is medium, the rest are minimal.
-    /// ConnectionView already measured those heights from the Reminders screen.
-    private static func homeBandCardDetail(for index: Int) -> ConnectionCardDetail {
+    /// Copied from Understood `ActionsHomeView.cardColors` / `SavyReminderScreens.cardColors`.
+    private static func homeBandCardColors(for index: Int) -> (bg: Color, fg: Color, accent: Color) {
         switch index {
-        case 0: return .full
-        case 1: return .medium
-        default: return .minimal
+        case 0: return (.white, SavyTheme.deepNavy, SavyTheme.crimson)
+        case 1: return (Brand.darkRed, .white, .white)
+        default: return (SavyTheme.bottomNavTan, SavyTheme.deepNavy, SavyTheme.crimson)
+        }
+    }
+
+    /// Copied from Understood `RemindersHomeView` / `SavyReminderScreens.cardDetail`.
+    private static func homeBandCardDetail(for index: Int) -> SavyCardDetail {
+        index == 0 ? .full : (index == 1 ? .medium : .minimal)
+    }
+
+    /// Copied from Understood `ActionsHomeView.cardScale`.
+    private static func homeBandCardScale(for index: Int) -> CGFloat {
+        switch index {
+        case 0: return 1.08
+        case 1: return 1.02
+        default: return 1
         }
     }
 }
@@ -669,52 +691,45 @@ private struct HomeContentSectionView: View {
     let card: HomeLeverageCard
     let section: LeverageSection?
     var isPinned = false
-    let detail: ConnectionCardDetail
+    let bg: Color
+    let fg: Color
+    let accent: Color
+    var detail: SavyCardDetail = .minimal
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text(card.eyebrow)
                     .font(.system(size: 11, weight: .heavy))
                     .tracking(1.5)
                 if isPinned {
                     Image(systemName: "pin.fill")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 10, weight: .heavy))
                 }
             }
-            .foregroundStyle(SavyTheme.ink.opacity(0.68))
+            .foregroundStyle(fg.opacity(0.7))
 
             Text(card.title)
-                .font(SavyTypography.displaySerif(detail == .minimal ? 25 : 27, weight: .regular))
-                .foregroundStyle(SavyTheme.ink)
-                .lineLimit(detail == .minimal ? 2 : 3)
-                .minimumScaleFactor(0.82)
-                .multilineTextAlignment(.leading)
+                .font(SavyTypography.displaySerif(26, weight: .regular))
+                .foregroundStyle(fg)
+                .fixedSize(horizontal: false, vertical: true)
 
-            Rectangle()
-                .fill(SavyTheme.crimson)
-                .frame(width: 36, height: 2)
+            Rectangle().fill(accent).frame(width: 36, height: 2)
 
             if detail != .minimal, let headline = section?.headline, !headline.isEmpty {
                 Text(headline)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(SavyTheme.ink.opacity(0.72))
+                    .font(.system(size: 14))
+                    .foregroundStyle(fg.opacity(0.78))
                     .lineLimit(detail == .full ? 3 : 1)
-                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .frame(height: detail.height)
-        .background(Brand.card)
-        .clipShape(RoundedRectangle(cornerRadius: ConnectionLayout.cardCornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: ConnectionLayout.cardCornerRadius, style: .continuous)
-                .stroke(Color.black.opacity(0.08), lineWidth: 1)
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(bg)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.08)))
     }
 }
 
