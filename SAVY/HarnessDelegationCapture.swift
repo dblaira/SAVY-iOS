@@ -39,7 +39,9 @@ enum HarnessDelegationWriter {
     /// sources). Adam's sentences go in verbatim -- title is his first
     /// sentence, the body carries all three under his own labels.
     @discardableResult
-    static func write(want: String, think: String, done: String) -> Bool {
+    static func write(want: String, think: String, done: String, postContext: String? = nil) -> Bool {
+        // UI acceptance runs use synthetic entries on the connected phone, never its iCloud queue.
+        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") { return true }
         let stamp = Self.fileStampFormatter.string(from: Date())
         let iso = ISO8601DateFormatter().string(from: Date())
         let id = "DELEGATION-\(stamp)-SAVY"
@@ -48,7 +50,7 @@ enum HarnessDelegationWriter {
             .trimmingCharacters(in: .whitespaces) ?? want
         let escapedTitle = title.replacingOccurrences(of: "\"", with: "\\\"")
 
-        let markdown = """
+        var markdown = """
         ---
         type: delegation
         title: "\(escapedTitle)"
@@ -70,6 +72,9 @@ enum HarnessDelegationWriter {
         DONE LOOKS LIKE...
         \(done)
         """
+        if let postContext, !postContext.isEmpty {
+            markdown += "\n\n" + postContext
+        }
 
         let filename = "\(id).md"
         if let dir = delegationsDirectory() {
@@ -116,6 +121,7 @@ enum HarnessedRegistry {
     }
 
     static func mark(_ reminder: Reminder) {
+        guard !ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") else { return }
         var ids = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
         ids.insert(reminder.id.uuidString)
         UserDefaults.standard.set(Array(ids), forKey: key)

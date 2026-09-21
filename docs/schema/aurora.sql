@@ -109,7 +109,11 @@ CREATE TABLE IF NOT EXISTS savy.reminders (
   location_name           TEXT NOT NULL DEFAULT '',
   when_messaging_person   TEXT NOT NULL DEFAULT '',
   kind                    TEXT NOT NULL DEFAULT 'reminder'
-    CHECK (kind IN ('reminder', 'action', 'event')),
+    CHECK (kind IN ('reminder', 'action', 'event', 'post')),
+  post_theme_id           TEXT,
+  post_theme_name         TEXT,
+  post_answers            TEXT[],
+  post_answers_contain_questions BOOLEAN,
   end_time                TIME,
   outcome                 TEXT,
   effort                  TEXT,

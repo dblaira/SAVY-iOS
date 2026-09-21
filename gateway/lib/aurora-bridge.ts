@@ -656,6 +656,10 @@ export type ReminderRow = {
   location_name: string;
   when_messaging_person: string;
   kind: string;
+  post_theme_id: string | null;
+  post_theme_name: string | null;
+  post_answers: string[] | null;
+  post_answers_contain_questions: boolean | null;
   end_time: string | null;
   outcome: string | null;
   effort: string | null;
@@ -708,6 +712,10 @@ export async function fetchRemindersForUser(userId: string): Promise<ReminderRow
          r.location_name,
          r.when_messaging_person,
          r.kind,
+         r.post_theme_id,
+         r.post_theme_name,
+         r.post_answers,
+         r.post_answers_contain_questions,
          r.end_time::text,
          r.outcome,
          r.effort,
@@ -800,13 +808,15 @@ export async function upsertReminderForUser(
            due_date, due_time, urgent, repeat_rule, early_reminder,
            list_name, flag, priority, location_name, when_messaging_person,
            kind, end_time, outcome, effort, energy, context, defer_date, waiting_on,
-           pinned, up_next_order, seeded_from_template_id, status, completed_at
+           pinned, up_next_order, seeded_from_template_id, status, completed_at,
+           post_theme_id, post_theme_name, post_answers, post_answers_contain_questions
          ) VALUES (
            $1::uuid, $2, $3, $4, $5, $6,
            $7::date, $8::time, $9, $10, $11,
            $12, $13, $14, $15, $16,
            $17, $18::time, $19, $20, $21, $22, $23::date, $24,
-           $25, $26, $27, $28, $29::timestamptz
+           $25, $26, $27, $28, $29::timestamptz,
+           $30, $31, $32::text[], $33::boolean
          )
          ON CONFLICT (id) DO UPDATE SET
            title = EXCLUDED.title,
@@ -824,6 +834,12 @@ export async function upsertReminderForUser(
            location_name = EXCLUDED.location_name,
            when_messaging_person = EXCLUDED.when_messaging_person,
            kind = EXCLUDED.kind,
+           post_theme_id = CASE WHEN EXCLUDED.kind = 'post' THEN COALESCE(EXCLUDED.post_theme_id, savy.reminders.post_theme_id) END,
+           post_theme_name = CASE WHEN EXCLUDED.kind = 'post' THEN COALESCE(EXCLUDED.post_theme_name, savy.reminders.post_theme_name) END,
+           post_answers = CASE WHEN EXCLUDED.kind = 'post' THEN COALESCE(EXCLUDED.post_answers, savy.reminders.post_answers) END,
+           post_answers_contain_questions = CASE WHEN EXCLUDED.kind = 'post' THEN
+             CASE WHEN EXCLUDED.post_answers IS NULL THEN savy.reminders.post_answers_contain_questions
+                  ELSE EXCLUDED.post_answers_contain_questions END END,
            end_time = EXCLUDED.end_time,
            outcome = EXCLUDED.outcome,
            effort = EXCLUDED.effort,
@@ -868,6 +884,10 @@ export async function upsertReminderForUser(
           input.seeded_from_template_id,
           input.status,
           input.completed_at,
+          input.kind === "post" ? input.post_theme_id : null,
+          input.kind === "post" ? input.post_theme_name : null,
+          input.kind === "post" ? input.post_answers : null,
+          input.kind === "post" ? input.post_answers_contain_questions : null,
         ]
       );
 

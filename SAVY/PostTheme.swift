@@ -1,6 +1,6 @@
 import Foundation
 
-/// One prompt inside a post theme — the placeholder line the user answers in the Decide section.
+/// One prompt inside a post theme, prefilled as editable text in the Decide section.
 struct PostThemeQuestion: Identifiable, Codable, Equatable {
     /// Stable per-theme position; answers are stored in this order.
     var id: String { prompt }
@@ -15,6 +15,96 @@ struct PostTheme: Identifiable, Codable, Equatable {
     let id: String
     let name: String
     let questions: [PostThemeQuestion]
+
+    /// The blank line puts the answer beneath the question in the same saved field.
+    var prefilledAnswers: [String] {
+        questions.map { $0.prompt + "\n\n" }
+    }
+
+    /// Older entries saved only answers. Supply their questions once while preserving every
+    /// character the user wrote. Marked entries are already whole fields and reopen verbatim.
+    func questionAndAnswers(from saved: [String]?, containQuestions: Bool) -> [String] {
+        let saved = saved ?? []
+        return (0..<max(saved.count, questions.count)).map { index in
+            guard saved.indices.contains(index) else { return prefilledAnswers[index] }
+            let value = saved[index]
+            guard !containQuestions, questions.indices.contains(index) else { return value }
+            let prompt = questions[index].prompt
+            if value == prompt || value.hasPrefix(prompt + "\n") || value.hasPrefix(prompt + "\r\n") {
+                return value
+            }
+            return prompt + "\n\n" + value
+        }
+    }
+
+    /// Card previews count answers, not the prefilled question. This is a presentation helper;
+    /// the complete field remains the saved and exported source, including edited questions.
+    static func answerText(in field: String, originalPrompt: String?) -> String {
+        let trimmed = field.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let prompt = originalPrompt {
+            if trimmed == prompt { return "" }
+            if field.hasPrefix(prompt + "\n") || field.hasPrefix(prompt + "\r\n") {
+                return String(field.dropFirst(prompt.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        if let separator = field.range(of: "\n\n") {
+            return String(field[separator.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return trimmed
+    }
+}
+
+/// One open form can explore several themes without erasing the words entered in any of them.
+struct PostEntryDraft {
+    private(set) var themeID: String
+    private var answersByTheme: [String: [String]]
+
+    init(entry: Reminder) {
+        let theme = PostThemeCatalog.theme(id: entry.postThemeID) ?? PostThemeCatalog.defaultTheme
+        themeID = theme.id
+        answersByTheme = [theme.id: theme.questionAndAnswers(
+            from: entry.postAnswers,
+            containQuestions: entry.postAnswersContainQuestions == true
+        )]
+    }
+
+    var theme: PostTheme {
+        PostThemeCatalog.theme(id: themeID) ?? PostThemeCatalog.defaultTheme
+    }
+
+    var answers: [String] { answersByTheme[themeID] ?? theme.prefilledAnswers }
+
+    mutating func selectTheme(_ id: String) {
+        guard let selected = PostThemeCatalog.theme(id: id) else { return }
+        themeID = selected.id
+        if answersByTheme[id] == nil { answersByTheme[id] = selected.prefilledAnswers }
+    }
+
+    mutating func setAnswer(_ text: String, at index: Int) {
+        guard index >= 0 else { return }
+        var values = answers
+        while values.count <= index { values.append("") }
+        values[index] = text
+        answersByTheme[themeID] = values
+    }
+
+    /// Explicit Save retains the untouched template as well as any entered answers.
+    func apply(to entry: inout Reminder) {
+        entry.postThemeID = theme.id
+        entry.postThemeName = theme.name
+        entry.postAnswers = answers
+        entry.postAnswersContainQuestions = true
+    }
+
+    /// Opening a template or choosing another one does not create an autosaved post.
+    /// A changed question is user content too; its original wording is only a starting point.
+    var hasUserContent: Bool {
+        answers.enumerated().contains { index, value in
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return false }
+            return !theme.questions.indices.contains(index) || trimmed != theme.questions[index].prompt
+        }
+    }
 }
 
 /// The seed catalog. Add a theme here (or grow this into a loaded file later) and it appears in

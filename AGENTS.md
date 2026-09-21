@@ -50,11 +50,19 @@ When Adam's iPhone is connected, carry native work through Xcode build, device i
 - The post entry page stays as it is — Adam, 2026-09-02, 10:00 pm, with screenshots of the News Channel page and the post form: "On 2nd thought I really like the layout of these pages. The Jab and hook will be replaced with different terms I chose later. But let's keep the entry page as is." On 2026-09-03 Adam supplied his terms: "Change the words to \"News\" and \"Advertising\"" — News gives, Advertising asks. Do not add other borrowed language. Superseded for the bolt's Post door on 2026-09-13: Adam approved the Post-as-fourth-entry-type mockup ("That looks good. Let's build that.") — the bolt's Post door opens the shared entry form (Reminder | Action | Calendar | Post) with Theme + Decide above the full Reminder body. The SocialPost form (News/Advertising, 280-character box) stays reachable from the Social Media Posts +.
 - The homepage card and page that held posts is Social Media Posts — Adam, 2026-09-19: "Let's call news channel social media posts." and "They should not be hidden on the homepage." Greatest Leverage is gone from the homepage — Adam, 2026-09-19: "Remove greatest leverage from the homepage and just move up, move the carousel up." The whole carousel card stays visible under the red line — Adam, 2026-09-19: "I want to see the whole card in the carousel. the top is obscured buy the red line." One of Connection, Adam's Ontology, Field Essays, or Social Media Posts can be pinned to the top of that area — Adam, 2026-09-19: "give me the option to pin one of those to the top of that area, that way as my taste change I can have different top areas to view first." Cards under the carousel are the Understood band cards — white, dark red, tan — on the white that sits behind the carousel. Adam, 2026-09-19: "whatever is pinned is much larger than the cards that are not pinned, so go back, look at the code, and see how it was actually built, and then create a very light background for these, and what I mean by that is the background that's behind the cards in the carousel, let that be the background behind the cards or the different rows of cards in the Savvy app that are below." Size is ActionsHomeView's scale (1.08 / 1.02 / 1) and BandCard detail (full / medium / minimal). The cards themselves are not the cream carousel cards. The copy he is signed into is the iPhone — Adam, 2026-09-19: "I'm billing in on my phone right now. I'm not signing in to some bullshit simulator." Nothing posts on its own; Adam presses Post in X.
 
+## Post entry and Social Media Posts — September 21, 2026
+
+Adam approved the expanded-question mockup and asked to update his connected iPhone through Xcode. Decide questions are normal editable prefilled text, with room for the answer underneath in the same expanding field. Save and agent retrieval preserve the full question and answer together; existing answers must survive the change.
+
+The Social Media Posts + now opens the same shared Post entry form as the bolt, with all 28 templates and red SF Symbol icons matching the form. This replaces the older + routing to SocialPostFormView; existing older posts still open their original editor. Any number of posts may be pinned at the top of the post list, independently. The page header uses the homepage's deep navy and omits the redundant red SOCIAL MEDIA POSTS eyebrow. Its back arrow is a small crimson chevron with no circular background or outline.
+
+Physical-device UI tests must use isolated storage and must not write synthetic entries to the live cache, cloud, Harness queue, or HarnessedRegistry.
+
 ## Current Lane
 
 Update this line when the active milestone changes:
 
-**Current lane:** Device-first shell + gateway health; wire validated RDF only to Belief Library and Pathway — audit non-RDF data paths. Do not expand scope without Adam saying so.
+**Current lane:** Post questions saved with answers, unlimited post pins, shared 28-template entry, navy header, and matching red framework icons and bare back chevron; verify on Adam's connected iPhone and through cloud retrieval. Validated RDF remains limited to Belief Library and Pathway.
 
 ## How agents use Adam's Macs (required)
 
@@ -79,4 +87,3 @@ Always: requirement-is-the-test, adams-words, no-time-estimates, cognitive-fit, 
 Stack (when editing matching files): see `.cursor/rules/stack-*.mdc` — nextjs / react-best-practices / figma-swiftui / aws-lambda / context7 / systematic-debugging.
 
 If the same mistake happens twice: create a rule. Prefer system over apology.
-

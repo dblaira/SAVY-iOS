@@ -25,9 +25,8 @@ struct ReminderFormView: View {
     @State private var showSaved = false
     @FocusState private var focusedSubtaskID: UUID?
     @State private var subtasks: [Subtask]
-    // Post-only state: the picked theme and the answers to its Decide questions, in question order.
-    @State private var postThemeID: String
-    @State private var postAnswers: [String]
+    // Post-only state keeps editable questions and answers together for each visited theme.
+    @State private var postDraft: PostEntryDraft
 
     private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
 
@@ -49,13 +48,7 @@ struct ReminderFormView: View {
         }
         _r = State(initialValue: base)
         _subtasks = State(initialValue: base.subtasks)
-        let theme = PostThemeCatalog.theme(id: base.postThemeID) ?? PostThemeCatalog.defaultTheme
-        var answers = base.postAnswers ?? []
-        if answers.count < theme.questions.count {
-            answers += Array(repeating: "", count: theme.questions.count - answers.count)
-        }
-        _postThemeID = State(initialValue: theme.id)
-        _postAnswers = State(initialValue: answers)
+        _postDraft = State(initialValue: PostEntryDraft(entry: base))
         _hasDate = State(initialValue: base.dueDate != nil)
         _hasDefer = State(initialValue: base.deferDate != nil)
         _date = State(initialValue: Self.dueDateTime(on: base.dueDate ?? Date(), at: base.dueTime))
@@ -192,13 +185,20 @@ struct ReminderFormView: View {
     // MARK: - Post: Theme + Decide
 
     private var selectedPostTheme: PostTheme {
-        PostThemeCatalog.theme(id: postThemeID) ?? PostThemeCatalog.defaultTheme
+        postDraft.theme
     }
 
     private var postThemeSection: some View {
         Section {
-            Picker(selection: $postThemeID) {
-                ForEach(PostThemeCatalog.themes) { Text($0.name).tag($0.id) }
+            Picker(selection: Binding(get: { postDraft.themeID }, set: { postDraft.selectTheme($0) })) {
+                ForEach(PostThemeCatalog.themes) { theme in
+                    Label {
+                        Text(theme.name)
+                    } icon: {
+                        Image(uiImage: postThemeIcon(theme))
+                    }
+                    .tag(theme.id)
+                }
             } label: {
                 Label(EntryFormCopy.themeTitle, systemImage: "list.bullet")
             }
@@ -207,24 +207,31 @@ struct ReminderFormView: View {
             .accessibilityIdentifier("PostTheme")
         } header: { sectionHeader(EntryFormCopy.themeHeader) }
         .listRowBackground(Brand.card)
-        .onChange(of: postThemeID) { _, _ in
-            // A new theme means new questions; start its answers fresh, in the new order.
-            postAnswers = Array(repeating: "", count: selectedPostTheme.questions.count)
-        }
+    }
+
+    private func postThemeIcon(_ theme: PostTheme) -> UIImage {
+        let configuration = UIImage.SymbolConfiguration(pointSize: 16, weight: .regular)
+        let symbol = theme.questions.first?.symbol ?? "list.bullet"
+        // Native menus otherwise retint symbols; preserve the exact form icon color.
+        return (UIImage(systemName: symbol, withConfiguration: configuration) ?? UIImage())
+            .withTintColor(UIColor(Brand.crimson), renderingMode: .alwaysOriginal)
     }
 
     private var postDecideSection: some View {
         Section {
-            ForEach(Array(selectedPostTheme.questions.enumerated()), id: \.element.id) { index, question in
+            ForEach(postDraft.answers.indices, id: \.self) { index in
+                let question = selectedPostTheme.questions.indices.contains(index) ? selectedPostTheme.questions[index] : nil
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: question.symbol)
+                    Image(systemName: question?.symbol ?? "text.bubble")
                         .font(.system(size: 16))
                         .foregroundStyle(Brand.crimson)
                         .frame(width: 24)
-                    TextField(question.prompt, text: postAnswerBinding(index), axis: .vertical)
-                        .lineLimit(1...)
+                    TextField("", text: postAnswerBinding(index), axis: .vertical)
+                        .lineLimit(3...)
                         .textFieldStyle(.plain)
+                        .foregroundStyle(.black)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(question?.prompt ?? "Decide")
                         .accessibilityIdentifier("DecideAnswer\(index)")
                 }
             }
@@ -232,14 +239,11 @@ struct ReminderFormView: View {
         .listRowBackground(Brand.card)
     }
 
-    /// Answers array can momentarily lag the question list during a theme switch; guard the index.
+    /// The field contains both question and answer; its question is editable saved content.
     private func postAnswerBinding(_ index: Int) -> Binding<String> {
         Binding(
-            get: { postAnswers.indices.contains(index) ? postAnswers[index] : "" },
-            set: { value in
-                while postAnswers.count <= index { postAnswers.append("") }
-                postAnswers[index] = value
-            }
+            get: { postDraft.answers.indices.contains(index) ? postDraft.answers[index] : "" },
+            set: { postDraft.setAnswer($0, at: index) }
         )
     }
 
@@ -481,7 +485,10 @@ struct ReminderFormView: View {
         HarnessDelegationWriter.write(
             want: r.title,
             think: r.whenIAm ?? "",
-            done: r.outcome
+            done: r.outcome,
+            postContext: r.kind == .post
+                ? "Theme: \(r.postThemeName ?? "Post")\n\nDecide\n\n" + r.postQuestionAndAnswers.joined(separator: "\n\n")
+                : nil
         )
         HarnessedRegistry.mark(r)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -498,7 +505,7 @@ struct ReminderFormView: View {
     private var hasContent: Bool {
         if !r.title.trimmingCharacters(in: .whitespaces).isEmpty { return true }
         if !r.notes.isEmpty || !r.outcome.isEmpty || !(r.whenIAm ?? "").isEmpty || !r.url.isEmpty { return true }
-        if r.kind == .post, postAnswers.contains(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
+        if r.kind == .post, postDraft.hasUserContent { return true }
         if !r.locationName.isEmpty || !r.waitingOn.isEmpty { return true }
         if !r.tags.isEmpty { return true }
         if subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
@@ -517,19 +524,12 @@ struct ReminderFormView: View {
         r.endTime = nil
         r.subtasks = subtasks.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
         if r.kind == .post {
-            let theme = selectedPostTheme
-            r.postThemeID = theme.id
-            r.postThemeName = theme.name
-            // His words, verbatim, in question order — padded so answer N always means question N.
-            var answers = postAnswers
-            if answers.count < theme.questions.count {
-                answers += Array(repeating: "", count: theme.questions.count - answers.count)
-            }
-            r.postAnswers = Array(answers.prefix(theme.questions.count))
+            postDraft.apply(to: &r)
         } else {
             r.postThemeID = nil
             r.postThemeName = nil
             r.postAnswers = nil
+            r.postAnswersContainQuestions = nil
         }
         if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(r.kind.label)" }
         onSave(r)

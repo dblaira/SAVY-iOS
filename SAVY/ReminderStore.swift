@@ -104,6 +104,9 @@ final class ReminderStore: ObservableObject {
             reminders = merged
             saveCache()
             reminders.forEach(NotificationScheduler.schedule)
+            // A first refresh from the expanded gateway can reveal older cloud Posts
+            // without context. Send this device's retained fields through normal sync.
+            await pushPending()
         } catch {
             // Stay on the local cache; no intrusive error.
         }
@@ -306,11 +309,21 @@ final class ReminderStore: ObservableObject {
             if reminder.imageLocalPath == nil {
                 reminder.imageLocalPath = localCopy.imageLocalPath
             }
-            // Post theme + answers are local-first (the gateway doesn't carry them yet);
-            // a remote refresh must not erase them.
-            if reminder.postThemeID == nil { reminder.postThemeID = localCopy.postThemeID }
-            if reminder.postThemeName == nil { reminder.postThemeName = localCopy.postThemeName }
-            if reminder.postAnswers == nil { reminder.postAnswers = localCopy.postAnswers }
+            // Older gateways omit Post fields. Keep this device's saved context when
+            // that happens; the marker must follow the answers it describes.
+            if reminder.kind == .post {
+                reminder.createdAt = localCopy.createdAt
+                reminder.whenIAm = reminder.whenIAm ?? localCopy.whenIAm
+                reminder.marksClearSignOfSuccess = reminder.marksClearSignOfSuccess ?? localCopy.marksClearSignOfSuccess
+                reminder.marksCompounding = reminder.marksCompounding ?? localCopy.marksCompounding
+                if reminder.postThemeID == nil { reminder.postThemeID = localCopy.postThemeID }
+                if reminder.postThemeName == nil { reminder.postThemeName = localCopy.postThemeName }
+                if reminder.postAnswers == nil {
+                    reminder.postAnswers = localCopy.postAnswers
+                    reminder.postAnswersContainQuestions = localCopy.postAnswersContainQuestions
+                    if localCopy.postAnswers != nil { reminder.needsSync = true }
+                }
+            }
             return reminder
         }
 

@@ -299,6 +299,40 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(flags["compound"] as? Bool, true)
     }
 
+    func testPostCandidateExportPreservesEditableQuestionsAndAnswers() throws {
+        var reminder = Reminder(kind: .post, title: "A saved post")
+        reminder.postThemeID = "five-ws"
+        reminder.postThemeName = "The 5 Ws"
+        reminder.postAnswers = ["My edited question?\n\nMy exact answer.\nAnother line.", ""]
+        reminder.postAnswersContainQuestions = true
+
+        let capture = TechnicalCapture.from(reminder: reminder)
+        let expected = reminder.postQuestionAndAnswers
+        XCTAssertEqual(capture.metadata.postAnswers, expected)
+        XCTAssertEqual(capture.metadata.postAnswersContainQuestions, true)
+        XCTAssertTrue(capture.promptText.contains("My edited question?\n\nMy exact answer.\nAnother line."))
+        let payload = CowboyCandidateIntakePayload(capture: capture)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder.recall.encode(payload)) as? [String: Any])
+        let metadata = try XCTUnwrap(json["metadata"] as? [String: Any])
+        XCTAssertEqual(metadata["postAnswers"] as? [String], expected)
+        XCTAssertEqual(metadata["postAnswersContainQuestions"] as? Bool, true)
+        XCTAssertEqual(payload.authorityStatus, .candidateOnly)
+    }
+
+    func testLegacyPostCandidateExportIncludesQuestionsWithoutChangingSavedAnswers() {
+        var reminder = Reminder(kind: .post, title: "An existing post")
+        reminder.postThemeID = "five-ws"
+        reminder.postAnswers = ["My existing answer."]
+        let capture = TechnicalCapture.from(reminder: reminder)
+        let question = PostThemeCatalog.defaultTheme.questions[0].prompt
+        XCTAssertTrue(capture.metadata.postAnswers?.first?.contains(question) == true)
+        XCTAssertTrue(capture.metadata.postAnswers?.first?.contains("My existing answer.") == true)
+        XCTAssertTrue(capture.promptText.contains(question))
+        XCTAssertEqual(capture.metadata.postAnswersContainQuestions, true)
+        XCTAssertEqual(reminder.postAnswers, ["My existing answer."])
+        XCTAssertNil(reminder.postAnswersContainQuestions)
+    }
+
     func testTechnicalCapturePromptPreservesExactWordsAndStableMetadataOrder() {
         var reminder = Reminder(
             kind: .action,

@@ -1,26 +1,326 @@
 import XCTest
 
-/// Adam, 2026-09-02: "get a form set up for me to use and improve upon when planning and
-/// writing social media posts" — and posts are "to be found in the News Channel page."
-/// Adam, 2026-09-13, approving the Post-on-the-entry-form mockup: "That looks good. Let's
-/// build that." The test is the sentence: the bolt's Post door opens the entry form with
-/// Theme + Decide above the full Reminder body, Save lands the post on the News Channel
-/// page, and reopening the row brings the data back.
+/// Adam, 2026-09-21: questions stay in the entry with the answers, Social Media Posts + opens
+/// that same form, and any number of posts can be pinned. These tests use the app's isolated
+/// UI-test repositories so physical-iPhone verification does not change Adam's saved entries.
 final class SAVYPostFormUITests: XCTestCase {
     private var app: XCUIApplication!
+    private let firstPrompt = "What happened?"
+    private let advancedPrompts = [
+        "What result requires going beyond the basics?",
+        "What must already be mastered?",
+        "Which advanced techniques improve that result?",
+        "What additional demands or tradeoffs do those techniques introduce?",
+    ]
+    // The names locate the native menu's visible bounds when its later options need scrolling.
+    private let themeNames = [
+        "The 5 Ws", "Problem → Solution", "Before / After", "Lesson Learned", "How-To",
+        "Story Arc", "Myth vs. Fact", "The Decision", "Frequently Asked Questions",
+        "Customer Success Story", "Key Challenges & Solutions", "Myths vs. Facts",
+        "The Ultimate Checklist", "Quick Hack or Shortcut", "Recommended Tools & Resources",
+        "Essential Terminology", "Before & After Scenarios", "Audience Poll or Survey Results",
+        "Core Principles Explained", "Debunking Popular Industry Beliefs", "History of the Topic",
+        "Alternative Approaches", "Step-by-Step Breakdown", "Checklist for Breakdown",
+        "Checklist for Beginners", "Advanced Strategies", "Frequently Misunderstood Concepts",
+        "Your Personal Take & Lessons Learned",
+    ]
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS"]
+        app.launchArguments = [
+            "SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS", "SAVY_UI_TEST_COWBOY_STUB",
+        ]
         app.launch()
         dismissSystemPrompt()
     }
 
+    func testBoltOpensPostFormWithThemeDecideAndFullReminderBody() {
+        let fab = element("chargeFab")
+        XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
+        fab.tap()
+        let postDoor = app.buttons["Post"].firstMatch
+        XCTAssertTrue(postDoor.waitForExistence(timeout: 5), "Post door missing from the fan")
+        attach("01 fan with Post")
+        postDoor.tap()
+        assertSharedPostForm()
+        assertPrefilledQuestion(firstPrompt, at: 0)
+
+        // The question is actual editable content before anything is typed.
+        let answer = "Synthetic bolt acceptance answer."
+        appendAnswer(answer, at: 0)
+        let firstValue = firstPrompt + "\n\n" + answer
+        XCTAssertEqual(element("DecideAnswer0").value as? String, firstValue)
+        savePost()
+        let row = postRows.firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Saved post missing from Social Media Posts")
+        row.tap()
+        XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10))
+        XCTAssertEqual(element("DecideAnswer0").value as? String, firstValue)
+        attach("02 bolt post reopened with question and answer")
+    }
+
+    func testThemePickerOffersAdamsNewThemesAndLoadsTheirQuestions() {
+        openPostsPage()
+        openNewPost()
+        selectTheme("Customer Success Story")
+        assertPrefilledQuestion("What did the customer want to achieve?", at: 0)
+        assertPrefilledQuestion("What success can they demonstrate and describe in their own words?", at: 3)
+        XCTAssertFalse(element("DecideAnswer4").exists, "Customer Success Story asks exactly four questions")
+        attach("03 customer success story prefilled questions")
+    }
+
+    /// Replaces the older + → 280-character SocialPost composer requirement.
+    func testPostsPlusOpensSharedFormAndPreservesExpandedQuestions() {
+        openPostsPage()
+        openNewPost()
+        assertSharedPostForm()
+        assertPrefilledQuestion(firstPrompt, at: 0)
+        selectTheme("Advanced Strategies")
+
+        for (index, prompt) in advancedPrompts.enumerated() {
+            assertPrefilledQuestion(prompt, at: index)
+        }
+        let lastQuestion = element("DecideAnswer3")
+        scrollTo(lastQuestion)
+        XCTAssertGreaterThan(lastQuestion.frame.height, 50, "The complete question needs multiple visible lines")
+        attach("10 advanced questions expanded before typing")
+
+        let firstAnswer = element("DecideAnswer0")
+        scrollTo(firstAnswer, upward: false)
+        let initialHeight = firstAnswer.frame.height
+        let answer = "Synthetic acceptance answer: connect several related examples, explain their differences, "
+            + "and preserve every sentence alongside the full question when the post is reopened."
+        appendAnswer(answer, at: 0)
+        let expected = advancedPrompts[0] + "\n\n" + answer
+        XCTAssertEqual(firstAnswer.value as? String, expected, "Typing must retain the entire question above the answer")
+        XCTAssertGreaterThan(firstAnswer.frame.height, initialHeight + 10, "The field did not grow with the answer")
+        attach("11 question and answer visible in expanded field")
+        savePost()
+
+        let row = postRows.firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Saved post missing")
+        row.tap()
+        XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10), "Saved post did not reopen in the shared form")
+        XCTAssertTrue(app.staticTexts["Advanced Strategies"].firstMatch.exists, "Saved theme changed")
+        XCTAssertEqual(element("DecideAnswer0").value as? String, expected, "Save/reopen lost question or answer")
+        assertPrefilledQuestion(advancedPrompts[3], at: 3)
+        attach("12 reopened post retains full questions and answer")
+    }
+
+    func testMultiplePostsStayPinnedAboveUnpinnedAfterRelaunch() {
+        openPostsPage()
+        let firstID = createPost(answer: "Synthetic pin A.")
+        let secondID = createPost(answer: "Synthetic pin B.")
+        let unpinnedID = createPost(answer: "Synthetic unpinned C.")
+        XCTAssertEqual(Set([firstID, secondID, unpinnedID]).count, 3, "Each save must create a separate post")
+
+        // Pin two older posts; the newer unpinned post must move below both of them.
+        setPinned(true, rowID: firstID)
+        setPinned(true, rowID: secondID)
+        assertPinsAndOrder(pinned: [firstID, secondID], unpinned: unpinnedID)
+        attach("20 two pinned posts above newer unpinned post")
+
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "SAVY_UI_TEST_RESET_REMINDERS" }
+        app.launch()
+        dismissSystemPrompt()
+        openPostsPage()
+        assertPinsAndOrder(pinned: [firstID, secondID], unpinned: unpinnedID)
+        attach("21 multiple pins survive relaunch")
+
+        // Unpinning one leaves the other pinned, rather than resetting the whole list.
+        setPinned(false, rowID: firstID)
+        XCTAssertEqual(pinButton(rowID: secondID).label, "Unpin post")
+        XCTAssertEqual(pinButton(rowID: firstID).label, "Pin post")
+    }
+
+    func testStoriesPlusOpensStoryFormAndSaves() {
+        openPostsPage()
+        let plus = element("newStory")
+        XCTAssertTrue(plus.waitForExistence(timeout: 12), "Stories plus button missing")
+        scrollTo(plus)
+        plus.tap()
+
+        let title = element("StoryTitle")
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "Story form did not open")
+        title.tap()
+        title.typeText("Synthetic story acceptance title")
+        let subtitle = element("StorySubtitle")
+        subtitle.tap()
+        subtitle.typeText("Synthetic story acceptance subtitle")
+        let body = element("StoryBody")
+        XCTAssertTrue(body.waitForExistence(timeout: 5), "Story body missing")
+        body.tap()
+        body.typeText("• Synthetic bullet\n1. Synthetic list item\n> Synthetic quotation.")
+        attach("30 story form retains formatted writing")
+        app.buttons["Save"].firstMatch.tap()
+        let row = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'storyRow-'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 12), "Saved story did not appear")
+    }
+
+    func testNewsChannelCardOpensPosts() {
+        openPostsPage()
+        let header = element("socialMediaPostsHeader")
+        XCTAssertTrue(header.waitForExistence(timeout: 5), "Social Media Posts needs the shared navy header")
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Social Media Posts")).count, 1,
+                       "The page title should appear once")
+        XCTAssertFalse(app.staticTexts["SOCIAL MEDIA POSTS"].firstMatch.exists, "The redundant red eyebrow remains")
+        XCTAssertFalse(app.buttons["Listen"].exists, "Audio control is still on the page")
+        attach("40 social media posts navy header without duplicate eyebrow")
+        let back = element("socialMediaPostsBack")
+        XCTAssertTrue(back.exists)
+        back.tap()
+        XCTAssertTrue(element("homeContentSection-news-channel").waitForExistence(timeout: 5))
+    }
+
+    private func element(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+    }
+
+    private var postRows: XCUIElementQuery {
+        app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'postEntryRow-'"))
+    }
+
+    private func pinButton(rowID: String) -> XCUIElement {
+        let id = rowID.replacingOccurrences(of: "postEntryRow-", with: "pinPostEntry-")
+        return app.buttons.matching(identifier: id).firstMatch
+    }
+
+    private func openPostsPage() {
+        let card = element("homeContentSection-news-channel")
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
+        let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
+        for _ in 0..<8 where !card.isHittable { homeScroll.swipeUp() }
+        XCTAssertTrue(card.isHittable, "Social Media Posts card did not scroll into view")
+        card.tap()
+        XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Social Media Posts did not open")
+    }
+
+    private func openNewPost() {
+        let plus = element("newPost")
+        XCTAssertTrue(plus.waitForExistence(timeout: 10), "Posts plus button missing")
+        scrollTo(plus, upward: false)
+        plus.tap()
+        XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10), "Posts plus did not open the shared Post form")
+    }
+
+    private func assertSharedPostForm() {
+        XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10), "Theme picker missing")
+        XCTAssertTrue(app.staticTexts["The 5 Ws"].firstMatch.exists, "The 5 Ws is not the starting theme")
+        XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 5), "Decide questions missing")
+        let title = element("Title")
+        scrollTo(title)
+        XCTAssertTrue(title.exists, "The shared Delegate fields are missing")
+        scrollTo(element("PostTheme"), upward: false)
+    }
+
+    private func assertPrefilledQuestion(_ prompt: String, at index: Int) {
+        let field = element("DecideAnswer\(index)")
+        scrollTo(field)
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "Decide question \(index) missing")
+        XCTAssertEqual(field.value as? String, prompt + "\n\n", "Question \(index) must be editable saved content")
+        XCTAssertTrue(field.placeholderValue?.isEmpty ?? true, "Question \(index) must not be placeholder text")
+    }
+
+    private func appendAnswer(_ answer: String, at index: Int) {
+        let field = element("DecideAnswer\(index)")
+        scrollTo(field, upward: false)
+        XCTAssertTrue(field.isHittable, "Answer field is not reachable")
+        // Tap the blank final line, placing the insertion point below the prefilled question.
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.9)).tap()
+        field.typeText(answer)
+    }
+
+    private func selectTheme(_ name: String) {
+        let picker = element("PostTheme")
+        scrollTo(picker, upward: false)
+        picker.tap()
+        attach("Framework menu with red form icons")
+        let option = app.buttons[name].firstMatch
+        let menuButtons = app.buttons.matching(NSPredicate(format: "label IN %@", themeNames))
+        for _ in 0..<10 {
+            if option.exists && option.isHittable {
+                option.tap()
+                XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 5))
+                return
+            }
+            let visible = menuButtons.allElementsBoundByIndex.filter { $0.isHittable && !$0.frame.isEmpty }
+            guard let top = visible.min(by: { $0.frame.minY < $1.frame.minY }),
+                  let bottom = visible.max(by: { $0.frame.maxY < $1.frame.maxY }) else {
+                XCTFail("Theme menu did not expose its options")
+                return
+            }
+            let start = bottom.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let end = top.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            start.press(forDuration: 0.1, thenDragTo: end)
+        }
+        XCTFail("\(name) was not reachable in the 28-theme menu")
+    }
+
+    @discardableResult
+    private func createPost(answer: String) -> String {
+        let previousIDs = Set(postRows.allElementsBoundByIndex.map { $0.identifier })
+        openNewPost()
+        assertPrefilledQuestion(firstPrompt, at: 0)
+        appendAnswer(answer, at: 0)
+        XCTAssertEqual(element("DecideAnswer0").value as? String, firstPrompt + "\n\n" + answer)
+        savePost()
+        let newRow = postRows.matching(NSPredicate(format: "NOT (identifier IN %@)", Array(previousIDs))).firstMatch
+        XCTAssertTrue(newRow.waitForExistence(timeout: 10), "Saving did not create a new post entry")
+        return newRow.identifier
+    }
+
+    private func savePost() {
+        app.buttons["Save"].firstMatch.tap()
+        XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Save did not return to the post list")
+        XCTAssertTrue(app.buttons["Save"].firstMatch.waitForNonExistence(timeout: 8), "Post form did not close after Save")
+    }
+
+    private func setPinned(_ pinned: Bool, rowID: String) {
+        let button = pinButton(rowID: rowID)
+        scrollTo(button)
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "Post pin button missing")
+        XCTAssertEqual(button.label, pinned ? "Pin post" : "Unpin post")
+        button.tap()
+        let expected = NSPredicate(format: "label == %@", pinned ? "Unpin post" : "Pin post")
+        let changed = XCTNSPredicateExpectation(predicate: expected, object: button)
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
+    }
+
+    private func assertPinsAndOrder(pinned: [String], unpinned: String) {
+        // Scroll until the newest unpinned row is visible; the short pinned rows precede it.
+        let unpinnedRow = element(unpinned)
+        scrollTo(unpinnedRow)
+        XCTAssertTrue(unpinnedRow.exists, "Unpinned post disappeared")
+        XCTAssertEqual(pinButton(rowID: unpinned).label, "Pin post")
+        for id in pinned {
+            let row = element(id)
+            XCTAssertTrue(row.exists, "Pinned post disappeared")
+            XCTAssertEqual(pinButton(rowID: id).label, "Unpin post", "Pin state was not retained")
+            XCTAssertLessThan(row.frame.minY, unpinnedRow.frame.minY, "Every pinned post must appear above unpinned posts")
+        }
+    }
+
+    private func scrollTo(_ target: XCUIElement, upward: Bool = true) {
+        for _ in 0..<8 where !target.isHittable {
+            // Pinning changes row order while retaining the current scroll position. Follow
+            // the target's observed position so a newly pinned row can be reached above us.
+            let shouldSwipeUp: Bool
+            if target.exists && !target.frame.isEmpty {
+                shouldSwipeUp = target.frame.midY > app.frame.midY
+            } else {
+                shouldSwipeUp = upward
+            }
+            if shouldSwipeUp { app.swipeUp() } else { app.swipeDown() }
+        }
+    }
+
     private func dismissSystemPrompt() {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let allow = springboard.buttons["Allow"]
-        if allow.waitForExistence(timeout: 5) { allow.tap() }
+        let allow = springboard.buttons["Allow"].firstMatch
+        if allow.waitForExistence(timeout: 3) { allow.tap() }
     }
 
     private func attach(_ name: String) {
@@ -28,206 +328,5 @@ final class SAVYPostFormUITests: XCTestCase {
         shot.name = name
         shot.lifetime = .keepAlways
         add(shot)
-    }
-
-    /// Adam approved the Post mockup on the Reminder form path (2026-09-13: "That looks good.
-    /// Let's build that."): the bolt's Post door opens the entry form as its fourth face —
-    /// Theme, then the theme's Decide questions, then everything the Reminder form already has.
-    func testBoltOpensPostFormWithThemeDecideAndFullReminderBody() {
-        let fab = app.descendants(matching: .any)["chargeFab"].firstMatch
-        XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
-
-        // Tap the bolt so the fan opens, then photograph the four doors.
-        fab.tap()
-        XCTAssertTrue(app.buttons["Post"].waitForExistence(timeout: 5), "Post door missing from the fan")
-        attach("01 fan with Post")
-
-        app.buttons["Post"].tap()
-
-        // Theme leads, defaulting to The 5 Ws.
-        let theme = app.descendants(matching: .any)["PostTheme"].firstMatch
-        XCTAssertTrue(theme.waitForExistence(timeout: 10), "Theme picker missing from the Post form")
-        XCTAssertTrue(app.staticTexts["The 5 Ws"].firstMatch.exists, "The 5 Ws is not the starting theme")
-
-        // Decide shows the theme's questions as rows to answer.
-        let firstAnswer = app.descendants(matching: .any)["DecideAnswer0"].firstMatch
-        XCTAssertTrue(firstAnswer.waitForExistence(timeout: 5), "Decide questions missing")
-
-        // The full Reminder body stays below — Delegate is the first of Adam's sections.
-        XCTAssertTrue(app.descendants(matching: .any)["Title"].firstMatch.exists, "Delegate's 'What do I want?' row missing")
-        attach("02 post form with theme, decide, delegate")
-
-        firstAnswer.tap()
-        firstAnswer.typeText("A peptide video and an AI hiring story said the same thing this morning: the cost of trying just fell to zero.")
-
-        let who = app.descendants(matching: .any)["DecideAnswer1"].firstMatch
-        who.tap()
-        who.typeText("Me, this morning.")
-        attach("03 post form with answers")
-
-        app.buttons["Save"].tap()
-
-        // Save lands the post on the News Channel page.
-        let opened = app.descendants(matching: .any)["newsChannelPosts"].firstMatch.waitForExistence(timeout: 12)
-        attach("04 news channel after save")
-        XCTAssertTrue(opened, "Social Media Posts page did not open after Save")
-        let row = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'postEntryRow-'")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 8), "Saved post entry missing from the News Channel page")
-
-        // Reopen: the same entry comes back with the theme and the answers intact.
-        row.tap()
-        XCTAssertTrue(theme.waitForExistence(timeout: 10), "Reopened post lost its Theme row")
-        XCTAssertTrue(app.staticTexts["The 5 Ws"].firstMatch.exists, "Reopened post lost its theme")
-        let reopenedAnswer = app.descendants(matching: .any)["DecideAnswer0"].firstMatch
-        XCTAssertTrue(reopenedAnswer.waitForExistence(timeout: 5), "Reopened post lost its Decide rows")
-        XCTAssertEqual(
-            reopenedAnswer.value as? String,
-            "A peptide video and an AI hiring story said the same thing this morning: the cost of trying just fell to zero.",
-            "Reopened post lost the first answer"
-        )
-        attach("05 reopened post with data intact")
-    }
-
-    /// Adam, 2026-09-15: "Let's add more themes to choose from." Themes 11–30, his questions
-    /// verbatim. The test is the sentence: open the Theme picker, see the new themes, pick one,
-    /// and its four questions appear in Decide.
-    func testThemePickerOffersAdamsNewThemesAndLoadsTheirQuestions() {
-        let fab = app.descendants(matching: .any)["chargeFab"].firstMatch
-        XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
-        fab.tap()
-        XCTAssertTrue(app.buttons["Post"].waitForExistence(timeout: 5), "Post door missing from the fan")
-        app.buttons["Post"].tap()
-
-        let theme = app.descendants(matching: .any)["PostTheme"].firstMatch
-        XCTAssertTrue(theme.waitForExistence(timeout: 10), "Theme picker missing from the Post form")
-        theme.tap()
-
-        // The menu shows the grown catalog in order; rows further down materialize as a person
-        // scrolls (the unit test proves all 28 by name — this test proves the screen).
-        let myths = app.buttons["Myths vs. Facts"].firstMatch
-        XCTAssertTrue(myths.waitForExistence(timeout: 5), "Myths vs. Facts missing from the Theme menu")
-        attach("30 theme menu with Adam's new themes")
-
-        // Pick a new theme that sits in plain view.
-        let successStory = app.buttons["Customer Success Story"].firstMatch
-        XCTAssertTrue(successStory.waitForExistence(timeout: 5), "Customer Success Story missing from the Theme menu")
-        successStory.tap()
-
-        // Its four questions, verbatim, take over the Decide section.
-        let firstAnswer = app.descendants(matching: .any)["DecideAnswer0"].firstMatch
-        XCTAssertTrue(firstAnswer.waitForExistence(timeout: 5), "Decide rows missing after theme change")
-        XCTAssertEqual(
-            firstAnswer.placeholderValue,
-            "What did the customer want to achieve?",
-            "The first Customer Success Story question is not Adam's wording"
-        )
-        let lastAnswer = app.descendants(matching: .any)["DecideAnswer3"].firstMatch
-        XCTAssertTrue(lastAnswer.exists, "Customer Success Story should ask four questions")
-        XCTAssertFalse(
-            app.descendants(matching: .any)["DecideAnswer4"].firstMatch.exists,
-            "Customer Success Story asks exactly four questions"
-        )
-        attach("31 customer success story questions in decide")
-    }
-
-    /// Adam: "make sure that in the Post entry box at the top of the page all 280 characters will be
-    /// visible. I don't want any words cut off at the end or a ..."
-    /// The 280-character box lives on the SocialPost form, now reached through the News Channel's +.
-    func testPostEntryShowsAll280Characters() {
-        let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
-        let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
-        var swipes = 0
-        while !card.isHittable, swipes < 6 {
-            homeScroll.swipeUp()
-            swipes += 1
-        }
-        card.tap()
-
-        let plus = app.descendants(matching: .any)["newPost"].firstMatch
-        XCTAssertTrue(plus.waitForExistence(timeout: 12), "News Channel + button missing")
-        plus.tap()
-
-        let field = app.descendants(matching: .any)["PostText"].firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10), "Post form did not open")
-        field.tap()
-
-        let sentence = "Peptides and AI hiring moved the same direction this morning and nobody said so out loud. "
-        var text = ""
-        while text.count < 280 { text += sentence }
-        text = String(text.prefix(280))
-        XCTAssertEqual(text.count, 280)
-        field.typeText(text)
-
-        let count = app.descendants(matching: .any)["PostCharacterCount"].firstMatch
-        XCTAssertTrue(count.waitForExistence(timeout: 5), "Character count missing")
-        XCTAssertEqual(count.label, "280 / 280")
-        XCTAssertEqual(field.value as? String, text, "The entry box does not hold all 280 characters")
-        XCTAssertTrue(field.isHittable)
-        XCTAssertGreaterThan(field.frame.height, 120, "The entry box did not grow for 280 characters")
-        attach("20 post entry with 280 characters")
-    }
-
-    /// Adam: "Add a plus button to the Stories area of the News Channel page and have that open to
-    /// different form ... The Form for Stories should have Title, Subtitle Forms and the ability to
-    /// past formatted writing (bullet points, numbers lists, quotes, in the body portion of the form."
-    func testStoriesPlusOpensStoryFormAndSaves() {
-        let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
-        let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
-        var swipes = 0
-        while !card.isHittable, swipes < 6 {
-            homeScroll.swipeUp()
-            swipes += 1
-        }
-        card.tap()
-
-        let plus = app.descendants(matching: .any)["newStory"].firstMatch
-        XCTAssertTrue(plus.waitForExistence(timeout: 12), "Stories plus button missing")
-        var swipesUp = 0
-        while !plus.isHittable, swipesUp < 6 {
-            app.swipeUp()
-            swipesUp += 1
-        }
-        plus.tap()
-
-        let title = app.descendants(matching: .any)["StoryTitle"].firstMatch
-        XCTAssertTrue(title.waitForExistence(timeout: 10), "Story form did not open")
-        title.tap()
-        title.typeText("What the cost of trying falling to zero does to a career")
-
-        let subtitle = app.descendants(matching: .any)["StorySubtitle"].firstMatch
-        subtitle.tap()
-        subtitle.typeText("Three things I saw this week that point the same way")
-
-        let body = app.descendants(matching: .any)["StoryBody"].firstMatch
-        XCTAssertTrue(body.waitForExistence(timeout: 5), "Story body missing")
-        body.tap()
-        body.typeText("• A peptide video\n• An AI hiring story\n1. First\n2. Second\n> The cost of trying just fell to zero.")
-        attach("21 story form with pasted shapes")
-
-        app.buttons["Save"].tap()
-        let row = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'storyRow-'")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 12), "Saved story did not appear in the Stories area")
-        attach("22 news channel with a story")
-    }
-
-    func testNewsChannelCardOpensPosts() {
-        let card = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
-        let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
-        var swipes = 0
-        while !card.isHittable, swipes < 6 {
-            homeScroll.swipeUp()
-            swipes += 1
-        }
-        XCTAssertTrue(card.isHittable, "News Channel card never scrolled into view")
-        attach("05 now with news channel card")
-        card.tap()
-        let opened = app.descendants(matching: .any)["newsChannelPosts"].firstMatch.waitForExistence(timeout: 12)
-        attach("06 news channel with posts")
-        XCTAssertTrue(opened, "News Channel card did not open the posts")
-        XCTAssertFalse(app.buttons["Listen"].exists, "Audio control is still on the page")
     }
 }

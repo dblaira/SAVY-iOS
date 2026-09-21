@@ -10,20 +10,26 @@ import SwiftUI
 struct NewsChannelPostsGroup: View {
     @ObservedObject var store: SocialPostStore
     /// Post entries saved through the bolt's Post door (the Reminder form's fourth face).
-    var reminderStore: ReminderStore? = nil
+    @ObservedObject var reminderStore: ReminderStore
     @State private var editing: SocialPost?
     @State private var editingEntry: Reminder?
     @State private var isComposing = false
 
     private var postEntries: [Reminder] {
-        guard let reminderStore else { return [] }
         return reminderStore.active.filter { $0.kind == .post }
             .sorted { $0.createdAt > $1.createdAt }
     }
 
     private var postedEntries: [Reminder] {
-        guard let reminderStore else { return [] }
         return reminderStore.completed.filter { $0.kind == .post }
+    }
+
+    private var pinnedEntries: [Reminder] {
+        (postEntries + postedEntries).filter(\.pinned)
+    }
+
+    private var pinnedPosts: [SocialPost] {
+        store.posts.filter(\.pinned).sorted { $0.updatedAt > $1.updatedAt }
     }
 
     var body: some View {
@@ -33,11 +39,13 @@ struct NewsChannelPostsGroup: View {
             if store.posts.isEmpty && postEntries.isEmpty && postedEntries.isEmpty {
                 emptyRow
             } else {
-                entryGroup(postEntries)
-                group(store.ready)
-                group(store.drafts)
-                entryGroup(postedEntries)
-                group(store.posted)
+                entryGroup(pinnedEntries)
+                group(pinnedPosts)
+                entryGroup(postEntries.filter { !$0.pinned })
+                group(store.ready.filter { !$0.pinned })
+                group(store.drafts.filter { !$0.pinned })
+                entryGroup(postedEntries.filter { !$0.pinned })
+                group(store.posted.filter { !$0.pinned })
             }
         }
         .sheet(item: $editing) { post in
@@ -46,15 +54,13 @@ struct NewsChannelPostsGroup: View {
             }
         }
         .sheet(item: $editingEntry) { entry in
-            if let reminderStore {
-                ReminderFormView(existing: entry, existingTags: reminderStore.recentTags) { updated in
-                    reminderStore.save(updated)
-                }
+            ReminderFormView(existing: entry, existingTags: reminderStore.recentTags) { updated in
+                reminderStore.save(updated)
             }
         }
         .sheet(isPresented: $isComposing) {
-            SocialPostFormView(existing: nil, recentAreas: store.recentAreas) { post in
-                store.save(post)
+            ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags) { entry in
+                reminderStore.save(entry)
             }
         }
         .accessibilityElement(children: .contain)
@@ -94,6 +100,11 @@ struct NewsChannelPostsGroup: View {
             ) {
                 NewsChannelPostRow(post: post)
             }
+            .overlay(alignment: .topTrailing) {
+                pinButton(isPinned: post.pinned, identifier: "pinPost-\(post.id.uuidString)") {
+                    store.togglePin(post)
+                }
+            }
         }
     }
 
@@ -106,11 +117,31 @@ struct NewsChannelPostsGroup: View {
             ) {
                 NewsChannelPostEntryRow(entry: entry)
             }
+            .overlay(alignment: .topTrailing) {
+                pinButton(isPinned: entry.pinned, identifier: "pinPostEntry-\(entry.id.uuidString)") {
+                    guard var updated = reminderStore.reminders.first(where: { $0.id == entry.id }) else { return }
+                    updated.pinned.toggle()
+                    reminderStore.save(updated)
+                }
+            }
         }
     }
 
+    private func pinButton(isPinned: Bool, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: isPinned ? "pin.fill" : "pin")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(isPinned ? SavyTheme.crimson : SavyTheme.ink.opacity(0.4))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(8)
+        .accessibilityLabel(isPinned ? "Unpin post" : "Pin post")
+        .accessibilityIdentifier(identifier)
+    }
+
     private func actions(for entry: Reminder) -> [SavySwipeAction] {
-        guard let reminderStore else { return [] }
         var list: [SavySwipeAction] = []
         if entry.status != .completed {
             list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.crimson) {
@@ -128,7 +159,7 @@ struct NewsChannelPostsGroup: View {
             Text("Nothing yet.")
                 .font(SavyTheme.beliefSerif(22))
                 .foregroundStyle(SavyTheme.ink)
-            Text("Tap the bolt and choose Post.")
+            Text("Tap + to choose a theme and begin.")
                 .font(.system(size: 15))
                 .foregroundStyle(.black.opacity(0.55))
         }
@@ -177,6 +208,7 @@ struct NewsChannelPostRow: View {
                         .accessibilityLabel("Clear Sign")
                 }
             }
+            .padding(.trailing, 28)
 
             Text(post.trimmedText.isEmpty ? "Untitled" : post.trimmedText)
                 .font(SavyTheme.beliefSerif(24, weight: .regular))
@@ -243,6 +275,7 @@ struct NewsChannelPostEntryRow: View {
                     .foregroundStyle(.black.opacity(0.4))
                     .lineLimit(1)
             }
+            .padding(.trailing, 28)
 
             Text(headlineText)
                 .font(SavyTheme.beliefSerif(24, weight: .regular))
@@ -274,16 +307,14 @@ struct NewsChannelPostEntryRow: View {
     private var headlineText: String {
         let title = entry.title.trimmingCharacters(in: .whitespaces)
         if !title.isEmpty, title != "New Post" { return title }
-        let firstAnswer = (entry.postAnswers ?? [])
+        let firstAnswer = entry.postAnswerTexts
             .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         return firstAnswer ?? "Untitled"
     }
 
     private var secondaryText: String {
         var parts: [String] = []
-        let answered = (entry.postAnswers ?? [])
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            .count
+        let answered = entry.postAnsweredCount
         if answered > 0 { parts.append("\(answered) answered") }
         if let when = entry.whenLabel { parts.append(when) }
         parts.append(contentsOf: entry.tags.map { "#\($0)" })

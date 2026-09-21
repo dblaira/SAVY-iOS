@@ -149,11 +149,13 @@ struct Reminder: Identifiable, Codable, Equatable {
     // Places & People
     var locationName: String = ""
     // Post (kind == .post; local-first like whenIAm). Theme id + name from PostThemeCatalog,
-    // and the user's answers to the theme's Decide questions in question order.
+    // and the editable Decide fields in question order (question, blank line, answer).
     // Optionals so cached JSON written before Post existed still decodes.
     var postThemeID: String? = nil
     var postThemeName: String? = nil
     var postAnswers: [String]? = nil
+    // Missing/false means a legacy answer-only record. True preserves even edited questions.
+    var postAnswersContainQuestions: Bool? = nil
     // Graph + lifecycle
     var seededFromTemplateID: String? = nil
     var pinned: Bool = false                    // sorts to the top of the list
@@ -168,6 +170,28 @@ struct Reminder: Identifiable, Codable, Equatable {
 }
 
 extension Reminder {
+    /// Complete Decide context, including catalog questions for answer-only legacy posts.
+    var postQuestionAndAnswers: [String] {
+        guard kind == .post else { return [] }
+        guard let theme = PostThemeCatalog.theme(id: postThemeID) else { return postAnswers ?? [] }
+        return theme.questionAndAnswers(from: postAnswers, containQuestions: postAnswersContainQuestions == true)
+    }
+
+    /// Display-only answer portions for the post card; never use these to overwrite saved text.
+    var postAnswerTexts: [String] {
+        guard kind == .post else { return [] }
+        let theme = PostThemeCatalog.theme(id: postThemeID)
+        guard theme != nil || postAnswersContainQuestions == true else {
+            return (postAnswers ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        }
+        return postQuestionAndAnswers.enumerated().map { index, field in
+            let prompt = theme.flatMap { $0.questions.indices.contains(index) ? $0.questions[index].prompt : nil }
+            return PostTheme.answerText(in: field, originalPrompt: prompt)
+        }
+    }
+
+    var postAnsweredCount: Int { postAnswerTexts.filter { !$0.isEmpty }.count }
+
     /// Independent success markers. The legacy single Pattern value still counts so existing
     /// entries keep their meaning, while a new entry can now carry both markers at once.
     var isClearSignOfSuccess: Bool {

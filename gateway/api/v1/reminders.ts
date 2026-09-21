@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.status(405).json({ error: "Method not allowed" });
 }
 
-function normalizeReminderInput(body: Partial<ReminderUpsertInput>): ReminderUpsertInput {
+export function normalizeReminderInput(body: Partial<ReminderUpsertInput>): ReminderUpsertInput {
   return {
     id: String(body.id ?? ""),
     title: String(body.title ?? ""),
@@ -73,6 +73,12 @@ function normalizeReminderInput(body: Partial<ReminderUpsertInput>): ReminderUps
     location_name: String(body.location_name ?? ""),
     when_messaging_person: String(body.when_messaging_person ?? ""),
     kind: String(body.kind ?? "reminder"),
+    post_theme_id: typeof body.post_theme_id === "string" ? body.post_theme_id : null,
+    post_theme_name: typeof body.post_theme_name === "string" ? body.post_theme_name : null,
+    post_answers: Array.isArray(body.post_answers) && body.post_answers.every((value) => typeof value === "string")
+      ? body.post_answers : null,
+    post_answers_contain_questions: typeof body.post_answers_contain_questions === "boolean"
+      ? body.post_answers_contain_questions : null,
     end_time: body.end_time ?? null,
     outcome: body.outcome ?? null,
     effort: body.effort ?? null,

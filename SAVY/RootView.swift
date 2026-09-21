@@ -68,8 +68,8 @@ struct RootView: View {
     @StateObject private var leverageStore = LeverageDataStore()
     @StateObject private var metadataStore = MetadataEntryStore.live()
     @StateObject private var reminderStore: ReminderStore
-    @StateObject private var postStore = SocialPostStore.live()
-    @StateObject private var storyStore = StoryStore.live()
+    @StateObject private var postStore: SocialPostStore
+    @StateObject private var storyStore: StoryStore
     @State private var isPersonalAuthorityReviewPresented = false
     @State private var isPostsPresented = false
     @State private var opensPostsAfterComposer = false
@@ -84,14 +84,35 @@ struct RootView: View {
         let navigationState = SavyNavigationState()
         navigationState.activeSection = initialSection
         _navigationState = StateObject(wrappedValue: navigationState)
-        _reminderStore = StateObject(
-            wrappedValue: ReminderStore(
-                repo: GatewayReminderRepository(
-                    accessToken: { session.accessToken },
-                    userEmail: { session.user.displayEmail }
+        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent("SAVYUITests", isDirectory: true)
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
+                for name in ["posts.json", "stories.json", "captures.json", "outbox.json"] {
+                    try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+                }
+            }
+            _postStore = StateObject(wrappedValue: try! SocialPostStore(fileURL: directory.appendingPathComponent("posts.json")))
+            _storyStore = StateObject(wrappedValue: try! StoryStore(fileURL: directory.appendingPathComponent("stories.json")))
+            _reminderStore = StateObject(wrappedValue: ReminderStore(
+                repo: LocalReminderRepository(),
+                cacheURL: directory.appendingPathComponent("reminders.json"),
+                technicalCaptureStore: try! TechnicalCaptureStore(fileURL: directory.appendingPathComponent("captures.json")),
+                candidateOutbox: try! CowboyCandidateOutbox(fileURL: directory.appendingPathComponent("outbox.json")),
+                candidateClient: IsolatedUITestCandidateClient()
+            ))
+        } else {
+            _postStore = StateObject(wrappedValue: SocialPostStore.live())
+            _storyStore = StateObject(wrappedValue: StoryStore.live())
+            _reminderStore = StateObject(
+                wrappedValue: ReminderStore(
+                    repo: GatewayReminderRepository(
+                        accessToken: { session.accessToken },
+                        userEmail: { session.user.displayEmail }
+                    )
                 )
             )
-        )
+        }
     }
 
     var body: some View {
@@ -233,6 +254,12 @@ struct RootView: View {
         }
         .safeAreaPadding(.top, 10)
         .zIndex(20)
+    }
+}
+
+private struct IsolatedUITestCandidateClient: CowboyCandidateSubmitting {
+    func submit(_ payload: CowboyCandidateIntakePayload) async throws -> CowboyCandidateReceipt {
+        throw URLError(.notConnectedToInternet)
     }
 }
 
@@ -925,17 +952,44 @@ private struct NewsMoreStoryRow: View {
 }
 
 private struct LeverageSectionView: View {
+    @Environment(\.dismiss) private var dismiss
     let section: LeverageSection
     var postStore: SocialPostStore? = nil
     var storyStore: StoryStore? = nil
     var reminderStore: ReminderStore? = nil
 
     private var isBeliefs: Bool { section.id == "beliefs" }
+    private var isPosts: Bool { section.id == "news-channel" }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                if isBeliefs {
+                if isPosts {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(section.title)
+                            .font(.system(size: 44, weight: .regular, design: .serif))
+                            .foregroundStyle(.white)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(section.summary)
+                            .font(.system(size: 17, weight: .regular, design: .serif))
+                            .lineSpacing(5)
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                    .padding(.bottom, 28)
+                    .background(SavyTheme.deepNavy)
+                    .overlay(alignment: .bottom) {
+                        Rectangle().fill(SavyTheme.crimson).frame(height: RootHomeLayout.heroDividerHeight)
+                    }
+                    .padding(.horizontal, -24)
+                    .accessibilityIdentifier("socialMediaPostsHeader")
+
+                    Text(section.headline)
+                        .font(.system(size: 24, weight: .regular, design: .serif))
+                        .foregroundStyle(SavyTheme.ink)
+                } else if isBeliefs {
                     Text(section.title)
                         .font(SavyTypography.bodoniModa(44, weight: 400, opticalSize: 48))
                         .lineSpacing(2)
@@ -971,7 +1025,7 @@ private struct LeverageSectionView: View {
                         .foregroundStyle(SavyTheme.ink)
                 }
 
-                if let postStore {
+                if let postStore, let reminderStore {
                     NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore)
                 }
 
@@ -996,6 +1050,34 @@ private struct LeverageSectionView: View {
             .padding(.bottom, 48)
         }
         .background((isBeliefs ? Color.white : SavyTheme.paper).ignoresSafeArea())
+        .toolbarBackground(isPosts ? SavyTheme.deepNavy : Color.clear, for: .navigationBar)
+        .toolbarBackground(isPosts ? .visible : .automatic, for: .navigationBar)
+        .toolbarColorScheme(isPosts ? .dark : nil, for: .navigationBar)
+        .tint(isPosts ? SavyTheme.crimson : SavyTheme.ink)
+        .navigationBarBackButtonHidden(isPosts)
+        .toolbar {
+            if isPosts {
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .topBarLeading) { postsBackButton }
+                        .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .topBarLeading) { postsBackButton }
+                }
+            }
+        }
+    }
+
+    private var postsBackButton: some View {
+        Button { dismiss() } label: {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(SavyTheme.crimson)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back")
+        .accessibilityIdentifier("socialMediaPostsBack")
     }
 }
 

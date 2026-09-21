@@ -76,9 +76,17 @@ struct TechnicalCaptureMetadata: Codable, Equatable, Sendable {
     var url: String
     var notes: String
     var steps: [String]
+    var postThemeID: String?
+    var postThemeName: String?
+    var postAnswers: [String]?
+    var postAnswersContainQuestions: Bool?
 
     init(reminder: Reminder) {
         self.kind = reminder.kind
+        self.postThemeID = reminder.kind == .post ? reminder.postThemeID : nil
+        self.postThemeName = reminder.kind == .post ? reminder.postThemeName : nil
+        self.postAnswers = reminder.kind == .post ? reminder.postQuestionAndAnswers : nil
+        self.postAnswersContainQuestions = reminder.kind == .post ? true : nil
         self.priority = reminder.priority
         self.energy = reminder.energy
         self.flags = TechnicalCaptureFlags(reminder: reminder)
@@ -116,6 +124,15 @@ enum TechnicalCapturePromptBuilder {
         let notes = metadata.notes.isEmpty ? "none" : metadata.notes
         let steps = metadata.steps.isEmpty ? "none" : metadata.steps.joined(separator: " | ")
 
+        let postContext: String
+        if metadata.kind == .post {
+            let theme = metadata.postThemeName ?? metadata.postThemeID ?? "Post"
+            let decisions = (metadata.postAnswers ?? []).joined(separator: "\n\n")
+            postContext = "\n\nPost\nTheme: \(theme)\n\nDecide\n\(decisions)"
+        } else {
+            postContext = ""
+        }
+
         return """
         What do I want?
         \(exactWords.want)
@@ -141,7 +158,7 @@ enum TechnicalCapturePromptBuilder {
         Location: \(location)
         URL: \(url)
         Notes: \(notes)
-        Steps: \(steps)
+        Steps: \(steps)\(postContext)
         """
     }
 

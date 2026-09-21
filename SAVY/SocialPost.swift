@@ -101,6 +101,7 @@ struct SocialPost: Identifiable, Codable, Equatable {
 
     // Status.
     var status: PostStatus = .draft
+    var pinned: Bool = false
     var postedAt: Date? = nil
     var postLink: String = ""       // link to the live post
     var clearSign: Bool = false     // Clear Sign: a creator he respects replied, unprompted
@@ -128,6 +129,7 @@ struct SocialPost: Identifiable, Codable, Equatable {
         move = try c.decodeIfPresent(PostMove.self, forKey: .move) ?? .jab
         pattern = try c.decodeIfPresent(SuccessStep.self, forKey: .pattern) ?? .none
         status = try c.decodeIfPresent(PostStatus.self, forKey: .status) ?? .draft
+        pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
         postedAt = try c.decodeIfPresent(Date.self, forKey: .postedAt)
         postLink = try c.decodeIfPresent(String.self, forKey: .postLink) ?? ""
         clearSign = try c.decodeIfPresent(Bool.self, forKey: .clearSign) ?? false
@@ -267,6 +269,12 @@ final class SocialPostStore: ObservableObject {
         p.status = .posted
         if p.postedAt == nil { p.postedAt = Date() }
         save(p)
+    }
+
+    func togglePin(_ post: SocialPost) {
+        guard var saved = posts.first(where: { $0.id == post.id }) else { return }
+        saved.pinned.toggle()
+        save(saved)
     }
 
     func delete(_ post: SocialPost) {
