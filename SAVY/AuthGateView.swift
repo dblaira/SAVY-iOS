@@ -282,7 +282,18 @@ private struct LockedView: View {
             Spacer()
         }
         .padding(.horizontal, 28)
-        .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .background(
+            LinearGradient(
+                stops: [
+                    .init(color: Brand.card, location: 0),
+                    .init(color: Brand.card, location: 0.25),
+                    .init(color: SavyTheme.bottomNavTan, location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
     }
 }
 
