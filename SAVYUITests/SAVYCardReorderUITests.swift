@@ -14,7 +14,8 @@ final class SAVYCardReorderUITests: XCTestCase {
                 "SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS", "SAVY_UI_TEST_COWBOY_STUB",
             ]
             if name.contains("testPostsReorderBothPinGroupsAndKeepTheirNumbersAfterRelaunch")
-                || name.contains("testHomeCardsReorderBelowPinnedCardAndOpenAfterRelaunch") {
+                || name.contains("testHomeCardsReorderBelowPinnedCardAndOpenAfterRelaunch")
+                || name.contains("testHomeCardsCanAllRemainPinnedAndKeepTheirOrderAfterRelaunch") {
                 app.launchEnvironment["SAVY_UI_TEST_SEED_POST_COUNT"] = "4"
             }
             if name.contains("testActionsMovePastVisibleNeighborAndKeepPinGroupsAfterRelaunch") {
@@ -73,6 +74,51 @@ final class SAVYCardReorderUITests: XCTestCase {
         let header = element("sectionPageHeader")
         XCTAssertTrue(header.waitForExistence(timeout: 10), "The moved Home card did not open its page")
         XCTAssertEqual(header.label, "Adam's Ontology", "The moved Home card opened a different page")
+    }
+
+    func testHomeCardsCanAllRemainPinnedAndKeepTheirOrderAfterRelaunch() {
+        let sections = ["news-channel", "beliefs", "ontology", "field-essays"]
+        var pinned: Set<String> = ["news-channel"]
+        reveal(homeRow("news-channel"))
+        assertHomePins(pinned, sections: sections)
+
+        for section in sections.dropFirst() {
+            setHomePinned(true, section: section)
+            pinned.insert(section)
+            assertHomePins(pinned, sections: sections)
+        }
+        attach("04 All four Home cards retain independent pins")
+
+        // Follow the order actually displayed after pinning; newly pinned cards may
+        // join their group without changing the user's existing manual positions.
+        var order = sections.sorted { homeRow($0).frame.minY < homeRow($1).frame.minY }
+        let movedSection = order[1]
+        arm(element("homeReorder-\(movedSection)"))
+        moveUp()
+        order.swapAt(0, 1)
+        assertOrder(order.map(homeRow))
+        assertHomePins(pinned, sections: sections)
+        attach("05 A pinned Home card moves within the pinned group")
+        disarm(element("homeReorder-\(movedSection)"))
+
+        let unpinnedSection = order[1]
+        setHomePinned(false, section: unpinnedSection)
+        pinned.remove(unpinnedSection)
+        order = order.filter { $0 != unpinnedSection } + [unpinnedSection]
+        assertHomePins(pinned, sections: sections)
+        assertOrder(order.map(homeRow))
+
+        arm(element("homeReorder-\(unpinnedSection)"))
+        moveUp()
+        assertOrder(order.map(homeRow))
+        assertHomePins(pinned, sections: sections)
+        attach("06 Unpinning one Home card leaves the other three pinned")
+
+        relaunchKeepingIsolatedData()
+        reveal(homeRow(unpinnedSection))
+        assertHomePins(pinned, sections: sections)
+        assertOrder(order.map(homeRow))
+        attach("07 Independent Home pins and pinned order survive relaunch")
     }
 
     func testPostsReorderBothPinGroupsAndKeepTheirNumbersAfterRelaunch() {
@@ -181,6 +227,30 @@ final class SAVYCardReorderUITests: XCTestCase {
 
     private func homeRow(_ section: String) -> XCUIElement {
         element("homeContentSection-\(section)")
+    }
+
+    private func setHomePinned(_ pinned: Bool, section: String) {
+        let row = homeRow(section)
+        XCTAssertEqual(row.value as? String, pinned ? "Unpinned" : "Pinned")
+        let gesture = element("homeReorder-\(section)")
+        reveal(gesture)
+        gesture.swipeRight()
+        let button = row.buttons[pinned ? "swipePin" : "swipeUnpin"].firstMatch
+        reveal(button)
+        button.tap()
+        let changed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", pinned ? "Pinned" : "Unpinned"),
+            object: row
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed,
+                       "The selected Home card did not change its pin state")
+    }
+
+    private func assertHomePins(_ pinned: Set<String>, sections: [String]) {
+        for section in sections {
+            XCTAssertEqual(homeRow(section).value as? String, pinned.contains(section) ? "Pinned" : "Unpinned",
+                           "Pinning or unpinning one Home card changed another card's pin")
+        }
     }
 
     private func assertHomeCardDetails() {

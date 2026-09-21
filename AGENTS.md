@@ -82,6 +82,12 @@ Move one position within the screen's visible pinned or unpinned group. Actions 
 
 ## Current Lane
 
+### Multiple Home pins — September 21, 2026
+
+Adam: "i should able to pin as many of the four as I like on the homepage.  There will be more in the future.  Right now I can only pin one. change that to the ability to pin all."
+
+This supersedes the earlier single-pin Home rule. Each destination pins independently, with no maximum. Keep pinned cards above unpinned cards and allow rearranging within either group. Preserve an existing single pin, an explicitly unpinned Home, and saved order when migrating preferences. Reuse the approved card component and pin gesture.
+
 ### Home card density — September 21, 2026
 
 Adam rejected the oversized Home mockup: "too large.  you already have an example that i like. why not just use it?? Actions. Reminders. Don't outwork the problem."
@@ -90,7 +96,7 @@ Use the existing `SavyBandCard` component directly for Home, with its existing t
 
 Update this line when the active milestone changes:
 
-**Current lane:** Home now reuses the Actions/Reminders card component, with relevant detail on the pinned card, compact unpinned titles, and no repeated eyebrows. Verified on Adam's connected iPhone with his six saved posts; targeted Home/Posts rearranging checks and shared-order tests pass. Carousel dimensions are unchanged. Understood rearranging remains in Home, Posts, Actions, and Reminders. Preserve navy canvases, Bodoni headings, saved Post questions and answers, stored numbers, unlimited Post pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
+**Current lane:** Home supports independent pins with no maximum; all four destinations can remain pinned together, and both pin groups can be rearranged. Existing single-pin and explicitly unpinned preferences migrate with saved order intact. All-four pinning, independent unpinning, group boundaries, and relaunch persistence are verified on Adam's connected iPhone. Home uses the existing Actions/Reminders card component, compact unpinned titles, and no repeated eyebrows. Carousel dimensions are unchanged. Preserve navy canvases, Bodoni headings, saved Post questions and answers, stored numbers, unlimited Post pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
 
 ## How agents use Adam's Macs (required)
 

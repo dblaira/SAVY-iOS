@@ -464,7 +464,7 @@ struct EditorialHomeView: View {
         let posts = SavedPost.displayed(store: postStore, reminderStore: reminderStore, cardOrder: postCardOrder)
         return VStack(alignment: .leading, spacing: RootHomeLayout.homeBandCardSpacing) {
             ForEach(Array(sectionPinStore.orderedCards().enumerated()), id: \.element.id) { index, card in
-                let isPinned = sectionPinStore.pinnedSectionID == card.sectionID
+                let isPinned = sectionPinStore.isPinned(card.sectionID)
                 let colors = Self.homeBandCardColors(for: index)
                 SavyUpNextCardRow(
                     reminderId: card.sectionID,
@@ -493,6 +493,7 @@ struct EditorialHomeView: View {
                 .zIndex(armedHomeCardID == card.sectionID ? 1 : 0)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
+                .accessibilityValue(isPinned ? "Pinned" : "Unpinned")
             }
         }
         .padding(.top, RootHomeLayout.homeBandTopPadding)
@@ -669,16 +670,16 @@ struct HomeLeverageCard: Identifiable, Hashable {
     ]
 }
 
-/// One of the homepage navigation cards can sit at the top of that area.
-/// Adam, 2026-09-19: "give me the option to pin one of those to the top of that area,
-/// that way as my taste change I can have different top areas to view first"
+/// Home destinations pin independently and retain their order within each pin group.
 @MainActor
 final class HomeSectionPinStore: ObservableObject {
+    /// The original single-pin key remains readable for existing installations.
     static let defaultsKey = "savy.homePinnedSectionID"
+    static let pinnedIDsDefaultsKey = "savy.homePinnedSectionIDs"
     static let orderDefaultsKey = "savy.homeSectionOrder"
     static let defaultPinnedSectionID = "news-channel"
 
-    @Published private(set) var pinnedSectionID: String?
+    @Published private(set) var pinnedSectionIDs: Set<String>
     @Published private(set) var sectionOrder: [String]
     private let defaults: UserDefaults
 
@@ -686,29 +687,36 @@ final class HomeSectionPinStore: ObservableObject {
         let defaults = defaults ?? SavyCardPreferences.defaults
         self.defaults = defaults
         sectionOrder = defaults.stringArray(forKey: Self.orderDefaultsKey) ?? []
-        let saved = defaults.string(forKey: Self.defaultsKey)
-        if let saved, HomeLeverageCard.referenceCards.contains(where: { $0.sectionID == saved }) {
-            pinnedSectionID = saved
-        } else if saved == nil {
-            pinnedSectionID = Self.defaultPinnedSectionID
+        if let saved = defaults.stringArray(forKey: Self.pinnedIDsDefaultsKey) {
+            pinnedSectionIDs = Set(saved)
         } else {
-            pinnedSectionID = nil
+            let previous = defaults.string(forKey: Self.defaultsKey)
+            if let previous, HomeLeverageCard.referenceCards.contains(where: { $0.sectionID == previous }) {
+                pinnedSectionIDs = [previous]
+            } else {
+                pinnedSectionIDs = previous == nil ? [Self.defaultPinnedSectionID] : []
+            }
+            defaults.set(pinnedSectionIDs.sorted(), forKey: Self.pinnedIDsDefaultsKey)
         }
     }
 
-    func pin(_ sectionID: String) {
-        pinnedSectionID = sectionID
-        defaults.set(sectionID, forKey: Self.defaultsKey)
+    func isPinned(_ sectionID: String) -> Bool {
+        pinnedSectionIDs.contains(sectionID)
     }
 
-    func unpin() {
-        pinnedSectionID = nil
-        defaults.set("", forKey: Self.defaultsKey)
+    func pin(_ sectionID: String) {
+        pinnedSectionIDs.insert(sectionID)
+        defaults.set(pinnedSectionIDs.sorted(), forKey: Self.pinnedIDsDefaultsKey)
+    }
+
+    func unpin(_ sectionID: String) {
+        pinnedSectionIDs.remove(sectionID)
+        defaults.set(pinnedSectionIDs.sorted(), forKey: Self.pinnedIDsDefaultsKey)
     }
 
     func toggle(_ sectionID: String) {
-        if pinnedSectionID == sectionID {
-            unpin()
+        if isPinned(sectionID) {
+            unpin(sectionID)
         } else {
             pin(sectionID)
         }
@@ -720,23 +728,18 @@ final class HomeSectionPinStore: ObservableObject {
         let cards = (sectionOrder + reference.map(\.sectionID))
             .filter { seen.insert($0).inserted }
             .compactMap { id in reference.first { $0.sectionID == id } }
-        guard let pinnedSectionID,
-              let pinned = cards.first(where: { $0.sectionID == pinnedSectionID }) else {
-            return cards
-        }
-        return [pinned] + cards.filter { $0.sectionID != pinnedSectionID }
+        return cards.filter { isPinned($0.sectionID) } + cards.filter { !isPinned($0.sectionID) }
     }
 
-    /// Home retains its single pinned destination; only neighbors in the same group move.
+    /// Move one visible position without crossing the pinned/unpinned boundary.
     func move(_ sectionID: String, direction: ReminderStore.UpNextMoveDirection) {
-        let isPinned = sectionID == pinnedSectionID
-        var group = orderedCards().filter { ($0.sectionID == pinnedSectionID) == isPinned }
-        guard let index = group.firstIndex(where: { $0.sectionID == sectionID }) else { return }
+        var cards = orderedCards()
+        guard let index = cards.firstIndex(where: { $0.sectionID == sectionID }) else { return }
         let target = direction == .up ? index - 1 : index + 1
-        guard group.indices.contains(target) else { return }
-        group.swapAt(index, target)
-        sectionOrder = orderedCards().filter { ($0.sectionID == pinnedSectionID) != isPinned }.map(\.sectionID)
-            + group.map(\.sectionID)
+        guard cards.indices.contains(target),
+              isPinned(cards[target].sectionID) == isPinned(sectionID) else { return }
+        cards.swapAt(index, target)
+        sectionOrder = cards.map(\.sectionID)
         defaults.set(sectionOrder, forKey: Self.orderDefaultsKey)
     }
 }

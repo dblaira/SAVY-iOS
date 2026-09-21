@@ -951,27 +951,32 @@ final class SAVYNativeBoundaryTests: XCTestCase {
     }
 
     @MainActor
-    func testHomeSectionPinMovesOneCardToTheTop() {
-        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+    func testHomeSectionPinsMoveIndependentlyIntoThePinnedGroup() {
+        let suite = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
         let store = HomeSectionPinStore(defaults: defaults)
         XCTAssertEqual(store.orderedCards().map(\.sectionID).first, "news-channel")
         XCTAssertEqual(store.orderedCards().map(\.title).first, "Social Media Posts")
         store.pin("beliefs")
+        XCTAssertEqual(store.pinnedSectionIDs, ["beliefs", "news-channel"])
         XCTAssertEqual(store.orderedCards().map(\.sectionID), [
             "beliefs",
+            "news-channel",
             "ontology",
-            "field-essays",
-            "news-channel"
+            "field-essays"
         ])
         store.pin("field-essays")
+        XCTAssertEqual(store.pinnedSectionIDs, ["beliefs", "field-essays", "news-channel"])
         XCTAssertEqual(store.orderedCards().filter { $0.sectionID == "field-essays" }.count, 1)
-        XCTAssertEqual(store.orderedCards().map(\.sectionID).first, "field-essays")
-        store.unpin()
+        XCTAssertEqual(store.orderedCards().map(\.sectionID), ["beliefs", "field-essays", "news-channel", "ontology"])
+        store.unpin("field-essays")
+        XCTAssertEqual(store.pinnedSectionIDs, ["beliefs", "news-channel"])
         XCTAssertEqual(store.orderedCards().map(\.sectionID), [
             "beliefs",
+            "news-channel",
             "ontology",
-            "field-essays",
-            "news-channel"
+            "field-essays"
         ])
     }
 
