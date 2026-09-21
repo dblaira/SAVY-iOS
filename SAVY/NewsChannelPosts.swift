@@ -1,42 +1,62 @@
 import SwiftUI
 
-/// Saved posts share the Reminders card layout. The inline count measures saved posts on
-/// this phone against Adam's 50-post target; it does not claim anything was published.
-struct NewsChannelPostsGroup: View {
-    @ObservedObject var store: SocialPostStore
-    /// Post entries saved through the bolt's Post door (the Reminder form's fourth face).
-    @ObservedObject var reminderStore: ReminderStore
-    var scrollRevision = 0
-    @StateObject private var cardOrder = PostCardOrderStore()
-    @State private var armedPostID: String?
-    @State private var editing: SocialPost?
-    @State private var editingEntry: Reminder?
-    @State private var isComposing = false
+/// The shared, read-only feed projection for the Home preview and Social Media Posts page.
+/// Identity, saved numbers, authored previews, and ordering come from the same records.
+enum SavedPost: Identifiable {
+    case entry(Reminder)
+    case legacy(SocialPost)
 
-    private var postEntries: [Reminder] {
-        return reminderStore.active.filter { $0.kind == .post }
-            .sorted { $0.createdAt > $1.createdAt }
+    var id: String {
+        switch self {
+        case .entry(let entry): return "entry-\(entry.id.uuidString)"
+        case .legacy(let post): return "legacy-\(post.id.uuidString)"
+        }
     }
 
-    private var postedEntries: [Reminder] {
-        return reminderStore.completed.filter { $0.kind == .post }
+    var isPinned: Bool {
+        switch self {
+        case .entry(let entry): return entry.pinned
+        case .legacy(let post): return post.pinned
+        }
     }
 
-    private var pinnedEntries: [Reminder] {
-        (postEntries + postedEntries).filter(\.pinned)
+    var postNumber: Int? {
+        switch self {
+        case .entry(let entry): return entry.postNumber
+        case .legacy(let post): return post.postNumber
+        }
     }
 
-    private var pinnedPosts: [SocialPost] {
-        store.posts.filter(\.pinned).sorted { $0.updatedAt > $1.updatedAt }
+    var preview: NewsChannelPostPreview {
+        switch self {
+        case .legacy(let post):
+            return NewsChannelPostPreview(text: post.trimmedText, additionalDetails: [post.connection, post.sourceLine])
+        case .entry(let entry):
+            let answers = entry.postAnswerTexts
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            let title = entry.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            let fallback = !title.isEmpty && title != "New Post" ? title : entry.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            return NewsChannelPostPreview(
+                text: answers.first ?? fallback,
+                additionalDetails: Array(answers.dropFirst()) + [entry.notes, entry.outcome]
+            )
+        }
     }
 
-    /// Keep the existing pinned/status ordering while applying one continuous color cycle.
-    /// The two stores have independent UUID namespaces, so identity includes the source.
-    private var defaultPosts: [SavedPost] {
+    var numberedPreviewText: String {
+        postNumber.map { "#\($0) \(preview.title)" } ?? preview.title
+    }
+
+    /// Keep the page's existing pinned/status/date order until the user rearranges it.
+    @MainActor
+    static func defaultOrder(store: SocialPostStore, reminderStore: ReminderStore) -> [SavedPost] {
+        let entries = reminderStore.active.filter { $0.kind == .post }.sorted { $0.createdAt > $1.createdAt }
+        let postedEntries = reminderStore.completed.filter { $0.kind == .post }
         let groups: [[SavedPost]] = [
-            pinnedEntries.map(SavedPost.entry),
-            pinnedPosts.map(SavedPost.legacy),
-            postEntries.filter { !$0.pinned }.map(SavedPost.entry),
+            (entries + postedEntries).filter(\.pinned).map(SavedPost.entry),
+            store.posts.filter(\.pinned).sorted { $0.updatedAt > $1.updatedAt }.map(SavedPost.legacy),
+            entries.filter { !$0.pinned }.map(SavedPost.entry),
             store.ready.filter { !$0.pinned }.map(SavedPost.legacy),
             store.drafts.filter { !$0.pinned }.map(SavedPost.legacy),
             postedEntries.filter { !$0.pinned }.map(SavedPost.entry),
@@ -46,13 +66,36 @@ struct NewsChannelPostsGroup: View {
         return groups.flatMap { $0 }.filter { seen.insert($0.id).inserted }
     }
 
-    private var displayedPosts: [SavedPost] {
-        let posts = defaultPosts
+    @MainActor
+    static func displayed(store: SocialPostStore, reminderStore: ReminderStore, cardOrder: PostCardOrderStore) -> [SavedPost] {
+        let posts = defaultOrder(store: store, reminderStore: reminderStore)
         let byID = Dictionary(uniqueKeysWithValues: posts.map { ($0.id, $0) })
         return cardOrder.orderedIDs(
             defaultOrder: posts.map(\.id),
             pinnedIDs: Set(posts.filter(\.isPinned).map(\.id))
         ).compactMap { byID[$0] }
+    }
+}
+
+/// Saved posts share the Reminders card layout. The inline count measures saved posts on
+/// this phone against Adam's 50-post target; it does not claim anything was published.
+struct NewsChannelPostsGroup: View {
+    @ObservedObject var store: SocialPostStore
+    /// Post entries saved through the bolt's Post door (the Reminder form's fourth face).
+    @ObservedObject var reminderStore: ReminderStore
+    @ObservedObject var cardOrder: PostCardOrderStore
+    var scrollRevision = 0
+    @State private var armedPostID: String?
+    @State private var editing: SocialPost?
+    @State private var editingEntry: Reminder?
+    @State private var isComposing = false
+
+    private var defaultPosts: [SavedPost] {
+        SavedPost.defaultOrder(store: store, reminderStore: reminderStore)
+    }
+
+    private var displayedPosts: [SavedPost] {
+        SavedPost.displayed(store: store, reminderStore: reminderStore, cardOrder: cardOrder)
     }
 
     var body: some View {
@@ -196,25 +239,6 @@ struct NewsChannelPostsGroup: View {
         .accessibilityIdentifier(identifier)
     }
 
-    private enum SavedPost: Identifiable {
-        case entry(Reminder)
-        case legacy(SocialPost)
-
-        var id: String {
-            switch self {
-            case .entry(let entry): return "entry-\(entry.id.uuidString)"
-            case .legacy(let post): return "legacy-\(post.id.uuidString)"
-            }
-        }
-
-        var isPinned: Bool {
-            switch self {
-            case .entry(let entry): return entry.pinned
-            case .legacy(let post): return post.pinned
-            }
-        }
-    }
-
     private func actions(for entry: Reminder) -> [SavySwipeAction] {
         var list: [SavySwipeAction] = []
         if entry.status != .completed {
@@ -296,7 +320,7 @@ struct NewsChannelPostPalette {
 }
 
 /// Extract only a display preview; the source post and full saved answers remain untouched.
-private struct NewsChannelPostPreview {
+struct NewsChannelPostPreview {
     let title: String
     let detail: String?
 
@@ -329,10 +353,7 @@ struct NewsChannelPostRow: View {
     let palette: NewsChannelPostPalette
 
     var body: some View {
-        let preview = NewsChannelPostPreview(
-            text: post.trimmedText,
-            additionalDetails: [post.connection, post.sourceLine]
-        )
+        let preview = SavedPost.legacy(post).preview
         SavyBandCard(
             bg: palette.bg,
             fg: palette.fg,
@@ -390,24 +411,8 @@ struct NewsChannelPostEntryRow: View {
     let entry: Reminder
     let palette: NewsChannelPostPalette
 
-    private var authoredAnswers: [String] {
-        entry.postAnswerTexts
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
-    private var authoredText: String {
-        if let firstAnswer = authoredAnswers.first { return firstAnswer }
-        let title = entry.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !title.isEmpty, title != "New Post" { return title }
-        return entry.notes.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     var body: some View {
-        let preview = NewsChannelPostPreview(
-            text: authoredText,
-            additionalDetails: Array(authoredAnswers.dropFirst()) + [entry.notes, entry.outcome]
-        )
+        let preview = SavedPost.entry(entry).preview
         SavyBandCard(
             bg: palette.bg,
             fg: palette.fg,

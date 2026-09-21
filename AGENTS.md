@@ -82,9 +82,15 @@ Move one position within the screen's visible pinned or unpinned group. Actions 
 
 ## Current Lane
 
+### Home card density — September 21, 2026
+
+Adam rejected the oversized Home mockup: "too large.  you already have an example that i like. why not just use it?? Actions. Reminders. Don't outwork the problem."
+
+Use the existing `SavyBandCard` component directly for Home, with its existing typography, spacing, and three-line detail limit. Pinned sections show relevant counts and previews; unpinned sections use its compact title-only layout. Remove repeated section eyebrows, including SOCIAL MEDIA POSTS and CONNECTION. Social Media Posts uses the saved count, stored post numbers, and first authored preview from the same ordered records as the Posts page. Do not change the carousel size as part of this work.
+
 Update this line when the active milestone changes:
 
-**Current lane:** Understood card rearranging is built and verified on Adam's connected iPhone across the lower home rows, Social Media Posts, and Actions, with isolated test entries and layout preferences. Pinned/unpinned boundaries, visible-neighbor movement, scrolling, navigation, saved order, and Post numbers survive the checks and relaunch. Navy canvases, Bodoni page titles, and subtitle removal remain in place. Preserve saved Post questions and answers, unlimited Post pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
+**Current lane:** Home now reuses the Actions/Reminders card component, with relevant detail on the pinned card, compact unpinned titles, and no repeated eyebrows. Verified on Adam's connected iPhone with his six saved posts; targeted Home/Posts rearranging checks and shared-order tests pass. Carousel dimensions are unchanged. Understood rearranging remains in Home, Posts, Actions, and Reminders. Preserve navy canvases, Bodoni headings, saved Post questions and answers, stored numbers, unlimited Post pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
 
 ## How agents use Adam's Macs (required)
 

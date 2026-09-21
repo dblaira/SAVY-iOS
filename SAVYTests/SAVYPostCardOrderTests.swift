@@ -143,6 +143,10 @@ final class SAVYPostCardOrderTests: XCTestCase {
 
         XCTAssertTrue(order.move(ids[1], direction: -1, defaultOrder: ids, pinnedIDs: []))
         XCTAssertEqual(order.orderedIDs(defaultOrder: ids, pinnedIDs: []), Array(ids.reversed()))
+        let previewFeed = SavedPost.displayed(store: posts, reminderStore: reminders, cardOrder: order)
+        XCTAssertEqual(previewFeed.count, 2, "Home and Posts count both formats")
+        XCTAssertEqual(previewFeed.map(\.id), Array(ids.reversed()))
+        XCTAssertEqual(previewFeed.map(\.numberedPreviewText), ["#42 My original legacy post.", "#17 My full answer."])
         XCTAssertEqual(reminders.reminders, loadedReminders)
         XCTAssertEqual(posts.posts, loadedPosts)
         XCTAssertEqual(try Data(contentsOf: remindersURL), remindersBefore)

@@ -69,6 +69,7 @@ struct RootView: View {
     @StateObject private var metadataStore = MetadataEntryStore.live()
     @StateObject private var reminderStore: ReminderStore
     @StateObject private var postStore: SocialPostStore
+    @StateObject private var postCardOrder = PostCardOrderStore()
     @StateObject private var storyStore: StoryStore
     @State private var isPersonalAuthorityReviewPresented = false
     @State private var isPostsPresented = false
@@ -142,6 +143,7 @@ struct RootView: View {
                             leverageStore: leverageStore,
                             reminderStore: reminderStore,
                             postStore: postStore,
+                            postCardOrder: postCardOrder,
                             storyStore: storyStore,
                             onSignOut: onSignOut,
                             onOpenPersonalAuthorityReview: {
@@ -211,7 +213,8 @@ struct RootView: View {
                     section: leverageStore.section(id: "news-channel") ?? LeverageContent.newsChannel,
                     postStore: postStore,
                     storyStore: storyStore,
-                    reminderStore: reminderStore
+                    reminderStore: reminderStore,
+                    postCardOrder: postCardOrder
                 )
             }
             .task {
@@ -282,6 +285,7 @@ struct EditorialHomeView: View {
     @ObservedObject var leverageStore: LeverageDataStore
     @ObservedObject var reminderStore: ReminderStore
     @ObservedObject var postStore: SocialPostStore
+    @ObservedObject var postCardOrder: PostCardOrderStore
     @ObservedObject var storyStore: StoryStore
     let onSignOut: (() -> Void)?
     let onOpenPersonalAuthorityReview: () -> Void
@@ -333,7 +337,7 @@ struct EditorialHomeView: View {
                 if section.id == "beliefs" {
                     ConnectionView(section: section)
                 } else if section.id == "news-channel" {
-                    LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore, reminderStore: reminderStore)
+                    LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore, reminderStore: reminderStore, postCardOrder: postCardOrder)
                 } else {
                     LeverageSectionView(section: section)
                 }
@@ -457,11 +461,11 @@ struct EditorialHomeView: View {
     }
 
     private var homeContentSections: some View {
-        VStack(alignment: .leading, spacing: RootHomeLayout.homeBandCardSpacing) {
+        let posts = SavedPost.displayed(store: postStore, reminderStore: reminderStore, cardOrder: postCardOrder)
+        return VStack(alignment: .leading, spacing: RootHomeLayout.homeBandCardSpacing) {
             ForEach(Array(sectionPinStore.orderedCards().enumerated()), id: \.element.id) { index, card in
                 let isPinned = sectionPinStore.pinnedSectionID == card.sectionID
                 let colors = Self.homeBandCardColors(for: index)
-                let detail = Self.homeBandCardDetail(for: index)
                 SavyUpNextCardRow(
                     reminderId: card.sectionID,
                     armedId: $armedHomeCardID,
@@ -478,13 +482,13 @@ struct EditorialHomeView: View {
                     HomeContentSectionView(
                         card: card,
                         section: leverageStore.section(id: card.sectionID),
+                        posts: posts,
                         isPinned: isPinned,
+                        isReordering: armedHomeCardID == card.sectionID,
                         bg: colors.bg,
                         fg: colors.fg,
-                        accent: colors.accent,
-                        detail: detail
+                        accent: colors.accent
                     )
-                    .scaleEffect(x: 1, y: Self.homeBandCardScale(for: index), anchor: .top)
                 }
                 .zIndex(armedHomeCardID == card.sectionID ? 1 : 0)
                 .accessibilityElement(children: .contain)
@@ -507,19 +511,6 @@ struct EditorialHomeView: View {
         }
     }
 
-    /// Copied from Understood `RemindersHomeView` / `SavyReminderScreens.cardDetail`.
-    private static func homeBandCardDetail(for index: Int) -> SavyCardDetail {
-        index == 0 ? .full : (index == 1 ? .medium : .minimal)
-    }
-
-    /// Copied from Understood `ActionsHomeView.cardScale`.
-    private static func homeBandCardScale(for index: Int) -> CGFloat {
-        switch index {
-        case 0: return 1.08
-        case 1: return 1.02
-        default: return 1
-        }
-    }
 }
 
 struct HomeFeedRow: Identifiable {
@@ -753,46 +744,55 @@ final class HomeSectionPinStore: ObservableObject {
 private struct HomeContentSectionView: View {
     let card: HomeLeverageCard
     let section: LeverageSection?
+    let posts: [SavedPost]
     var isPinned = false
+    var isReordering = false
     let bg: Color
     let fg: Color
     let accent: Color
-    var detail: SavyCardDetail = .minimal
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text(card.eyebrow)
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(1.5)
-                if isPinned {
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 10, weight: .heavy))
-                }
-            }
-            .foregroundStyle(fg.opacity(0.7))
-
-            Text(card.title)
-                .font(SavyTypography.displaySerif(26, weight: .regular))
-                .foregroundStyle(fg)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Rectangle().fill(accent).frame(width: 36, height: 2)
-
-            if detail != .minimal, let headline = section?.headline, !headline.isEmpty {
-                Text(headline)
-                    .font(.system(size: 14))
-                    .foregroundStyle(fg.opacity(0.78))
-                    .lineLimit(detail == .full ? 3 : 1)
-                    .fixedSize(horizontal: false, vertical: true)
+        SavyBandCard(
+            bg: bg,
+            fg: fg,
+            accent: accent,
+            title: card.title,
+            signalText: isPinned ? countText : "",
+            secondaryText: isPinned ? postReferences : "",
+            detailLine: previewText,
+            detail: isPinned ? .full : .minimal,
+            isCompact: !isPinned,
+            // The existing pair of reorder buttons needs its normal touch area only
+            // while selected; the resting destination row stays compact.
+            minimumHeight: isReordering ? 94 : nil,
+            titleAccessibilityIdentifier: "homeCardTitle-\(card.sectionID)"
+        ) {
+            EmptyView()
+        }
+        .overlay(alignment: .topTrailing) {
+            if isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundStyle(fg.opacity(0.7))
+                    .padding(14)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(bg)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.08)))
+    }
+
+    private var countText: String {
+        card.sectionID == "news-channel"
+            ? "\(posts.count) / 50 saved posts"
+            : "\(section?.items.count ?? 0) items"
+    }
+
+    private var postReferences: String {
+        guard card.sectionID == "news-channel" else { return "" }
+        let numbers = posts.prefix(3).compactMap(\.postNumber).map { "#\($0)" }
+        return numbers.isEmpty ? "" : "Posts " + numbers.joined(separator: " · ")
+    }
+
+    private var previewText: String? {
+        if card.sectionID == "news-channel" { return posts.first?.preview.title }
+        return section?.items.prefix(3).map(\.title).joined(separator: "\n")
     }
 }
 
@@ -994,6 +994,7 @@ private struct LeverageSectionView: View {
     var postStore: SocialPostStore? = nil
     var storyStore: StoryStore? = nil
     var reminderStore: ReminderStore? = nil
+    var postCardOrder: PostCardOrderStore? = nil
 
     private var isBeliefs: Bool { section.id == "beliefs" }
     private var isPosts: Bool { section.id == "news-channel" }
@@ -1018,8 +1019,8 @@ private struct LeverageSectionView: View {
                     .padding(.horizontal, -24)
                     .accessibilityIdentifier(isPosts ? "socialMediaPostsHeader" : "sectionPageHeader")
 
-                if let postStore, let reminderStore {
-                    NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore, scrollRevision: postScrollRevision)
+                if let postStore, let reminderStore, let postCardOrder {
+                    NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore, cardOrder: postCardOrder, scrollRevision: postScrollRevision)
                 }
 
                 if let storyStore {

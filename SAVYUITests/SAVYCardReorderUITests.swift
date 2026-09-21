@@ -13,7 +13,8 @@ final class SAVYCardReorderUITests: XCTestCase {
             app.launchArguments = [
                 "SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS", "SAVY_UI_TEST_COWBOY_STUB",
             ]
-            if name.contains("testPostsReorderBothPinGroupsAndKeepTheirNumbersAfterRelaunch") {
+            if name.contains("testPostsReorderBothPinGroupsAndKeepTheirNumbersAfterRelaunch")
+                || name.contains("testHomeCardsReorderBelowPinnedCardAndOpenAfterRelaunch") {
                 app.launchEnvironment["SAVY_UI_TEST_SEED_POST_COUNT"] = "4"
             }
             if name.contains("testActionsMovePastVisibleNeighborAndKeepPinGroupsAfterRelaunch") {
@@ -31,6 +32,8 @@ final class SAVYCardReorderUITests: XCTestCase {
     func testHomeCardsReorderBelowPinnedCardAndOpenAfterRelaunch() {
         let initial = ["news-channel", "beliefs", "ontology", "field-essays"]
         let moved = ["news-channel", "ontology", "beliefs", "field-essays"]
+        assertHomeCardDetails()
+        attach("00 Home pinned Post summary and compact destination cards")
         reveal(homeRow("ontology"))
         assertOrder(initial.map(homeRow))
 
@@ -61,6 +64,7 @@ final class SAVYCardReorderUITests: XCTestCase {
         attach("02b Home scroll reaches Field Essays without changing card order")
 
         relaunchKeepingIsolatedData()
+        assertHomeCardDetails()
         reveal(homeRow("ontology"))
         assertOrder(moved.map(homeRow))
         attach("03 Home order retained after relaunch")
@@ -177,6 +181,40 @@ final class SAVYCardReorderUITests: XCTestCase {
 
     private func homeRow(_ section: String) -> XCUIElement {
         element("homeContentSection-\(section)")
+    }
+
+    private func assertHomeCardDetails() {
+        let pinned = homeRow("news-channel")
+        reveal(pinned)
+        XCTAssertTrue(pinned.staticTexts["4 / 50 saved posts"].waitForExistence(timeout: 5),
+                      "The pinned Home card should show the saved Post count")
+        XCTAssertTrue(pinned.staticTexts["Posts #2 · #1 · #4"].exists,
+                      "The Home summary should retain the first three stored Post references in list order")
+        XCTAssertTrue(pinned.staticTexts["Synthetic post 2 starts with a clear observation."].exists,
+                      "The pinned Home card should preview the first Post's authored sentence")
+        XCTAssertEqual(pinned.staticTexts.matching(NSPredicate(format: "label == %@", "Social Media Posts")).count, 1,
+                       "The Home card should show its title once")
+        XCTAssertFalse(pinned.staticTexts["SOCIAL MEDIA POSTS"].exists,
+                       "The Home card should not repeat its title in an eyebrow")
+        let pinnedHeight = pinned.frame.height
+
+        let compactCards = [
+            ("beliefs", "Connection"),
+            ("ontology", "Adam's Ontology"),
+            ("field-essays", "Field Essays"),
+        ]
+        for (sectionID, title) in compactCards {
+            let row = homeRow(sectionID)
+            XCTAssertTrue(row.exists)
+            XCTAssertLessThan(row.frame.height, pinnedHeight,
+                              "Only the pinned Home card should expand to show saved details")
+            // Reorder rows also contain their hidden swipe action. Ignore that control
+            // when checking the actual destination card's title-only content.
+            let text = row.staticTexts.allElementsBoundByIndex.map(\.label).filter {
+                !$0.isEmpty && !["Pin", "Unpin", "Move up", "Move down"].contains($0)
+            }
+            XCTAssertEqual(text, [title], "An unpinned Home card should show its title once, without an eyebrow or detail")
+        }
     }
 
     private func postUUID(_ number: Int) -> String {
