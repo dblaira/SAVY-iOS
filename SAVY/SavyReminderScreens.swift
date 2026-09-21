@@ -53,15 +53,6 @@ struct SavyReminderKindTabScreen: View {
         }
     }
 
-    private var subtitle: String {
-        switch kind {
-        case .reminder: return "What matters next."
-        case .action: return "Choose the move that matters."
-        case .event: return "Time blocks live on the calendar."
-        case .post: return "Posts live on the Social Media Posts page."
-        }
-    }
-
     private var bandTitle: String {
         kind == .action ? "PRIORITY" : "UP NEXT"
     }
@@ -89,19 +80,14 @@ struct SavyReminderKindTabScreen: View {
     }
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(SavyTypography.displaySerif(48, weight: .bold))
-                .foregroundStyle(SavyTheme.deepNavy)
-            Text(subtitle)
-                .font(SavyTheme.readingLabel(18))
-                .foregroundStyle(SavyTheme.crimson)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 60)
-        .padding(.bottom, 18)
-        .padding(.horizontal, 16)
-        .background(Color.white)
+        Text(title)
+            .font(SavyTypography.displaySerif(48, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 60)
+            .padding(.bottom, 18)
+            .padding(.horizontal, 16)
+            .background(SavyTheme.deepNavy)
     }
 
     private var activeBand: some View {

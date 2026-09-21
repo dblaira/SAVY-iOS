@@ -19,7 +19,7 @@ struct AuthGateView: View {
                     ProgressView()
                         .tint(SavyTheme.crimson)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(SavyTheme.paper.ignoresSafeArea())
+                        .background(SavyTheme.deepNavy.ignoresSafeArea())
                 case .signedOut:
                     LoginView(store: authStore)
                 case .awaitingSignUpConfirmation(let email, let guidance):
@@ -37,6 +37,7 @@ struct AuthGateView: View {
                 }
             }
         }
+        .preferredColorScheme(.dark)
         .task {
             guard !ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") else { return }
             authStore.bootstrap()
@@ -110,7 +111,7 @@ private struct LoginView: View {
 
                     Text("First time here? Continue creates your account. Returning? Continue signs you in.")
                         .font(.system(size: 14, weight: .regular, design: .serif))
-                        .foregroundStyle(SavyTheme.ink.opacity(0.62))
+                        .foregroundStyle(.white.opacity(0.72))
                         .fixedSize(horizontal: false, vertical: true)
 
                     if let message = store.message {
@@ -123,7 +124,7 @@ private struct LoginView: View {
                     if !store.hasBackendConfiguration {
                         Text("Beliefs API is not configured in this build. Auth still works; live data may use seed content.")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(SavyTheme.ink.opacity(0.55))
+                            .foregroundStyle(.white.opacity(0.65))
                     }
                 }
             }
@@ -131,26 +132,13 @@ private struct LoginView: View {
             .padding(.top, 88)
             .padding(.bottom, 40)
         }
-        .background(SavyTheme.paper.ignoresSafeArea())
+        .background(SavyTheme.deepNavy.ignoresSafeArea())
     }
 
     private var brandHeader: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("SAVY")
-                .font(SavyTypography.displaySerif(54, weight: .bold))
-                .foregroundStyle(SavyTheme.crimson)
-
-            Text("A STUDY IN LEVERAGE")
-                .font(.system(size: 13, weight: .bold))
-                .tracking(2.4)
-                .foregroundStyle(.black.opacity(0.38))
-
-            Text("Sign in once, then use Face ID to open your workspace.")
-                .font(.system(size: 19, weight: .regular, design: .serif))
-                .lineSpacing(5)
-                .foregroundStyle(SavyTheme.ink.opacity(0.72))
-                .padding(.top, 14)
-        }
+        Text("SAVY")
+            .font(SavyTypography.displaySerif(54, weight: .bold))
+            .foregroundStyle(.white)
     }
 }
 
@@ -163,7 +151,7 @@ private struct ConfirmSignUpView: View {
     var body: some View {
         authForm(
             title: "Confirm your account",
-            subtitle: guidance ?? "Enter the code AWS sent to \(email)."
+            instructions: guidance ?? "Enter the code AWS sent to \(email)."
         ) {
             TextField("Confirmation code", text: $code)
                 .keyboardType(.numberPad)
@@ -183,7 +171,7 @@ private struct ConfirmSignUpView: View {
                 store.cancelSignUpConfirmation()
             }
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(SavyTheme.ink.opacity(0.62))
+            .foregroundStyle(.white.opacity(0.72))
 
             if let message = store.message {
                 Text(message)
@@ -204,7 +192,7 @@ private struct ResetPasswordView: View {
     var body: some View {
         authForm(
             title: "Reset password",
-            subtitle: guidance ?? "Enter the code sent to \(email) and choose a new password."
+            instructions: guidance ?? "Enter the code sent to \(email) and choose a new password."
         ) {
             TextField("Reset code", text: $code)
                 .keyboardType(.numberPad)
@@ -232,7 +220,7 @@ private struct ResetPasswordView: View {
                 store.cancelPasswordReset()
             }
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(SavyTheme.ink.opacity(0.62))
+            .foregroundStyle(.white.opacity(0.72))
 
             if let message = store.message {
                 Text(message)
@@ -251,18 +239,9 @@ private struct LockedView: View {
         VStack(alignment: .leading, spacing: 26) {
             Spacer()
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("SAVY")
-                    .font(SavyTypography.displaySerif(54, weight: .bold))
-                    .foregroundStyle(SavyTheme.crimson)
-
-                if let email = session.user.displayEmail {
-                    Text(email)
-                        .font(.system(size: 15, weight: .bold))
-                        .tracking(1.4)
-                        .foregroundStyle(.black.opacity(0.38))
-                }
-            }
+            Text("SAVY")
+                .font(SavyTypography.displaySerif(54, weight: .bold))
+                .foregroundStyle(.white)
 
             Button {
                 Task {
@@ -281,11 +260,18 @@ private struct LockedView: View {
             .background(SavyTheme.crimson, in: RoundedRectangle(cornerRadius: 12))
             .disabled(store.isWorking || !store.canUseFaceID)
 
+            if let email = session.user.displayEmail {
+                Text(email)
+                    .font(.system(size: 15, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(.white.opacity(0.72))
+            }
+
             Button("Use password instead") {
                 store.usePasswordInstead()
             }
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(SavyTheme.ink.opacity(0.62))
+            .foregroundStyle(.white.opacity(0.72))
 
             if let message = store.message {
                 Text(message)
@@ -296,39 +282,37 @@ private struct LockedView: View {
             Spacer()
         }
         .padding(.horizontal, 28)
-        .background(SavyTheme.paper.ignoresSafeArea())
+        .background(SavyTheme.deepNavy.ignoresSafeArea())
     }
 }
 
 @ViewBuilder
 private func authForm<Content: View>(
     title: String,
-    subtitle: String,
+    instructions: String,
     @ViewBuilder content: () -> Content
 ) -> some View {
     ScrollView {
         VStack(alignment: .leading, spacing: 28) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(title)
-                    .font(.system(size: 34, weight: .regular, design: .serif))
-                    .italic()
-                    .foregroundStyle(SavyTheme.crimson)
-
-                Text(subtitle)
-                    .font(.system(size: 17, weight: .regular, design: .serif))
-                    .lineSpacing(4)
-                    .foregroundStyle(SavyTheme.ink.opacity(0.72))
-            }
+            Text(title)
+                .font(SavyTypography.displaySerif(34, weight: .bold))
+                .foregroundStyle(.white)
 
             VStack(alignment: .leading, spacing: 16) {
                 content()
+
+                Text(instructions)
+                    .font(.system(size: 17, weight: .regular, design: .serif))
+                    .lineSpacing(4)
+                    .foregroundStyle(.white.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.horizontal, 28)
         .padding(.top, 88)
         .padding(.bottom, 40)
     }
-    .background(SavyTheme.paper.ignoresSafeArea())
+    .background(SavyTheme.deepNavy.ignoresSafeArea())
 }
 
 @ViewBuilder
@@ -348,6 +332,7 @@ private extension View {
             .padding(.horizontal, 16)
             .frame(minHeight: 52)
             .background(SavyTheme.paperAccent, in: RoundedRectangle(cornerRadius: 10))
+            .environment(\.colorScheme, .light)
             .foregroundStyle(SavyTheme.ink)
     }
 }

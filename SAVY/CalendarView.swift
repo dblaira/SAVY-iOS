@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Calendar tab: a black "Calendar" hero (Today button + month chevrons), a white month grid,
+/// The Calendar tab: a navy "Calendar" hero (Today button + month chevrons), a white month grid,
 /// and a full day timeline — 24 hour rows with reminders placed at their actual times, a crimson
 /// "now" line, and an all-day row. Backed by the real store.
 struct CalendarView: View {
@@ -33,7 +33,7 @@ struct CalendarView: View {
                     .padding(.bottom, 150)
                 }
             }
-            .background(Color.white)
+            .background(SavyTheme.deepNavy.ignoresSafeArea())
             .ignoresSafeArea(edges: .top)
             .onAppear {
                 if shouldScrollToNow {
@@ -47,7 +47,11 @@ struct CalendarView: View {
 
     private func hero(_ proxy: ScrollViewProxy) -> some View {
         HStack(alignment: .center, spacing: 10) {
-            Text("Calendar").font(Brand.serif(40)).foregroundStyle(.white)
+            Text("Calendar")
+                .font(SavyTypography.displaySerif(40, weight: .bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Spacer(minLength: 0)
             Button { goToToday(proxy) } label: {
                 Text("Today")
@@ -61,10 +65,11 @@ struct CalendarView: View {
             chevron("chevron.left") { shiftMonth(-1) }
             chevron("chevron.right") { shiftMonth(1) }
         }
+        .padding(.trailing, RootHomeLayout.accountMenuButtonSize + 12)
         .padding(.top, 60)
         .padding(.bottom, 18)
         .padding(.horizontal, 16)
-        .background(Brand.nearBlack)
+        .background(SavyTheme.deepNavy)
     }
 
     private func chevron(_ icon: String, action: @escaping () -> Void) -> some View {
@@ -77,6 +82,7 @@ struct CalendarView: View {
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(icon == "chevron.left" ? "Previous month" : "Next month")
     }
 
     // MARK: Month grid
@@ -187,9 +193,9 @@ struct CalendarView: View {
     private var dayHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(cal.isDateInToday(selected) ? "Today" : selected.formatted(.dateTime.weekday(.wide)))
-                .font(.system(size: 22, weight: .heavy)).foregroundStyle(.black)
+                .font(.system(size: 22, weight: .heavy)).foregroundStyle(.white)
             Text(selected.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
-                .font(.system(size: 16, weight: .heavy)).foregroundStyle(Brand.crimson)
+                .font(.system(size: 16, weight: .heavy)).foregroundStyle(SavyTheme.bottomNavTan)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -202,7 +208,7 @@ struct CalendarView: View {
             HStack(alignment: .top, spacing: 8) {
                 Text("all-day")
                     .font(.system(size: 13, weight: .heavy))
-                    .foregroundStyle(.black.opacity(0.35))
+                    .foregroundStyle(SavyTheme.bottomNavTan)
                     .frame(width: 52, alignment: .trailing)
                 VStack(spacing: 6) {
                     ForEach(items) { reminder in
@@ -223,10 +229,13 @@ struct CalendarView: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text(Self.hourFmt.string(from: dateAtHour(h)))
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.black.opacity(0.35))
+                            .foregroundStyle(.white.opacity(0.7))
                             .frame(width: 52, alignment: .trailing)
                             .offset(y: -6)
-                        VStack(spacing: 0) { Divider(); Spacer(minLength: 0) }
+                        VStack(spacing: 0) {
+                            Rectangle().fill(Color.white.opacity(0.2)).frame(height: 1)
+                            Spacer(minLength: 0)
+                        }
                     }
                     .frame(height: hourHeight, alignment: .top)
                     .id("hour-\(h)")
@@ -273,7 +282,11 @@ struct CalendarView: View {
         .padding(.vertical, 6).padding(.horizontal, 8)
         .frame(height: compact ? 46 : hourHeight - 8, alignment: .top)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background((hot ? Brand.crimson : Color.black).opacity(hot ? 0.12 : 0.06))
+        .background {
+            (hot ? Brand.crimson : Color.black)
+                .opacity(hot ? 0.12 : 0.06)
+                .background(Color.white)
+        }
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke((hot ? Brand.crimson : Color.black).opacity(0.15)))
     }

@@ -13,7 +13,7 @@ struct NewsChannelStoriesGroup: View {
                 Text("STORIES")
                     .font(.system(size: 12, weight: .bold))
                     .tracking(2.4)
-                    .foregroundStyle(.black.opacity(0.42))
+                    .foregroundStyle(SavyTheme.bottomNavTan)
                 Spacer()
                 Button {
                     SavyHapticFeedback.primaryImpact()
@@ -21,7 +21,8 @@ struct NewsChannelStoriesGroup: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 26, weight: .bold))
-                        .foregroundStyle(SavyTheme.crimson)
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, SavyTheme.crimson)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("New story")

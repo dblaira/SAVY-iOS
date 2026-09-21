@@ -35,10 +35,9 @@ struct StoryFormView: View {
                 statusSection
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white.ignoresSafeArea())
+            .background(SavyTheme.deepNavy.ignoresSafeArea())
             .tint(Brand.crimson)
-            .navigationTitle(story.headline)
-            .navigationBarTitleDisplayMode(.inline)
+            .savyPageTitle(story.headline, color: SavyTheme.deepNavy)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { cancelled = true; dismiss() } label: {
@@ -164,7 +163,7 @@ struct StoryFormView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.5))
+            .foregroundStyle(.white.opacity(0.72))
     }
 
     private func toast(_ title: String) -> some View {

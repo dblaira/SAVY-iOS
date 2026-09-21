@@ -118,7 +118,7 @@ struct RootView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                SavyTheme.paper.ignoresSafeArea()
+                SavyTheme.deepNavy.ignoresSafeArea()
 
                 Group {
                     switch navigationState.activeSection {
@@ -246,7 +246,7 @@ struct RootView: View {
                     onOpenPersonalAuthorityReview: {
                         isPersonalAuthorityReviewPresented = true
                     },
-                    appearance: .onWhiteHeader
+                    appearance: .onDarkHero
                 )
             }
             .padding(.horizontal, 16)
@@ -305,7 +305,7 @@ struct EditorialHomeView: View {
                 await leverageStore.refresh()
             }
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(SavyTheme.deepNavy.ignoresSafeArea())
         .sheet(item: $editingReminder) { reminder in
             ReminderFormView(existing: reminder, existingTags: reminderStore.recentTags) { updated in
                 reminderStore.save(updated)
@@ -322,7 +322,7 @@ struct EditorialHomeView: View {
 
                 Text(leverageStore.status)
                     .font(SavyTheme.readingLabel(13))
-                    .foregroundStyle(leverageStore.isLiveContent ? SavyTheme.ink : SavyTheme.crimson)
+                    .foregroundStyle(leverageStore.isLiveContent ? Color.white : SavyTheme.crimson)
 
                 if leverageStore.isLoading {
                     ProgressView()
@@ -335,12 +335,12 @@ struct EditorialHomeView: View {
 
             Text(leverageStore.statusDetail)
                 .font(SavyTheme.readingBody(13))
-                .foregroundStyle(SavyTheme.secondaryText)
+                .foregroundStyle(.white.opacity(0.72))
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Capture: \(reminderStore.syncStatusLabel)")
                 .font(SavyTheme.readingBody(13))
-                .foregroundStyle(SavyTheme.secondaryText)
+                .foregroundStyle(.white.opacity(0.72))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -350,7 +350,7 @@ struct EditorialHomeView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(leverageStore.status). \(leverageStore.statusDetail)")
@@ -420,7 +420,7 @@ struct EditorialHomeView: View {
             .padding(.bottom, RootHomeLayout.carouselBottomPadding)
         }
         .accessibilityIdentifier("greatestLeverageCarousel")
-        .background(Color.white)
+        .background(SavyTheme.deepNavy)
     }
 
     private var homeContentSections: some View {
@@ -481,7 +481,7 @@ struct EditorialHomeView: View {
         .padding(.bottom, RootHomeLayout.homeBandBottomPadding)
         .padding(.horizontal, RootHomeLayout.homeBandHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
+        .background(SavyTheme.deepNavy)
     }
 
     /// Copied from Understood `ActionsHomeView.cardColors` / `SavyReminderScreens.cardColors`.
@@ -964,66 +964,22 @@ private struct LeverageSectionView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                if isPosts {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text(section.title)
-                            .font(.system(size: 44, weight: .regular, design: .serif))
-                            .foregroundStyle(.white)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(section.summary)
-                            .font(.system(size: 17, weight: .regular, design: .serif))
-                            .lineSpacing(5)
-                            .foregroundStyle(.white.opacity(0.75))
-                    }
+                Text(section.title)
+                    .font(SavyTypography.displaySerif(44, weight: .bold))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24)
                     .padding(.top, 24)
                     .padding(.bottom, 28)
                     .background(SavyTheme.deepNavy)
                     .overlay(alignment: .bottom) {
-                        Rectangle().fill(SavyTheme.crimson).frame(height: RootHomeLayout.heroDividerHeight)
+                        if isPosts {
+                            Rectangle().fill(SavyTheme.crimson).frame(height: RootHomeLayout.heroDividerHeight)
+                        }
                     }
                     .padding(.horizontal, -24)
-                    .accessibilityIdentifier("socialMediaPostsHeader")
-
-                    Text(section.headline)
-                        .font(.system(size: 24, weight: .regular, design: .serif))
-                        .foregroundStyle(SavyTheme.ink)
-                } else if isBeliefs {
-                    Text(section.title)
-                        .font(SavyTypography.bodoniModa(44, weight: 400, opticalSize: 48))
-                        .lineSpacing(2)
-                        .foregroundStyle(SavyTheme.ink)
-                        .padding(.top, 34)
-
-                    Text(section.headline)
-                        .font(SavyTypography.bodoniModa(24, weight: 400, opticalSize: 24))
-                        .foregroundStyle(SavyTheme.ink)
-                } else {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(section.eyebrow)
-                            .font(.system(size: 12, weight: .bold))
-                            .tracking(2.4)
-                            .foregroundStyle(SavyTheme.crimson)
-
-                        Text(section.title)
-                            .font(.system(size: 44, weight: .regular, design: .serif))
-                            .italic(section.id == "ontology")
-                            .lineSpacing(2)
-                            .foregroundStyle(SavyTheme.ink)
-
-                        Text(section.summary)
-                            .font(.system(size: 17, weight: .regular, design: .serif))
-                            .lineSpacing(5)
-                            .foregroundStyle(.black.opacity(0.58))
-                            .padding(.top, 4)
-                    }
-                    .padding(.top, 34)
-
-                    Text(section.headline)
-                        .font(.system(size: 24, weight: .regular, design: .serif))
-                        .foregroundStyle(SavyTheme.ink)
-                }
+                    .accessibilityIdentifier(isPosts ? "socialMediaPostsHeader" : "sectionPageHeader")
 
                 if let postStore, let reminderStore {
                     NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore)
@@ -1049,11 +1005,11 @@ private struct LeverageSectionView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 48)
         }
-        .background((isBeliefs ? Color.white : SavyTheme.paper).ignoresSafeArea())
-        .toolbarBackground(isPosts ? SavyTheme.deepNavy : Color.clear, for: .navigationBar)
-        .toolbarBackground(isPosts ? .visible : .automatic, for: .navigationBar)
-        .toolbarColorScheme(isPosts ? .dark : nil, for: .navigationBar)
-        .tint(isPosts ? SavyTheme.crimson : SavyTheme.ink)
+        .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .toolbarBackground(SavyTheme.deepNavy, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .tint(SavyTheme.crimson)
         .navigationBarBackButtonHidden(isPosts)
         .toolbar {
             if isPosts {
@@ -1162,9 +1118,12 @@ struct LeverageDetailView: View {
             .padding(.top, 34)
             .padding(.bottom, 54)
         }
-        .background(SavyTheme.paper.ignoresSafeArea())
-        .navigationTitle(section.title)
-        .navigationBarTitleDisplayMode(.inline)
+        .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .savyPageTitle(section.title)
+        .toolbarBackground(SavyTheme.deepNavy, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .tint(SavyTheme.crimson)
         .task(id: item.id) {
             guard showsGraphTrace else {
                 graphTrace = nil
@@ -1179,7 +1138,7 @@ struct LeverageDetailView: View {
         Text(beliefHeroText)
             .font(SavyTheme.beliefSerif(30))
             .lineSpacing(8)
-            .foregroundStyle(SavyTheme.ink)
+            .foregroundStyle(.white)
             .fixedSize(horizontal: false, vertical: true)
 
         if let graphTrace {
@@ -1204,7 +1163,7 @@ struct LeverageDetailView: View {
             Text(beliefHeroText)
                 .font(SavyTheme.beliefSerif(30))
                 .lineSpacing(8)
-                .foregroundStyle(SavyTheme.ink)
+                .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
 
             legacyDetailBody
@@ -1217,17 +1176,17 @@ struct LeverageDetailView: View {
             Text(item.summary)
                 .font(.system(size: 19, weight: .regular, design: .serif))
                 .lineSpacing(5)
-                .foregroundStyle(.black.opacity(0.58))
+                .foregroundStyle(.white.opacity(0.72))
         }
 
         if !item.body.isEmpty, item.body != item.title {
-            Divider()
+            Rectangle().fill(.white.opacity(0.2)).frame(height: 1)
                 .padding(.vertical, 4)
 
             Text(item.body)
                 .font(.system(size: 18, weight: .regular, design: .serif))
                 .lineSpacing(7)
-                .foregroundStyle(SavyTheme.ink)
+                .foregroundStyle(.white)
         }
     }
 
@@ -1237,7 +1196,7 @@ struct LeverageDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Pathway")
                     .font(SavyTheme.beliefSerif(42))
-                    .foregroundStyle(SavyTheme.ink)
+                    .foregroundStyle(.white)
 
                 ForEach(trace.triplePaths, id: \.axiomIri) { path in
                     pathwayCard(path)

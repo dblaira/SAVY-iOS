@@ -70,12 +70,12 @@ struct ReminderFormView: View {
                 unifiedEntrySections
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white.ignoresSafeArea())
+            .background(SavyTheme.deepNavy.ignoresSafeArea())
             .tint(Brand.crimson)
             // Header mirrors the Title as you type — the type name until the first character, then
             // the live title at full size. Compact icon buttons leave it more room.
-            .navigationTitle(r.title.trimmingCharacters(in: .whitespaces).isEmpty ? r.kind.label : r.title)
-            .navigationBarTitleDisplayMode(.inline)
+            .savyPageTitle(r.title.trimmingCharacters(in: .whitespaces).isEmpty ? r.kind.label : r.title,
+                           color: SavyTheme.deepNavy)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { cancelled = true; dismiss() } label: {
@@ -252,7 +252,7 @@ struct ReminderFormView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.5))
+            .foregroundStyle(.white.opacity(0.72))
     }
 
     private func urlField(_ placeholder: String) -> some View {

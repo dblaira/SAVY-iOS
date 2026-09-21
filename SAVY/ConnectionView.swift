@@ -73,22 +73,17 @@ struct ConnectionView: View {
             .accessibilityLabel("Back")
 
             Text(section.title)
-                .font(SavyTypography.bodoniModa(56, weight: 400, opticalSize: 56))
-                .foregroundStyle(SavyTheme.ink)
+                .font(SavyTypography.displaySerif(56, weight: .bold))
+                .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
                 .padding(.top, 24)
-
-            Text(section.headline)
-                .font(SavyTypography.bodoniModa(22, weight: 400, opticalSize: 22))
-                .foregroundStyle(SavyTheme.ink.opacity(0.62))
-                .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, ConnectionLayout.headerHorizontalPadding)
         .padding(.top, topInset + 18)
         .padding(.bottom, 30)
-        .background(SavyTheme.bottomNavTan)
+        .background(SavyTheme.deepNavy)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(SavyTheme.crimson)

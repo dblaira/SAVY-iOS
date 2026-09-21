@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// The post form. Same shell as the Reminder / Action / Event form — white page, cream
+/// The post form. Same shell as the Reminder / Action / Event form — navy page, cream
 /// sections, crimson accent, floppy-disk Save — so entry feels identical.
 ///
 /// Field order follows how a post is made: the post itself in Adam's words, then the
@@ -47,10 +47,9 @@ struct SocialPostFormView: View {
                 statusSection
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white.ignoresSafeArea())
+            .background(SavyTheme.deepNavy.ignoresSafeArea())
             .tint(Brand.crimson)
-            .navigationTitle(post.headline)
-            .navigationBarTitleDisplayMode(.inline)
+            .savyPageTitle(post.headline, color: SavyTheme.deepNavy)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { cancelled = true; dismiss() } label: {
@@ -224,7 +223,7 @@ struct SocialPostFormView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.5))
+            .foregroundStyle(.white.opacity(0.72))
     }
 
     private func enumMenu<T: CaseIterable & Identifiable & Hashable>(

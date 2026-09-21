@@ -81,7 +81,8 @@ struct NewsChannelPostsGroup: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 26, weight: .bold))
-                        .foregroundStyle(SavyTheme.crimson)
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, SavyTheme.crimson)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("New post")

@@ -238,22 +238,50 @@ final class SAVYPostFormUITests: XCTestCase {
         scrollTo(picker, upward: false)
         picker.tap()
         attach("Framework menu with red form icons")
-        let option = app.buttons[name].firstMatch
         let menuButtons = app.buttons.matching(NSPredicate(format: "label IN %@", themeNames))
         for _ in 0..<10 {
-            if option.exists && option.isHittable {
-                option.tap()
+            let screen = app.frame.insetBy(dx: 12, dy: 12)
+            let visible = menuButtons.allElementsBoundByIndex.compactMap { button -> (element: XCUIElement, frame: CGRect)? in
+                let frame = button.frame
+                guard button.isHittable, !frame.isEmpty, screen.contains(frame) else { return nil }
+                return (button, frame)
+            }.sorted { $0.frame.minY < $1.frame.minY }
+            // The native menu reports partly clipped first/last rows as hittable. Their
+            // centers can lie outside the rounded menu and drag the form behind it instead.
+            let interior = Array(visible.dropFirst().dropLast())
+            guard let top = interior.first, let bottom = interior.last else {
+                XCTFail("Theme menu did not expose enough fully visible options to scroll")
+                return
+            }
+            let left = interior.map { $0.frame.minX }.max() ?? screen.minX
+            let right = interior.map { $0.frame.maxX }.min() ?? screen.maxX
+            let x = (left + right) / 2
+            let topY = top.frame.midY
+            let bottomY = bottom.frame.midY
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+
+            // Wait until the target has moved inside the menu, away from either clipped edge.
+            if let target = interior.first(where: { $0.element.label == name }) {
+                target.element.tap()
                 XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 5))
                 return
             }
-            let visible = menuButtons.allElementsBoundByIndex.filter { $0.isHittable && !$0.frame.isEmpty }
-            guard let top = visible.min(by: { $0.frame.minY < $1.frame.minY }),
-                  let bottom = visible.max(by: { $0.frame.maxY < $1.frame.maxY }) else {
-                XCTFail("Theme menu did not expose its options")
+
+            // At the actual beginning/end of the catalog, its edge item is also selectable.
+            if let target = visible.first(where: { $0.element.label == name }),
+               name == themeNames.first || name == themeNames.last {
+                target.element.tap()
+                XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 5))
                 return
             }
-            let start = bottom.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let end = top.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+
+            let targetIndex = themeNames.firstIndex(of: name) ?? themeNames.count
+            let firstInteriorIndex = themeNames.firstIndex(of: top.element.label) ?? 0
+            let movingDown = targetIndex >= firstInteriorIndex
+            let startY = movingDown ? bottomY : topY
+            let endY = movingDown ? topY : bottomY
+            let start = origin.withOffset(CGVector(dx: x - app.frame.minX, dy: startY - app.frame.minY))
+            let end = origin.withOffset(CGVector(dx: x - app.frame.minX, dy: endY - app.frame.minY))
             start.press(forDuration: 0.1, thenDragTo: end)
         }
         XCTFail("\(name) was not reachable in the 28-theme menu")

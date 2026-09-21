@@ -930,7 +930,7 @@ struct PersonalAuthorityReviewView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .preferredColorScheme(.light)
+        .preferredColorScheme(.dark)
         .safeAreaInset(edge: .bottom) {
             conferenceBoundary
         }
@@ -953,7 +953,7 @@ struct PersonalAuthorityReviewView: View {
 
                     Text("Confirm what\nyou said.")
                         .font(SavyTypography.displaySerif(52, weight: .bold))
-                        .foregroundStyle(Brand.card)
+                        .foregroundStyle(.white)
                         .lineSpacing(-6)
                         .minimumScaleFactor(0.8)
                 }
@@ -993,11 +993,6 @@ struct PersonalAuthorityReviewView: View {
                 .font(SavyTypography.displaySerif(27, weight: .bold))
                 .foregroundStyle(Brand.card)
                 .fixedSize(horizontal: false, vertical: true)
-
-            Text("CONFIRMATION, NOT BELIEF REVIEW")
-                .font(SavyTheme.readingLabel(12))
-                .tracking(1.6)
-                .foregroundStyle(Brand.tan)
         }
         .padding(.horizontal, 20)
         .padding(.top, 22)
@@ -1133,6 +1128,7 @@ struct PersonalAuthorityReviewView: View {
                 .accessibilityIdentifier("personalAuthorityDirectMessagesApproved")
 
                 TextField("Search your words, source, or number", text: $searchText)
+                    .environment(\.colorScheme, .light)
                     .font(SavyTheme.readingBody(16))
                     .foregroundStyle(SavyTheme.deepNavy)
                     .padding(.horizontal, 16)
@@ -1395,13 +1391,9 @@ private struct PersonalAuthorityConferenceDetail: View {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("STATEMENT #\(candidate.index)")
-                                .font(SavyTheme.readingLabel(13))
-                                .tracking(1.5)
-                                .foregroundStyle(SavyTheme.crimson)
-                            Text(candidate.sourceLabel)
-                                .font(SavyTheme.readingBody(13))
-                                .foregroundStyle(Brand.tan)
+                            Text("Statement #\(candidate.index)")
+                                .font(SavyTypography.displaySerif(24, weight: .bold))
+                                .foregroundStyle(.white)
                         }
 
                         Spacer()
@@ -1424,6 +1416,9 @@ private struct PersonalAuthorityConferenceDetail: View {
                             .frame(width: 11, height: 11)
                             .padding(.top, 4)
                         VStack(alignment: .leading, spacing: 4) {
+                            Text(candidate.sourceLabel)
+                                .font(SavyTheme.readingBody(13))
+                                .foregroundStyle(Brand.tan)
                             Text(candidate.conferenceStatus.title)
                                 .font(SavyTheme.readingLabel(13))
                                 .foregroundStyle(Brand.card)
@@ -1464,7 +1459,7 @@ private struct PersonalAuthorityConferenceDetail: View {
             }
             .scrollIndicators(.hidden)
         }
-        .preferredColorScheme(.light)
+        .preferredColorScheme(.dark)
         .accessibilityIdentifier("personalAuthorityCandidateDetail")
     }
 

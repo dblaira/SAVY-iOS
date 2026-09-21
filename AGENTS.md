@@ -58,11 +58,17 @@ The Social Media Posts + now opens the same shared Post entry form as the bolt, 
 
 Physical-device UI tests must use isolated storage and must not write synthetic entries to the live cache, cloud, Harness queue, or HarnessedRegistry.
 
+## Page styling — September 21, 2026
+
+Adam approved navy behind every page, including the homepage carousel and lower card rows, with the existing colored cards and navigation retained. Page headings use the same `SavyTypography.displaySerif` face as SAVY and Reminders (Bodoni 72 Oldstyle), in white on the navy canvas. Compact titles inside the existing white form navigation bars use that face in navy. Keep status-bar text readable on navy.
+
+Adam: "There should be no subtitle underneath the main title of the page." Remove decorative page subtitles, including the Social Media Posts summary and weekly brief headline, and the Reminders/Actions/Connection taglines. Saved story subtitles, post answers, article content, account guidance, and source attribution remain content.
+
 ## Current Lane
 
 Update this line when the active milestone changes:
 
-**Current lane:** Post questions saved with answers, unlimited post pins, shared 28-template entry, navy header, and matching red framework icons and bare back chevron; verify on Adam's connected iPhone and through cloud retrieval. Validated RDF remains limited to Belief Library and Pathway.
+**Current lane:** Navy canvases across every page, shared Bodoni page titles, and no decorative page subtitles; built and visually verified on Adam's connected iPhone. Preserve saved Post questions and answers, unlimited pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
 
 ## How agents use Adam's Macs (required)
 

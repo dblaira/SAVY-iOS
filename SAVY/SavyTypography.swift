@@ -1,6 +1,24 @@
 import SwiftUI
 import UIKit
 
+extension View {
+    /// Use SAVY's display face for compact page titles without changing native navigation controls.
+    func savyPageTitle(_ title: String, color: Color = .white) -> some View {
+        navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title)
+                        .font(SavyTypography.displaySerif(24, weight: .bold))
+                        .foregroundStyle(color)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
+    }
+}
+
 enum SavyTypography {
     /// Same face Notorious Recall uses — built into iOS, always available on device.
     static let recallSerifName = "Bodoni 72 Oldstyle"

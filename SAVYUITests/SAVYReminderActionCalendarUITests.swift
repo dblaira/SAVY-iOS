@@ -6,7 +6,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["SAVY_UI_TEST_UNLOCKED"]
+        app.launchArguments = ["SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_COWBOY_STUB"]
         let preservesExistingData = name.contains("testEntryFormHasNoManualCowboyAIAction")
             || name.contains("testHomepageRemovesHistoricalCowboyCard")
             || name.contains("testHomepageUsesGreatestLeverageCarouselAndVerticalContentOrder")
@@ -269,6 +269,105 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         contentScreenshot.name = "homepage-vertical-content-with-clean-spacing"
         contentScreenshot.lifetime = .keepAlways
         add(contentScreenshot)
+
+        // Actual page screenshots complete the visual review. These routes only navigate;
+        // they do not save entries or change the homepage's stored section-pin preference.
+        for (tab, screenID) in [("Reminders", "remindersHome"), ("Actions", "actionsHome")] {
+            openTab(tab)
+            let screen = app.descendants(matching: .any).matching(identifier: screenID).firstMatch
+            XCTAssertTrue(screen.waitForExistence(timeout: 10), "\(tab) page did not open")
+            captureSettledPage("visual-\(tab.lowercased())", anchor: screen.staticTexts[tab].firstMatch)
+        }
+
+        openTab("Calendar")
+        let calendarScroll = app.scrollViews.firstMatch
+        let todayButton = app.buttons["Today"].firstMatch
+        // Calendar initially scrolls to the current hour. Bring its header and month back
+        // into view before separately photographing the timeline through its Today control.
+        for _ in 0..<8 where !todayButton.isHittable { calendarScroll.swipeDown() }
+        captureSettledPage("visual-calendar-header-and-month", anchor: todayButton)
+        XCTAssertFalse(app.buttons["Next month"].frame.intersects(app.buttons["SAVY menu"].frame),
+                       "The account menu overlaps the next-month control")
+        todayButton.tap()
+        let hour = max(0, Calendar.current.component(.hour, from: Date()) - 1)
+        let hourDate = Calendar.current.date(from: DateComponents(hour: hour)) ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h a"
+        let hourLabel = app.staticTexts[formatter.string(from: hourDate)].firstMatch
+        captureSettledPage("visual-calendar-timeline", anchor: hourLabel)
+
+        app.buttons["Now"].firstMatch.tap()
+        XCTAssertTrue(homeScroll.waitForExistence(timeout: 10), "Now did not reopen")
+        openVisualContentSection("ontology", screenshot: "visual-ontology")
+        returnFromContentPage(expected: homeScroll)
+        openVisualContentSection("field-essays", screenshot: "visual-field-essays")
+
+        // Content is read from the existing page. A row tap opens a detail without editing
+        // it; no fixture words, source strings, font constants, or color constants are tested.
+        let contentRow = app.scrollViews.firstMatch.buttons.firstMatch
+        if contentRow.exists {
+            scrollVisualTargetIntoView(contentRow, in: app.scrollViews.firstMatch)
+            XCTAssertTrue(contentRow.isHittable, "Field Essays content row could not be reached")
+            contentRow.tap()
+            let sectionHeader = app.descendants(matching: .any).matching(identifier: "sectionPageHeader").firstMatch
+            XCTAssertTrue(sectionHeader.waitForNonExistence(timeout: 10), "Content detail did not open")
+            let detailText = app.scrollViews.firstMatch.staticTexts.firstMatch
+            captureSettledPage("visual-field-essays-detail", anchor: detailText)
+            returnFromContentPage(expected: sectionHeader)
+        }
+        returnFromContentPage(expected: homeScroll)
+    }
+
+    private func openVisualContentSection(_ sectionID: String, screenshot: String) {
+        let home = app.scrollViews["editorialHomeScroll"].firstMatch
+        let card = app.descendants(matching: .any)
+            .matching(identifier: "homeContentSection-\(sectionID)").firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "Homepage section \(sectionID) is missing")
+        scrollVisualTargetIntoView(card, in: home)
+        XCTAssertTrue(card.isHittable, "Homepage section \(sectionID) could not be reached")
+        card.tap()
+        let header = app.descendants(matching: .any).matching(identifier: "sectionPageHeader").firstMatch
+        captureSettledPage(screenshot, anchor: header)
+    }
+
+    private func returnFromContentPage(expected destination: XCUIElement) {
+        // These content pages have one leading native navigation-back button.
+        let back = app.navigationBars.buttons.firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "Content navigation back button is missing")
+        back.tap()
+        XCTAssertTrue(destination.waitForExistence(timeout: 10), "Content back navigation did not return")
+    }
+
+    private func scrollVisualTargetIntoView(_ target: XCUIElement, in scroll: XCUIElement) {
+        for _ in 0..<8 where !target.isHittable {
+            if target.exists && !target.frame.isEmpty && target.frame.midY < app.frame.midY {
+                scroll.swipeDown()
+            } else {
+                scroll.swipeUp()
+            }
+        }
+    }
+
+    private func captureSettledPage(_ name: String, anchor: XCUIElement) {
+        XCTAssertTrue(anchor.waitForExistence(timeout: 10), "Screenshot anchor for \(name) is missing")
+        var previousFrame = CGRect.null
+        var stableSamples = 0
+        let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard anchor.exists && anchor.isHittable && !anchor.frame.isEmpty else {
+                stableSamples = 0
+                return false
+            }
+            let frame = anchor.frame
+            stableSamples = frame == previousFrame ? stableSamples + 1 : 0
+            previousFrame = frame
+            return stableSamples >= 2
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 10), .completed,
+                       "\(name) did not settle on a visible screen")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = name
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
     }
 
     func testConnectionUsesMeasuredReminderCardHierarchy() {
