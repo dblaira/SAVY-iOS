@@ -68,6 +68,8 @@ Adam: "There should be no subtitle underneath the main title of the page." Remov
 
 Adam approved the numbered Post layout: reuse the Reminders display, show the first authored sentence plus metadata, make pinned cards larger with more detail, and rotate white, dark red, sand, and navy across the displayed list. The inline count measures saved posts toward 50; it includes both shared-form Post entries and older SocialPost entries. This is a saved-post goal, not a publication count.
 
+Adam refined the density after using the page: unpinned Posts show one preview line with an ellipsis and compact metadata so four or five cards fit. Only pinned Posts expand to show the full first sentence and more detail; the first card is never enlarged merely because of its position. The Reminders example remains the visual reference. Remove the Cowboy AI hat from Post cards.
+
 Post numbers are stored references, assigned across both formats in creation order initially and retained across pinning, editing, and relaunch. The local allocator retains deleted assignments so a later post does not reuse a number. Keep full saved questions and answers intact behind the display preview. Number assignment must not invoke the Harness/candidate capture pipeline or cause an older clean cache to overwrite newer remote content.
 
 ## Current Lane

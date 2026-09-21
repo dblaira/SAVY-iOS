@@ -563,6 +563,7 @@ struct SavyBandCard<Header: View>: View {
     let secondaryText: String
     var detailLine: String? = nil
     var detail: SavyCardDetail = .minimal
+    var isCompact: Bool = false
     var minimumHeight: CGFloat? = nil
     var leadingEdge: Color? = nil
     var border: Color = .white.opacity(0.08)
@@ -571,7 +572,7 @@ struct SavyBandCard<Header: View>: View {
     @ViewBuilder var header: Header
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: isCompact ? 4 : 6) {
             header
                 .foregroundStyle(fg.opacity(0.7))
 
@@ -583,7 +584,7 @@ struct SavyBandCard<Header: View>: View {
                 Text(signalText)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(fg.opacity(0.8))
-                    .lineLimit(2)
+                    .lineLimit(isCompact ? 1 : 2)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -591,7 +592,7 @@ struct SavyBandCard<Header: View>: View {
                 Text(secondaryText)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(fg.opacity(0.55))
-                    .lineLimit(secondaryLineLimit)
+                    .lineLimit(isCompact ? 1 : secondaryLineLimit)
             }
 
             if detail != .minimal, let note = detailLine {
@@ -603,7 +604,7 @@ struct SavyBandCard<Header: View>: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.vertical, isCompact ? 8 : 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: minimumHeight, alignment: .topLeading)
         .background(bg)
@@ -621,6 +622,8 @@ struct SavyBandCard<Header: View>: View {
         let text = Text(title)
             .font(SavyTypography.displaySerif(26, weight: .regular))
             .foregroundStyle(fg)
+            .lineLimit(isCompact ? 1 : nil)
+            .truncationMode(.tail)
             .fixedSize(horizontal: false, vertical: true)
         if let titleAccessibilityIdentifier {
             text.accessibilityIdentifier(titleAccessibilityIdentifier)

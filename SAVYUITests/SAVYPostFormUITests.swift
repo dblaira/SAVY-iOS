@@ -171,6 +171,7 @@ final class SAVYPostFormUITests: XCTestCase {
         app.buttons["Now"].firstMatch.tap()
         openPostsPage()
         XCTAssertEqual(element("postSavedCount").label, "50 / 50")
+        XCTAssertFalse(app.images["Harnessed"].firstMatch.exists, "Post cards must not show Cowboy AI hats")
 
         func rowID(_ number: Int) -> String {
             "postEntryRow-" + String(format: "00000000-0000-0000-0000-%012d", number)
@@ -194,6 +195,7 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(ordinary.isHittable)
         XCTAssertLessThan(ordinary.frame.height, pinnedHeight,
                           "Equal-length first sentences should have more room when pinned")
+        XCTAssertLessThanOrEqual(ordinary.frame.height, 115, "Unpinned Post cards must stay compact")
         XCTAssertEqual(pinButton(rowID: rowID(50)).label, "Pin post")
         scrollTo(element(rowID(49)))
         app.swipeUp()
@@ -222,6 +224,20 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertEqual(pinButton(rowID: rowID(50)).label, "Unpin post")
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "POST #50")).firstMatch.exists)
         attach("53 numbered pinned Post survives relaunch")
+
+        // Position never enlarges an unpinned post, including the first card in the list.
+        for number in [50, 2, 1] { setPinned(false, rowID: rowID(number)) }
+        scrollTo(element("postSavedCount"), upward: false)
+        let firstUnpinned = element(rowID(50))
+        XCTAssertLessThanOrEqual(firstUnpinned.frame.height, 115)
+        let firstHeadline = element("postEntryHeadline-00000000-0000-0000-0000-000000000050")
+        XCTAssertLessThanOrEqual(firstHeadline.frame.height, 34, "Unpinned preview must be one line with tail truncation")
+        let visibleIDs = Set(postRows.allElementsBoundByIndex.filter { row in
+            row.isHittable && row.frame.minY >= element("postSavedCount").frame.maxY
+                && row.frame.maxY <= app.frame.maxY - 20
+        }.map { $0.identifier })
+        XCTAssertGreaterThanOrEqual(visibleIDs.count, 4, "At least four complete unpinned cards should fit below the page header")
+        attach("54 four to five compact unpinned Posts including first card")
     }
 
     func testNewsChannelCardOpensPosts() {

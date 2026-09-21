@@ -143,6 +143,7 @@ struct NewsChannelPostsGroup: View {
             Image(systemName: isPinned ? "pin.fill" : "pin")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(isPinned ? palette.pin : palette.fg.opacity(0.6))
+                .offset(y: isPinned ? 0 : -4)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -291,6 +292,7 @@ struct NewsChannelPostRow: View {
             secondaryText: secondaryText,
             detailLine: preview.detail,
             detail: post.pinned ? .full : .minimal,
+            isCompact: !post.pinned,
             minimumHeight: post.pinned ? 186 : nil,
             leadingEdge: SavyTheme.crimson,
             border: palette.border,
@@ -365,6 +367,7 @@ struct NewsChannelPostEntryRow: View {
             secondaryText: secondaryText,
             detailLine: preview.detail,
             detail: entry.pinned ? .full : .minimal,
+            isCompact: !entry.pinned,
             minimumHeight: entry.pinned ? 186 : nil,
             leadingEdge: SavyTheme.crimson,
             border: palette.border,
@@ -378,15 +381,6 @@ struct NewsChannelPostEntryRow: View {
                     .font(.system(size: 11, weight: .heavy))
                     .tracking(1.5)
                     .accessibilityIdentifier("postEntryNumber-\(entry.id.uuidString)")
-                if HarnessedRegistry.isHarnessed(entry) {
-                    Image("HarnessedHat")
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 18, height: 18)
-                        .foregroundStyle(palette.fg.opacity(0.7))
-                        .accessibilityLabel("Harnessed")
-                }
             }
             .padding(.trailing, 36)
         }
