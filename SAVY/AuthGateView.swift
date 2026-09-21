@@ -241,7 +241,7 @@ private struct LockedView: View {
 
             Text("SAVY")
                 .font(SavyTypography.displaySerif(54, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(SavyTheme.crimson)
 
             Button {
                 Task {
@@ -264,14 +264,14 @@ private struct LockedView: View {
                 Text(email)
                     .font(.system(size: 15, weight: .bold))
                     .tracking(1.4)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(Brand.tabActive)
             }
 
             Button("Use password instead") {
                 store.usePasswordInstead()
             }
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.72))
+            .foregroundStyle(Brand.tabActive)
 
             if let message = store.message {
                 Text(message)

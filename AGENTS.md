@@ -64,7 +64,7 @@ Adam approved navy behind every page, including the homepage carousel and lower 
 
 Adam: "There should be no subtitle underneath the main title of the page." Remove decorative page subtitles, including the Social Media Posts summary and weekly brief headline, and the Reminders/Actions/Connection taglines. Saved story subtitles, post answers, article content, account guidance, and source attribution remain content.
 
-Face ID sign-in is the background exception: Adam requested only its background change to a subtle vertical gradient from the existing light sand (`Brand.card`) above the content to the navigation brown (`SavyTheme.bottomNavTan`) at the bottom. Preserve every text color, font, control, and position on that page.
+Face ID sign-in is the background exception: Adam requested a subtle vertical gradient from the existing light sand (`Brand.card`) above the content to the navigation brown (`SavyTheme.bottomNavTan`) at the bottom. Adam then requested the SAVY label in red (`SavyTheme.crimson`) and the user ID and password wording in darker brown (`Brand.tabActive`). Preserve the fonts, controls, and positions on that page.
 
 ## Numbered Post cards — September 21, 2026
 
