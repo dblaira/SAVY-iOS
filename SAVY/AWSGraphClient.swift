@@ -571,6 +571,7 @@ private struct GatewayReminderPayload: Encodable {
     let priority: String
     let locationName: String
     let kind: String
+    let postNumber: Int?
     let postThemeID: String?
     let postThemeName: String?
     let postAnswers: [String]?
@@ -601,6 +602,7 @@ private struct GatewayReminderPayload: Encodable {
         case flag
         case priority
         case locationName = "location_name"
+        case postNumber = "post_number"
         case postThemeID = "post_theme_id"
         case postThemeName = "post_theme_name"
         case postAnswers = "post_answers"
@@ -628,6 +630,7 @@ private struct GatewayReminderPayload: Encodable {
         priority = reminder.priority.rawValue
         locationName = reminder.locationName
         kind = reminder.kind.rawValue
+        postNumber = reminder.postNumber.flatMap { (1...2_147_483_647).contains($0) ? $0 : nil }
         postThemeID = reminder.kind == .post ? reminder.postThemeID : nil
         postThemeName = reminder.kind == .post ? reminder.postThemeName : nil
         postAnswers = reminder.kind == .post ? reminder.postQuestionAndAnswers : nil
@@ -672,6 +675,7 @@ private struct GatewayReminderRow: Decodable {
     let priority: String
     let locationName: String
     let kind: String
+    let postNumber: Int?
     let postThemeID: String?
     let postThemeName: String?
     let postAnswers: [String]?
@@ -703,6 +707,7 @@ private struct GatewayReminderRow: Decodable {
         case flag
         case priority
         case locationName = "location_name"
+        case postNumber = "post_number"
         case postThemeID = "post_theme_id"
         case postThemeName = "post_theme_name"
         case postAnswers = "post_answers"
@@ -740,6 +745,7 @@ private struct GatewayReminderRow: Decodable {
             deferDate: GatewayReminderDates.parseDateOnly(deferDate),
             waitingOn: waitingOn ?? "",
             locationName: locationName,
+            postNumber: postNumber.flatMap { (1...2_147_483_647).contains($0) ? $0 : nil },
             postThemeID: postThemeID,
             postThemeName: postThemeName,
             postAnswers: postAnswers,

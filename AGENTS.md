@@ -64,11 +64,17 @@ Adam approved navy behind every page, including the homepage carousel and lower 
 
 Adam: "There should be no subtitle underneath the main title of the page." Remove decorative page subtitles, including the Social Media Posts summary and weekly brief headline, and the Reminders/Actions/Connection taglines. Saved story subtitles, post answers, article content, account guidance, and source attribution remain content.
 
+## Numbered Post cards — September 21, 2026
+
+Adam approved the numbered Post layout: reuse the Reminders display, show the first authored sentence plus metadata, make pinned cards larger with more detail, and rotate white, dark red, sand, and navy across the displayed list. The inline count measures saved posts toward 50; it includes both shared-form Post entries and older SocialPost entries. This is a saved-post goal, not a publication count.
+
+Post numbers are stored references, assigned across both formats in creation order initially and retained across pinning, editing, and relaunch. The local allocator retains deleted assignments so a later post does not reuse a number. Keep full saved questions and answers intact behind the display preview. Number assignment must not invoke the Harness/candidate capture pipeline or cause an older clean cache to overwrite newer remote content.
+
 ## Current Lane
 
 Update this line when the active milestone changes:
 
-**Current lane:** Navy canvases across every page, shared Bodoni page titles, and no decorative page subtitles; built and visually verified on Adam's connected iPhone. Preserve saved Post questions and answers, unlimited pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
+**Current lane:** Numbered Post cards and the 50-post count are built and verified on Adam's connected iPhone with isolated test entries; stored numbers survive pinning and relaunch. Navy canvases, Bodoni page titles, and subtitle removal remain in place. Preserve saved Post questions and answers, unlimited pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
 
 ## How agents use Adam's Macs (required)
 

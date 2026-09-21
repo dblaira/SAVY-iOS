@@ -151,6 +151,7 @@ struct Reminder: Identifiable, Codable, Equatable {
     // Post (kind == .post; local-first like whenIAm). Theme id + name from PostThemeCatalog,
     // and the editable Decide fields in question order (question, blank line, answer).
     // Optionals so cached JSON written before Post existed still decodes.
+    var postNumber: Int? = nil
     var postThemeID: String? = nil
     var postThemeName: String? = nil
     var postAnswers: [String]? = nil

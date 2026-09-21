@@ -73,6 +73,8 @@ export function normalizeReminderInput(body: Partial<ReminderUpsertInput>): Remi
     location_name: String(body.location_name ?? ""),
     when_messaging_person: String(body.when_messaging_person ?? ""),
     kind: String(body.kind ?? "reminder"),
+    post_number: typeof body.post_number === "number" && Number.isInteger(body.post_number)
+      && body.post_number > 0 && body.post_number <= 2_147_483_647 ? body.post_number : null,
     post_theme_id: typeof body.post_theme_id === "string" ? body.post_theme_id : null,
     post_theme_name: typeof body.post_theme_name === "string" ? body.post_theme_name : null,
     post_answers: Array.isArray(body.post_answers) && body.post_answers.every((value) => typeof value === "string")

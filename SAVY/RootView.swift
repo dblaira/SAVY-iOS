@@ -84,35 +84,50 @@ struct RootView: View {
         let navigationState = SavyNavigationState()
         navigationState.activeSection = initialSection
         _navigationState = StateObject(wrappedValue: navigationState)
+        let loadedPostStore: SocialPostStore
+        let loadedReminderStore: ReminderStore
+        let numberLedgerURL: URL
         if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") {
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent("SAVYUITests", isDirectory: true)
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
-                for name in ["posts.json", "stories.json", "captures.json", "outbox.json"] {
+                for name in ["posts.json", "stories.json", "captures.json", "outbox.json", "post-numbers.json"] {
                     try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
                 }
             }
-            _postStore = StateObject(wrappedValue: try! SocialPostStore(fileURL: directory.appendingPathComponent("posts.json")))
+            loadedPostStore = try! SocialPostStore(fileURL: directory.appendingPathComponent("posts.json"))
             _storyStore = StateObject(wrappedValue: try! StoryStore(fileURL: directory.appendingPathComponent("stories.json")))
-            _reminderStore = StateObject(wrappedValue: ReminderStore(
+            loadedReminderStore = ReminderStore(
                 repo: LocalReminderRepository(),
                 cacheURL: directory.appendingPathComponent("reminders.json"),
                 technicalCaptureStore: try! TechnicalCaptureStore(fileURL: directory.appendingPathComponent("captures.json")),
                 candidateOutbox: try! CowboyCandidateOutbox(fileURL: directory.appendingPathComponent("outbox.json")),
                 candidateClient: IsolatedUITestCandidateClient()
-            ))
+            )
+            if let count = Int(ProcessInfo.processInfo.environment["SAVY_UI_TEST_SEED_POST_COUNT"] ?? "") {
+                loadedReminderStore.seedPostsForUITesting(count: count)
+            }
+            numberLedgerURL = directory.appendingPathComponent("post-numbers.json")
         } else {
-            _postStore = StateObject(wrappedValue: SocialPostStore.live())
+            loadedPostStore = SocialPostStore.live()
             _storyStore = StateObject(wrappedValue: StoryStore.live())
-            _reminderStore = StateObject(
-                wrappedValue: ReminderStore(
-                    repo: GatewayReminderRepository(
-                        accessToken: { session.accessToken },
-                        userEmail: { session.user.displayEmail }
-                    )
+            loadedReminderStore = ReminderStore(
+                repo: GatewayReminderRepository(
+                    accessToken: { session.accessToken },
+                    userEmail: { session.user.displayEmail }
                 )
             )
+            numberLedgerURL = PostNumberAllocator.defaultFileURL
         }
+        // Both formats participate in the initial chronological sequence. A damaged ledger
+        // is left intact rather than replaced with a sequence that could reuse references.
+        if let allocator = try? PostNumberAllocator(fileURL: numberLedgerURL) {
+            allocator.seed(reminders: loadedReminderStore.reminders, socialPosts: loadedPostStore.posts)
+            loadedReminderStore.configurePostNumbering(allocator)
+            loadedPostStore.configurePostNumbering(allocator)
+        }
+        _postStore = StateObject(wrappedValue: loadedPostStore)
+        _reminderStore = StateObject(wrappedValue: loadedReminderStore)
     }
 
     var body: some View {

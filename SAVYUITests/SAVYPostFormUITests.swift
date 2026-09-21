@@ -31,6 +31,10 @@ final class SAVYPostFormUITests: XCTestCase {
         app.launchArguments = [
             "SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS", "SAVY_UI_TEST_COWBOY_STUB",
         ]
+        if name.contains("testNumberedPostCardsShowFiftyGoalAndKeepReferences") {
+            app.launchArguments.append("SAVY_UI_TEST_DEMO_REMINDERS")
+            app.launchEnvironment["SAVY_UI_TEST_SEED_POST_COUNT"] = "50"
+        }
         app.launch()
         dismissSystemPrompt()
     }
@@ -158,6 +162,66 @@ final class SAVYPostFormUITests: XCTestCase {
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'storyRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 12), "Saved story did not appear")
+    }
+
+    func testNumberedPostCardsShowFiftyGoalAndKeepReferences() {
+        app.buttons["Reminders"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["One of the most productive days of my life."].waitForExistence(timeout: 8))
+        attach("49 Reminders retain the original shared card layout")
+        app.buttons["Now"].firstMatch.tap()
+        openPostsPage()
+        XCTAssertEqual(element("postSavedCount").label, "50 / 50")
+
+        func rowID(_ number: Int) -> String {
+            "postEntryRow-" + String(format: "00000000-0000-0000-0000-%012d", number)
+        }
+        let firstPinned = element(rowID(2))
+        let secondPinned = element(rowID(1))
+        XCTAssertTrue(firstPinned.waitForExistence(timeout: 5))
+        XCTAssertEqual(pinButton(rowID: rowID(2)).label, "Unpin post")
+        XCTAssertEqual(pinButton(rowID: rowID(1)).label, "Unpin post")
+        XCTAssertTrue(app.staticTexts["Synthetic post 2 starts with a clear observation."].exists,
+                      "The card must show the authored first sentence, without a template question")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "POST #2")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "#Synthetic")).firstMatch.exists)
+        let pinnedHeight = firstPinned.frame.height
+        XCTAssertGreaterThanOrEqual(pinnedHeight, 186)
+        XCTAssertLessThan(firstPinned.frame.minY, secondPinned.frame.minY)
+        attach("50 numbered white and red pinned Post cards")
+
+        let ordinary = element(rowID(50))
+        scrollTo(ordinary)
+        XCTAssertTrue(ordinary.isHittable)
+        XCTAssertLessThan(ordinary.frame.height, pinnedHeight,
+                          "Equal-length first sentences should have more room when pinned")
+        XCTAssertEqual(pinButton(rowID: rowID(50)).label, "Pin post")
+        scrollTo(element(rowID(49)))
+        app.swipeUp()
+        attach("51 numbered sand and navy regular Post cards")
+
+        // Moving a post into the pinned group must preserve its reference and saved content.
+        setPinned(true, rowID: rowID(50))
+        scrollTo(element(rowID(50)), upward: false)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "POST #50")).firstMatch.exists)
+        element(rowID(50)).tap()
+        let question = element("DecideAnswer0")
+        XCTAssertTrue(question.waitForExistence(timeout: 8))
+        let fullValue = question.value as? String ?? ""
+        XCTAssertTrue(fullValue.contains("\n\nSynthetic post 50 starts with a clear observation. This additional synthetic sentence"),
+                      "The compact first-sentence card must retain the full question and answer in storage")
+        attach("52 full original question and answer behind numbered card")
+        app.buttons["Cancel"].firstMatch.tap()
+
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "SAVY_UI_TEST_RESET_REMINDERS" }
+        app.launchEnvironment.removeValue(forKey: "SAVY_UI_TEST_SEED_POST_COUNT")
+        app.launch()
+        dismissSystemPrompt()
+        openPostsPage()
+        XCTAssertEqual(element("postSavedCount").label, "50 / 50")
+        XCTAssertEqual(pinButton(rowID: rowID(50)).label, "Unpin post")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "POST #50")).firstMatch.exists)
+        attach("53 numbered pinned Post survives relaunch")
     }
 
     func testNewsChannelCardOpensPosts() {

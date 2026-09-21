@@ -552,6 +552,84 @@ private final class SavyUpNextGestureView: UIView {
 
 enum SavyCardDetail { case minimal, medium, full }
 
+/// The shared Reminders card layout. Other card types supply their own header and content
+/// while retaining the same typography, spacing, and detail hierarchy.
+struct SavyBandCard<Header: View>: View {
+    let bg: Color
+    let fg: Color
+    let accent: Color
+    let title: String
+    let signalText: String
+    let secondaryText: String
+    var detailLine: String? = nil
+    var detail: SavyCardDetail = .minimal
+    var minimumHeight: CGFloat? = nil
+    var leadingEdge: Color? = nil
+    var border: Color = .white.opacity(0.08)
+    var secondaryLineLimit: Int = 1
+    var titleAccessibilityIdentifier: String? = nil
+    @ViewBuilder var header: Header
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            header
+                .foregroundStyle(fg.opacity(0.7))
+
+            titleText
+
+            Rectangle().fill(accent).frame(width: 36, height: 2)
+
+            if !signalText.isEmpty {
+                Text(signalText)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(fg.opacity(0.8))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !secondaryText.isEmpty {
+                Text(secondaryText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(fg.opacity(0.55))
+                    .lineLimit(secondaryLineLimit)
+            }
+
+            if detail != .minimal, let note = detailLine {
+                Text(note)
+                    .font(.system(size: 14))
+                    .foregroundStyle(fg.opacity(0.78))
+                    .lineLimit(detail == .full ? 3 : 1)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: minimumHeight, alignment: .topLeading)
+        .background(bg)
+        .overlay(alignment: .leading) {
+            if let leadingEdge {
+                Rectangle().fill(leadingEdge).frame(width: 3)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(border))
+    }
+
+    @ViewBuilder
+    private var titleText: some View {
+        let text = Text(title)
+            .font(SavyTypography.displaySerif(26, weight: .regular))
+            .foregroundStyle(fg)
+            .fixedSize(horizontal: false, vertical: true)
+        if let titleAccessibilityIdentifier {
+            text.accessibilityIdentifier(titleAccessibilityIdentifier)
+        } else {
+            text
+        }
+    }
+}
+
 struct SavyReminderBandCard: View {
     let reminder: Reminder
     let bg: Color
@@ -560,7 +638,16 @@ struct SavyReminderBandCard: View {
     var detail: SavyCardDetail = .minimal
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        SavyBandCard(
+            bg: bg,
+            fg: fg,
+            accent: accent,
+            title: reminder.title.isEmpty ? "Untitled" : reminder.title,
+            signalText: signalText,
+            secondaryText: secondaryText,
+            detailLine: detailLine,
+            detail: detail
+        ) {
             HStack(spacing: 6) {
                 Image(systemName: kindIcon)
                     .font(.system(size: 11, weight: .bold))
@@ -586,44 +673,7 @@ struct SavyReminderBandCard: View {
                         .accessibilityLabel("Harnessed")
                 }
             }
-            .foregroundStyle(fg.opacity(0.7))
-
-            Text(reminder.title.isEmpty ? "Untitled" : reminder.title)
-                .font(SavyTypography.displaySerif(26, weight: .regular))
-                .foregroundStyle(fg)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Rectangle().fill(accent).frame(width: 36, height: 2)
-
-            if !signalText.isEmpty {
-                Text(signalText)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(fg.opacity(0.8))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if !secondaryText.isEmpty {
-                Text(secondaryText)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(fg.opacity(0.55))
-                    .lineLimit(1)
-            }
-
-            if detail != .minimal, let note = detailLine {
-                Text(note)
-                    .font(.system(size: 14))
-                    .foregroundStyle(fg.opacity(0.78))
-                    .lineLimit(detail == .full ? 3 : 1)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(bg)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.08)))
     }
 
     private var kindIcon: String {

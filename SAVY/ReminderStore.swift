@@ -13,6 +13,7 @@ final class ReminderStore: ObservableObject {
     private let technicalCaptureStore: TechnicalCaptureStore
     private let candidateOutbox: CowboyCandidateOutbox
     private let candidateClient: any CowboyCandidateSubmitting
+    private var postNumberAllocator: PostNumberAllocator?
 
     // SAVY runs the reminder system on-device first, then syncs through GatewayReminderRepository.
     init(
@@ -90,6 +91,29 @@ final class ReminderStore: ObservableObject {
     }
     private func sortKey(_ r: Reminder) -> Date { r.fireDate ?? r.createdAt }
 
+    /// Numbering is metadata: keep the user's text and original timestamps, and avoid the
+    /// candidate-capture pipeline. Refresh merges current cloud content before uploading
+    /// numbering metadata, so an old clean cache cannot overwrite a newer remote edit.
+    func configurePostNumbering(_ allocator: PostNumberAllocator) {
+        postNumberAllocator = allocator
+        assignPostNumbers(syncNewAssignments: false)
+    }
+
+    private func assignPostNumbers(syncNewAssignments: Bool = true) {
+        guard let allocator = postNumberAllocator else { return }
+        allocator.seed(reminders: reminders, socialPosts: [])
+        var changed = false
+        for index in reminders.indices where reminders[index].kind == .post && reminders[index].status != .deleted {
+            let number = allocator.number(for: .reminder, id: reminders[index].id, savedNumber: reminders[index].postNumber)
+            if reminders[index].postNumber != number {
+                reminders[index].postNumber = number
+                if syncNewAssignments { reminders[index].needsSync = true }
+                changed = true
+            }
+        }
+        if changed { saveCache() }
+    }
+
     func bootstrap() async {
         await flushCandidateOutbox()
         guard await repo.ensureReady() else { return }
@@ -100,8 +124,12 @@ final class ReminderStore: ObservableObject {
     func refresh() async {
         do {
             let remote = try await repo.fetchAll()
+            // A fetched record's existing number must be reserved before an unnumbered
+            // record in the same response can consume the next number.
+            postNumberAllocator?.seed(reminders: remote.filter { ($0.postNumber ?? 0) > 0 }, socialPosts: [])
             let merged = mergeRemote(remote, withLocal: reminders)
             reminders = merged
+            assignPostNumbers()
             saveCache()
             reminders.forEach(NotificationScheduler.schedule)
             // A first refresh from the expanded gateway can reveal older cloud Posts
@@ -114,6 +142,10 @@ final class ReminderStore: ObservableObject {
 
     func save(_ reminder: Reminder) {
         var r = reminder
+        let savedNumber = reminders.first { $0.id == r.id }?.postNumber ?? r.postNumber
+        r.postNumber = r.kind == .post
+            ? postNumberAllocator?.number(for: .reminder, id: r.id, savedNumber: savedNumber) ?? savedNumber
+            : savedNumber
         r.updatedAt = Date()
         r.needsSync = true
         upsertLocal(r)
@@ -203,6 +235,7 @@ final class ReminderStore: ObservableObject {
 
     func delete(_ reminder: Reminder) {
         var r = reminder
+        r.postNumber = reminders.first { $0.id == r.id }?.postNumber ?? r.postNumber
         r.status = .deleted
         r.updatedAt = Date()
         r.needsSync = true
@@ -312,6 +345,10 @@ final class ReminderStore: ObservableObject {
             // Older gateways omit Post fields. Keep this device's saved context when
             // that happens; the marker must follow the answers it describes.
             if reminder.kind == .post {
+                if let number = localCopy.postNumber, reminder.postNumber != number {
+                    reminder.postNumber = number
+                    reminder.needsSync = true
+                }
                 reminder.createdAt = localCopy.createdAt
                 reminder.whenIAm = reminder.whenIAm ?? localCopy.whenIAm
                 reminder.marksClearSignOfSuccess = reminder.marksClearSignOfSuccess ?? localCopy.marksClearSignOfSuccess
@@ -348,6 +385,46 @@ final class ReminderStore: ObservableObject {
         if let data = try? JSONEncoder.recall.encode(reminders) {
             try? data.write(to: cacheURL, options: .atomic)
         }
+    }
+
+    /// Physical UI fixtures are written only into the unlocked test app's temporary cache.
+    /// This never invokes save(_:), the gateway, or the Harness/candidate pipeline.
+    func seedPostsForUITesting(count: Int) {
+        let arguments = ProcessInfo.processInfo.arguments
+        let testDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("SAVYUITests", isDirectory: true)
+        // Compare filesystem locations rather than URL base/directory representations.
+        let cacheDirectoryPath = cacheURL.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL.path
+        let testDirectoryPath = testDirectory.resolvingSymlinksInPath().standardizedFileURL.path
+        guard arguments.contains("SAVY_UI_TEST_UNLOCKED"),
+              arguments.contains("SAVY_UI_TEST_RESET_REMINDERS"),
+              cacheDirectoryPath == testDirectoryPath,
+              count > 0 else { return }
+        reminders.removeAll { $0.kind == .post }
+        let start = Date(timeIntervalSince1970: 1_780_000_000)
+        for index in 0..<min(count, 50) {
+            let theme = PostThemeCatalog.themes[index % PostThemeCatalog.themes.count]
+            var entry = Reminder()
+            entry.id = UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", index + 1))!
+            entry.kind = .post
+            entry.title = "New Post"
+            entry.postThemeID = theme.id
+            entry.postThemeName = theme.name
+            entry.postAnswersContainQuestions = true
+            entry.postAnswers = theme.questions.enumerated().map { questionIndex, question in
+                let answer = questionIndex == 0
+                    ? "Synthetic post \(index + 1) starts with a clear observation. This additional synthetic sentence gives a pinned post more detail without changing its first sentence."
+                    : "Synthetic answer \(questionIndex + 1) for post \(index + 1)."
+                return question.prompt + "\n\n" + answer
+            }
+            entry.notes = "Synthetic metadata for native UI verification."
+            entry.outcome = "Synthetic outcome \(index + 1)"
+            entry.tags = ["Synthetic", "Writing"]
+            entry.pinned = index < 2
+            entry.createdAt = start.addingTimeInterval(Double(index * 60))
+            entry.updatedAt = entry.createdAt
+            reminders.append(entry)
+        }
+        saveCache()
     }
 
     private static let uiTestDemoReminders: [Reminder] = {

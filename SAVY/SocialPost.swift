@@ -80,6 +80,7 @@ enum PostAreas {
 
 struct SocialPost: Identifiable, Codable, Equatable {
     var id: UUID = UUID()
+    var postNumber: Int? = nil
 
     // The post — his point of view, word for word.
     var text: String = ""
@@ -118,6 +119,7 @@ struct SocialPost: Identifiable, Codable, Equatable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        postNumber = try c.decodeIfPresent(Int.self, forKey: .postNumber)
         text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
         sourceLink = try c.decodeIfPresent(String.self, forKey: .sourceLink) ?? ""
         sourceName = try c.decodeIfPresent(String.self, forKey: .sourceName) ?? ""
@@ -197,6 +199,7 @@ final class SocialPostStore: ObservableObject {
     @Published private(set) var posts: [SocialPost]
 
     private let fileURL: URL
+    private var postNumberAllocator: PostNumberAllocator?
 
     init(fileURL: URL) throws {
         self.fileURL = fileURL
@@ -253,8 +256,25 @@ final class SocialPostStore: ObservableObject {
 
     // MARK: Writing
 
+    /// Adds numbering metadata without treating the existing post as newly edited.
+    func configurePostNumbering(_ allocator: PostNumberAllocator) {
+        postNumberAllocator = allocator
+        allocator.seed(reminders: [], socialPosts: posts)
+        var changed = false
+        for index in posts.indices {
+            let number = allocator.number(for: .socialPost, id: posts[index].id, savedNumber: posts[index].postNumber)
+            if posts[index].postNumber != number {
+                posts[index].postNumber = number
+                changed = true
+            }
+        }
+        if changed { persist() }
+    }
+
     func save(_ post: SocialPost) {
         var p = post
+        let savedNumber = posts.first { $0.id == p.id }?.postNumber ?? p.postNumber
+        p.postNumber = postNumberAllocator?.number(for: .socialPost, id: p.id, savedNumber: savedNumber) ?? savedNumber
         p.updatedAt = Date()
         if p.status == .posted, p.postedAt == nil {
             p.postedAt = p.updatedAt

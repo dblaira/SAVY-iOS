@@ -13,12 +13,20 @@ const savedFields = [
 function postInput() {
   return normalizeReminderInput({
     id: "11111111-1111-4111-8111-111111111111", kind: "post",
+    post_number: 6,
     post_theme_id: "audience-poll-survey-results", post_theme_name: "Audience Poll or Survey Results",
     post_answers: savedFields, post_answers_contain_questions: true,
   });
 }
 
 describe("saved Post context", () => {
+  it("accepts positive whole post numbers and leaves older or invalid numbers unset", () => {
+    assert.equal(postInput().post_number, 6);
+    assert.equal(normalizeReminderInput({ kind: "post" }).post_number, null);
+    for (const value of [null, 0, -1, 1.5, "6", Number.NaN, 2_147_483_648]) {
+      assert.equal(normalizeReminderInput({ post_number: value as never }).post_number, null);
+    }
+  });
   it("preserves complete editable rows, blank rows, and the format marker", () => {
     const input = postInput();
     assert.deepEqual(input.post_answers, savedFields);
@@ -53,12 +61,15 @@ describe("saved Post context", () => {
           assert.equal(persisted.post_answers_contain_questions, true);
           assert.equal(persisted.post_theme_id, input.post_theme_id);
           assert.equal(persisted.post_theme_name, input.post_theme_name);
+          assert.equal(persisted.post_number, 6);
+          // A reference already assigned to this record survives older clients and edits.
+          assert.match(sql, /post_number = COALESCE\(savy\.reminders\.post_number, EXCLUDED\.post_number\)/);
           // Old app writes omit context, and must not erase fields the new app saved.
           assert.match(sql, /COALESCE\(EXCLUDED\.post_answers, savy\.reminders\.post_answers\)/);
           assert.match(sql, /WHEN EXCLUDED\.post_answers IS NULL THEN savy\.reminders\.post_answers_contain_questions/);
         }
         if (sql.includes("FROM savy.reminders r")) {
-          for (const column of ["post_theme_id", "post_theme_name", "post_answers", "post_answers_contain_questions"]) {
+          for (const column of ["post_number", "post_theme_id", "post_theme_name", "post_answers", "post_answers_contain_questions"]) {
             assert.ok(sql.includes(`r.${column}`), `Retrieval must select ${column}`);
           }
           checkedRead = true;
@@ -76,6 +87,7 @@ describe("saved Post context", () => {
       assert.deepEqual(loaded.post_answers, savedFields);
       assert.equal(loaded.post_answers_contain_questions, true);
       assert.equal(loaded.post_theme_name, input.post_theme_name);
+      assert.equal(loaded.post_number, 6);
     } finally {
       connect.mock.restore();
       if (previousHost === undefined) delete process.env.AURORA_HOST;

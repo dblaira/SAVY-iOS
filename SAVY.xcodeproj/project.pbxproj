@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A17A6E6B721A49DCA9B44E03 /* SAVYPostNumberingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44E04 /* SAVYPostNumberingTests.swift */; };
+		A17A6E6B721A49DCA9B44E01 /* PostNumberAllocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44E02 /* PostNumberAllocator.swift */; };
 		6598482208EF487B92392914 /* SAVYDelegateTextExpansionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA030C3F6BA943F3A8F324EA /* SAVYDelegateTextExpansionUITests.swift */; };
 		A17A6E6B721A49DCA9B44B07 /* SAVYPostFormUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A6E6B721A49DCA9B44B08 /* SAVYPostFormUITests.swift */; };
 		09B7E4626804496E1984EDFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 78F623BD250D3308A5C58730 /* Assets.xcassets */; };
@@ -86,6 +88,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A17A6E6B721A49DCA9B44E04 /* SAVYPostNumberingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYPostNumberingTests.swift; sourceTree = "<group>"; };
+		A17A6E6B721A49DCA9B44E02 /* PostNumberAllocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostNumberAllocator.swift; sourceTree = "<group>"; };
 		0664053D22FAA613F02569D1 /* SAVY.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAVY.entitlements; sourceTree = "<group>"; };
 		0DA56611B45F0D0FC844211C /* CaptureEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEntry.swift; sourceTree = "<group>"; };
 		13CD74063706864F16360321 /* SavyLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyLocationProvider.swift; sourceTree = "<group>"; };
@@ -189,6 +193,7 @@
 			children = (
 				664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */,
 				A17A6E6B721A49DCA9B44D04 /* SAVYPostEntryThemeTests.swift */,
+				A17A6E6B721A49DCA9B44E04 /* SAVYPostNumberingTests.swift */,
 			);
 			path = SAVYTests;
 			sourceTree = "<group>";
@@ -243,6 +248,7 @@
 				9B3873F2C7A6AEBD1AFB0561 /* ReminderFormView.swift */,
 				DA7BB7AA8C7BCE337E18D90E /* ReminderLocationProvider.swift */,
 				A50C26D6E893A7ED48A6BB03 /* ReminderModels.swift */,
+				A17A6E6B721A49DCA9B44E02 /* PostNumberAllocator.swift */,
 				DBF301632E7B7DDBCB4E2E96 /* ReminderNotificationScheduler.swift */,
 				4102AF21CEECC9B183B07C38 /* ReminderRepository.swift */,
 				871BD4E6C5423FBBB43C168D /* ReminderStore.swift */,
@@ -428,6 +434,7 @@
 			files = (
 				75CFCED8B79BC2D6C61D4BDC /* SAVYNativeBoundaryTests.swift in Sources */,
 				A17A6E6B721A49DCA9B44D03 /* SAVYPostEntryThemeTests.swift in Sources */,
+				A17A6E6B721A49DCA9B44E03 /* SAVYPostNumberingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -470,6 +477,7 @@
 				1BD0BEF6DD141ABC2A8412B5 /* ReminderFormView.swift in Sources */,
 				5B9B549AF1A3816E6A154BA0 /* ReminderLocationProvider.swift in Sources */,
 				C9960738D9435B15A59E10C1 /* ReminderModels.swift in Sources */,
+				A17A6E6B721A49DCA9B44E01 /* PostNumberAllocator.swift in Sources */,
 				958C686D7303C29C8B8407C9 /* ReminderNotificationScheduler.swift in Sources */,
 				1BC480F076BA7FF0EE901491 /* ReminderRepository.swift in Sources */,
 				112871D3E216094034CC342B /* ReminderStore.swift in Sources */,

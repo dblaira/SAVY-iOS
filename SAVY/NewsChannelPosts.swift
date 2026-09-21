@@ -1,12 +1,7 @@
 import SwiftUI
 
-/// Posts live on the Social Media Posts page. Adam, 2026-09-19: "Let's call news channel
-/// social media posts." Same paper page, same white cards as the stories below.
-///
-/// No tally line under POSTS. Adam, 2026-09-03, after his first quote post went out through Grok
-/// Bot: "the small news, advertising and clean signs numbers below the posts label don't make
-/// sense. When I post through Grok Bot that doesn't tie to the app, so the numbers aren't honest."
-
+/// Saved posts share the Reminders card layout. The inline count measures saved posts on
+/// this phone against Adam's 50-post target; it does not claim anything was published.
 struct NewsChannelPostsGroup: View {
     @ObservedObject var store: SocialPostStore
     /// Post entries saved through the bolt's Post door (the Reminder form's fourth face).
@@ -32,20 +27,33 @@ struct NewsChannelPostsGroup: View {
         store.posts.filter(\.pinned).sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
+    /// Keep the existing pinned/status ordering while applying one continuous color cycle.
+    /// The two stores have independent UUID namespaces, so identity includes the source.
+    private var displayedPosts: [SavedPost] {
+        let groups: [[SavedPost]] = [
+            pinnedEntries.map(SavedPost.entry),
+            pinnedPosts.map(SavedPost.legacy),
+            postEntries.filter { !$0.pinned }.map(SavedPost.entry),
+            store.ready.filter { !$0.pinned }.map(SavedPost.legacy),
+            store.drafts.filter { !$0.pinned }.map(SavedPost.legacy),
+            postedEntries.filter { !$0.pinned }.map(SavedPost.entry),
+            store.posted.filter { !$0.pinned }.map(SavedPost.legacy),
+        ]
+        var seen = Set<String>()
+        return groups.flatMap { $0 }.filter { seen.insert($0.id).inserted }
+    }
 
-            if store.posts.isEmpty && postEntries.isEmpty && postedEntries.isEmpty {
+    var body: some View {
+        let posts = displayedPosts
+        VStack(alignment: .leading, spacing: 14) {
+            header(count: posts.count)
+
+            if posts.isEmpty {
                 emptyRow
             } else {
-                entryGroup(pinnedEntries)
-                group(pinnedPosts)
-                entryGroup(postEntries.filter { !$0.pinned })
-                group(store.ready.filter { !$0.pinned })
-                group(store.drafts.filter { !$0.pinned })
-                entryGroup(postedEntries.filter { !$0.pinned })
-                group(store.posted.filter { !$0.pinned })
+                ForEach(Array(posts.enumerated()), id: \.element.id) { index, post in
+                    postRow(post, palette: NewsChannelPostPalette(index: index))
+                }
             }
         }
         .sheet(item: $editing) { post in
@@ -67,7 +75,7 @@ struct NewsChannelPostsGroup: View {
         .accessibilityIdentifier("newsChannelPosts")
     }
 
-    private var header: some View {
+    private func header(count: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text("POSTS")
@@ -75,6 +83,10 @@ struct NewsChannelPostsGroup: View {
                     .tracking(2.4)
                     .foregroundStyle(SavyTheme.crimson)
                 Spacer()
+                Text("\(count) / 50")
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(SavyTheme.bottomNavTan)
+                    .accessibilityIdentifier("postSavedCount")
                 Button {
                     SavyHapticFeedback.primaryImpact()
                     isComposing = true
@@ -92,34 +104,32 @@ struct NewsChannelPostsGroup: View {
         }
     }
 
-    private func group(_ items: [SocialPost]) -> some View {
-        ForEach(items) { post in
+    @ViewBuilder
+    private func postRow(_ savedPost: SavedPost, palette: NewsChannelPostPalette) -> some View {
+        switch savedPost {
+        case .legacy(let post):
             SavySwipeRow(
                 actions: actions(for: post),
                 gestureAccessibilityIdentifier: "postRow-\(post.id.uuidString)",
                 onTap: { editing = post }
             ) {
-                NewsChannelPostRow(post: post)
+                NewsChannelPostRow(post: post, palette: palette)
             }
             .overlay(alignment: .topTrailing) {
-                pinButton(isPinned: post.pinned, identifier: "pinPost-\(post.id.uuidString)") {
+                pinButton(isPinned: post.pinned, palette: palette, identifier: "pinPost-\(post.id.uuidString)") {
                     store.togglePin(post)
                 }
             }
-        }
-    }
-
-    private func entryGroup(_ items: [Reminder]) -> some View {
-        ForEach(items) { entry in
+        case .entry(let entry):
             SavySwipeRow(
                 actions: actions(for: entry),
                 gestureAccessibilityIdentifier: "postEntryRow-\(entry.id.uuidString)",
                 onTap: { editingEntry = entry }
             ) {
-                NewsChannelPostEntryRow(entry: entry)
+                NewsChannelPostEntryRow(entry: entry, palette: palette)
             }
             .overlay(alignment: .topTrailing) {
-                pinButton(isPinned: entry.pinned, identifier: "pinPostEntry-\(entry.id.uuidString)") {
+                pinButton(isPinned: entry.pinned, palette: palette, identifier: "pinPostEntry-\(entry.id.uuidString)") {
                     guard var updated = reminderStore.reminders.first(where: { $0.id == entry.id }) else { return }
                     updated.pinned.toggle()
                     reminderStore.save(updated)
@@ -128,18 +138,30 @@ struct NewsChannelPostsGroup: View {
         }
     }
 
-    private func pinButton(isPinned: Bool, identifier: String, action: @escaping () -> Void) -> some View {
+    private func pinButton(isPinned: Bool, palette: NewsChannelPostPalette, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: isPinned ? "pin.fill" : "pin")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(isPinned ? SavyTheme.crimson : SavyTheme.ink.opacity(0.4))
+                .foregroundStyle(isPinned ? palette.pin : palette.fg.opacity(0.6))
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(8)
+        .padding(.trailing, 4)
         .accessibilityLabel(isPinned ? "Unpin post" : "Pin post")
         .accessibilityIdentifier(identifier)
+    }
+
+    private enum SavedPost: Identifiable {
+        case entry(Reminder)
+        case legacy(SocialPost)
+
+        var id: String {
+            switch self {
+            case .entry(let entry): return "entry-\(entry.id.uuidString)"
+            case .legacy(let post): return "legacy-\(post.id.uuidString)"
+            }
+        }
     }
 
     private func actions(for entry: Reminder) -> [SavySwipeAction] {
@@ -184,141 +206,207 @@ struct NewsChannelPostsGroup: View {
     }
 }
 
-/// One post as a story-style card: status dot, kicker, his words, then where it came from.
+/// Palette position belongs to the combined displayed list, including both kinds of post.
+struct NewsChannelPostPalette {
+    let bg: Color
+    let fg: Color
+    let accent: Color
+    let border: Color
+    let pin: Color
+
+    init(index: Int) {
+        switch index % 4 {
+        case 0:
+            bg = .white
+            fg = SavyTheme.deepNavy
+            accent = SavyTheme.crimson
+            border = .white.opacity(0.08)
+            pin = SavyTheme.crimson
+        case 1:
+            bg = Brand.darkRed
+            fg = .white
+            accent = .white
+            border = .white.opacity(0.08)
+            pin = .white
+        case 2:
+            bg = SavyTheme.bottomNavTan
+            fg = SavyTheme.deepNavy
+            accent = SavyTheme.crimson
+            border = .white.opacity(0.08)
+            pin = SavyTheme.crimson
+        default:
+            bg = SavyTheme.deepNavy
+            fg = .white
+            accent = SavyTheme.crimson
+            border = SavyTheme.bottomNavTan.opacity(0.75)
+            pin = SavyTheme.bottomNavTan
+        }
+    }
+}
+
+/// Extract only a display preview; the source post and full saved answers remain untouched.
+private struct NewsChannelPostPreview {
+    let title: String
+    let detail: String?
+
+    init(text: String, additionalDetails: [String] = []) {
+        let authoredText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var firstSentence = authoredText
+        var remainder = ""
+        if !authoredText.isEmpty {
+            authoredText.enumerateSubstrings(
+                in: authoredText.startIndex..<authoredText.endIndex,
+                options: .bySentences
+            ) { sentence, range, _, stop in
+                firstSentence = (sentence ?? authoredText)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                remainder = String(authoredText[range.upperBound...])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                stop = true
+            }
+        }
+        title = firstSentence.isEmpty ? "Untitled" : firstSentence
+        detail = ([remainder] + additionalDetails)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty && $0 != firstSentence && $0 != authoredText }
+    }
+}
+
+/// Legacy posts retain their original editor and share the same card renderer as Reminders.
 struct NewsChannelPostRow: View {
     let post: SocialPost
+    let palette: NewsChannelPostPalette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 9, height: 9)
-
-                Text(kickerText)
-                    .font(.system(size: 12, weight: .bold))
-                    .tracking(1.6)
-                    .foregroundStyle(.black.opacity(0.4))
-                    .lineLimit(1)
-
+        let preview = NewsChannelPostPreview(
+            text: post.trimmedText,
+            additionalDetails: [post.connection, post.sourceLine]
+        )
+        SavyBandCard(
+            bg: palette.bg,
+            fg: palette.fg,
+            accent: palette.accent,
+            title: preview.title,
+            signalText: signalText,
+            secondaryText: secondaryText,
+            detailLine: preview.detail,
+            detail: post.pinned ? .full : .minimal,
+            minimumHeight: post.pinned ? 186 : nil,
+            leadingEdge: SavyTheme.crimson,
+            border: palette.border,
+            secondaryLineLimit: 2,
+            titleAccessibilityIdentifier: "postHeadline-\(post.id.uuidString)"
+        ) {
+            HStack(spacing: 6) {
+                Image(systemName: "text.bubble")
+                    .font(.system(size: 11, weight: .bold))
+                Text(post.postNumber.map { "POST #\($0)" } ?? "POST")
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(1.5)
+                    .accessibilityIdentifier("postNumber-\(post.id.uuidString)")
                 if post.clearSign {
-                    Spacer(minLength: 4)
                     Image(systemName: "star.fill")
                         .font(.system(size: 11, weight: .heavy))
-                        .foregroundStyle(SavyTheme.crimson)
+                        .foregroundStyle(palette.pin)
                         .accessibilityLabel("Clear Sign")
                 }
             }
-            .padding(.trailing, 28)
-
-            Text(post.trimmedText.isEmpty ? "Untitled" : post.trimmedText)
-                .font(SavyTheme.beliefSerif(24, weight: .regular))
-                .lineSpacing(3)
-                .foregroundStyle(SavyTheme.ink)
-                .lineLimit(8)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !secondaryText.isEmpty {
-                Text(secondaryText)
-                    .font(.system(size: 14))
-                    .lineSpacing(2)
-                    .foregroundStyle(.black.opacity(0.55))
-                    .lineLimit(2)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
-        .background(.white, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
-    }
-
-    private var statusColor: Color {
-        switch post.status {
-        case .draft: return SavyTheme.bottomNavTan
-        case .ready: return SavyTheme.green
-        case .posted: return SavyTheme.crimson
+            .padding(.trailing, 36)
         }
     }
 
-    private var kickerText: String {
-        [post.status.label, post.platform.label, post.move.label, post.door.label]
-            .map { $0.uppercased() }
-            .joined(separator: " · ")
+    private var signalText: String {
+        var parts = [post.platform.label, post.move.label]
+        if post.pattern != .none { parts.append(post.pattern.label) }
+        parts.append(contentsOf: post.areas.map { "#\($0)" })
+        return parts.joined(separator: "   ·   ")
     }
 
     private var secondaryText: String {
-        var parts: [String] = []
+        var parts = [post.status.label, post.door.label]
         if !post.sourceName.isEmpty { parts.append(post.sourceName) }
-        if let when = post.whenLabel { parts.append(when) }
+        parts.append(post.whenLabel ?? post.createdAt.formatted(date: .abbreviated, time: .omitted))
         if post.status == .posted, post.likes + post.replies + post.profileTaps > 0 {
             parts.append("\(post.replies) replies · \(post.likes) likes · \(post.profileTaps) taps")
         }
-        parts.append(contentsOf: post.areas.map { "#\($0)" })
         return parts.joined(separator: "   ·   ")
     }
 }
 
-/// A Post entry from the bolt's Post door — same white card as the SocialPost rows, with the
-/// theme name in the kicker and the first answered Decide line as the preview.
+/// The first authored answer leads; its prefilled question stays in the saved entry.
 struct NewsChannelPostEntryRow: View {
     let entry: Reminder
+    let palette: NewsChannelPostPalette
+
+    private var authoredAnswers: [String] {
+        entry.postAnswerTexts
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private var authoredText: String {
+        if let firstAnswer = authoredAnswers.first { return firstAnswer }
+        let title = entry.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !title.isEmpty, title != "New Post" { return title }
+        return entry.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(entry.status == .completed ? SavyTheme.crimson : SavyTheme.bottomNavTan)
-                    .frame(width: 9, height: 9)
-
-                Text(kickerText)
-                    .font(.system(size: 12, weight: .bold))
-                    .tracking(1.6)
-                    .foregroundStyle(.black.opacity(0.4))
-                    .lineLimit(1)
+        let preview = NewsChannelPostPreview(
+            text: authoredText,
+            additionalDetails: Array(authoredAnswers.dropFirst()) + [entry.notes, entry.outcome]
+        )
+        SavyBandCard(
+            bg: palette.bg,
+            fg: palette.fg,
+            accent: palette.accent,
+            title: preview.title,
+            signalText: signalText,
+            secondaryText: secondaryText,
+            detailLine: preview.detail,
+            detail: entry.pinned ? .full : .minimal,
+            minimumHeight: entry.pinned ? 186 : nil,
+            leadingEdge: SavyTheme.crimson,
+            border: palette.border,
+            secondaryLineLimit: 2,
+            titleAccessibilityIdentifier: "postEntryHeadline-\(entry.id.uuidString)"
+        ) {
+            HStack(spacing: 6) {
+                Image(systemName: "text.bubble")
+                    .font(.system(size: 11, weight: .bold))
+                Text(entry.postNumber.map { "POST #\($0)" } ?? "POST")
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(1.5)
+                    .accessibilityIdentifier("postEntryNumber-\(entry.id.uuidString)")
+                if HarnessedRegistry.isHarnessed(entry) {
+                    Image("HarnessedHat")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(palette.fg.opacity(0.7))
+                        .accessibilityLabel("Harnessed")
+                }
             }
-            .padding(.trailing, 28)
-
-            Text(headlineText)
-                .font(SavyTheme.beliefSerif(24, weight: .regular))
-                .lineSpacing(3)
-                .foregroundStyle(SavyTheme.ink)
-                .lineLimit(8)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !secondaryText.isEmpty {
-                Text(secondaryText)
-                    .font(.system(size: 14))
-                    .lineSpacing(2)
-                    .foregroundStyle(.black.opacity(0.55))
-                    .lineLimit(2)
-            }
+            .padding(.trailing, 36)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
-        .background(.white, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
     }
 
-    private var kickerText: String {
-        var parts = [entry.status == .completed ? "Posted" : "Post"]
+    private var signalText: String {
+        var parts: [String] = []
         if let theme = entry.postThemeName, !theme.isEmpty { parts.append(theme) }
-        return parts.map { $0.uppercased() }.joined(separator: " · ")
-    }
-
-    private var headlineText: String {
-        let title = entry.title.trimmingCharacters(in: .whitespaces)
-        if !title.isEmpty, title != "New Post" { return title }
-        let firstAnswer = entry.postAnswerTexts
-            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        return firstAnswer ?? "Untitled"
+        if entry.priority != .none { parts.append(entry.priority.marks) }
+        if entry.context != .none { parts.append(entry.context.label) }
+        parts.append(contentsOf: entry.tags.map { "#\($0)" })
+        return parts.joined(separator: "   ·   ")
     }
 
     private var secondaryText: String {
-        var parts: [String] = []
-        let answered = entry.postAnsweredCount
-        if answered > 0 { parts.append("\(answered) answered") }
-        if let when = entry.whenLabel { parts.append(when) }
-        parts.append(contentsOf: entry.tags.map { "#\($0)" })
+        var parts = ["\(entry.postAnsweredCount) answered"]
+        if !entry.listName.isEmpty { parts.append(entry.listName) }
+        if !entry.locationName.isEmpty { parts.append(entry.locationName) }
+        parts.append(entry.whenLabel ?? entry.createdAt.formatted(date: .abbreviated, time: .omitted))
+        parts.append(entry.status == .completed ? "Posted" : "Draft")
         return parts.joined(separator: "   ·   ")
     }
 }
