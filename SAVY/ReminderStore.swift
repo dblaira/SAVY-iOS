@@ -38,6 +38,9 @@ final class ReminderStore: ObservableObject {
             reminders = Self.uiTestDemoReminders
             saveCache()
         }
+        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_SEED_REORDER_ACTIONS") {
+            seedActionsForReorderUITesting()
+        }
     }
 
     var active: [Reminder] {
@@ -176,6 +179,8 @@ final class ReminderStore: ObservableObject {
         guard let idx = reminders.firstIndex(where: { $0.id == reminder.id }) else { return }
         var r = reminders[idx]
         r.pinned.toggle()
+        r.updatedAt = Date()
+        r.needsSync = true
         reminders[idx] = r
 
         if r.pinned {
@@ -191,35 +196,61 @@ final class ReminderStore: ObservableObject {
             unpinned.insert(reminders[idx], at: 0)
             applyBlockOrder(unpinned)
         }
+        // Pinning a sole item may leave every rank unchanged. Persist and sync the
+        // pin itself even when neither applyBlockOrder call has anything to save.
+        saveCache()
+        if let updated = reminders.first(where: { $0.id == r.id }) {
+            Task { await sync(updated) }
+        }
     }
 
     enum UpNextMoveDirection { case up, down }
 
-    /// Move one step within the reminder's pinned/unpinned block.
+    /// Move to the adjacent visible card of the same kind and pin state. Other kinds
+    /// keep their places in the shared feed rather than consuming an invisible move.
     func moveUpNext(_ reminder: Reminder, direction: UpNextMoveDirection) {
-        let feed = active
-        let blockPinned = reminder.pinned
-        var block = feed.filter { $0.pinned == blockPinned }
-        guard let blockIdx = block.firstIndex(where: { $0.id == reminder.id }) else { return }
+        guard let current = reminders.first(where: { $0.id == reminder.id }),
+              current.status == .active else { return }
+        var block = active.filter { $0.pinned == current.pinned }
+        let visibleIndices = block.indices.filter { block[$0].kind == current.kind }
+        guard let visibleIndex = visibleIndices.firstIndex(where: { block[$0].id == current.id }) else { return }
 
         let target: Int
         switch direction {
-        case .up: target = blockIdx - 1
-        case .down: target = blockIdx + 1
+        case .up: target = visibleIndex - 1
+        case .down: target = visibleIndex + 1
         }
-        guard block.indices.contains(target) else { return }
+        guard visibleIndices.indices.contains(target) else { return }
 
-        block.swapAt(blockIdx, target)
-        applyBlockOrder(block)
+        let sourceIndex = visibleIndices[visibleIndex]
+        let targetIndex = visibleIndices[target]
+        let ranks = block.compactMap(\.upNextOrder)
+        if ranks.count == block.count, Set(ranks).count == block.count {
+            // Existing valid ranks can be exchanged directly. Hidden items retain
+            // even non-contiguous ranks, timestamps, sync state, and saved content.
+            applyOrderMetadata([
+                (block[sourceIndex].id, ranks[targetIndex]),
+                (block[targetIndex].id, ranks[sourceIndex]),
+            ])
+        } else {
+            // Older caches may have no ranks or duplicate ranks. Establish ranks
+            // from the current display while preserving the hidden cards' slots.
+            block.swapAt(sourceIndex, targetIndex)
+            applyBlockOrder(block)
+        }
     }
 
     private func applyBlockOrder(_ ordered: [Reminder]) {
+        applyOrderMetadata(ordered.enumerated().map { ($0.element.id, $0.offset) })
+    }
+
+    private func applyOrderMetadata(_ ordered: [(id: UUID, rank: Int)]) {
         var touched: [Reminder] = []
-        for (i, item) in ordered.enumerated() {
+        for item in ordered {
             guard let idx = reminders.firstIndex(where: { $0.id == item.id }) else { continue }
-            guard reminders[idx].upNextOrder != i else { continue }
+            guard reminders[idx].upNextOrder != item.rank else { continue }
             var r = reminders[idx]
-            r.upNextOrder = i
+            r.upNextOrder = item.rank
             r.updatedAt = Date()
             r.needsSync = true
             reminders[idx] = r
@@ -228,7 +259,6 @@ final class ReminderStore: ObservableObject {
         guard !touched.isEmpty else { return }
         saveCache()
         for r in touched {
-            NotificationScheduler.schedule(r)
             Task { await sync(r) }
         }
     }
@@ -374,6 +404,42 @@ final class ReminderStore: ObservableObject {
     }
 
     // MARK: - cache
+
+    /// Synthetic actions stay inside the same isolated storage used by physical
+    /// UI tests. No fixture is saved through the authoring/candidate pipeline.
+    func seedActionsForReorderUITesting() {
+        let arguments = ProcessInfo.processInfo.arguments
+        let testDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("SAVYUITests", isDirectory: true)
+        guard arguments.contains("SAVY_UI_TEST_UNLOCKED"),
+              arguments.contains("SAVY_UI_TEST_RESET_REMINDERS"),
+              cacheURL.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL.path
+                == testDirectory.resolvingSymlinksInPath().standardizedFileURL.path else { return }
+        let fixture: [(String, ReminderKind, Bool, Int)] = [
+            ("Synthetic pinned action 1", .action, true, 0),
+            ("Synthetic pinned action 2", .action, true, 2),
+            ("Synthetic unpinned action 1", .action, false, 0),
+            ("Synthetic unpinned action 2", .action, false, 2),
+            ("Synthetic hidden pinned reminder", .reminder, true, 1),
+            ("Synthetic hidden unpinned event", .event, false, 1),
+        ]
+        let fixtureIDs = fixture.indices.compactMap {
+            UUID(uuidString: String(format: "10000000-0000-0000-0000-%012d", $0 + 1))
+        }
+        guard fixtureIDs.count == fixture.count else { return }
+        reminders.removeAll { fixtureIDs.contains($0.id) }
+        for (index, values) in fixture.enumerated() {
+            var entry = Reminder()
+            entry.id = fixtureIDs[index]
+            entry.title = values.0
+            entry.kind = values.1
+            entry.pinned = values.2
+            entry.upNextOrder = values.3
+            entry.createdAt = Date(timeIntervalSince1970: 1_780_000_000 + Double(index * 60))
+            entry.updatedAt = entry.createdAt
+            reminders.append(entry)
+        }
+        saveCache()
+    }
 
     private func loadCache() {
         guard let data = try? Data(contentsOf: cacheURL),

@@ -950,6 +950,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertTrue(AppRuntimeBoundary.disallowedTechnologies.contains(.typeScriptFrontend))
     }
 
+    @MainActor
     func testHomeSectionPinMovesOneCardToTheTop() {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let store = HomeSectionPinStore(defaults: defaults)

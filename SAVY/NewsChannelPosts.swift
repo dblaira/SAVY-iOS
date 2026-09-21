@@ -6,6 +6,9 @@ struct NewsChannelPostsGroup: View {
     @ObservedObject var store: SocialPostStore
     /// Post entries saved through the bolt's Post door (the Reminder form's fourth face).
     @ObservedObject var reminderStore: ReminderStore
+    var scrollRevision = 0
+    @StateObject private var cardOrder = PostCardOrderStore()
+    @State private var armedPostID: String?
     @State private var editing: SocialPost?
     @State private var editingEntry: Reminder?
     @State private var isComposing = false
@@ -29,7 +32,7 @@ struct NewsChannelPostsGroup: View {
 
     /// Keep the existing pinned/status ordering while applying one continuous color cycle.
     /// The two stores have independent UUID namespaces, so identity includes the source.
-    private var displayedPosts: [SavedPost] {
+    private var defaultPosts: [SavedPost] {
         let groups: [[SavedPost]] = [
             pinnedEntries.map(SavedPost.entry),
             pinnedPosts.map(SavedPost.legacy),
@@ -41,6 +44,15 @@ struct NewsChannelPostsGroup: View {
         ]
         var seen = Set<String>()
         return groups.flatMap { $0 }.filter { seen.insert($0.id).inserted }
+    }
+
+    private var displayedPosts: [SavedPost] {
+        let posts = defaultPosts
+        let byID = Dictionary(uniqueKeysWithValues: posts.map { ($0.id, $0) })
+        return cardOrder.orderedIDs(
+            defaultOrder: posts.map(\.id),
+            pinnedIDs: Set(posts.filter(\.isPinned).map(\.id))
+        ).compactMap { byID[$0] }
     }
 
     var body: some View {
@@ -73,6 +85,13 @@ struct NewsChannelPostsGroup: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("newsChannelPosts")
+        .onChange(of: scrollRevision) {
+            withAnimation(.snappy) { armedPostID = nil }
+        }
+        .onChange(of: defaultPosts.map(\.id), initial: true) { _, ids in
+            cardOrder.reconcile(defaultOrder: ids)
+            if let armedPostID, !ids.contains(armedPostID) { self.armedPostID = nil }
+        }
     }
 
     private func header(count: Int) -> some View {
@@ -108,10 +127,14 @@ struct NewsChannelPostsGroup: View {
     private func postRow(_ savedPost: SavedPost, palette: NewsChannelPostPalette) -> some View {
         switch savedPost {
         case .legacy(let post):
-            SavySwipeRow(
+            SavyUpNextCardRow(
+                reminderId: savedPost.id,
+                armedId: $armedPostID,
                 actions: actions(for: post),
-                gestureAccessibilityIdentifier: "postRow-\(post.id.uuidString)",
-                onTap: { editing = post }
+                onTap: { editing = post },
+                onMoveUp: { move(savedPost, direction: -1) },
+                onMoveDown: { move(savedPost, direction: 1) },
+                gestureAccessibilityIdentifier: "postRow-\(post.id.uuidString)"
             ) {
                 NewsChannelPostRow(post: post, palette: palette)
             }
@@ -119,12 +142,18 @@ struct NewsChannelPostsGroup: View {
                 pinButton(isPinned: post.pinned, palette: palette, identifier: "pinPost-\(post.id.uuidString)") {
                     store.togglePin(post)
                 }
+                .padding(.trailing, armedPostID == savedPost.id ? 52 : 0)
             }
+            .zIndex(armedPostID == savedPost.id ? 10 : 0)
         case .entry(let entry):
-            SavySwipeRow(
+            SavyUpNextCardRow(
+                reminderId: savedPost.id,
+                armedId: $armedPostID,
                 actions: actions(for: entry),
-                gestureAccessibilityIdentifier: "postEntryRow-\(entry.id.uuidString)",
-                onTap: { editingEntry = entry }
+                onTap: { editingEntry = entry },
+                onMoveUp: { move(savedPost, direction: -1) },
+                onMoveDown: { move(savedPost, direction: 1) },
+                gestureAccessibilityIdentifier: "postEntryRow-\(entry.id.uuidString)"
             ) {
                 NewsChannelPostEntryRow(entry: entry, palette: palette)
             }
@@ -134,7 +163,21 @@ struct NewsChannelPostsGroup: View {
                     updated.pinned.toggle()
                     reminderStore.save(updated)
                 }
+                .padding(.trailing, armedPostID == savedPost.id ? 52 : 0)
             }
+            .zIndex(armedPostID == savedPost.id ? 10 : 0)
+        }
+    }
+
+    private func move(_ post: SavedPost, direction: Int) {
+        let posts = defaultPosts
+        withAnimation(.snappy) {
+            cardOrder.move(
+                post.id,
+                direction: direction,
+                defaultOrder: posts.map(\.id),
+                pinnedIDs: Set(posts.filter(\.isPinned).map(\.id))
+            )
         }
     }
 
@@ -161,6 +204,13 @@ struct NewsChannelPostsGroup: View {
             switch self {
             case .entry(let entry): return "entry-\(entry.id.uuidString)"
             case .legacy(let post): return "legacy-\(post.id.uuidString)"
+            }
+        }
+
+        var isPinned: Bool {
+            switch self {
+            case .entry(let entry): return entry.pinned
+            case .legacy(let post): return post.pinned
             }
         }
     }

@@ -33,7 +33,7 @@ struct SavyReminderKindTabScreen: View {
 
     @EnvironmentObject private var store: ReminderStore
     @State private var editing: Reminder?
-    @State private var armedReorderId: UUID?
+    @State private var armedReorderId: String?
     @State private var isCompletedExpanded = false
 
     private var activeItems: [Reminder] {
@@ -69,6 +69,11 @@ struct SavyReminderKindTabScreen: View {
                 .frame(minHeight: proxy.size.height, alignment: .top)
             }
             .background(SavyTheme.deepNavy)
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting, armedReorderId != nil {
+                    withAnimation(.snappy) { armedReorderId = nil }
+                }
+            }
         }
         .ignoresSafeArea(edges: .top)
         .accessibilityIdentifier(kind == .action ? "actionsHome" : "remindersHome")
@@ -108,12 +113,13 @@ struct SavyReminderKindTabScreen: View {
             } else {
                 ForEach(Array(activeItems.enumerated()), id: \.element.id) { index, reminder in
                     SavyUpNextCardRow(
-                        reminderId: reminder.id,
+                        reminderId: reminder.id.uuidString,
                         armedId: $armedReorderId,
                         actions: cardActions(reminder),
                         onTap: { editing = reminder },
                         onMoveUp: { store.moveUpNext(reminder, direction: .up) },
-                        onMoveDown: { store.moveUpNext(reminder, direction: .down) }
+                        onMoveDown: { store.moveUpNext(reminder, direction: .down) },
+                        gestureAccessibilityIdentifier: "reminderReorderGesture-\(reminder.id.uuidString)"
                     ) {
                         SavyReminderBandCard(
                             reminder: reminder,
@@ -125,6 +131,7 @@ struct SavyReminderKindTabScreen: View {
                         .scaleEffect(x: 1, y: kind == .action ? cardScale(for: index) : 1, anchor: .top)
                         .accessibilityIdentifier(cardIdentifier(for: index))
                     }
+                    .zIndex(armedReorderId == reminder.id.uuidString ? 1 : 0)
                 }
             }
         }
@@ -271,12 +278,13 @@ struct SavySwipeAction: Identifiable {
 
 /// UIKit-backed swipe/reorder row so vertical scrolling remains responsive inside SwiftUI ScrollViews.
 struct SavyUpNextCardRow<Content: View>: View {
-    let reminderId: UUID
-    @Binding var armedId: UUID?
+    let reminderId: String
+    @Binding var armedId: String?
     let actions: [SavySwipeAction]
     var onTap: () -> Void
     var onMoveUp: () -> Void
     var onMoveDown: () -> Void
+    var gestureAccessibilityIdentifier: String? = nil
     @ViewBuilder var content: Content
 
     @State private var swipeOffset: CGFloat = 0
@@ -320,7 +328,8 @@ struct SavyUpNextCardRow<Content: View>: View {
                     swipeOffset: $swipeOffset,
                     onTap: onTap,
                     onMoveUp: onMoveUp,
-                    onMoveDown: onMoveDown
+                    onMoveDown: onMoveDown,
+                    gestureAccessibilityIdentifier: gestureAccessibilityIdentifier
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
@@ -340,6 +349,7 @@ struct SavyUpNextCardRow<Content: View>: View {
                         RoundedRectangle(cornerRadius: 8)
                             .strokeBorder(SavyTheme.crimson, lineWidth: 4)
                     }
+                    .allowsHitTesting(false)
                 }
             }
             .offset(x: swipeOffset)
@@ -363,12 +373,16 @@ struct SavyUpNextCardRow<Content: View>: View {
         .padding(.vertical, 4)
         .padding(.horizontal, 2)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(SavyTheme.crimson.opacity(0.55)))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(SavyTheme.crimson.opacity(0.55))
+                .allowsHitTesting(false)
+        }
     }
 
     private func reorderButton(_ icon: String, action: @escaping () -> Void) -> some View {
         Button {
-            action()
+            withAnimation(.snappy) { action() }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
             Image(systemName: icon)
@@ -378,18 +392,20 @@ struct SavyUpNextCardRow<Content: View>: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(icon == "chevron.up" ? "Move up" : "Move down")
         .accessibilityIdentifier(icon == "chevron.up" ? "reorderUp" : "reorderDown")
     }
 }
 
 private struct SavyUpNextGestureHost: UIViewRepresentable {
-    @Binding var armedId: UUID?
-    let reminderId: UUID
+    @Binding var armedId: String?
+    let reminderId: String
     let actionsWidth: CGFloat
     @Binding var swipeOffset: CGFloat
     var onTap: () -> Void
     var onMoveUp: () -> Void
     var onMoveDown: () -> Void
+    var gestureAccessibilityIdentifier: String? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -400,11 +416,15 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
         view.pan.delegate = context.coordinator
         view.longPress.delegate = context.coordinator
         view.tap.delegate = context.coordinator
+        view.isAccessibilityElement = gestureAccessibilityIdentifier != nil
+        view.accessibilityIdentifier = gestureAccessibilityIdentifier
         return view
     }
 
     func updateUIView(_ uiView: SavyUpNextGestureView, context: Context) {
         context.coordinator.parent = self
+        uiView.isAccessibilityElement = gestureAccessibilityIdentifier != nil
+        uiView.accessibilityIdentifier = gestureAccessibilityIdentifier
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
@@ -419,6 +439,7 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
             guard parent.armedId != parent.reminderId else { return }
             DispatchQueue.main.async {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.62)) {
+                    self.parent.swipeOffset = 0
                     self.parent.armedId = self.parent.reminderId
                 }
             }
@@ -444,6 +465,13 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
             }
         }
 
+        func move(up: Bool) {
+            withAnimation(.snappy) {
+                if up { parent.onMoveUp() }
+                else { parent.onMoveDown() }
+            }
+        }
+
         func tap() {
             DispatchQueue.main.async {
                 if self.isArmed() {
@@ -459,9 +487,9 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
             guard let view else { return true }
             if gestureRecognizer === view.pan {
-                if view.reorderArmed || isArmed() { return false }
+                if parent.actionsWidth == 0 || view.reorderArmed || isArmed() { return false }
                 let velocity = view.pan.velocity(in: view)
-                let isHorizontal = abs(velocity.x) > abs(velocity.y) * 0.5
+                let isHorizontal = abs(velocity.x) > abs(velocity.y) * 1.15
                 return isHorizontal && (velocity.x > 0 || parent.swipeOffset > 0)
             }
             return true
@@ -518,15 +546,18 @@ private final class SavyUpNextGestureView: UIView {
             reorderArmed = true
             longPressStartY = longPress.location(in: self).y
             coordinator?.arm()
-        case .ended, .cancelled, .failed:
+        case .ended:
             let dy = longPress.location(in: self).y - longPressStartY
             if abs(dy) > 20 {
-                if dy < 0 { coordinator?.parent.onMoveUp() }
-                else { coordinator?.parent.onMoveDown() }
+                coordinator?.move(up: dy < 0)
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 coordinator?.disarm()
             }
             reorderArmed = false
+        case .cancelled, .failed:
+            let wasReordering = reorderArmed
+            reorderArmed = false
+            if wasReordering { coordinator?.disarm() }
         default:
             break
         }

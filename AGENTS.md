@@ -74,11 +74,17 @@ Adam refined the density after using the page: unpinned Posts show one preview l
 
 Post numbers are stored references, assigned across both formats in creation order initially and retained across pinning, editing, and relaunch. The local allocator retains deleted assignments so a later post does not reuse a number. Keep full saved questions and answers intact behind the display preview. Number assignment must not invoke the Harness/candidate capture pipeline or cause an older clean cache to overwrite newer remote content.
 
+## Card rearranging — September 21, 2026
+
+Adam requested the existing Understood interaction from the former Notorious Recall app (`Re_Call`, `sh.notorious.app`) for SAVY's lower homepage rows, Social Media Posts, and Actions. Reuse its UIKit long press, red glow, lifted card, up/down chevrons, haptics, and short vertical drag. The shared row also serves Reminders. Preserve normal scrolling and swipe actions.
+
+Move one position within the screen's visible pinned or unpinned group. Actions and Reminders must skip hidden entry kinds when choosing a neighbor. Home retains its existing single pinned destination. Home and Post positions are local display preferences; moving a Post never changes its stored number, full questions and answers, pin state, or capture history. Keep the two Post formats in one reorderable list, using source-qualified IDs. UI tests use isolated content and layout preferences.
+
 ## Current Lane
 
 Update this line when the active milestone changes:
 
-**Current lane:** Numbered Post cards and the 50-post count are built and verified on Adam's connected iPhone with isolated test entries; stored numbers survive pinning and relaunch. Navy canvases, Bodoni page titles, and subtitle removal remain in place. Preserve saved Post questions and answers, unlimited pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
+**Current lane:** Understood card rearranging is built and verified on Adam's connected iPhone across the lower home rows, Social Media Posts, and Actions, with isolated test entries and layout preferences. Pinned/unpinned boundaries, visible-neighbor movement, scrolling, navigation, saved order, and Post numbers survive the checks and relaunch. Navy canvases, Bodoni page titles, and subtitle removal remain in place. Preserve saved Post questions and answers, unlimited Post pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
 
 ## How agents use Adam's Macs (required)
 

@@ -287,6 +287,8 @@ struct EditorialHomeView: View {
     let onOpenPersonalAuthorityReview: () -> Void
     @State private var editingReminder: Reminder?
     @StateObject private var sectionPinStore = HomeSectionPinStore()
+    @State private var armedHomeCardID: String?
+    @State private var selectedHomeCard: HomeLeverageCard?
 
     private var feedRows: [HomeFeedRow] {
         HomeFeedRow.rows(
@@ -312,6 +314,11 @@ struct EditorialHomeView: View {
                 .padding(.bottom, 40)
             }
             .accessibilityIdentifier("editorialHomeScroll")
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting, armedHomeCardID != nil {
+                    withAnimation(.snappy) { armedHomeCardID = nil }
+                }
+            }
             .ignoresSafeArea(edges: .top)
             .refreshable {
                 await leverageStore.refresh()
@@ -321,6 +328,17 @@ struct EditorialHomeView: View {
             }
         }
         .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .navigationDestination(item: $selectedHomeCard) { card in
+            if let section = leverageStore.section(id: card.sectionID) {
+                if section.id == "beliefs" {
+                    ConnectionView(section: section)
+                } else if section.id == "news-channel" {
+                    LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore, reminderStore: reminderStore)
+                } else {
+                    LeverageSectionView(section: section)
+                }
+            }
+        }
         .sheet(item: $editingReminder) { reminder in
             ReminderFormView(existing: reminder, existingTags: reminderStore.recentTags) { updated in
                 reminderStore.save(updated)
@@ -444,52 +462,33 @@ struct EditorialHomeView: View {
                 let isPinned = sectionPinStore.pinnedSectionID == card.sectionID
                 let colors = Self.homeBandCardColors(for: index)
                 let detail = Self.homeBandCardDetail(for: index)
-                if let section = leverageStore.section(id: card.sectionID) {
-                    NavigationLink {
-                        if section.id == "beliefs" {
-                            ConnectionView(section: section)
-                        } else if section.id == "news-channel" {
-                            LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore, reminderStore: reminderStore)
-                        } else {
-                            LeverageSectionView(section: section)
-                        }
-                    } label: {
-                        HomeContentSectionView(
-                            card: card,
-                            section: section,
-                            isPinned: isPinned,
-                            bg: colors.bg,
-                            fg: colors.fg,
-                            accent: colors.accent,
-                            detail: detail
-                        )
-                        .scaleEffect(x: 1, y: Self.homeBandCardScale(for: index), anchor: .top)
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button(isPinned ? "Unpin" : "Pin") {
-                            sectionPinStore.toggle(card.sectionID)
-                        }
-                    }
-                    .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
-                } else {
+                SavyUpNextCardRow(
+                    reminderId: card.sectionID,
+                    armedId: $armedHomeCardID,
+                    actions: [
+                        SavySwipeAction(title: isPinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) {
+                            withAnimation(.snappy) { sectionPinStore.toggle(card.sectionID) }
+                        },
+                    ],
+                    onTap: { selectedHomeCard = card },
+                    onMoveUp: { withAnimation(.snappy) { sectionPinStore.move(card.sectionID, direction: .up) } },
+                    onMoveDown: { withAnimation(.snappy) { sectionPinStore.move(card.sectionID, direction: .down) } },
+                    gestureAccessibilityIdentifier: "homeReorder-\(card.sectionID)"
+                ) {
                     HomeContentSectionView(
                         card: card,
-                        section: nil,
+                        section: leverageStore.section(id: card.sectionID),
                         isPinned: isPinned,
                         bg: colors.bg,
                         fg: colors.fg,
                         accent: colors.accent,
                         detail: detail
                     )
-                        .scaleEffect(x: 1, y: Self.homeBandCardScale(for: index), anchor: .top)
-                        .contextMenu {
-                            Button(isPinned ? "Unpin" : "Pin") {
-                                sectionPinStore.toggle(card.sectionID)
-                            }
-                        }
-                        .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
+                    .scaleEffect(x: 1, y: Self.homeBandCardScale(for: index), anchor: .top)
                 }
+                .zIndex(armedHomeCardID == card.sectionID ? 1 : 0)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("homeContentSection-\(card.sectionID)")
             }
         }
         .padding(.top, RootHomeLayout.homeBandTopPadding)
@@ -665,7 +664,7 @@ private struct HomePinnedEntryRow: View {
     }
 }
 
-struct HomeLeverageCard: Identifiable, Equatable {
+struct HomeLeverageCard: Identifiable, Hashable {
     let id: String
     let sectionID: String
     let eyebrow: String
@@ -682,15 +681,20 @@ struct HomeLeverageCard: Identifiable, Equatable {
 /// One of the homepage navigation cards can sit at the top of that area.
 /// Adam, 2026-09-19: "give me the option to pin one of those to the top of that area,
 /// that way as my taste change I can have different top areas to view first"
+@MainActor
 final class HomeSectionPinStore: ObservableObject {
     static let defaultsKey = "savy.homePinnedSectionID"
+    static let orderDefaultsKey = "savy.homeSectionOrder"
     static let defaultPinnedSectionID = "news-channel"
 
     @Published private(set) var pinnedSectionID: String?
+    @Published private(set) var sectionOrder: [String]
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults? = nil) {
+        let defaults = defaults ?? SavyCardPreferences.defaults
         self.defaults = defaults
+        sectionOrder = defaults.stringArray(forKey: Self.orderDefaultsKey) ?? []
         let saved = defaults.string(forKey: Self.defaultsKey)
         if let saved, HomeLeverageCard.referenceCards.contains(where: { $0.sectionID == saved }) {
             pinnedSectionID = saved
@@ -720,12 +724,29 @@ final class HomeSectionPinStore: ObservableObject {
     }
 
     func orderedCards() -> [HomeLeverageCard] {
-        let cards = HomeLeverageCard.referenceCards
+        let reference = HomeLeverageCard.referenceCards
+        var seen = Set<String>()
+        let cards = (sectionOrder + reference.map(\.sectionID))
+            .filter { seen.insert($0).inserted }
+            .compactMap { id in reference.first { $0.sectionID == id } }
         guard let pinnedSectionID,
               let pinned = cards.first(where: { $0.sectionID == pinnedSectionID }) else {
             return cards
         }
         return [pinned] + cards.filter { $0.sectionID != pinnedSectionID }
+    }
+
+    /// Home retains its single pinned destination; only neighbors in the same group move.
+    func move(_ sectionID: String, direction: ReminderStore.UpNextMoveDirection) {
+        let isPinned = sectionID == pinnedSectionID
+        var group = orderedCards().filter { ($0.sectionID == pinnedSectionID) == isPinned }
+        guard let index = group.firstIndex(where: { $0.sectionID == sectionID }) else { return }
+        let target = direction == .up ? index - 1 : index + 1
+        guard group.indices.contains(target) else { return }
+        group.swapAt(index, target)
+        sectionOrder = orderedCards().filter { ($0.sectionID == pinnedSectionID) != isPinned }.map(\.sectionID)
+            + group.map(\.sectionID)
+        defaults.set(sectionOrder, forKey: Self.orderDefaultsKey)
     }
 }
 
@@ -968,6 +989,7 @@ private struct NewsMoreStoryRow: View {
 
 private struct LeverageSectionView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var postScrollRevision = 0
     let section: LeverageSection
     var postStore: SocialPostStore? = nil
     var storyStore: StoryStore? = nil
@@ -997,7 +1019,7 @@ private struct LeverageSectionView: View {
                     .accessibilityIdentifier(isPosts ? "socialMediaPostsHeader" : "sectionPageHeader")
 
                 if let postStore, let reminderStore {
-                    NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore)
+                    NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore, scrollRevision: postScrollRevision)
                 }
 
                 if let storyStore {
@@ -1019,6 +1041,9 @@ private struct LeverageSectionView: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 48)
+        }
+        .onScrollPhaseChange { _, phase in
+            if phase == .interacting { postScrollRevision += 1 }
         }
         .background(SavyTheme.deepNavy.ignoresSafeArea())
         .toolbarBackground(SavyTheme.deepNavy, for: .navigationBar)
