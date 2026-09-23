@@ -1447,8 +1447,8 @@ struct NativeCapability: Identifiable {
 }
 
 enum SavyTheme {
-    // Adam's Lapis Lazuli background trial — September 23, 2026.
-    static let pageBackground = Color(hex: 0x243F86)
+    // Shared navy for page headers, their overscroll backdrops, and navigation bands.
+    static let pageBackground = deepNavy
     static let contentBackground = Color.white
     static let headerDivider = Color.white
     static let deepNavy = Color(red: 8 / 255, green: 23 / 255, blue: 45 / 255)

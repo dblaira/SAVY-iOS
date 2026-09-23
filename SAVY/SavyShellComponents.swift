@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 extension View {
-    /// The white canvas travels with the header. Lapis behind the ScrollView is exposed
+    /// The white canvas travels with the header. Navy behind the ScrollView is exposed
     /// only above it during a pull. Extend white below the content for bottom bounce.
     func savyHeaderPageContent(minHeight: CGFloat) -> some View {
         frame(maxWidth: .infinity, minHeight: minHeight, alignment: .top)
@@ -29,7 +29,7 @@ extension View {
         #endif
     }
 
-    /// Applied to the main navigation hierarchy so every Lapis page header stays solid.
+    /// Applied to the main navigation hierarchy so every page header stays solid.
     @ViewBuilder
     func savySolidTopScrollEdge() -> some View {
         if #available(iOS 26.0, *) {
