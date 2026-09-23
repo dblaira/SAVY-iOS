@@ -213,6 +213,13 @@ enum LeverageContent {
             title: "Taste is not the new moat",
             summary: "Working more in your aptitudes will be the actual new difference between winners and losers.",
             body: "Taste is not the new moat. Working more in your aptitudes will be the actual new difference between winners and losers."
+        ),
+        LeverageItem(
+            id: "polymath-specialization-kill-switch",
+            kicker: "IDENTITY",
+            title: "I am a polymath: therefore specialization is a kill switch.",
+            summary: "Volume is the only way to sustainable interest. Volume is beautiful because volume is where patterns can be seen.",
+            body: "I am a polymath: therefore specialization is a kill switch.  Volume is the only way to sustainable interest.  Volume is beautiful because volume is where patterns can be seen."
         )
     ]
 }
