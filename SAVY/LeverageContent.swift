@@ -187,6 +187,32 @@ enum LeverageContent {
                 summary: "The question that separates compounding from motion.",
                 body: "Am I building a system or doing a task?"
             )
-        ]
+        ] + addedConnections
     )
+
+    /// Connections Adam approved in Cowork. These always show on the Connection page,
+    /// next to whatever the Cowboy AI graph returns.
+    static let addedConnections: [LeverageItem] = [
+        LeverageItem(
+            id: "venture-capital-not-private-equity",
+            kicker: "IDENTITY",
+            title: "I think more like venture capital than private equity",
+            summary: "Think about the difference between venture capital and private equity.",
+            body: "Think about the difference between venture capital and private equity and understand that I think more like venture capital than private equity."
+        ),
+        LeverageItem(
+            id: "volume-wonderful-outcome",
+            kicker: "ANCHOR",
+            title: "I think of volume as this wonderful outcome",
+            summary: "It's the only thing I can sustain. 30 and get up to 300. I want 300.",
+            body: "I think of volume as this wonderful outcome. It's the only thing I can sustain. 30 and get up to 300. I want 300."
+        ),
+        LeverageItem(
+            id: "taste-not-new-moat",
+            kicker: "VALIDATED PRINCIPLE",
+            title: "Taste is not the new moat",
+            summary: "Working more in your aptitudes will be the actual new difference between winners and losers.",
+            body: "Taste is not the new moat. Working more in your aptitudes will be the actual new difference between winners and losers."
+        )
+    ]
 }

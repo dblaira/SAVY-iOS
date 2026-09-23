@@ -45,7 +45,9 @@ final class LeverageDataStore: ObservableObject {
         guard generation == refreshGeneration else { return }
 
         var nextSections = LeverageContent.seed
-        nextSections.replaceSection(id: "beliefs", items: beliefs.items)
+        let liveTitles = Set(beliefs.items.map(\.title))
+        let added = LeverageContent.addedConnections.filter { !liveTitles.contains($0.title) }
+        nextSections.replaceSection(id: "beliefs", items: beliefs.items + added)
         nextSections.replaceSection(id: "ontology", items: ontology.items)
         sections = nextSections
 
