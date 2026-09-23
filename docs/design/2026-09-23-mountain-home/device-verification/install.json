@@ -1,0 +1,37 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "install",
+      "app",
+      "--device",
+      "00008150-000D793E0208401C",
+      "/Users/adamblair/Library/Developer/Xcode/DerivedData/SAVY-fsjiorgcaklqbmguyhcotszpxszl/Build/Products/Debug-iphoneos/SAVY.app",
+      "--json-output",
+      "/tmp/savy-mountain-home-install.json"
+    ],
+    "commandType" : "devicectl.device.install.app",
+    "environment" : {
+      "TERM" : "dumb"
+    },
+    "jsonVersion" : 5,
+    "outcome" : "success",
+    "version" : "642.16"
+  },
+  "result" : {
+    "deviceIdentifier" : "B03CFB03-AA65-5941-BD82-8CBC60092BD9",
+    "installedApplications" : [
+      {
+        "bundleID" : "com.adamblair.savy",
+        "databaseSequenceNumber" : 3196,
+        "databaseUUID" : "A5D64ECD-1AC5-4AC8-8598-709DDD5E1C57",
+        "installationURL" : "file:///private/var/containers/Bundle/Application/6175F364-6DD0-4FB3-9AB4-76BD987F46A5/SAVY.app/",
+        "launchServicesIdentifier" : "unknown",
+        "options" : {
+
+        }
+      }
+    ]
+  }
+}

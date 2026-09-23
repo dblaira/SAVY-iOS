@@ -365,7 +365,6 @@ struct NewsChannelPostRow: View {
             detail: post.pinned ? .full : .minimal,
             isCompact: !post.pinned,
             minimumHeight: post.pinned ? 186 : nil,
-            leadingEdge: SavyTheme.crimson,
             border: palette.border,
             secondaryLineLimit: 2,
             titleAccessibilityIdentifier: "postHeadline-\(post.id.uuidString)"
@@ -424,7 +423,6 @@ struct NewsChannelPostEntryRow: View {
             detail: entry.pinned ? .full : .minimal,
             isCompact: !entry.pinned,
             minimumHeight: entry.pinned ? 186 : nil,
-            leadingEdge: SavyTheme.crimson,
             border: palette.border,
             secondaryLineLimit: 2,
             titleAccessibilityIdentifier: "postEntryHeadline-\(entry.id.uuidString)"

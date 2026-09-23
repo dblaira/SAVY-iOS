@@ -24,6 +24,8 @@ enum RootHomeLayout {
     static let pinnedEntryFontSize: CGFloat = 24
     static let homeBandCardSpacing: CGFloat = 10
     static let homeBandTopPadding: CGFloat = 14
+    /// Leave the summit visible between the carousel and the destination cards.
+    static let homeLandscapeRevealHeight: CGFloat = 80
     static let homeBandBottomPadding: CGFloat = 16
     static let homeBandHorizontalPadding: CGFloat = 16
     static let homeBandCardCornerRadius: CGFloat = 8
@@ -135,7 +137,8 @@ struct RootView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                SavyTheme.pageBackground.ignoresSafeArea()
+                (navigationState.activeSection == .now ? SavyTheme.deepNavy : SavyTheme.pageBackground)
+                    .ignoresSafeArea()
 
                 Group {
                     switch navigationState.activeSection {
@@ -311,17 +314,47 @@ struct EditorialHomeView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header(topInset: proxy.safeAreaInsets.top)
 
-                    homeCarousel
+                    VStack(alignment: .leading, spacing: 0) {
+                        homeCarousel
 
-                    homeContentSections
+                        Color.clear
+                            .frame(height: RootHomeLayout.homeLandscapeRevealHeight)
+                            .accessibilityHidden(true)
 
-                    contentSourceBand
-                        .padding(.horizontal, RootHomeLayout.horizontalPadding)
-                        .padding(.top, 24)
+                        homeContentSections
+
+                        contentSourceBand
+                            .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .padding(.horizontal, RootHomeLayout.horizontalPadding)
+                            .padding(.top, 24)
+                    }
+                    .padding(.bottom, 40)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: max(0, proxy.size.height + proxy.safeAreaInsets.top - RootHomeLayout.heroHeight),
+                        alignment: .top
+                    )
+                    .background {
+                        GeometryReader { landscape in
+                            Image("HomeMountainLandscape")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(
+                                    width: landscape.size.width,
+                                    height: proxy.size.height + proxy.safeAreaInsets.top
+                                )
+                                .clipped()
+                                // Keep the crop independent of saved card count. Once the
+                                // header scrolls away, the landscape stays behind the cards.
+                                .offset(y: max(0, -landscape.frame(in: .named("homeLandscapeScroll")).minY))
+                        }
+                        .clipped()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                    }
                 }
-                .padding(.bottom, 40)
-                .savyHeaderPageContent(minHeight: proxy.size.height + proxy.safeAreaInsets.top)
             }
+            .coordinateSpace(name: "homeLandscapeScroll")
             .accessibilityIdentifier("editorialHomeScroll")
             .savyHeaderOverscrollCapture("home")
             .onScrollPhaseChange { _, phase in
@@ -337,7 +370,7 @@ struct EditorialHomeView: View {
                 await leverageStore.refresh()
             }
         }
-        .background(SavyTheme.pageBackground.ignoresSafeArea())
+        .background(SavyTheme.deepNavy.ignoresSafeArea())
         .navigationDestination(item: $selectedHomeCard) { card in
             if let section = leverageStore.section(id: card.sectionID) {
                 if section.id == "beliefs" {
@@ -425,10 +458,10 @@ struct EditorialHomeView: View {
             maxHeight: RootHomeLayout.heroHeight,
             alignment: .topLeading
         )
-        .background(SavyTheme.pageBackground)
+        .background(SavyTheme.deepNavy)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(SavyTheme.headerDivider)
+                .fill(SavyTheme.crimson)
                 .frame(height: RootHomeLayout.heroDividerHeight)
         }
     }
@@ -463,7 +496,6 @@ struct EditorialHomeView: View {
             .padding(.bottom, RootHomeLayout.carouselBottomPadding)
         }
         .accessibilityIdentifier("greatestLeverageCarousel")
-        .background(SavyTheme.contentBackground)
     }
 
     private var homeContentSections: some View {
@@ -497,6 +529,7 @@ struct EditorialHomeView: View {
                         fg: colors.fg,
                         accent: colors.accent
                     )
+                    .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                 }
                 .zIndex(armedHomeCardID == card.sectionID ? 1 : 0)
                 .accessibilityElement(children: .contain)
@@ -508,7 +541,6 @@ struct EditorialHomeView: View {
         .padding(.bottom, RootHomeLayout.homeBandBottomPadding)
         .padding(.horizontal, RootHomeLayout.homeBandHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SavyTheme.contentBackground)
     }
 
     /// Copied from Understood `ActionsHomeView.cardColors` / `SavyReminderScreens.cardColors`.

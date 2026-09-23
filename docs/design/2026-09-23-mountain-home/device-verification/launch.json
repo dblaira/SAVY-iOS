@@ -1,0 +1,56 @@
+{
+  "info" : {
+    "arguments" : [
+      "devicectl",
+      "device",
+      "process",
+      "launch",
+      "--device",
+      "00008150-000D793E0208401C",
+      "com.adamblair.savy",
+      "--json-output",
+      "/tmp/savy-mountain-home-launch.json"
+    ],
+    "commandType" : "devicectl.device.process.launch",
+    "environment" : {
+      "TERM" : "dumb"
+    },
+    "jsonVersion" : 5,
+    "outcome" : "success",
+    "version" : "642.16"
+  },
+  "result" : {
+    "deviceIdentifier" : "B03CFB03-AA65-5941-BD82-8CBC60092BD9",
+    "launchOptions" : {
+      "activatedWhenStarted" : true,
+      "arguments" : [
+
+      ],
+      "environmentVariables" : {
+        "TERM" : "dumb"
+      },
+      "platformSpecificOptions" : {
+
+      },
+      "startStopped" : false,
+      "terminateExistingInstances" : false,
+      "user" : {
+        "active" : true
+      }
+    },
+    "process" : {
+      "auditToken" : [
+        4294967295,
+        501,
+        501,
+        501,
+        501,
+        20481,
+        0,
+        53553
+      ],
+      "executable" : "file:///private/var/containers/Bundle/Application/6175F364-6DD0-4FB3-9AB4-76BD987F46A5/SAVY.app/SAVY",
+      "processIdentifier" : 20481
+    }
+  }
+}

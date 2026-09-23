@@ -227,10 +227,13 @@ struct SavyBottomNavigationBar: View {
     private let barBackground = SavyTheme.bottomNavTan
     private let inactiveColor = Color(red: 0.34, green: 0.27, blue: 0.21).opacity(0.68)
     private let navyTopBandHeight: CGFloat = 24
+    private var topBandColor: Color {
+        navigationState.activeSection == .now ? SavyTheme.deepNavy : SavyTheme.pageBackground
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            SavyTheme.pageBackground
+            topBandColor
                 .frame(height: navyTopBandHeight)
 
             ZStack(alignment: .top) {
@@ -268,7 +271,7 @@ struct SavyBottomNavigationBar: View {
         }
         .frame(height: RootHomeLayout.bottomNavigationHeight)
         .background(alignment: .top) {
-            SavyTheme.pageBackground
+            topBandColor
                 .frame(
                     height: RootHomeLayout.bottomNavNavyRiserHeight + RootHomeLayout.bottomNavigationTopPadding
                 )

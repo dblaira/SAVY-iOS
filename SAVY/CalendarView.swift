@@ -272,7 +272,6 @@ struct CalendarView: View {
     private func eventBlock(_ r: Reminder, compact: Bool) -> some View {
         let hot = r.urgent || r.flag || r.priority == .high
         return HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2).fill(hot ? Brand.crimson : Color.black.opacity(0.5)).frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(r.title.isEmpty ? "Untitled" : r.title)
                     .font(.system(size: 15, weight: .bold)).foregroundStyle(.black)
@@ -482,6 +481,9 @@ private struct SavyCalendarSwipeRow<Content: View>: View {
             }
             .frame(width: actionsWidth)
             .frame(maxHeight: .infinity)
+            .opacity(offset > 0 ? 1 : 0)
+            .allowsHitTesting(offset > 0)
+            .accessibilityHidden(offset <= 0)
 
             Button {
                 if offset != 0 {

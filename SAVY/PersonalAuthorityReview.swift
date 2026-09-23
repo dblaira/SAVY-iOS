@@ -1248,11 +1248,6 @@ struct PersonalAuthorityReviewView: View {
         .padding(17)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Brand.card, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(decision == .mine ? SavyTheme.crimson : (decision == .evidenceOnly ? SavyTheme.deepNavy : (needsCheck ? Color(hex: 0xE66F24) : SavyTheme.crimson)))
-                .frame(width: decision == nil ? (needsCheck ? 7 : 3) : 8)
-        }
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .accessibilityIdentifier("personalAuthorityCandidateRow\(candidate.index)")
     }

@@ -600,7 +600,6 @@ struct SavyBandCard<Header: View>: View {
     var detail: SavyCardDetail = .minimal
     var isCompact: Bool = false
     var minimumHeight: CGFloat? = nil
-    var leadingEdge: Color? = nil
     var border: Color = .white.opacity(0.08)
     var secondaryLineLimit: Int = 1
     var titleAccessibilityIdentifier: String? = nil
@@ -643,11 +642,6 @@ struct SavyBandCard<Header: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: minimumHeight, alignment: .topLeading)
         .background(bg)
-        .overlay(alignment: .leading) {
-            if let leadingEdge {
-                Rectangle().fill(leadingEdge).frame(width: 3)
-            }
-        }
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(border))
     }
@@ -827,6 +821,9 @@ struct SavySwipeRow<Content: View>: View {
                 }
             }
             .frame(width: actionsWidth)
+            .opacity(offset > 0 ? 1 : 0)
+            .allowsHitTesting(offset > 0)
+            .accessibilityHidden(offset <= 0)
             .zIndex(offset > 0 ? 3 : 0)
 
             ZStack {

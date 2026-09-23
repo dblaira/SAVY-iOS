@@ -108,13 +108,21 @@ Implementation checkpoint: the iPhone app and acceptance tests build successfull
 
 Adam then specified Understood's interaction: swipe right to reveal Pin/Unpin and Delete; no persistent pin icon on a Connection card. Reuse the existing `SavyUpNextCardRow` actions, matching the current Understood app in Re_Call. Pin moves the chosen card to the very top above existing pins; Unpin moves it immediately below the remaining pins. Preserve unlimited pins and larger pinned cards. Delete removes authored entries or persistently hides a source-backed card in Connection without modifying its source or validated RDF. Home counts and previews exclude deleted source cards.
 
-Adam removed the red side coloring from Connection cards. Leave the shared band's optional `leadingEdge` unset for every Connection card.
+Adam removed the red side coloring from Connection cards; his later app-wide request below removes the shared side-strip option entirely.
 
 Adam extended this treatment to the homepage: remove persistent pin icons from Home destination cards, keep Pin/Unpin behind a right swipe, and put each newly pinned card at the very top. Unpin moves a card directly below the remaining pins. Retain independent unlimited pins, larger pinned cards, and saved ordering. The shared swipe action tray is hidden and noninteractive while closed, so its color cannot show behind rounded card corners.
 
 Home checkpoint: the update is built and installed on Adam's iPhone. Eleven Mac-hosted Home model checks passed, including newest-pin priority, unpin placement, independent pins, idempotency, migration, and relaunch. The UI acceptance test now checks those positions explicitly and verifies closed actions are not tappable; it has not run on the phone.
 
 Adam approved the delivered state and requested a saved checkpoint: "Perfect. Save what we have so far. This is great". Save the Connection authoring, white forms, swipe-only pin controls, newest-pin ordering, and clean card edges together. The build and 23 Mac-hosted model checks passed; the automated iPhone UI tests remain unrun.
+
+## App-wide card edges — September 23, 2026
+
+Adam reported the same left-side line on other pages and explicitly requested checking all pages. Do not add decorative colored strips along card edges. The shared `SavyBandCard` no longer has a `leadingEdge` option; both Post formats, Calendar event cards, and Personal Authority review cards have their side strips removed. All three custom swipe wrappers hide their action backgrounds, hit targets, and accessibility controls while closed so they cannot show through rounded corners. Keep horizontal title underlines, full borders, status dots/text, the Calendar now-line, and internal document heading markers.
+
+Source audit covered Home/carousel, Connection, Social Media Posts (both formats), Stories, Reminders and Actions (active/completed), Calendar (month/week/all-day/timed), Ontology, Field Essays, belief/pathway/detail pages, Personal Authority/CowboyAI, all entry forms, authentication screens, and navigation/account controls. The app and UI tests build successfully and the update is installed. Adam authorized a physical-iPhone inspection. Mirroring could not connect while the phone was in use; the subsequent direct eight-page Xcode test attempt failed before any test case ran with "Timed out while enabling automation mode." No screen captures or visual pass were obtained. Mirroring is closed and the test runner exited; the normal SAVY app remains running. Do not report source coverage as on-device visual verification.
+
+Before future automated Personal Authority UI inspection, isolate its preferences: `PersonalAuthorityReviewStore()` currently uses `UserDefaults.standard` and its initialization calls `approveUnreviewedDirectMessages()`. Merely opening that page can write live approval decisions, even under the other UI-test flags. The current card-edge audit inspected this page's source only.
 
 ## Numbered Post cards — September 21, 2026
 
@@ -147,6 +155,12 @@ Use the existing `SavyBandCard` component directly for Home, with its existing t
 Update this line when the active milestone changes:
 
 **Current lane:** Home supports independent pins with no maximum; all four destinations can remain pinned together, and both pin groups can be rearranged. Existing single-pin and explicitly unpinned preferences migrate with saved order intact. All-four pinning, independent unpinning, group boundaries, and relaunch persistence are verified on Adam's connected iPhone. Home uses the existing Actions/Reminders card component, compact unpinned titles, and no repeated eyebrows. Carousel cards are 140 points tall and 282 points wide. Preserve the September 23 Lapis headers/navigation, white main content, Lapis pull-down backdrops, and 1-point white header dividers, Bodoni headings, saved Post questions and answers, stored numbers, unlimited Post pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
+
+## Approved mountain homepage visual — September 23, 2026
+
+Adam selected the mountain-photo homepage preview with original deep navy `#08172D` behind the header and above the tan navigation, plus a thin crimson `#E60E44` divider under the header: "Yes, keep this version. I like this". He then clarified that this approval meant implementing it on his phone. Do not stop at saving an approved mockup when the ongoing task is changing his app.
+
+The design is implemented natively and installed on Adam's connected iPhone. The exact approved preview, original photograph, and design notes are preserved in `docs/design/2026-09-23-mountain-home/`; use the bundled original `HomeMountainLandscape` asset, not a background extracted from the generated preview. Home alone uses the mountain body, deep navy header/overscroll/root fallback/both lower navigation bands, and 1-point crimson divider. Other pages keep their existing Lapis/white styling. Keep native 140-point carousel cards, an 80-point landscape reveal, opaque destination cards, all pin/swipe behavior, and disabled top-edge fade. Bound the image crop to viewport height independently of content count and keep it behind the cards as the header scrolls away. The final top-of-page and scrolled states were observed through QuickTime's wired iPhone screen source. The final screenshot is `docs/design/2026-09-23-mountain-home/device-verification/installed-home.png`; the preview connection was closed afterward. This does not constitute a new held-pull or pinning interaction test.
 
 ## How agents use Adam's Macs (required)
 
