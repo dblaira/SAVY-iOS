@@ -9,11 +9,13 @@ final class PostCardOrderStore: ObservableObject {
 
     @Published private(set) var manualOrder: [String]?
     private let defaults: UserDefaults
+    private let key: String
 
-    init(defaults: UserDefaults? = nil) {
+    init(defaults: UserDefaults? = nil, key: String = PostCardOrderStore.defaultsKey) {
         let defaults = defaults ?? SavyCardPreferences.defaults
         self.defaults = defaults
-        manualOrder = defaults.stringArray(forKey: Self.defaultsKey).map(Self.unique)
+        self.key = key
+        manualOrder = defaults.stringArray(forKey: key).map(Self.unique)
     }
 
     /// Before the first move, the existing status/date order remains authoritative.
@@ -42,6 +44,19 @@ final class PostCardOrderStore: ObservableObject {
         save(manualOrder + available.filter { !knownIDs.contains($0) })
     }
 
+    /// Understood's pin action puts the chosen card first in its new group: at the
+    /// very top when pinned, immediately beneath the remaining pins when unpinned.
+    func moveToFrontOfPinGroup(_ id: String, defaultOrder: [String], pinnedIDs: Set<String>) {
+        var order = orderedIDs(defaultOrder: defaultOrder, pinnedIDs: pinnedIDs)
+        guard order.contains(id) else { return }
+        order.removeAll { $0 == id }
+        let insertion = pinnedIDs.contains(id) ? 0 : order.prefix { pinnedIDs.contains($0) }.count
+        order.insert(id, at: insertion)
+        let visibleIDs = Set(order)
+        let absent = (manualOrder ?? []).filter { !visibleIDs.contains($0) }
+        save(order + absent)
+    }
+
     /// Move exactly one slot within the current pinned or unpinned block.
     @discardableResult
     func move(_ id: String, direction: Int, defaultOrder: [String], pinnedIDs: Set<String>) -> Bool {
@@ -67,7 +82,7 @@ final class PostCardOrderStore: ObservableObject {
     private func save(_ order: [String]) {
         guard manualOrder != order else { return }
         manualOrder = order
-        defaults.set(order, forKey: Self.defaultsKey)
+        defaults.set(order, forKey: key)
     }
 
     private static func unique(_ ids: [String]) -> [String] {

@@ -58,9 +58,11 @@ struct PostTheme: Identifiable, Codable, Equatable {
 struct PostEntryDraft {
     private(set) var themeID: String
     private var answersByTheme: [String: [String]]
+    private let fixedTheme: PostTheme?
 
-    init(entry: Reminder) {
-        let theme = PostThemeCatalog.theme(id: entry.postThemeID) ?? PostThemeCatalog.defaultTheme
+    init(entry: Reminder, fixedTheme: PostTheme? = nil) {
+        self.fixedTheme = fixedTheme
+        let theme = fixedTheme ?? PostThemeCatalog.theme(id: entry.postThemeID) ?? PostThemeCatalog.defaultTheme
         themeID = theme.id
         answersByTheme = [theme.id: theme.questionAndAnswers(
             from: entry.postAnswers,
@@ -69,12 +71,13 @@ struct PostEntryDraft {
     }
 
     var theme: PostTheme {
-        PostThemeCatalog.theme(id: themeID) ?? PostThemeCatalog.defaultTheme
+        fixedTheme ?? PostThemeCatalog.theme(id: themeID) ?? PostThemeCatalog.defaultTheme
     }
 
     var answers: [String] { answersByTheme[themeID] ?? theme.prefilledAnswers }
 
     mutating func selectTheme(_ id: String) {
+        guard fixedTheme == nil else { return }
         guard let selected = PostThemeCatalog.theme(id: id) else { return }
         themeID = selected.id
         if answersByTheme[id] == nil { answersByTheme[id] = selected.prefilledAnswers }

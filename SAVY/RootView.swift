@@ -70,6 +70,7 @@ struct RootView: View {
     @StateObject private var reminderStore: ReminderStore
     @StateObject private var postStore: SocialPostStore
     @StateObject private var postCardOrder = PostCardOrderStore()
+    @StateObject private var connectionStore = ConnectionStore()
     @StateObject private var storyStore: StoryStore
     @State private var isPersonalAuthorityReviewPresented = false
     @State private var isPostsPresented = false
@@ -145,6 +146,7 @@ struct RootView: View {
                             postStore: postStore,
                             postCardOrder: postCardOrder,
                             storyStore: storyStore,
+                            connectionStore: connectionStore,
                             onSignOut: onSignOut,
                             onOpenPersonalAuthorityReview: {
                                 isPersonalAuthorityReviewPresented = true
@@ -288,6 +290,7 @@ struct EditorialHomeView: View {
     @ObservedObject var postStore: SocialPostStore
     @ObservedObject var postCardOrder: PostCardOrderStore
     @ObservedObject var storyStore: StoryStore
+    @ObservedObject var connectionStore: ConnectionStore
     let onSignOut: (() -> Void)?
     let onOpenPersonalAuthorityReview: () -> Void
     @State private var editingReminder: Reminder?
@@ -338,7 +341,7 @@ struct EditorialHomeView: View {
         .navigationDestination(item: $selectedHomeCard) { card in
             if let section = leverageStore.section(id: card.sectionID) {
                 if section.id == "beliefs" {
-                    ConnectionView(section: section)
+                    ConnectionView(section: section, store: connectionStore)
                 } else if section.id == "news-channel" {
                     LeverageSectionView(section: section, postStore: postStore, storyStore: storyStore, reminderStore: reminderStore, postCardOrder: postCardOrder)
                 } else {
@@ -486,6 +489,8 @@ struct EditorialHomeView: View {
                         card: card,
                         section: leverageStore.section(id: card.sectionID),
                         posts: posts,
+                        connections: connectionStore.entries,
+                        hiddenConnectionIDs: connectionStore.hiddenSourceIDs,
                         isPinned: isPinned,
                         isReordering: armedHomeCardID == card.sectionID,
                         bg: colors.bg,
@@ -708,13 +713,15 @@ final class HomeSectionPinStore: ObservableObject {
     }
 
     func pin(_ sectionID: String) {
-        pinnedSectionIDs.insert(sectionID)
+        guard pinnedSectionIDs.insert(sectionID).inserted else { return }
         defaults.set(pinnedSectionIDs.sorted(), forKey: Self.pinnedIDsDefaultsKey)
+        moveToFrontOfPinGroup(sectionID)
     }
 
     func unpin(_ sectionID: String) {
-        pinnedSectionIDs.remove(sectionID)
+        guard pinnedSectionIDs.remove(sectionID) != nil else { return }
         defaults.set(pinnedSectionIDs.sorted(), forKey: Self.pinnedIDsDefaultsKey)
+        moveToFrontOfPinGroup(sectionID)
     }
 
     func toggle(_ sectionID: String) {
@@ -734,6 +741,17 @@ final class HomeSectionPinStore: ObservableObject {
         return cards.filter { isPinned($0.sectionID) } + cards.filter { !isPinned($0.sectionID) }
     }
 
+    private func moveToFrontOfPinGroup(_ sectionID: String) {
+        var order = orderedCards().map(\.sectionID)
+        guard order.contains(sectionID) else { return }
+        order.removeAll { $0 == sectionID }
+        let insertion = isPinned(sectionID) ? 0 : order.prefix { isPinned($0) }.count
+        order.insert(sectionID, at: insertion)
+        let visibleIDs = Set(order)
+        sectionOrder = order + sectionOrder.filter { !visibleIDs.contains($0) }
+        defaults.set(sectionOrder, forKey: Self.orderDefaultsKey)
+    }
+
     /// Move one visible position without crossing the pinned/unpinned boundary.
     func move(_ sectionID: String, direction: ReminderStore.UpNextMoveDirection) {
         var cards = orderedCards()
@@ -751,6 +769,8 @@ private struct HomeContentSectionView: View {
     let card: HomeLeverageCard
     let section: LeverageSection?
     let posts: [SavedPost]
+    var connections: [ConnectionEntry] = []
+    var hiddenConnectionIDs: Set<String> = []
     var isPinned = false
     var isReordering = false
     let bg: Color
@@ -774,20 +794,12 @@ private struct HomeContentSectionView: View {
         ) {
             EmptyView()
         }
-        .overlay(alignment: .topTrailing) {
-            if isPinned {
-                Image(systemName: "pin.fill")
-                    .font(.system(size: 10, weight: .heavy))
-                    .foregroundStyle(fg.opacity(0.7))
-                    .padding(14)
-            }
-        }
     }
 
     private var countText: String {
-        card.sectionID == "news-channel"
-            ? "\(posts.count) / 50 saved posts"
-            : "\(section?.items.count ?? 0) items"
+        if card.sectionID == "news-channel" { return "\(posts.count) / 50 saved posts" }
+        let authoredCount = card.sectionID == "beliefs" ? connections.count : 0
+        return "\(visibleItems.count + authoredCount) items"
     }
 
     private var postReferences: String {
@@ -798,7 +810,15 @@ private struct HomeContentSectionView: View {
 
     private var previewText: String? {
         if card.sectionID == "news-channel" { return posts.first?.preview.title }
-        return section?.items.prefix(3).map(\.title).joined(separator: "\n")
+        if card.sectionID == "beliefs", !connections.isEmpty {
+            return connections.prefix(3).map { $0.preview.title }.joined(separator: "\n")
+        }
+        return visibleItems.prefix(3).map(\.title).joined(separator: "\n")
+    }
+
+    private var visibleItems: [LeverageItem] {
+        let items = section?.items ?? []
+        return card.sectionID == "beliefs" ? items.filter { !hiddenConnectionIDs.contains($0.id) } : items
     }
 }
 

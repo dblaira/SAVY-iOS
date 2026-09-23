@@ -10,6 +10,9 @@ struct ReminderFormView: View {
 
     let existing: Reminder?
     let existingTags: [String]
+    let connectionMode: Bool
+    private let initialEntry: Reminder
+    var onSaveAttempt: ((Reminder) -> Bool)?
     var onSave: (Reminder) -> Void
 
     @State private var r: Reminder
@@ -23,9 +26,10 @@ struct ReminderFormView: View {
     @State private var committed = false
     @State private var cancelled = false
     @State private var showSaved = false
+    @State private var saveFailed = false
     @FocusState private var focusedSubtaskID: UUID?
     @State private var subtasks: [Subtask]
-    // Post-only state keeps editable questions and answers together for each visited theme.
+    // Editable questions and answers are shared by Post themes and the fixed Connection theme.
     @State private var postDraft: PostEntryDraft
 
     private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
@@ -37,18 +41,21 @@ struct ReminderFormView: View {
         return calendar.date(bySettingHour: timeComponents.hour ?? 12, minute: timeComponents.minute ?? 0, second: 0, of: date) ?? date
     }
 
-    init(initialKind: ReminderKind = .reminder, existing: Reminder?, existingTags: [String] = [], onSave: @escaping (Reminder) -> Void) {
+    init(initialKind: ReminderKind = .reminder, connectionMode: Bool = false, existing: Reminder?, existingTags: [String] = [], onSaveAttempt: ((Reminder) -> Bool)? = nil, onSave: @escaping (Reminder) -> Void) {
         self.existing = existing
         self.existingTags = existingTags
+        self.connectionMode = connectionMode
+        self.onSaveAttempt = onSaveAttempt
         self.onSave = onSave
         var base = existing ?? Reminder()
         if existing == nil {
             base.kind = initialKind
             if initialKind == .event { base.dueDate = Date() }
         }
+        self.initialEntry = base
         _r = State(initialValue: base)
         _subtasks = State(initialValue: base.subtasks)
-        _postDraft = State(initialValue: PostEntryDraft(entry: base))
+        _postDraft = State(initialValue: PostEntryDraft(entry: base, fixedTheme: connectionMode ? ConnectionEntry.theme : nil))
         _hasDate = State(initialValue: base.dueDate != nil)
         _hasDefer = State(initialValue: base.deferDate != nil)
         _date = State(initialValue: Self.dueDateTime(on: base.dueDate ?? Date(), at: base.dueTime))
@@ -59,22 +66,25 @@ struct ReminderFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker(EntryFormCopy.destinationPickerTitle, selection: $r.kind) {
-                        ForEach(ReminderKind.allCases) { Text($0.segmentLabel).tag($0) }
+                if !connectionMode {
+                    Section {
+                        Picker(EntryFormCopy.destinationPickerTitle, selection: $r.kind) {
+                            ForEach(ReminderKind.allCases) { Text($0.segmentLabel).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
                     }
-                    .pickerStyle(.segmented)
+                    .listRowBackground(Brand.card)
                 }
-                .listRowBackground(Brand.card)
 
                 unifiedEntrySections
             }
             .scrollContentBackground(.hidden)
-            .background(SavyTheme.pageBackground.ignoresSafeArea())
+            .background(SavyTheme.contentBackground.ignoresSafeArea())
+            .accessibilityIdentifier(connectionMode ? "connectionEntryForm" : "sharedEntryForm")
             .tint(Brand.crimson)
             // Header mirrors the Title as you type — the type name until the first character, then
             // the live title at full size. Compact icon buttons leave it more room.
-            .savyPageTitle(r.title.trimmingCharacters(in: .whitespaces).isEmpty ? r.kind.label : r.title,
+            .savyPageTitle(r.title.trimmingCharacters(in: .whitespaces).isEmpty ? entryLabel : r.title,
                            color: SavyTheme.deepNavy)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -97,8 +107,15 @@ struct ReminderFormView: View {
             .onChange(of: photoItem) { _, item in loadPhoto(item) }
             // Auto-save: if the form is swiped away (not via Cancel) and has content, keep it.
             .onDisappear { autosaveIfNeeded() }
+            .alert("Couldn't save \(entryLabel)", isPresented: $saveFailed) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Your writing is still here. Please try saving again.")
+            }
         }
         .overlay { if showSaved { savedToast } }
+        // Keep Connection writing onscreen until Save succeeds or the user chooses Cancel.
+        .interactiveDismissDisabled(connectionMode && hasContent && !committed)
         .preferredColorScheme(.light)
     }
 
@@ -109,7 +126,7 @@ struct ReminderFormView: View {
             VStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 46)).foregroundStyle(Brand.crimson)
-                Text("Harnessed!").font(Brand.serif(30)).foregroundStyle(.black)
+                Text(connectionMode ? "Saved" : "Harnessed!").font(Brand.serif(30)).foregroundStyle(.black)
             }
             .padding(.horizontal, 40).padding(.vertical, 30)
             .background(Color.white, in: RoundedRectangle(cornerRadius: 22))
@@ -120,10 +137,13 @@ struct ReminderFormView: View {
 
     // MARK: - Shared entry flow
 
+    private var entryLabel: String { connectionMode ? "Connection" : r.kind.label }
+    private var hasDecideQuestions: Bool { connectionMode || r.kind == .post }
+
     @ViewBuilder private var unifiedEntrySections: some View {
         // Post leads with its theme and the theme's Decide questions; everything the Reminder
         // form already carries stays below, untouched.
-        if r.kind == .post {
+        if hasDecideQuestions {
             postThemeSection
             postDecideSection
         }
@@ -190,21 +210,27 @@ struct ReminderFormView: View {
 
     private var postThemeSection: some View {
         Section {
-            Picker(selection: Binding(get: { postDraft.themeID }, set: { postDraft.selectTheme($0) })) {
-                ForEach(PostThemeCatalog.themes) { theme in
-                    Label {
-                        Text(theme.name)
-                    } icon: {
-                        Image(uiImage: postThemeIcon(theme))
+            if connectionMode {
+                Label(selectedPostTheme.name, systemImage: selectedPostTheme.questions.first?.symbol ?? "lightbulb")
+                    .foregroundStyle(Brand.crimson)
+                    .accessibilityIdentifier("connectionTheme")
+            } else {
+                Picker(selection: Binding(get: { postDraft.themeID }, set: { postDraft.selectTheme($0) })) {
+                    ForEach(PostThemeCatalog.themes) { theme in
+                        Label {
+                            Text(theme.name)
+                        } icon: {
+                            Image(uiImage: postThemeIcon(theme))
+                        }
+                        .tag(theme.id)
                     }
-                    .tag(theme.id)
+                } label: {
+                    Label(EntryFormCopy.themeTitle, systemImage: "list.bullet")
                 }
-            } label: {
-                Label(EntryFormCopy.themeTitle, systemImage: "list.bullet")
+                .pickerStyle(.menu)
+                .tint(Brand.crimson)
+                .accessibilityIdentifier("PostTheme")
             }
-            .pickerStyle(.menu)
-            .tint(Brand.crimson)
-            .accessibilityIdentifier("PostTheme")
         } header: { sectionHeader(EntryFormCopy.themeHeader) }
         .listRowBackground(Brand.card)
     }
@@ -252,7 +278,7 @@ struct ReminderFormView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.72))
+            .foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
     }
 
     private func urlField(_ placeholder: String) -> some View {
@@ -476,21 +502,23 @@ struct ReminderFormView: View {
     }
 
     private func commit() {
+        guard persist() else { saveFailed = true; return }
         committed = true
-        persist()
         // Adam's list #7: every saved entry rides home to the Harness
         // Delegation queue through the shared iCloud pocket -- his
         // three sentences (want / when I am / done), verbatim. No new
         // menu options; the toast says where it went: "Harnessed!"
-        HarnessDelegationWriter.write(
-            want: r.title,
-            think: r.whenIAm ?? "",
-            done: r.outcome,
-            postContext: r.kind == .post
-                ? "Theme: \(r.postThemeName ?? "Post")\n\nDecide\n\n" + r.postQuestionAndAnswers.joined(separator: "\n\n")
-                : nil
-        )
-        HarnessedRegistry.mark(r)
+        if !connectionMode {
+            HarnessDelegationWriter.write(
+                want: r.title,
+                think: r.whenIAm ?? "",
+                done: r.outcome,
+                postContext: r.kind == .post
+                    ? "Theme: \(r.postThemeName ?? "Post")\n\nDecide\n\n" + r.postQuestionAndAnswers.joined(separator: "\n\n")
+                    : nil
+            )
+            HarnessedRegistry.mark(r)
+        }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation(.spring(response: 0.3)) { showSaved = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
@@ -499,13 +527,16 @@ struct ReminderFormView: View {
     /// Save when the sheet is dismissed by swiping (not Cancel) and the user actually entered something.
     private func autosaveIfNeeded() {
         guard !committed, !cancelled, hasContent else { return }
-        persist()
+        if !persist() { saveFailed = true }
     }
 
     private var hasContent: Bool {
+        if connectionMode, r != initialEntry || !tagDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
         if !r.title.trimmingCharacters(in: .whitespaces).isEmpty { return true }
         if !r.notes.isEmpty || !r.outcome.isEmpty || !(r.whenIAm ?? "").isEmpty || !r.url.isEmpty { return true }
-        if r.kind == .post, postDraft.hasUserContent { return true }
+        if hasDecideQuestions, postDraft.hasUserContent { return true }
         if !r.locationName.isEmpty || !r.waitingOn.isEmpty { return true }
         if !r.tags.isEmpty { return true }
         if subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
@@ -513,7 +544,7 @@ struct ReminderFormView: View {
         return false
     }
 
-    private func persist() {
+    @discardableResult private func persist() -> Bool {
         addTag()
         if let pickedImage {
             r.imageLocalPath = LocalImageStore.save(pickedImage)
@@ -521,9 +552,9 @@ struct ReminderFormView: View {
         r.dueDate = hasDate ? date : nil
         r.dueTime = hasDate ? date : nil
         r.deferDate = hasDefer ? deferDate : nil
-        r.endTime = nil
+        if !connectionMode { r.endTime = nil }
         r.subtasks = subtasks.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
-        if r.kind == .post {
+        if hasDecideQuestions {
             postDraft.apply(to: &r)
         } else {
             r.postThemeID = nil
@@ -531,8 +562,10 @@ struct ReminderFormView: View {
             r.postAnswers = nil
             r.postAnswersContainQuestions = nil
         }
-        if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(r.kind.label)" }
+        if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(entryLabel)" }
+        if let onSaveAttempt, !onSaveAttempt(r) { return false }
         onSave(r)
+        return true
     }
 }
 

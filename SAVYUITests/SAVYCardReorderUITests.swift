@@ -79,19 +79,32 @@ final class SAVYCardReorderUITests: XCTestCase {
     func testHomeCardsCanAllRemainPinnedAndKeepTheirOrderAfterRelaunch() {
         let sections = ["news-channel", "beliefs", "ontology", "field-essays"]
         var pinned: Set<String> = ["news-channel"]
+        var order = sections
+        func assertSwipeActionsAreClosed() {
+            for section in sections {
+                for identifier in ["swipePin", "swipeUnpin"] {
+                    XCTAssertFalse(homeRow(section).buttons[identifier].firstMatch.isHittable,
+                                   "Home pin actions should only be available after a right swipe")
+                }
+            }
+        }
         reveal(homeRow("news-channel"))
         assertHomePins(pinned, sections: sections)
+        assertSwipeActionsAreClosed()
 
         for section in sections.dropFirst() {
             setHomePinned(true, section: section)
             pinned.insert(section)
+            order.removeAll { $0 == section }
+            order.insert(section, at: 0)
+            assertOrder(order.map(homeRow))
             assertHomePins(pinned, sections: sections)
+            assertSwipeActionsAreClosed()
         }
         attach("04 All four Home cards retain independent pins")
 
-        // Follow the order actually displayed after pinning; newly pinned cards may
-        // join their group without changing the user's existing manual positions.
-        var order = sections.sorted { homeRow($0).frame.minY < homeRow($1).frame.minY }
+        // Each new pin must be first, above all prior pins. Manual reorder remains
+        // available within that group after the new-pin placement is verified.
         let movedSection = order[1]
         arm(element("homeReorder-\(movedSection)"))
         moveUp()
@@ -113,11 +126,26 @@ final class SAVYCardReorderUITests: XCTestCase {
         assertOrder(order.map(homeRow))
         assertHomePins(pinned, sections: sections)
         attach("06 Unpinning one Home card leaves the other three pinned")
+        disarm(element("homeReorder-\(unpinnedSection)"))
+
+        // A second unpin must become the first unpinned card, ahead of the one
+        // already in that group, while preserving every remaining independent pin.
+        let secondUnpinnedSection = order[1]
+        setHomePinned(false, section: secondUnpinnedSection)
+        pinned.remove(secondUnpinnedSection)
+        order = order.filter { pinned.contains($0) }
+            + [secondUnpinnedSection]
+            + order.filter { !pinned.contains($0) && $0 != secondUnpinnedSection }
+        assertHomePins(pinned, sections: sections)
+        assertOrder(order.map(homeRow))
+        assertSwipeActionsAreClosed()
+        attach("06b New unpin leads the unpinned Home cards below the remaining pins")
 
         relaunchKeepingIsolatedData()
         reveal(homeRow(unpinnedSection))
         assertHomePins(pinned, sections: sections)
         assertOrder(order.map(homeRow))
+        assertSwipeActionsAreClosed()
         attach("07 Independent Home pins and pinned order survive relaunch")
     }
 

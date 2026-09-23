@@ -96,6 +96,26 @@ Regression verification must inspect the actual screen during a downward pull, n
 
 Verification: the app and UI tests build successfully and the update is installed on Adam's iPhone. After the changes were saved, Adam confirmed: "On device, pull down worked". This is Adam's on-device confirmation of the reported pull-down repair; the eight-page automated UI tests have not run.
 
+## Connection authoring and Post form background — September 23, 2026
+
+Adam requested that Connection look like Social Media Posts: the same header/back treatment, small + button beside the count, shared colored cards, larger pinned cards, compact unpinned cards, and any number of independent pins at the top. Both existing source connections and newly authored connections can be pinned. Keep the original source bodies available. The + opens the native shared entry form in Connection mode, and authored cards reopen that form for editing.
+
+Reuse "Your Personal Take & Lessons Learned" with these editable questions in order: "What did you believe before?", "What experience changed or confirmed your connection?", "What do you believe now? What is the new connection?", and "What do you do differently because of it?" Preserve all shared form metadata. The third answer supplies the new Connection card's preview. Keep the existing Post theme unchanged. Both the Post and Connection entry forms use white backgrounds with readable dark section labels and the existing cream field groups.
+
+Authored Connections use a separate atomic local archive in Application Support/SAVY/connections.json, retaining the complete shared metadata payload. They do not enter the Reminder/Post feeds, notifications, Harness, or validated RDF merely by being saved. Existing source connections remain source-backed. UI tests use the isolated SAVYUITests archive and preference suite.
+
+Implementation checkpoint: the iPhone app and acceptance tests build successfully, twelve Mac-hosted tests against the actual Connection storage/model and card-order sources passed, and the swipe-action update is installed on Adam's iPhone. Tests cover new-pin priority, unpin placement, retained ordering after relaunch, independent Post ordering, and persistent source-card deletion. The new Connection/Post form UI tests have not run; on-device interaction verification awaits phone-use coordination. Existing Post editor backgrounds are white too.
+
+Adam then specified Understood's interaction: swipe right to reveal Pin/Unpin and Delete; no persistent pin icon on a Connection card. Reuse the existing `SavyUpNextCardRow` actions, matching the current Understood app in Re_Call. Pin moves the chosen card to the very top above existing pins; Unpin moves it immediately below the remaining pins. Preserve unlimited pins and larger pinned cards. Delete removes authored entries or persistently hides a source-backed card in Connection without modifying its source or validated RDF. Home counts and previews exclude deleted source cards.
+
+Adam removed the red side coloring from Connection cards. Leave the shared band's optional `leadingEdge` unset for every Connection card.
+
+Adam extended this treatment to the homepage: remove persistent pin icons from Home destination cards, keep Pin/Unpin behind a right swipe, and put each newly pinned card at the very top. Unpin moves a card directly below the remaining pins. Retain independent unlimited pins, larger pinned cards, and saved ordering. The shared swipe action tray is hidden and noninteractive while closed, so its color cannot show behind rounded card corners.
+
+Home checkpoint: the update is built and installed on Adam's iPhone. Eleven Mac-hosted Home model checks passed, including newest-pin priority, unpin placement, independent pins, idempotency, migration, and relaunch. The UI acceptance test now checks those positions explicitly and verifies closed actions are not tappable; it has not run on the phone.
+
+Adam approved the delivered state and requested a saved checkpoint: "Perfect. Save what we have so far. This is great". Save the Connection authoring, white forms, swipe-only pin controls, newest-pin ordering, and clean card edges together. The build and 23 Mac-hosted model checks passed; the automated iPhone UI tests remain unrun.
+
 ## Numbered Post cards — September 21, 2026
 
 Adam approved the numbered Post layout: reuse the Reminders display, show the first authored sentence plus metadata, make pinned cards larger with more detail, and rotate white, dark red, sand, and navy across the displayed list. The inline count measures saved posts toward 50; it includes both shared-form Post entries and older SocialPost entries. This is a saved-post goal, not a publication count.

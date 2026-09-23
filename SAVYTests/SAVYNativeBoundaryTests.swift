@@ -850,12 +850,8 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.pinnedEntryTrailingInset, 17)
         XCTAssertEqual(RootHomeLayout.pinnedEntryFontSize, 24)
         XCTAssertEqual(ConnectionLayout.fullCardHeight, 186)
-        XCTAssertEqual(ConnectionLayout.mediumCardHeight, 167)
-        XCTAssertEqual(ConnectionLayout.minimalCardHeight, 124)
-        XCTAssertEqual(ConnectionLayout.cardSpacing, 11)
-        XCTAssertEqual(ConnectionLayout.cardCornerRadius, 8)
-        XCTAssertGreaterThan(ConnectionLayout.fullCardHeight, ConnectionLayout.mediumCardHeight)
-        XCTAssertGreaterThan(ConnectionLayout.mediumCardHeight, ConnectionLayout.minimalCardHeight)
+        XCTAssertEqual(ConnectionLayout.cardSpacing, 14)
+        XCTAssertEqual(ConnectionLayout.horizontalPadding, 24)
         XCTAssertEqual(SavyHapticFeedback.primaryImpactIntensity, 1.0)
         XCTAssertEqual(HomeFeedRow.rows(
             reminderStore: ReminderStore(),
@@ -969,14 +965,14 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         store.pin("field-essays")
         XCTAssertEqual(store.pinnedSectionIDs, ["beliefs", "field-essays", "news-channel"])
         XCTAssertEqual(store.orderedCards().filter { $0.sectionID == "field-essays" }.count, 1)
-        XCTAssertEqual(store.orderedCards().map(\.sectionID), ["beliefs", "field-essays", "news-channel", "ontology"])
+        XCTAssertEqual(store.orderedCards().map(\.sectionID), ["field-essays", "beliefs", "news-channel", "ontology"])
         store.unpin("field-essays")
         XCTAssertEqual(store.pinnedSectionIDs, ["beliefs", "news-channel"])
         XCTAssertEqual(store.orderedCards().map(\.sectionID), [
             "beliefs",
             "news-channel",
-            "ontology",
-            "field-essays"
+            "field-essays",
+            "ontology"
         ])
     }
 

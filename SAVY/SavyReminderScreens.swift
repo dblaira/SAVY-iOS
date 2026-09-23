@@ -316,6 +316,9 @@ struct SavyUpNextCardRow<Content: View>: View {
                 }
             }
             .frame(width: actionsWidth)
+            .opacity(swipeOffset > 0 ? 1 : 0)
+            .allowsHitTesting(swipeOffset > 0)
+            .accessibilityHidden(swipeOffset <= 0)
             .zIndex(swipeOffset > 0 ? 3 : 0)
 
             ZStack(alignment: .topTrailing) {

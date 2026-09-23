@@ -53,12 +53,14 @@
 		9D7ECDC238F7365A18AE487F /* SocialPostFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8BD89A861F5D8F81C7AD8A6 /* SocialPostFormView.swift */; };
 		9F6BC503481DB377D87643B2 /* AmplifyAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B4F10E8CE7EE4541EAB90 /* AmplifyAuthService.swift */; };
 		A50DD570C6AE44AD5BAF0B64 /* SAVYPostEntryThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D942B1ADBDE5E18D310F3A5D /* SAVYPostEntryThemeTests.swift */; };
+		ED2EE02DEFC845B2824699EF /* SAVYConnectionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5A61428EF724C0A98F629BA /* SAVYConnectionStoreTests.swift */; };
 		A89DAF0D5D6D98E9E78EE6FC /* ReminderBrandTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */; };
 		AAA2D77A09E280E865841C8C /* SavyShellComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A831A22DE6C20BC44B1AC8 /* SavyShellComponents.swift */; };
 		AAF320BAEFA2EBB57FE1B015 /* SAVYHomeCardOrderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 647CD1669EAB59E50E94B81D /* SAVYHomeCardOrderTests.swift */; };
 		B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */; };
 		B6AA7A79A5B642A3838436E1 /* SAVYCardReorderUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92B0991DF7D62B465801D80E /* SAVYCardReorderUITests.swift */; };
 		EECB227FDCE84677A083D214 /* SAVYHeaderOverscrollUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECB227FDCE84677A083D215 /* SAVYHeaderOverscrollUITests.swift */; };
+		A80228D75BE84B91BF955E01 /* SAVYConnectionEntryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C659C8F57DDE45478BF2F912 /* SAVYConnectionEntryUITests.swift */; };
 		BB70759B7D2FF0F8C19F5641 /* LeverageDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C6C144C69E4ECE420740763 /* LeverageDataStore.swift */; };
 		BC6829860ABA267D108308E1 /* amplifyconfiguration.json in Resources */ = {isa = PBXBuildFile; fileRef = 71BED1D3FCF0C25EB8E2B51F /* amplifyconfiguration.json */; };
 		C8AF92E504C468AF17F3B019 /* AWSCognitoAuthPlugin in Frameworks */ = {isa = PBXBuildFile; productRef = DE00E65E2BEA2B7AF9BFD1A0 /* AWSCognitoAuthPlugin */; };
@@ -68,6 +70,7 @@
 		DA958E6153EFC6478AD8DCDA /* SavyReminderScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA30048EC8E5615CFB651053 /* SavyReminderScreens.swift */; };
 		E7F5F0E200B631EE00F748F4 /* SAVYReminderActionCalendarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */; };
 		EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C471C0DAFF40B2987170667F /* ConnectionView.swift */; };
+		08BEE0686FEC4897B0F38576 /* ConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042E48A4D1264E22BDF660AE /* ConnectionStore.swift */; };
 		EF5F11DC0E410FB3E004478D /* HarnessDelegationCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */; };
 		F245C75739A60D835FFAC8A5 /* SAVYDelegateTextExpansionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9097749206EB8223EC12F04 /* SAVYDelegateTextExpansionUITests.swift */; };
 		F63D3DBD638A72AE814EEBF5 /* SAVYPostNumberingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E55E0360BA2CAEDA692F662 /* SAVYPostNumberingTests.swift */; };
@@ -133,6 +136,7 @@
 		901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeBoundary.swift; sourceTree = "<group>"; };
 		92B0991DF7D62B465801D80E /* SAVYCardReorderUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYCardReorderUITests.swift; sourceTree = "<group>"; };
 		EECB227FDCE84677A083D215 /* SAVYHeaderOverscrollUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYHeaderOverscrollUITests.swift; sourceTree = "<group>"; };
+		C659C8F57DDE45478BF2F912 /* SAVYConnectionEntryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYConnectionEntryUITests.swift; sourceTree = "<group>"; };
 		9349759A323CFF455E48F26B /* NewsChannelPosts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsChannelPosts.swift; sourceTree = "<group>"; };
 		9B2DF20B40B53767A8A8656D /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
 		9B3873F2C7A6AEBD1AFB0561 /* ReminderFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderFormView.swift; sourceTree = "<group>"; };
@@ -154,11 +158,13 @@
 		C37D6C6C19501D7A09690DBC /* AuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSession.swift; sourceTree = "<group>"; };
 		C449FB84177A8881F7797CD6 /* CowboyAIReasoning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CowboyAIReasoning.swift; sourceTree = "<group>"; };
 		C471C0DAFF40B2987170667F /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
+		042E48A4D1264E22BDF660AE /* ConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStore.swift; sourceTree = "<group>"; };
 		C903B8D6CAA9A40126BE9AF9 /* SAVYPostCardOrderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYPostCardOrderTests.swift; sourceTree = "<group>"; };
 		C9097749206EB8223EC12F04 /* SAVYDelegateTextExpansionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYDelegateTextExpansionUITests.swift; sourceTree = "<group>"; };
 		CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYReminderActionCalendarUITests.swift; sourceTree = "<group>"; };
 		D831D78FD50C7055D086693B /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		D942B1ADBDE5E18D310F3A5D /* SAVYPostEntryThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYPostEntryThemeTests.swift; sourceTree = "<group>"; };
+		C5A61428EF724C0A98F629BA /* SAVYConnectionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYConnectionStoreTests.swift; sourceTree = "<group>"; };
 		DA7BB7AA8C7BCE337E18D90E /* ReminderLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderLocationProvider.swift; sourceTree = "<group>"; };
 		DBF301632E7B7DDBCB4E2E96 /* ReminderNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderNotificationScheduler.swift; sourceTree = "<group>"; };
 		E1D0B59B31ED879E86FA80A2 /* SavyNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyNavigation.swift; sourceTree = "<group>"; };
@@ -209,6 +215,7 @@
 				664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */,
 				C903B8D6CAA9A40126BE9AF9 /* SAVYPostCardOrderTests.swift */,
 				D942B1ADBDE5E18D310F3A5D /* SAVYPostEntryThemeTests.swift */,
+				C5A61428EF724C0A98F629BA /* SAVYConnectionStoreTests.swift */,
 				4E55E0360BA2CAEDA692F662 /* SAVYPostNumberingTests.swift */,
 				7F320F84432D5816D1B13F94 /* SAVYReorderTests.swift */,
 			);
@@ -242,6 +249,7 @@
 				0DA56611B45F0D0FC844211C /* CaptureEntry.swift */,
 				7E869D9555384C4E876A5056 /* CaptureStore.swift */,
 				C471C0DAFF40B2987170667F /* ConnectionView.swift */,
+				042E48A4D1264E22BDF660AE /* ConnectionStore.swift */,
 				C449FB84177A8881F7797CD6 /* CowboyAIReasoning.swift */,
 				801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */,
 				44B158E4E3B37B90666E0541 /* Info.plist */,
@@ -291,6 +299,7 @@
 			children = (
 				92B0991DF7D62B465801D80E /* SAVYCardReorderUITests.swift */,
 				EECB227FDCE84677A083D215 /* SAVYHeaderOverscrollUITests.swift */,
+				C659C8F57DDE45478BF2F912 /* SAVYConnectionEntryUITests.swift */,
 				C9097749206EB8223EC12F04 /* SAVYDelegateTextExpansionUITests.swift */,
 				36FDEF49FFD195622B48C4A1 /* SAVYPostFormUITests.swift */,
 				CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */,
@@ -445,6 +454,7 @@
 			files = (
 				B6AA7A79A5B642A3838436E1 /* SAVYCardReorderUITests.swift in Sources */,
 				EECB227FDCE84677A083D214 /* SAVYHeaderOverscrollUITests.swift in Sources */,
+				A80228D75BE84B91BF955E01 /* SAVYConnectionEntryUITests.swift in Sources */,
 				F245C75739A60D835FFAC8A5 /* SAVYDelegateTextExpansionUITests.swift in Sources */,
 				7BCF23322BA64AB1E372378E /* SAVYPostFormUITests.swift in Sources */,
 				E7F5F0E200B631EE00F748F4 /* SAVYReminderActionCalendarUITests.swift in Sources */,
@@ -459,6 +469,7 @@
 				75CFCED8B79BC2D6C61D4BDC /* SAVYNativeBoundaryTests.swift in Sources */,
 				2285392FD45FF4EF675A57F2 /* SAVYPostCardOrderTests.swift in Sources */,
 				A50DD570C6AE44AD5BAF0B64 /* SAVYPostEntryThemeTests.swift in Sources */,
+				ED2EE02DEFC845B2824699EF /* SAVYConnectionStoreTests.swift in Sources */,
 				F63D3DBD638A72AE814EEBF5 /* SAVYPostNumberingTests.swift in Sources */,
 				3F90F38A62B830264198C47D /* SAVYReorderTests.swift in Sources */,
 			);
@@ -481,6 +492,7 @@
 				1F0E305B0865D0800425DAC5 /* CaptureEntry.swift in Sources */,
 				5F11AD82C6365074CA1A87A7 /* CaptureStore.swift in Sources */,
 				EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */,
+				08BEE0686FEC4897B0F38576 /* ConnectionStore.swift in Sources */,
 				14AA37145A324AFFEA888E6D /* CowboyAIReasoning.swift in Sources */,
 				EF5F11DC0E410FB3E004478D /* HarnessDelegationCapture.swift in Sources */,
 				B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */,

@@ -381,21 +381,22 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(connection.isHittable, "Connection could not be reached")
         connection.tap()
 
-        let full = app.descendants(matching: .any)["connectionCard-0"].firstMatch
-        let medium = app.descendants(matching: .any)["connectionCard-1"].firstMatch
-        let minimal = app.descendants(matching: .any)["connectionCard-2"].firstMatch
-        XCTAssertTrue(full.waitForExistence(timeout: 12), "The first Connection card is missing")
-        XCTAssertTrue(medium.waitForExistence(timeout: 5), "The second Connection card is missing")
-        XCTAssertTrue(minimal.waitForExistence(timeout: 5), "The standard Connection card is missing")
-
-        XCTAssertEqual(full.frame.height, 186, accuracy: 2)
-        XCTAssertEqual(medium.frame.height, 167, accuracy: 2)
-        XCTAssertEqual(minimal.frame.height, 124, accuracy: 2)
-        XCTAssertGreaterThan(full.frame.height, medium.frame.height)
-        XCTAssertGreaterThan(medium.frame.height, minimal.frame.height)
+        // Adam replaced the fixed first/second/third card sizes with Post-style cards:
+        // any independently pinned card expands; unpinned cards remain compact. The
+        // pin interaction and persistence are covered by SAVYConnectionEntryUITests.
+        let screen = app.descendants(matching: .any)["connectionScreen"].firstMatch
+        let count = app.descendants(matching: .any)["connectionSavedCount"].firstMatch
+        let plus = app.descendants(matching: .any)["newConnection"].firstMatch
+        XCTAssertTrue(screen.waitForExistence(timeout: 12), "Connection page is missing")
+        XCTAssertTrue(count.exists, "The Connection count is missing")
+        XCTAssertTrue(plus.exists, "The Connection entry button is missing")
+        let source = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'connectionSourceRow-'"))
+            .firstMatch
+        XCTAssertTrue(source.exists, "The existing source connections disappeared")
 
         let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "connection-measured-reminder-card-hierarchy"
+        screenshot.name = "connection-reuses-post-cards-and-adds-entry-control"
         screenshot.lifetime = .keepAlways
         add(screenshot)
     }

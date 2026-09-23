@@ -47,7 +47,7 @@ struct SocialPostFormView: View {
                 statusSection
             }
             .scrollContentBackground(.hidden)
-            .background(SavyTheme.pageBackground.ignoresSafeArea())
+            .background(SavyTheme.contentBackground.ignoresSafeArea())
             .tint(Brand.crimson)
             .savyPageTitle(post.headline, color: SavyTheme.deepNavy)
             .toolbar {
@@ -223,7 +223,7 @@ struct SocialPostFormView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.72))
+            .foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
     }
 
     private func enumMenu<T: CaseIterable & Identifiable & Hashable>(
