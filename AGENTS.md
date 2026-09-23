@@ -94,7 +94,7 @@ A solid header alone does not cover the area exposed when a ScrollView is pulled
 
 Regression verification must inspect the actual screen during a downward pull, not only after it springs back. `SAVYHeaderOverscrollUITests` uses existing isolated test stores; the DEBUG-only capture hook requires both the capture flag and isolated test launch flag. Coordinate phone use with Adam before running UI tests because prior control prevented him from using the app.
 
-Checkpoint: the app and UI tests build successfully and the update is installed on Adam's iPhone. Held-pull visual verification remains pending; the UI tests have not run. Adam requested saving the changes in this state.
+Verification: the app and UI tests build successfully and the update is installed on Adam's iPhone. After the changes were saved, Adam confirmed: "On device, pull down worked". This is Adam's on-device confirmation of the reported pull-down repair; the eight-page automated UI tests have not run.
 
 ## Numbered Post cards — September 21, 2026
 
