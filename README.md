@@ -2,6 +2,8 @@
 
 SAVY iOS is the native iPhone app for SAVY.
 
+For the current Connection page work, start with the [Connection handoff](docs/connection-page-handoff.md) and [agent instructions](AGENTS.md). They include the accepted design and behavior, code pointers, verification, and the navy-header update awaiting phone installation.
+
 The Vercel site and Supabase backend can stay alive, but this repository is for the App Store-bound Swift app: native SwiftUI/UIKit, Apple frameworks, real iPhone capabilities, and no web runtime in the shipped app.
 
 ## Open

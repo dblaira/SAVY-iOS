@@ -1,5 +1,9 @@
 # SAVY iOS Agent Instructions
 
+## Current Connection handoff — read first
+
+For continuation of the Connection page and September 23 appearance work, read [docs/connection-page-handoff.md](docs/connection-page-handoff.md). It consolidates Adam's intent, exact entry prompts, accepted card behavior, source and local-storage boundaries, existing Connection statements, current colors, verification evidence, and pending phone installation. The latest decisions there supersede the earlier palette trials recorded below. Adam currently needs his phone free; do not reconnect previews or control/restart/install on it without coordinating availability.
+
 ## Native iOS Rule
 
 SAVY iOS is a 100% native Apple-platform app.
