@@ -1,6 +1,110 @@
 import SwiftUI
 import UIKit
 
+extension View {
+    /// The white canvas travels with the header. Lapis behind the ScrollView is exposed
+    /// only above it during a pull. Extend white below the content for bottom bounce.
+    func savyHeaderPageContent(minHeight: CGFloat) -> some View {
+        frame(maxWidth: .infinity, minHeight: minHeight, alignment: .top)
+            .background {
+                GeometryReader { geometry in
+                    SavyTheme.contentBackground
+                        .frame(height: geometry.size.height + minHeight)
+                }
+                .allowsHitTesting(false)
+            }
+    }
+
+    @ViewBuilder
+    func savyHeaderOverscrollCapture(_ screen: String) -> some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_CAPTURE_HEADER_OVERSCROLL"),
+           ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") {
+            modifier(SavyHeaderOverscrollCapture(screen: screen))
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// Applied to the main navigation hierarchy so every Lapis page header stays solid.
+    @ViewBuilder
+    func savySolidTopScrollEdge() -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectHidden(true, for: .top)
+        } else {
+            self
+        }
+    }
+}
+
+#if DEBUG
+/// Test-only evidence from the actual UIWindow while the finger is still holding a pull.
+/// A screenshot after XCUI's drag returns would miss the overscroll defect entirely.
+private struct SavyHeaderOverscrollCapture: ViewModifier {
+    let screen: String
+    @State private var offset: CGFloat = 0
+    @State private var isScheduled = false
+    @State private var didCapture = false
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { _, newOffset in
+                offset = newOffset
+                guard newOffset < -40, !isScheduled, !didCapture else { return }
+                isScheduled = true
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(300))
+                    defer { isScheduled = false }
+                    guard offset < -40 else { return }
+                    didCapture = capture()
+                }
+            }
+            .overlay(alignment: .bottomLeading) {
+                if didCapture {
+                    Text("Header pull captured")
+                        .font(.system(size: 1))
+                        .foregroundStyle(.clear)
+                        .accessibilityIdentifier("headerOverscrollCapture-\(screen)")
+                        .allowsHitTesting(false)
+                }
+            }
+    }
+
+    @MainActor private func capture() -> Bool {
+        guard let window = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap(\.windows).first(where: \.isKeyWindow) else { return false }
+        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+        }
+        guard let png = image.pngData() else { return false }
+        do {
+            let directory = try FileManager.default.url(
+                for: .applicationSupportDirectory, in: .userDomainMask,
+                appropriateFor: nil, create: true
+            ).appendingPathComponent("SAVY/HeaderOverscrollTest", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try png.write(to: directory.appendingPathComponent("\(screen).png"), options: .atomic)
+            let metadata: [String: Any] = [
+                "screen": screen, "normalizedOffsetY": offset,
+                "scale": image.scale, "timestamp": Date().timeIntervalSince1970,
+                "widthPoints": window.bounds.width, "heightPoints": window.bounds.height
+            ]
+            try JSONSerialization.data(withJSONObject: metadata, options: .prettyPrinted)
+                .write(to: directory.appendingPathComponent("\(screen).json"), options: .atomic)
+            return true
+        } catch {
+            return false
+        }
+    }
+}
+#endif
+
 enum SavyHapticFeedback {
     static let primaryImpactIntensity: CGFloat = 1.0
 
@@ -120,13 +224,13 @@ struct SavyBottomNavigationBar: View {
     @State private var draggingFab = false
     @State private var menuWasOpenAtStart = false
 
-    private let barBackground = Color(red: 0.80, green: 0.70, blue: 0.58)
+    private let barBackground = SavyTheme.bottomNavTan
     private let inactiveColor = Color(red: 0.34, green: 0.27, blue: 0.21).opacity(0.68)
     private let navyTopBandHeight: CGFloat = 24
 
     var body: some View {
         VStack(spacing: 0) {
-            SavyTheme.deepNavy
+            SavyTheme.pageBackground
                 .frame(height: navyTopBandHeight)
 
             ZStack(alignment: .top) {
@@ -164,7 +268,7 @@ struct SavyBottomNavigationBar: View {
         }
         .frame(height: RootHomeLayout.bottomNavigationHeight)
         .background(alignment: .top) {
-            SavyTheme.deepNavy
+            SavyTheme.pageBackground
                 .frame(
                     height: RootHomeLayout.bottomNavNavyRiserHeight + RootHomeLayout.bottomNavigationTopPadding
                 )

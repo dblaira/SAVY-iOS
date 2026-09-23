@@ -13,7 +13,7 @@ struct NewsChannelStoriesGroup: View {
                 Text("STORIES")
                     .font(.system(size: 12, weight: .bold))
                     .tracking(2.4)
-                    .foregroundStyle(SavyTheme.bottomNavTan)
+                    .foregroundStyle(SavyTheme.deepNavy)
                 Spacer()
                 Button {
                     SavyHapticFeedback.primaryImpact()

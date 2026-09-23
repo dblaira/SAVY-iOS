@@ -66,6 +66,36 @@ Adam: "There should be no subtitle underneath the main title of the page." Remov
 
 Face ID sign-in is the background exception: Adam requested a subtle vertical gradient from the existing light sand (`Brand.card`) above the content to the navigation brown (`SavyTheme.bottomNavTan`) at the bottom. Adam then requested the SAVY label in red (`SavyTheme.crimson`) and the user ID and password wording in darker brown (`Brand.tabActive`). Preserve the fonts, controls, and positions on that page.
 
+## Lapis background trial — September 23, 2026
+
+Adam requested: "Replace the navy blue background we have with this LAPIS blue color so I can work with this today and see how it feels." His supplied Lapis Lazuli swatch is `#243F86` (RGB 36, 63, 134). This supersedes navy for page canvases, page headers, navigation-bar backgrounds, and the band above the bottom navigation. Use `SavyTheme.pageBackground`; retain `deepNavy` for existing text, cards, controls, and graphics. The Face ID sand gradient remains separate. Color comes first; Connection writing and formatting are subsequent work.
+
+## White content and yellow divider — September 23, 2026
+
+Adam refined the Lapis trial: "Change the main background under the header to white. The navigation and header background colors should remain the same. And replace the thin red boarder underneath the header with yellow color." Main page content uses `SavyTheme.contentBackground` (white), existing headers/navigation retain Lapis `pageBackground`, and existing thin under-header dividers use `SavyTheme.headerDivider` (`#DFFF00`, tennis yellow). Text directly on white uses dark ink. Keep card colors, red action controls, and the Calendar now-line. Keep iPhone Mirroring closed while Adam tries the app on his phone.
+
+The main `RootView` navigation hierarchy uses `savySolidTopScrollEdge()` to disable the iOS 26+ automatic top scroll-edge fade across Home, Actions, Reminders, Calendar, Connection, Social Media Posts, Ontology, Field Essays, and their detail pages. Apply this at the shared navigation root, not only to Home: Adam reported the same pale header strip on the other pages. Keep the availability guard for iOS 18 support. Adam approved reducing carousel cards from 182 to 140 points tall (546 to 420 physical pixels on his 3x iPhone). Width remains 282 points (846 pixels).
+
+## Yellow content background trial — September 23, 2026
+
+Adam replaced the white content background with the existing divider yellow: "Let's try the yellow that you used for the border, so let's use that yellow for the background and see how that works." `SavyTheme.contentBackground` and `headerDivider` both use `tennisYellow` (`#DFFF00`). This supersedes white for main content. Retain the Lapis headers/navigation, dark body text, existing card colors, and approved 140-point carousel height. Keep iPhone Mirroring closed.
+
+Adam subsequently said yellow is too bright and is still choosing a main background. His next requested change is the header coverage on the other pages; no replacement background color has been selected.
+
+## Navigation-matched content and white divider — September 23, 2026
+
+Adam requested the exact bottom navigation panel color for the main content, replacing yellow, with a very thin white header divider. Both navigation `barBackground` and main `contentBackground` reference the existing `SavyTheme.bottomNavTan`: `Color(red: 0.80, green: 0.70, blue: 0.58)`. Reuse this shared value; do not sample or approximate it. `headerDivider` is white and `RootHomeLayout.heroDividerHeight` is 1 point across Home, Posts, Connection, Actions, Reminders, and Calendar. Keep Lapis headers/navigation upper bands, the shared top-edge fix, and the approved 140-point carousel cards.
+
+## White content and header pull-down repair — September 23, 2026
+
+Adam restored white main content and explicitly deferred card borders. Keep Lapis headers, the existing tan bottom navigation, 1-point white header dividers, and 140-point carousel cards.
+
+A solid header alone does not cover the area exposed when a ScrollView is pulled down. Every page with a scrolling Lapis hero must use a Lapis viewport backdrop plus `savyHeaderPageContent(minHeight:)` on the full scrolling stack. That shared modifier paints white under the content, fills short pages, and extends white below the content for bottom bounce. Keep `savySolidTopScrollEdge()` at the navigation root too; disabling the iOS edge fade and painting the overscroll backdrop solve different defects.
+
+Regression verification must inspect the actual screen during a downward pull, not only after it springs back. `SAVYHeaderOverscrollUITests` uses existing isolated test stores; the DEBUG-only capture hook requires both the capture flag and isolated test launch flag. Coordinate phone use with Adam before running UI tests because prior control prevented him from using the app.
+
+Checkpoint: the app and UI tests build successfully and the update is installed on Adam's iPhone. Held-pull visual verification remains pending; the UI tests have not run. Adam requested saving the changes in this state.
+
 ## Numbered Post cards — September 21, 2026
 
 Adam approved the numbered Post layout: reuse the Reminders display, show the first authored sentence plus metadata, make pinned cards larger with more detail, and rotate white, dark red, sand, and navy across the displayed list. The inline count measures saved posts toward 50; it includes both shared-form Post entries and older SocialPost entries. This is a saved-post goal, not a publication count.
@@ -96,7 +126,7 @@ Use the existing `SavyBandCard` component directly for Home, with its existing t
 
 Update this line when the active milestone changes:
 
-**Current lane:** Home supports independent pins with no maximum; all four destinations can remain pinned together, and both pin groups can be rearranged. Existing single-pin and explicitly unpinned preferences migrate with saved order intact. All-four pinning, independent unpinning, group boundaries, and relaunch persistence are verified on Adam's connected iPhone. Home uses the existing Actions/Reminders card component, compact unpinned titles, and no repeated eyebrows. Carousel dimensions are unchanged. Preserve navy canvases, Bodoni headings, saved Post questions and answers, stored numbers, unlimited Post pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
+**Current lane:** Home supports independent pins with no maximum; all four destinations can remain pinned together, and both pin groups can be rearranged. Existing single-pin and explicitly unpinned preferences migrate with saved order intact. All-four pinning, independent unpinning, group boundaries, and relaunch persistence are verified on Adam's connected iPhone. Home uses the existing Actions/Reminders card component, compact unpinned titles, and no repeated eyebrows. Carousel cards are 140 points tall and 282 points wide. Preserve the September 23 Lapis headers/navigation, white main content, Lapis pull-down backdrops, and 1-point white header dividers, Bodoni headings, saved Post questions and answers, stored numbers, unlimited Post pins, shared 28-template entry, red framework icons, and the bare back chevron. Validated RDF remains limited to Belief Library and Pathway.
 
 ## How agents use Adam's Macs (required)
 

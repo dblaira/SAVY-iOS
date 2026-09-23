@@ -62,13 +62,14 @@ struct SavyReminderKindTabScreen: View {
             ScrollView {
                 VStack(spacing: 0) {
                     hero
-                    Rectangle().fill(SavyTheme.crimson).frame(height: 2)
+                    Rectangle().fill(SavyTheme.headerDivider).frame(height: RootHomeLayout.heroDividerHeight)
                     activeBand
                     completedBottomSection
                 }
-                .frame(minHeight: proxy.size.height, alignment: .top)
+                .savyHeaderPageContent(minHeight: proxy.size.height)
             }
-            .background(SavyTheme.deepNavy)
+            .savyHeaderOverscrollCapture(kind == .action ? "actions" : "reminders")
+            .background(SavyTheme.pageBackground)
             .onScrollPhaseChange { _, phase in
                 if phase == .interacting, armedReorderId != nil {
                     withAnimation(.snappy) { armedReorderId = nil }
@@ -92,7 +93,7 @@ struct SavyReminderKindTabScreen: View {
             .padding(.top, 60)
             .padding(.bottom, 18)
             .padding(.horizontal, 16)
-            .background(SavyTheme.deepNavy)
+            .background(SavyTheme.pageBackground)
     }
 
     private var activeBand: some View {
@@ -101,11 +102,11 @@ struct SavyReminderKindTabScreen: View {
                 Text(bandTitle)
                     .font(.system(size: 15, weight: .heavy))
                     .tracking(2.5)
-                    .foregroundStyle(SavyTheme.bottomNavTan)
+                    .foregroundStyle(SavyTheme.deepNavy)
                 Spacer()
                 Text("\(activeItems.count)")
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(SavyTheme.deepNavy.opacity(0.65))
             }
 
             if activeItems.isEmpty {
@@ -139,7 +140,7 @@ struct SavyReminderKindTabScreen: View {
         .padding(.bottom, 16)
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SavyTheme.deepNavy)
+        .background(SavyTheme.contentBackground)
     }
 
     @ViewBuilder private var completedBottomSection: some View {
@@ -154,7 +155,7 @@ struct SavyReminderKindTabScreen: View {
                             .font(.system(size: 13, weight: .heavy))
                             .textCase(.uppercase)
                             .tracking(1.5)
-                            .foregroundStyle(SavyTheme.bottomNavTan)
+                            .foregroundStyle(SavyTheme.deepNavy)
                         Text("\(completedItems.count)")
                             .font(.system(size: 12, weight: .heavy))
                             .foregroundStyle(SavyTheme.crimson)
@@ -190,7 +191,7 @@ struct SavyReminderKindTabScreen: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(SavyTheme.deepNavy)
+        .background(SavyTheme.contentBackground)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(kind == .action ? "completedActionsSection" : "completedRemindersSection")
     }

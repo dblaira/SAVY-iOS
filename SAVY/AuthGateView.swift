@@ -19,7 +19,7 @@ struct AuthGateView: View {
                     ProgressView()
                         .tint(SavyTheme.crimson)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(SavyTheme.deepNavy.ignoresSafeArea())
+                        .background(SavyTheme.pageBackground.ignoresSafeArea())
                 case .signedOut:
                     LoginView(store: authStore)
                 case .awaitingSignUpConfirmation(let email, let guidance):
@@ -132,7 +132,7 @@ private struct LoginView: View {
             .padding(.top, 88)
             .padding(.bottom, 40)
         }
-        .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .background(SavyTheme.pageBackground.ignoresSafeArea())
     }
 
     private var brandHeader: some View {
@@ -323,7 +323,7 @@ private func authForm<Content: View>(
         .padding(.top, 88)
         .padding(.bottom, 40)
     }
-    .background(SavyTheme.deepNavy.ignoresSafeArea())
+    .background(SavyTheme.pageBackground.ignoresSafeArea())
 }
 
 @ViewBuilder

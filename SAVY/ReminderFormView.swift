@@ -70,7 +70,7 @@ struct ReminderFormView: View {
                 unifiedEntrySections
             }
             .scrollContentBackground(.hidden)
-            .background(SavyTheme.deepNavy.ignoresSafeArea())
+            .background(SavyTheme.pageBackground.ignoresSafeArea())
             .tint(Brand.crimson)
             // Header mirrors the Title as you type — the type name until the first character, then
             // the live title at full size. Compact icon buttons leave it more room.

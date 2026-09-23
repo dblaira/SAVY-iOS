@@ -35,7 +35,7 @@ struct StoryFormView: View {
                 statusSection
             }
             .scrollContentBackground(.hidden)
-            .background(SavyTheme.deepNavy.ignoresSafeArea())
+            .background(SavyTheme.pageBackground.ignoresSafeArea())
             .tint(Brand.crimson)
             .savyPageTitle(story.headline, color: SavyTheme.deepNavy)
             .toolbar {

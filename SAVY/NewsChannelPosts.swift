@@ -147,7 +147,7 @@ struct NewsChannelPostsGroup: View {
                 Spacer()
                 Text("\(count) / 50")
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(SavyTheme.bottomNavTan)
+                    .foregroundStyle(SavyTheme.deepNavy)
                     .accessibilityIdentifier("postSavedCount")
                 Button {
                     SavyHapticFeedback.primaryImpact()

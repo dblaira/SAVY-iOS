@@ -918,7 +918,7 @@ struct PersonalAuthorityReviewView: View {
 
     var body: some View {
         ZStack {
-            SavyTheme.deepNavy.ignoresSafeArea()
+            SavyTheme.pageBackground.ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: 0) {
@@ -1385,7 +1385,7 @@ private struct PersonalAuthorityConferenceDetail: View {
 
     var body: some View {
         ZStack {
-            SavyTheme.deepNavy.ignoresSafeArea()
+            SavyTheme.pageBackground.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {

@@ -47,7 +47,7 @@ struct SocialPostFormView: View {
                 statusSection
             }
             .scrollContentBackground(.hidden)
-            .background(SavyTheme.deepNavy.ignoresSafeArea())
+            .background(SavyTheme.pageBackground.ignoresSafeArea())
             .tint(Brand.crimson)
             .savyPageTitle(post.headline, color: SavyTheme.deepNavy)
             .toolbar {

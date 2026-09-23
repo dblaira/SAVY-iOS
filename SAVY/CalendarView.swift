@@ -17,27 +17,31 @@ struct CalendarView: View {
     private static let hourFmt: DateFormatter = { let f = DateFormatter(); f.dateFormat = "h a"; return f }()
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(spacing: 0) {
-                    hero(proxy)
-                    Rectangle().fill(Brand.crimson).frame(height: 2)
-                    VStack(spacing: 18) {
-                        monthCard
-                        dayHeader
-                        allDayRow
-                        timeline
+        GeometryReader { viewport in
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        hero(proxy)
+                        Rectangle().fill(SavyTheme.headerDivider).frame(height: RootHomeLayout.heroDividerHeight)
+                        VStack(spacing: 18) {
+                            monthCard
+                            dayHeader
+                            allDayRow
+                            timeline
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .padding(.bottom, 150)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    .padding(.bottom, 150)
+                    .savyHeaderPageContent(minHeight: viewport.size.height + viewport.safeAreaInsets.top)
                 }
-            }
-            .background(SavyTheme.deepNavy.ignoresSafeArea())
-            .ignoresSafeArea(edges: .top)
-            .onAppear {
-                if shouldScrollToNow {
-                    scrollToNow(proxy, animated: false)
+                .savyHeaderOverscrollCapture("calendar")
+                .background(SavyTheme.pageBackground.ignoresSafeArea())
+                .ignoresSafeArea(edges: .top)
+                .onAppear {
+                    if shouldScrollToNow {
+                        scrollToNow(proxy, animated: false)
+                    }
                 }
             }
         }
@@ -69,7 +73,7 @@ struct CalendarView: View {
         .padding(.top, 60)
         .padding(.bottom, 18)
         .padding(.horizontal, 16)
-        .background(SavyTheme.deepNavy)
+        .background(SavyTheme.pageBackground)
     }
 
     private func chevron(_ icon: String, action: @escaping () -> Void) -> some View {
@@ -193,9 +197,9 @@ struct CalendarView: View {
     private var dayHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(cal.isDateInToday(selected) ? "Today" : selected.formatted(.dateTime.weekday(.wide)))
-                .font(.system(size: 22, weight: .heavy)).foregroundStyle(.white)
+                .font(.system(size: 22, weight: .heavy)).foregroundStyle(SavyTheme.deepNavy)
             Text(selected.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
-                .font(.system(size: 16, weight: .heavy)).foregroundStyle(SavyTheme.bottomNavTan)
+                .font(.system(size: 16, weight: .heavy)).foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -208,7 +212,7 @@ struct CalendarView: View {
             HStack(alignment: .top, spacing: 8) {
                 Text("all-day")
                     .font(.system(size: 13, weight: .heavy))
-                    .foregroundStyle(SavyTheme.bottomNavTan)
+                    .foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
                     .frame(width: 52, alignment: .trailing)
                 VStack(spacing: 6) {
                     ForEach(items) { reminder in
@@ -229,11 +233,11 @@ struct CalendarView: View {
                     HStack(alignment: .top, spacing: 8) {
                         Text(Self.hourFmt.string(from: dateAtHour(h)))
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(SavyTheme.deepNavy.opacity(0.7))
                             .frame(width: 52, alignment: .trailing)
                             .offset(y: -6)
                         VStack(spacing: 0) {
-                            Rectangle().fill(Color.white.opacity(0.2)).frame(height: 1)
+                            Rectangle().fill(SavyTheme.deepNavy.opacity(0.2)).frame(height: 1)
                             Spacer(minLength: 0)
                         }
                     }

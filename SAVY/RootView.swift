@@ -10,13 +10,13 @@ enum RootHomeLayout {
     static let heroTopPadding: CGFloat = 0
     static let heroHeight: CGFloat = 204
     static let heroContentTopPadding: CGFloat = 34
-    static let heroDividerHeight: CGFloat = 3
+    static let heroDividerHeight: CGFloat = 1
     static let heroWordmarkFontSize: CGFloat = 64
     static let carouselHorizontalPadding: CGFloat = 2
     static let carouselTopPadding: CGFloat = 24
     static let carouselBottomPadding: CGFloat = 24
     static let carouselCardWidth: CGFloat = 282
-    static let carouselCardHeight: CGFloat = 182
+    static let carouselCardHeight: CGFloat = 140
     static let carouselCardTitleFontSize: CGFloat = 24
     static let latestSectionBandHeight: CGFloat = 80
     static let pinnedEntryRowHeight: CGFloat = 96
@@ -134,7 +134,7 @@ struct RootView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                SavyTheme.deepNavy.ignoresSafeArea()
+                SavyTheme.pageBackground.ignoresSafeArea()
 
                 Group {
                     switch navigationState.activeSection {
@@ -221,6 +221,7 @@ struct RootView: View {
                 await reminderStore.bootstrap()
             }
         }
+        .savySolidTopScrollEdge()
     }
 
     /// Routes the radial "+" menu to the shared Re_Call-style entry form, backed by the
@@ -316,8 +317,10 @@ struct EditorialHomeView: View {
                         .padding(.top, 24)
                 }
                 .padding(.bottom, 40)
+                .savyHeaderPageContent(minHeight: proxy.size.height + proxy.safeAreaInsets.top)
             }
             .accessibilityIdentifier("editorialHomeScroll")
+            .savyHeaderOverscrollCapture("home")
             .onScrollPhaseChange { _, phase in
                 if phase == .interacting, armedHomeCardID != nil {
                     withAnimation(.snappy) { armedHomeCardID = nil }
@@ -331,7 +334,7 @@ struct EditorialHomeView: View {
                 await leverageStore.refresh()
             }
         }
-        .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .background(SavyTheme.pageBackground.ignoresSafeArea())
         .navigationDestination(item: $selectedHomeCard) { card in
             if let section = leverageStore.section(id: card.sectionID) {
                 if section.id == "beliefs" {
@@ -359,7 +362,7 @@ struct EditorialHomeView: View {
 
                 Text(leverageStore.status)
                     .font(SavyTheme.readingLabel(13))
-                    .foregroundStyle(leverageStore.isLiveContent ? Color.white : SavyTheme.crimson)
+                    .foregroundStyle(leverageStore.isLiveContent ? SavyTheme.deepNavy : SavyTheme.crimson)
 
                 if leverageStore.isLoading {
                     ProgressView()
@@ -372,12 +375,12 @@ struct EditorialHomeView: View {
 
             Text(leverageStore.statusDetail)
                 .font(SavyTheme.readingBody(13))
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Capture: \(reminderStore.syncStatusLabel)")
                 .font(SavyTheme.readingBody(13))
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -387,7 +390,7 @@ struct EditorialHomeView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                .stroke(SavyTheme.deepNavy.opacity(0.12), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(leverageStore.status). \(leverageStore.statusDetail)")
@@ -419,10 +422,10 @@ struct EditorialHomeView: View {
             maxHeight: RootHomeLayout.heroHeight,
             alignment: .topLeading
         )
-        .background(SavyTheme.deepNavy)
+        .background(SavyTheme.pageBackground)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(SavyTheme.crimson)
+                .fill(SavyTheme.headerDivider)
                 .frame(height: RootHomeLayout.heroDividerHeight)
         }
     }
@@ -457,7 +460,7 @@ struct EditorialHomeView: View {
             .padding(.bottom, RootHomeLayout.carouselBottomPadding)
         }
         .accessibilityIdentifier("greatestLeverageCarousel")
-        .background(SavyTheme.deepNavy)
+        .background(SavyTheme.contentBackground)
     }
 
     private var homeContentSections: some View {
@@ -500,7 +503,7 @@ struct EditorialHomeView: View {
         .padding(.bottom, RootHomeLayout.homeBandBottomPadding)
         .padding(.horizontal, RootHomeLayout.homeBandHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SavyTheme.deepNavy)
+        .background(SavyTheme.contentBackground)
     }
 
     /// Copied from Understood `ActionsHomeView.cardColors` / `SavyReminderScreens.cardColors`.
@@ -1003,54 +1006,58 @@ private struct LeverageSectionView: View {
     private var isPosts: Bool { section.id == "news-channel" }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text(section.title)
-                    .font(SavyTypography.displaySerif(44, weight: .bold))
-                    .foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 24)
-                    .padding(.bottom, 28)
-                    .background(SavyTheme.deepNavy)
-                    .overlay(alignment: .bottom) {
-                        if isPosts {
-                            Rectangle().fill(SavyTheme.crimson).frame(height: RootHomeLayout.heroDividerHeight)
+        GeometryReader { viewport in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Text(section.title)
+                        .font(SavyTypography.displaySerif(44, weight: .bold))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 24)
+                        .padding(.bottom, 28)
+                        .background(SavyTheme.pageBackground)
+                        .overlay(alignment: .bottom) {
+                            if isPosts {
+                                Rectangle().fill(SavyTheme.headerDivider).frame(height: RootHomeLayout.heroDividerHeight)
+                            }
+                        }
+                        .padding(.horizontal, -24)
+                        .accessibilityIdentifier(isPosts ? "socialMediaPostsHeader" : "sectionPageHeader")
+
+                    if let postStore, let reminderStore, let postCardOrder {
+                        NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore, cardOrder: postCardOrder, scrollRevision: postScrollRevision)
+                    }
+
+                    if let storyStore {
+                        // Adam: "Add a plus button to the Stories area of the News Channel page and
+                        // have that open to different form."
+                        NewsChannelStoriesGroup(store: storyStore)
+                    }
+
+                    VStack(alignment: .leading, spacing: isBeliefs ? 10 : 14) {
+                        ForEach(section.items) { item in
+                            NavigationLink {
+                                LeverageDetailView(section: section, item: item)
+                            } label: {
+                                LeverageItemRow(item: item, isBeliefs: isBeliefs)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, -24)
-                    .accessibilityIdentifier(isPosts ? "socialMediaPostsHeader" : "sectionPageHeader")
-
-                if let postStore, let reminderStore, let postCardOrder {
-                    NewsChannelPostsGroup(store: postStore, reminderStore: reminderStore, cardOrder: postCardOrder, scrollRevision: postScrollRevision)
                 }
-
-                if let storyStore {
-                    // Adam: "Add a plus button to the Stories area of the News Channel page and
-                    // have that open to different form."
-                    NewsChannelStoriesGroup(store: storyStore)
-                }
-
-                VStack(alignment: .leading, spacing: isBeliefs ? 10 : 14) {
-                    ForEach(section.items) { item in
-                        NavigationLink {
-                            LeverageDetailView(section: section, item: item)
-                        } label: {
-                            LeverageItemRow(item: item, isBeliefs: isBeliefs)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 48)
+                .savyHeaderPageContent(minHeight: viewport.size.height)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 48)
+            .savyHeaderOverscrollCapture(section.id)
+            .onScrollPhaseChange { _, phase in
+                if phase == .interacting { postScrollRevision += 1 }
+            }
         }
-        .onScrollPhaseChange { _, phase in
-            if phase == .interacting { postScrollRevision += 1 }
-        }
-        .background(SavyTheme.deepNavy.ignoresSafeArea())
-        .toolbarBackground(SavyTheme.deepNavy, for: .navigationBar)
+        .background(SavyTheme.pageBackground.ignoresSafeArea())
+        .toolbarBackground(SavyTheme.pageBackground, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .tint(SavyTheme.crimson)
@@ -1162,9 +1169,9 @@ struct LeverageDetailView: View {
             .padding(.top, 34)
             .padding(.bottom, 54)
         }
-        .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .background(SavyTheme.contentBackground.ignoresSafeArea())
         .savyPageTitle(section.title)
-        .toolbarBackground(SavyTheme.deepNavy, for: .navigationBar)
+        .toolbarBackground(SavyTheme.pageBackground, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .tint(SavyTheme.crimson)
@@ -1182,7 +1189,7 @@ struct LeverageDetailView: View {
         Text(beliefHeroText)
             .font(SavyTheme.beliefSerif(30))
             .lineSpacing(8)
-            .foregroundStyle(.white)
+            .foregroundStyle(SavyTheme.deepNavy)
             .fixedSize(horizontal: false, vertical: true)
 
         if let graphTrace {
@@ -1207,7 +1214,7 @@ struct LeverageDetailView: View {
             Text(beliefHeroText)
                 .font(SavyTheme.beliefSerif(30))
                 .lineSpacing(8)
-                .foregroundStyle(.white)
+                .foregroundStyle(SavyTheme.deepNavy)
                 .fixedSize(horizontal: false, vertical: true)
 
             legacyDetailBody
@@ -1220,17 +1227,17 @@ struct LeverageDetailView: View {
             Text(item.summary)
                 .font(.system(size: 19, weight: .regular, design: .serif))
                 .lineSpacing(5)
-                .foregroundStyle(.white.opacity(0.72))
+                .foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
         }
 
         if !item.body.isEmpty, item.body != item.title {
-            Rectangle().fill(.white.opacity(0.2)).frame(height: 1)
+            Rectangle().fill(SavyTheme.deepNavy.opacity(0.2)).frame(height: 1)
                 .padding(.vertical, 4)
 
             Text(item.body)
                 .font(.system(size: 18, weight: .regular, design: .serif))
                 .lineSpacing(7)
-                .foregroundStyle(.white)
+                .foregroundStyle(SavyTheme.deepNavy)
         }
     }
 
@@ -1240,7 +1247,7 @@ struct LeverageDetailView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Pathway")
                     .font(SavyTheme.beliefSerif(42))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SavyTheme.deepNavy)
 
                 ForEach(trace.triplePaths, id: \.axiomIri) { path in
                     pathwayCard(path)
@@ -1388,6 +1395,10 @@ struct NativeCapability: Identifiable {
 }
 
 enum SavyTheme {
+    // Adam's Lapis Lazuli background trial — September 23, 2026.
+    static let pageBackground = Color(hex: 0x243F86)
+    static let contentBackground = Color.white
+    static let headerDivider = Color.white
     static let deepNavy = Color(red: 8 / 255, green: 23 / 255, blue: 45 / 255)
     static let crimson = Color(red: 230 / 255, green: 14 / 255, blue: 68 / 255)
     static let green = Color(red: 42 / 255, green: 184 / 255, blue: 96 / 255)

@@ -46,10 +46,12 @@ struct ConnectionView: View {
                     connectionHeader(topInset: proxy.safeAreaInsets.top)
                     connectionList
                 }
+                .savyHeaderPageContent(minHeight: proxy.size.height + proxy.safeAreaInsets.top)
             }
+            .savyHeaderOverscrollCapture("connection")
             .ignoresSafeArea(edges: .top)
         }
-        .background(SavyTheme.deepNavy.ignoresSafeArea())
+        .background(SavyTheme.pageBackground.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("connectionScreen")
@@ -83,11 +85,11 @@ struct ConnectionView: View {
         .padding(.horizontal, ConnectionLayout.headerHorizontalPadding)
         .padding(.top, topInset + 18)
         .padding(.bottom, 30)
-        .background(SavyTheme.deepNavy)
+        .background(SavyTheme.pageBackground)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(SavyTheme.crimson)
-                .frame(height: 2)
+                .fill(SavyTheme.headerDivider)
+                .frame(height: RootHomeLayout.heroDividerHeight)
         }
     }
 
@@ -142,7 +144,7 @@ struct ConnectionView: View {
         .padding(.top, 22)
         .padding(.bottom, 48)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SavyTheme.deepNavy)
+        .background(SavyTheme.contentBackground)
     }
 
     private func connectionSectionHeading(_ title: String, count: Int) -> some View {
@@ -150,13 +152,13 @@ struct ConnectionView: View {
             Text(title)
                 .font(.system(size: 13, weight: .heavy))
                 .tracking(2.6)
-                .foregroundStyle(SavyTheme.bottomNavTan)
+                .foregroundStyle(SavyTheme.deepNavy)
 
             Spacer()
 
             Text("\(count)")
                 .font(.system(size: 13, weight: .heavy))
-                .foregroundStyle(SavyTheme.bottomNavTan.opacity(0.72))
+                .foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
         }
         .padding(.horizontal, 2)
         .padding(.bottom, 12)
