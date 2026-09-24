@@ -30,13 +30,17 @@ struct NewsChannelStoriesGroup: View {
             }
             .padding(.top, 6)
 
-            ForEach(store.ordered) { story in
-                SavySwipeRow(
-                    actions: actions(for: story),
-                    gestureAccessibilityIdentifier: "storyRow-\(story.id.uuidString)",
-                    onTap: { editing = story }
-                ) {
-                    NewsChannelStoryRow(story: story)
+            if !store.ordered.isEmpty {
+                SavyCardFlow(spacing: 14) {
+                    ForEach(store.ordered) { story in
+                        SavySwipeRow(
+                            actions: actions(for: story),
+                            gestureAccessibilityIdentifier: "storyRow-\(story.id.uuidString)",
+                            onTap: { editing = story }
+                        ) {
+                            NewsChannelStoryRow(story: story)
+                        }
+                    }
                 }
             }
         }

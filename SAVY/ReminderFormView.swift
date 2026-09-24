@@ -117,6 +117,7 @@ struct ReminderFormView: View {
         // Keep Connection writing onscreen until Save succeeds or the user chooses Cancel.
         .interactiveDismissDisabled(connectionMode && hasContent && !committed)
         .preferredColorScheme(.light)
+        .savyMacFormSheet()
     }
 
     /// Brief confirmation shown when the Save button is tapped (not on swipe-to-save).

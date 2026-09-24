@@ -292,6 +292,12 @@ struct RootView: View {
                 guard phase == .active, previous != .active else { return }
                 Task { await refreshFromCloud() }
             }
+            #if DEBUG
+            .task {
+                guard SavyScreenCapture.isRequested else { return }
+                await SavyScreenCapture.run(navigation: navigationState) { isPostsPresented = $0 }
+            }
+            #endif
         }
         .savySolidTopScrollEdge()
     }
@@ -454,6 +460,12 @@ struct EditorialHomeView: View {
                 reminderStore.save(updated)
             }
         }
+        #if DEBUG
+        .onReceive(NotificationCenter.default.publisher(for: SavyScreenCapture.openHomeSection)) { note in
+            guard let sectionID = note.object as? String else { return }
+            selectedHomeCard = HomeLeverageCard.referenceCards.first { $0.sectionID == sectionID }
+        }
+        #endif
     }
 
     private var contentSourceBand: some View {
@@ -567,7 +579,7 @@ struct EditorialHomeView: View {
 
     private var homeContentSections: some View {
         let posts = SavedPost.displayed(store: postStore, reminderStore: reminderStore, cardOrder: postCardOrder)
-        return VStack(alignment: .leading, spacing: RootHomeLayout.homeBandCardSpacing) {
+        return SavyCardFlow(spacing: RootHomeLayout.homeBandCardSpacing) {
             ForEach(Array(sectionPinStore.orderedCards().enumerated()), id: \.element.id) { index, card in
                 let isPinned = sectionPinStore.isPinned(card.sectionID)
                 let colors = Self.homeBandCardColors(for: index)
@@ -1169,7 +1181,7 @@ private struct LeverageSectionView: View {
                         NewsChannelStoriesGroup(store: storyStore)
                     }
 
-                    VStack(alignment: .leading, spacing: isBeliefs ? 10 : 14) {
+                    SavyCardFlow(spacing: isBeliefs ? 10 : 14) {
                         ForEach(section.items) { item in
                             NavigationLink {
                                 LeverageDetailView(section: section, item: item)
@@ -1216,6 +1228,7 @@ private struct LeverageSectionView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .keyboardShortcut("[", modifiers: .command)
         .accessibilityLabel("Back")
         .accessibilityIdentifier("socialMediaPostsBack")
     }

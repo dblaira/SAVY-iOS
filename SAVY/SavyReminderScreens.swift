@@ -112,27 +112,29 @@ struct SavyReminderKindTabScreen: View {
             if activeItems.isEmpty {
                 emptyState
             } else {
-                ForEach(Array(activeItems.enumerated()), id: \.element.id) { index, reminder in
-                    SavyUpNextCardRow(
-                        reminderId: reminder.id.uuidString,
-                        armedId: $armedReorderId,
-                        actions: cardActions(reminder),
-                        onTap: { editing = reminder },
-                        onMoveUp: { store.moveUpNext(reminder, direction: .up) },
-                        onMoveDown: { store.moveUpNext(reminder, direction: .down) },
-                        gestureAccessibilityIdentifier: "reminderReorderGesture-\(reminder.id.uuidString)"
-                    ) {
-                        SavyReminderBandCard(
-                            reminder: reminder,
-                            bg: cardColors(for: index).bg,
-                            fg: cardColors(for: index).fg,
-                            accent: cardColors(for: index).accent,
-                            detail: cardDetail(for: index)
-                        )
-                        .scaleEffect(x: 1, y: kind == .action ? cardScale(for: index) : 1, anchor: .top)
-                        .accessibilityIdentifier(cardIdentifier(for: index))
+                SavyCardFlow(spacing: 10) {
+                    ForEach(Array(activeItems.enumerated()), id: \.element.id) { index, reminder in
+                        SavyUpNextCardRow(
+                            reminderId: reminder.id.uuidString,
+                            armedId: $armedReorderId,
+                            actions: cardActions(reminder),
+                            onTap: { editing = reminder },
+                            onMoveUp: { store.moveUpNext(reminder, direction: .up) },
+                            onMoveDown: { store.moveUpNext(reminder, direction: .down) },
+                            gestureAccessibilityIdentifier: "reminderReorderGesture-\(reminder.id.uuidString)"
+                        ) {
+                            SavyReminderBandCard(
+                                reminder: reminder,
+                                bg: cardColors(for: index).bg,
+                                fg: cardColors(for: index).fg,
+                                accent: cardColors(for: index).accent,
+                                detail: cardDetail(for: index)
+                            )
+                            .scaleEffect(x: 1, y: kind == .action ? cardScale(for: index) : 1, anchor: .top)
+                            .accessibilityIdentifier(cardIdentifier(for: index))
+                        }
+                        .zIndex(armedReorderId == reminder.id.uuidString ? 1 : 0)
                     }
-                    .zIndex(armedReorderId == reminder.id.uuidString ? 1 : 0)
                 }
             }
         }
@@ -367,7 +369,22 @@ struct SavyUpNextCardRow<Content: View>: View {
         .onDisappear {
             if isArmed { armedId = nil }
         }
+        #if targetEnvironment(macCatalyst)
+        .contextMenu { macContextMenu }
+        #endif
     }
+
+    #if targetEnvironment(macCatalyst)
+    /// A right click offers the same actions the swipe and long press reveal on iPhone.
+    @ViewBuilder private var macContextMenu: some View {
+        ForEach(actions) { action in
+            Button(action.title, systemImage: action.icon) { withAnimation(.snappy) { action.run() } }
+        }
+        Divider()
+        Button("Move Up", systemImage: "chevron.up") { withAnimation(.snappy) { onMoveUp() } }
+        Button("Move Down", systemImage: "chevron.down") { withAnimation(.snappy) { onMoveDown() } }
+    }
+    #endif
 
     private var reorderControls: some View {
         VStack(spacing: 2) {
@@ -523,6 +540,8 @@ private final class SavyUpNextGestureView: UIView {
         isUserInteractionEnabled = true
 
         pan.cancelsTouchesInView = false
+        // A two-finger trackpad swipe reveals the actions the way a finger swipe does on iPhone.
+        pan.allowedScrollTypesMask = .continuous
         pan.addTarget(self, action: #selector(handlePan))
         addGestureRecognizer(pan)
 
@@ -843,6 +862,13 @@ struct SavySwipeRow<Content: View>: View {
             .zIndex(1)
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        #if targetEnvironment(macCatalyst)
+        .contextMenu {
+            ForEach(actions) { action in
+                Button(action.title, systemImage: action.icon) { withAnimation(.snappy) { action.run() } }
+            }
+        }
+        #endif
     }
 }
 

@@ -164,7 +164,11 @@ final class AuthenticationStore: ObservableObject {
             try await biometricUnlocker.unlock()
             state = .unlocked(session)
         } catch {
+            #if targetEnvironment(macCatalyst)
+            message = "SAVY did not unlock. Try again or sign in."
+            #else
             message = "Face ID did not unlock SAVY. Try again or sign in."
+            #endif
         }
 
         isWorking = false

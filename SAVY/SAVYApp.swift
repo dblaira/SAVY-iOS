@@ -14,6 +14,9 @@ struct SAVYApp: App {
     var body: some Scene {
         WindowGroup {
             AuthGateView()
+                #if targetEnvironment(macCatalyst)
+                .onAppear { SavyMacWindow.configure() }
+                #endif
         }
     }
 }

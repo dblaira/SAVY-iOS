@@ -252,6 +252,7 @@ struct SavyBottomNavigationBar: View {
                     }
                 }
                 .padding(.horizontal, RootHomeLayout.bottomNavigationHorizontalPadding)
+                .frame(maxWidth: SavyWideLayout.navigationMaximumWidth)
                 .frame(maxHeight: .infinity, alignment: .top)
 
                 ZStack {

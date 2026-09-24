@@ -154,6 +154,7 @@ struct ConnectionView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .keyboardShortcut("[", modifiers: .command)
         .accessibilityLabel("Back")
         .accessibilityIdentifier("connectionBack")
     }
@@ -194,11 +195,13 @@ struct ConnectionView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(22)
             } else {
-                ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
-                    connectionRow(card, palette: NewsChannelPostPalette(index: index))
-                        .accessibilityElement(children: .contain)
-                        .accessibilityIdentifier("connectionCard-\(index)")
-                        .accessibilityValue(isPinned(card) ? "Pinned" : "Unpinned")
+                SavyCardFlow(spacing: ConnectionLayout.cardSpacing) {
+                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                        connectionRow(card, palette: NewsChannelPostPalette(index: index))
+                            .accessibilityElement(children: .contain)
+                            .accessibilityIdentifier("connectionCard-\(index)")
+                            .accessibilityValue(isPinned(card) ? "Pinned" : "Unpinned")
+                    }
                 }
             }
         }

@@ -80,6 +80,7 @@ struct SocialPostFormView: View {
         .overlay { if showSaved { toast("Saved") } }
         .overlay { if showCopied { toast("Copied") } }
         .preferredColorScheme(.light)
+        .savyMacFormSheet()
     }
 
     // MARK: - Sections

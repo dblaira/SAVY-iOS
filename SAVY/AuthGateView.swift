@@ -249,9 +249,15 @@ private struct LockedView: View {
                 }
             } label: {
                 HStack {
+                    #if targetEnvironment(macCatalyst)
+                    Image(systemName: "lock.open.fill")
+                    Text("Unlock SAVY")
+                        .font(.system(size: 17, weight: .bold))
+                    #else
                     Image(systemName: "faceid")
                     Text("Open with Face ID")
                         .font(.system(size: 17, weight: .bold))
+                    #endif
                 }
                 .frame(maxWidth: .infinity, minHeight: 56)
             }
