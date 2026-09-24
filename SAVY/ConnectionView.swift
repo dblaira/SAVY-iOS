@@ -77,7 +77,9 @@ struct ConnectionView: View {
             }
         }
         .background(SavyTheme.pageBackground.ignoresSafeArea())
+        #if !targetEnvironment(macCatalyst)
         .toolbar(.visible, for: .navigationBar)
+        #endif
         .toolbarBackground(SavyTheme.pageBackground, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -91,6 +93,7 @@ struct ConnectionView: View {
                 ToolbarItem(placement: .topBarLeading) { backButton }
             }
         }
+        .savyMacNavigationBar()
         .navigationDestination(isPresented: $showsSourceDetail) {
             if let selectedSource {
                 LeverageDetailView(section: section, item: selectedSource)

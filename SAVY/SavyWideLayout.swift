@@ -41,6 +41,18 @@ struct SavyCardFlow<Content: View>: View {
 }
 
 extension View {
+    /// On the Mac a pushed page's navigation bar would move into the window title bar, so the
+    /// page draws the phone's navy bar and crimson back chevron itself.
+    @ViewBuilder
+    func savyMacNavigationBar(title: String? = nil) -> some View {
+        #if targetEnvironment(macCatalyst)
+        toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) { SavyMacNavigationBar(title: title) }
+        #else
+        self
+        #endif
+    }
+
     /// Entry forms open as a page-sized sheet on the Mac instead of the small default.
     @ViewBuilder
     func savyMacFormSheet() -> some View {
@@ -59,6 +71,37 @@ extension View {
 }
 
 #if targetEnvironment(macCatalyst)
+private struct SavyMacNavigationBar: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String?
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(SavyTheme.crimson)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("[", modifiers: .command)
+            .accessibilityLabel("Back")
+            if let title {
+                Text(title)
+                    .font(SavyTypography.displaySerif(24, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 44)
+        .background(SavyTheme.pageBackground)
+    }
+}
+
 /// Gives the Mac window a usable minimum and opens it large the first time.
 enum SavyMacWindow {
     private static let sizedKey = "savy.mac.initialWindowSized.v1"

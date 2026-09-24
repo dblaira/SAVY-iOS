@@ -1217,6 +1217,7 @@ private struct LeverageSectionView: View {
                 }
             }
         }
+        .savyMacNavigationBar()
     }
 
     private var postsBackButton: some View {
@@ -1321,6 +1322,7 @@ struct LeverageDetailView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .tint(SavyTheme.crimson)
+        .savyMacNavigationBar(title: section.title)
         .task(id: item.id) {
             guard showsGraphTrace else {
                 graphTrace = nil
