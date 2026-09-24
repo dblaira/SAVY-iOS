@@ -27,6 +27,7 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
       "v1/auth/sign-up",
       "v1/auth/sign-out",
       "v1/auth/enter",
+      "v1/documents",
     ],
   });
 }
