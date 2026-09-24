@@ -6,16 +6,28 @@ import Foundation
 @MainActor
 final class PostCardOrderStore: ObservableObject {
     static let defaultsKey = "savy.socialPosts.cardOrder.v1"
+    static let connectionsDefaultsKey = "savy.connections.cardOrder.v1"
 
     @Published private(set) var manualOrder: [String]?
     private let defaults: UserDefaults
     private let key: String
+    private var syncObserver: AnyCancellable?
 
     init(defaults: UserDefaults? = nil, key: String = PostCardOrderStore.defaultsKey) {
         let defaults = defaults ?? SavyCardPreferences.defaults
         self.defaults = defaults
         self.key = key
         manualOrder = defaults.stringArray(forKey: key).map(Self.unique)
+        syncObserver = NotificationCenter.default.publisher(for: SavyCardPreferences.didApplySync)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.reloadFromDefaults() }
+            }
+    }
+
+    private func reloadFromDefaults() {
+        let saved = defaults.stringArray(forKey: key).map(Self.unique)
+        if saved != manualOrder { manualOrder = saved }
     }
 
     /// Before the first move, the existing status/date order remains authoritative.

@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 enum RootHomeLayout {
@@ -66,17 +67,22 @@ enum RootHomeLayout {
 struct RootView: View {
     let session: AuthSession
     let onSignOut: (() -> Void)?
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var navigationState: SavyNavigationState
     @StateObject private var leverageStore = LeverageDataStore()
     @StateObject private var metadataStore = MetadataEntryStore.live()
     @StateObject private var reminderStore: ReminderStore
     @StateObject private var postStore: SocialPostStore
     @StateObject private var postCardOrder = PostCardOrderStore()
-    @StateObject private var connectionStore = ConnectionStore()
+    @StateObject private var connectionStore: ConnectionStore
     @StateObject private var storyStore: StoryStore
+    @StateObject private var documentSync: SavyDocumentSync
     @State private var isPersonalAuthorityReviewPresented = false
     @State private var isPostsPresented = false
     @State private var opensPostsAfterComposer = false
+    /// State keeps the first instance, the one the retained reminder store and sync client hold.
+    @State private var accessTokens: SavyAccessTokens
+    private let syncsWithCloud: Bool
 
     init(
         session: AuthSession,
@@ -88,10 +94,16 @@ struct RootView: View {
         let navigationState = SavyNavigationState()
         navigationState.activeSection = initialSection
         _navigationState = StateObject(wrappedValue: navigationState)
+        let isUITest = ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED")
+        let tokens = SavyAccessTokens(initial: session.accessToken)
+        _accessTokens = State(initialValue: tokens)
+        syncsWithCloud = !isUITest
         let loadedPostStore: SocialPostStore
+        let loadedStoryStore: StoryStore
         let loadedReminderStore: ReminderStore
+        let loadedConnectionStore = ConnectionStore()
         let numberLedgerURL: URL
-        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") {
+        if isUITest {
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent("SAVYUITests", isDirectory: true)
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
@@ -100,7 +112,7 @@ struct RootView: View {
                 }
             }
             loadedPostStore = try! SocialPostStore(fileURL: directory.appendingPathComponent("posts.json"))
-            _storyStore = StateObject(wrappedValue: try! StoryStore(fileURL: directory.appendingPathComponent("stories.json")))
+            loadedStoryStore = try! StoryStore(fileURL: directory.appendingPathComponent("stories.json"))
             loadedReminderStore = ReminderStore(
                 repo: LocalReminderRepository(),
                 cacheURL: directory.appendingPathComponent("reminders.json"),
@@ -114,10 +126,10 @@ struct RootView: View {
             numberLedgerURL = directory.appendingPathComponent("post-numbers.json")
         } else {
             loadedPostStore = SocialPostStore.live()
-            _storyStore = StateObject(wrappedValue: StoryStore.live())
+            loadedStoryStore = StoryStore.live()
             loadedReminderStore = ReminderStore(
                 repo: GatewayReminderRepository(
-                    accessToken: { session.accessToken },
+                    accessToken: { tokens.current },
                     userEmail: { session.user.displayEmail }
                 )
             )
@@ -125,13 +137,51 @@ struct RootView: View {
         }
         // Both formats participate in the initial chronological sequence. A damaged ledger
         // is left intact rather than replaced with a sequence that could reuse references.
-        if let allocator = try? PostNumberAllocator(fileURL: numberLedgerURL) {
+        let numberAllocator = try? PostNumberAllocator(fileURL: numberLedgerURL)
+        if let allocator = numberAllocator {
             allocator.seed(reminders: loadedReminderStore.reminders, socialPosts: loadedPostStore.posts)
             loadedReminderStore.configurePostNumbering(allocator)
             loadedPostStore.configurePostNumbering(allocator)
         }
+
+        var adapters: [any SavySyncAdapter] = []
+        if !isUITest {
+            adapters = [
+                ConnectionsSyncAdapter(store: loadedConnectionStore),
+                SocialPostsSyncAdapter(store: loadedPostStore),
+                StoriesSyncAdapter(store: loadedStoryStore),
+                CardPreferencesSyncAdapter(defaults: SavyCardPreferences.defaults),
+                PersonalAuthoritySyncAdapter(),
+            ]
+            if let numberAllocator { adapters.append(PostNumbersSyncAdapter(allocator: numberAllocator)) }
+        }
+        let holdsLocalRecords = !isUITest && SavyDocumentSync.holdsLocalRecords(
+            connectionStore: loadedConnectionStore,
+            postStore: loadedPostStore,
+            storyStore: loadedStoryStore,
+            cardDefaults: SavyCardPreferences.defaults
+        )
+        let syncClient = GatewayDocumentSyncClient(
+            accessToken: { await tokens.refresh() },
+            email: session.user.displayEmail
+        )
+        _documentSync = StateObject(wrappedValue: SavyDocumentSync(
+            adapters: adapters,
+            client: syncClient,
+            legacyDevice: holdsLocalRecords
+        ))
         _postStore = StateObject(wrappedValue: loadedPostStore)
+        _storyStore = StateObject(wrappedValue: loadedStoryStore)
+        _connectionStore = StateObject(wrappedValue: loadedConnectionStore)
         _reminderStore = StateObject(wrappedValue: loadedReminderStore)
+    }
+
+    /// Pull what Adam changed on his other devices.
+    private func refreshFromCloud() async {
+        guard syncsWithCloud else { return }
+        await accessTokens.refresh()
+        await reminderStore.refresh()
+        await documentSync.syncNow()
     }
 
     var body: some View {
@@ -224,6 +274,23 @@ struct RootView: View {
             }
             .task {
                 await reminderStore.bootstrap()
+            }
+            .task {
+                guard syncsWithCloud else { return }
+                await documentSync.start()
+            }
+            .task(id: scenePhase) {
+                // While SAVY is in front (the Mac window can stay open for days), keep pulling.
+                guard syncsWithCloud, scenePhase == .active else { return }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(60))
+                    guard !Task.isCancelled else { break }
+                    await refreshFromCloud()
+                }
+            }
+            .onChange(of: scenePhase) { previous, phase in
+                guard phase == .active, previous != .active else { return }
+                Task { await refreshFromCloud() }
             }
         }
         .savySolidTopScrollEdge()
@@ -722,6 +789,7 @@ final class HomeSectionPinStore: ObservableObject {
     @Published private(set) var pinnedSectionIDs: Set<String>
     @Published private(set) var sectionOrder: [String]
     private let defaults: UserDefaults
+    private var syncObserver: AnyCancellable?
 
     init(defaults: UserDefaults? = nil) {
         let defaults = defaults ?? SavyCardPreferences.defaults
@@ -737,6 +805,19 @@ final class HomeSectionPinStore: ObservableObject {
                 pinnedSectionIDs = previous == nil ? [Self.defaultPinnedSectionID] : []
             }
             defaults.set(pinnedSectionIDs.sorted(), forKey: Self.pinnedIDsDefaultsKey)
+        }
+        syncObserver = NotificationCenter.default.publisher(for: SavyCardPreferences.didApplySync)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.reloadFromDefaults() }
+            }
+    }
+
+    private func reloadFromDefaults() {
+        let order = defaults.stringArray(forKey: Self.orderDefaultsKey) ?? []
+        if order != sectionOrder { sectionOrder = order }
+        if let saved = defaults.stringArray(forKey: Self.pinnedIDsDefaultsKey), Set(saved) != pinnedSectionIDs {
+            pinnedSectionIDs = Set(saved)
         }
     }
 

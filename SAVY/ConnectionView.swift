@@ -25,7 +25,7 @@ private enum SavedConnectionCard: Identifiable {
 struct ConnectionView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var store: ConnectionStore
-    @StateObject private var cardOrder = PostCardOrderStore(key: "savy.connections.cardOrder.v1")
+    @StateObject private var cardOrder = PostCardOrderStore(key: PostCardOrderStore.connectionsDefaultsKey)
     @State private var armedConnectionID: String?
     @State private var editingEntry: ConnectionEntry?
     @State private var isComposing = false

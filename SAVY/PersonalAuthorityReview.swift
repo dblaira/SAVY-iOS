@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SwiftUI
 import AVFoundation
@@ -784,18 +785,45 @@ private nonisolated final class CowboyNaturalVoiceExchangeState: @unchecked Send
 
 @MainActor
 final class PersonalAuthorityReviewStore: ObservableObject {
-    static let reviewDefaultsKey = "savy.personal-authority-review.20260717.v1"
+    nonisolated static let reviewDefaultsKey = "savy.personal-authority-review.20260717.v1"
+    /// When each decision was made by hand. Automatic approvals have no date.
+    nonisolated static let decisionDatesDefaultsKey = "savy.personal-authority-review.decided-at.v1"
+    static let didApplySync = Notification.Name("PersonalAuthorityReviewDidApplySync")
 
     @Published private(set) var candidates: [PersonalAuthorityCandidate] = []
     @Published private(set) var decisions: [String: PersonalAuthorityDecision] = [:]
     @Published private(set) var loadError: String?
 
     private let defaults: UserDefaults
+    private var syncObserver: AnyCancellable?
 
     init(bundle: Bundle = .main, defaults: UserDefaults = .standard) {
         self.defaults = defaults
         loadDecisions()
         loadCandidates(from: bundle)
+        syncObserver = NotificationCenter.default.publisher(for: Self.didApplySync)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.loadDecisions() }
+            }
+    }
+
+    nonisolated static func savedDecisions(defaults: UserDefaults) -> [String: PersonalAuthorityDecision] {
+        guard let data = defaults.data(forKey: reviewDefaultsKey),
+              let saved = try? JSONDecoder().decode([String: PersonalAuthorityDecision].self, from: data) else { return [:] }
+        return saved
+    }
+
+    nonisolated static func savedDecisionDates(defaults: UserDefaults) -> [String: Date] {
+        guard let data = defaults.data(forKey: decisionDatesDefaultsKey),
+              let saved = try? JSONDecoder().decode([String: Date].self, from: data) else { return [:] }
+        return saved
+    }
+
+    static func saveSyncedDecisions(_ synced: [String: PersonalAuthorityDecision], defaults: UserDefaults) {
+        guard synced != savedDecisions(defaults: defaults), let data = try? JSONEncoder().encode(synced) else { return }
+        defaults.set(data, forKey: reviewDefaultsKey)
+        NotificationCenter.default.post(name: didApplySync, object: nil)
     }
 
     var approvedCount: Int { decisions.values.filter { $0 == .mine }.count }
@@ -813,6 +841,9 @@ final class PersonalAuthorityReviewStore: ObservableObject {
 
     func decide(_ decision: PersonalAuthorityDecision, candidate: PersonalAuthorityCandidate) {
         decisions[candidate.id] = decision
+        var dates = Self.savedDecisionDates(defaults: defaults)
+        dates[candidate.id] = Date()
+        if let data = try? JSONEncoder().encode(dates) { defaults.set(data, forKey: Self.decisionDatesDefaultsKey) }
         persistDecisions()
     }
 
@@ -847,10 +878,8 @@ final class PersonalAuthorityReviewStore: ObservableObject {
     }
 
     private func loadDecisions() {
-        guard let data = defaults.data(forKey: Self.reviewDefaultsKey),
-              let saved = try? JSONDecoder().decode([String: PersonalAuthorityDecision].self, from: data) else {
-            return
-        }
+        let saved = Self.savedDecisions(defaults: defaults)
+        guard !saved.isEmpty, saved != decisions else { return }
         decisions = saved
     }
 

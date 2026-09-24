@@ -201,6 +201,15 @@ final class ConnectionStore: ObservableObject {
         errorMessage = nil
     }
 
+    /// A damaged archive is kept for recovery, so it is neither uploaded nor overwritten by sync.
+    var canSync: Bool { !loadFailed }
+
+    @discardableResult
+    func applySynced(entries nextEntries: [ConnectionEntry], sourcePins: [String: Bool], hiddenSourceIDs nextHidden: Set<String>) -> Bool {
+        guard nextEntries != entries || sourcePins != sourcePinOverrides || nextHidden != hiddenSourceIDs else { return true }
+        return persist(entries: nextEntries, sourcePins: sourcePins, hiddenSourceIDs: nextHidden)
+    }
+
     private func persist(
         entries nextEntries: [ConnectionEntry],
         sourcePins: [String: Bool],

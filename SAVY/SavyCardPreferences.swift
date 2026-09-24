@@ -4,6 +4,9 @@ import Foundation
 /// Physical-device UI checks use their own defaults domain and reset it once per launch.
 @MainActor
 enum SavyCardPreferences {
+    /// Posted after document sync writes arrangements from another device into `defaults`.
+    static let didApplySync = Notification.Name("SavyCardPreferencesDidApplySync")
+
     static let defaults: UserDefaults = {
         guard ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") else {
             return .standard
