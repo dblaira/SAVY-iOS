@@ -140,10 +140,6 @@ struct NewsChannelPostsGroup: View {
     private func header(count: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text("POSTS")
-                    .font(.system(size: 12, weight: .bold))
-                    .tracking(2.4)
-                    .foregroundStyle(SavyTheme.crimson)
                 Spacer()
                 Text("\(count) / 50")
                     .font(.system(size: 14, weight: .heavy))
@@ -181,12 +177,10 @@ struct NewsChannelPostsGroup: View {
             ) {
                 NewsChannelPostRow(post: post, palette: palette)
             }
-            .overlay(alignment: .topTrailing) {
-                pinButton(isPinned: post.pinned, palette: palette, identifier: "pinPost-\(post.id.uuidString)") {
-                    store.togglePin(post)
-                }
-                .padding(.trailing, armedPostID == savedPost.id ? 52 : 0)
-            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("postCard-\(savedPost.id)")
+            .accessibilityLabel(post.postNumber.map { "#\($0)" } ?? savedPost.preview.title)
+            .accessibilityValue(post.pinned ? "Pinned" : "Unpinned")
             .zIndex(armedPostID == savedPost.id ? 10 : 0)
         case .entry(let entry):
             SavyUpNextCardRow(
@@ -200,14 +194,10 @@ struct NewsChannelPostsGroup: View {
             ) {
                 NewsChannelPostEntryRow(entry: entry, palette: palette)
             }
-            .overlay(alignment: .topTrailing) {
-                pinButton(isPinned: entry.pinned, palette: palette, identifier: "pinPostEntry-\(entry.id.uuidString)") {
-                    guard var updated = reminderStore.reminders.first(where: { $0.id == entry.id }) else { return }
-                    updated.pinned.toggle()
-                    reminderStore.save(updated)
-                }
-                .padding(.trailing, armedPostID == savedPost.id ? 52 : 0)
-            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("postCard-\(savedPost.id)")
+            .accessibilityLabel(entry.postNumber.map { "#\($0)" } ?? savedPost.preview.title)
+            .accessibilityValue(entry.pinned ? "Pinned" : "Unpinned")
             .zIndex(armedPostID == savedPost.id ? 10 : 0)
         }
     }
@@ -224,21 +214,6 @@ struct NewsChannelPostsGroup: View {
         }
     }
 
-    private func pinButton(isPinned: Bool, palette: NewsChannelPostPalette, identifier: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: isPinned ? "pin.fill" : "pin")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(isPinned ? palette.pin : palette.fg.opacity(0.6))
-                .offset(y: isPinned ? 0 : -4)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, 4)
-        .accessibilityLabel(isPinned ? "Unpin post" : "Pin post")
-        .accessibilityIdentifier(identifier)
-    }
-
     private func actions(for entry: Reminder) -> [SavySwipeAction] {
         var list: [SavySwipeAction] = []
         if entry.status != .completed {
@@ -246,6 +221,11 @@ struct NewsChannelPostsGroup: View {
                 reminderStore.complete(entry)
             })
         }
+        list.append(SavySwipeAction(title: entry.pinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) {
+            guard var updated = reminderStore.reminders.first(where: { $0.id == entry.id }) else { return }
+            updated.pinned.toggle()
+            reminderStore.save(updated)
+        })
         list.append(SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
             reminderStore.delete(entry)
         })
@@ -274,6 +254,9 @@ struct NewsChannelPostsGroup: View {
                 store.markPosted(post)
             })
         }
+        list.append(SavySwipeAction(title: post.pinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) {
+            store.togglePin(post)
+        })
         list.append(SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
             store.delete(post)
         })
@@ -367,28 +350,15 @@ struct NewsChannelPostRow: View {
             minimumHeight: post.pinned ? 186 : nil,
             border: palette.border,
             secondaryLineLimit: 2,
-            titleAccessibilityIdentifier: "postHeadline-\(post.id.uuidString)"
-        ) {
-            HStack(spacing: 6) {
-                Image(systemName: "text.bubble")
-                    .font(.system(size: 11, weight: .bold))
-                Text(post.postNumber.map { "POST #\($0)" } ?? "POST")
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(1.5)
-                    .accessibilityIdentifier("postNumber-\(post.id.uuidString)")
-                if post.clearSign {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 11, weight: .heavy))
-                        .foregroundStyle(palette.pin)
-                        .accessibilityLabel("Clear Sign")
-                }
-            }
-            .padding(.trailing, 36)
-        }
+            titleAccessibilityIdentifier: "postHeadline-\(post.id.uuidString)",
+            referenceText: post.postNumber.map { "#\($0)" },
+            referenceAccessibilityIdentifier: "postNumber-\(post.id.uuidString)"
+        )
     }
 
     private var signalText: String {
         var parts = [post.platform.label, post.move.label]
+        if post.clearSign { parts.append("Clear Sign") }
         if post.pattern != .none { parts.append(post.pattern.label) }
         parts.append(contentsOf: post.areas.map { "#\($0)" })
         return parts.joined(separator: "   ·   ")
@@ -425,18 +395,10 @@ struct NewsChannelPostEntryRow: View {
             minimumHeight: entry.pinned ? 186 : nil,
             border: palette.border,
             secondaryLineLimit: 2,
-            titleAccessibilityIdentifier: "postEntryHeadline-\(entry.id.uuidString)"
-        ) {
-            HStack(spacing: 6) {
-                Image(systemName: "text.bubble")
-                    .font(.system(size: 11, weight: .bold))
-                Text(entry.postNumber.map { "POST #\($0)" } ?? "POST")
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(1.5)
-                    .accessibilityIdentifier("postEntryNumber-\(entry.id.uuidString)")
-            }
-            .padding(.trailing, 36)
-        }
+            titleAccessibilityIdentifier: "postEntryHeadline-\(entry.id.uuidString)",
+            referenceText: entry.postNumber.map { "#\($0)" },
+            referenceAccessibilityIdentifier: "postEntryNumber-\(entry.id.uuidString)"
+        )
     }
 
     private var signalText: String {

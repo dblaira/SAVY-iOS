@@ -24,6 +24,8 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>SAVY uses Face ID to unlock your private workspace after you sign in.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>SAVY uses your calendars when you choose a calendar for a scheduled entry, so it can save and update that event.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SAVY uses location only when a native entry needs place context.</string>
 	<key>NSLocalNetworkUsageDescription</key>

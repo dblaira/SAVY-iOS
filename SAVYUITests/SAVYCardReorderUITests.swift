@@ -155,10 +155,10 @@ final class SAVYCardReorderUITests: XCTestCase {
         reveal(postRow(3))
         assertOrder([2, 1, 4, 3].map(postRow))
         let numbers = Dictionary(uniqueKeysWithValues: (1...4).map { number in
-            (number, element("postEntryNumber-\(postUUID(number))").label)
+            (number, postContainer(number).label)
         })
         for number in 1...4 {
-            XCTAssertEqual(numbers[number], "POST #\(number)", "Every post needs its stored reference before moving")
+            XCTAssertEqual(numbers[number], "#\(number)", "Every post needs its stored reference before moving")
         }
 
         arm(postRow(1))
@@ -175,7 +175,7 @@ final class SAVYCardReorderUITests: XCTestCase {
         // A second upward move is blocked at the boundary rather than pinning the post.
         moveUp()
         assertOrder([1, 2, 3, 4].map(postRow))
-        XCTAssertEqual(postPin(3).label, "Pin post")
+        XCTAssertEqual(postContainer(3).value as? String, "Unpinned")
         attach("13 Unpinned Post moved below pinned cards")
 
         let movedPost = postRow(3)
@@ -197,9 +197,9 @@ final class SAVYCardReorderUITests: XCTestCase {
         assertOrder([1, 2, 3, 4].map(postRow))
         XCTAssertEqual(element("postSavedCount").label, "4 / 50")
         for number in 1...4 {
-            XCTAssertEqual(element("postEntryNumber-\(postUUID(number))").label, numbers[number],
+            XCTAssertEqual(postContainer(number).label, numbers[number],
                            "Moving or relaunching changed a stored Post number")
-            XCTAssertEqual(postPin(number).label, number <= 2 ? "Unpin post" : "Pin post",
+            XCTAssertEqual(postContainer(number).value as? String, number <= 2 ? "Pinned" : "Unpinned",
                            "Moving or relaunching changed a Post's pin state")
         }
         attach("14 Post order, pins, and numbers retained after relaunch")
@@ -323,8 +323,11 @@ final class SAVYCardReorderUITests: XCTestCase {
         element("postEntryRow-\(postUUID(number))")
     }
 
-    private func postPin(_ number: Int) -> XCUIElement {
-        app.buttons["pinPostEntry-\(postUUID(number))"].firstMatch
+    private func postContainer(_ number: Int) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'postCard-'"))
+            .containing(.any, identifier: "postEntryRow-\(postUUID(number))")
+            .firstMatch
     }
 
     private func actionGesture(_ number: Int) -> XCUIElement {

@@ -2,7 +2,7 @@ import XCTest
 import UIKit
 
 /// Adam's Connection page reuses the Post cards and shared entry form. The four questions,
-/// answers, and metadata must remain editable after saving and relaunching. All launches
+/// answers, and remaining metadata must stay editable after saving and relaunching. All launches
 /// use isolated repositories; these fixtures must never reach Adam's live data or Harness.
 @MainActor
 final class SAVYConnectionEntryUITests: XCTestCase {
@@ -23,10 +23,6 @@ final class SAVYConnectionEntryUITests: XCTestCase {
     private let when = "When I compare examples, I keep their original context."
     private let outcome = "The connection and the evidence remain readable together."
     private let step = "Compare the original examples."
-    private let notes = "Synthetic note with a second line.\nKeep both lines after reopening."
-    private let link = "https://example.com/connection-acceptance"
-    private let person = "Synthetic collaborator"
-    private let place = "Synthetic reading room"
     private let tag = "connection-acceptance"
 
     override func setUp() async throws {
@@ -76,27 +72,16 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         enter(step, into: field(placeholder: "Step"))
 
         choose("Context", in: "Pattern")
-        setToggle("Clear Signs of Success", enabled: true)
-        setToggle("Compounding", enabled: true)
         choose("Learning", in: "Lift")
         enter(tag + ",", into: field(placeholder: "Add a tag"))
         XCTAssertTrue(app.staticTexts[tag].firstMatch.exists, "Tag did not become saved metadata")
         choose("High", in: "Priority")
         choose("Med", in: "Energy")
-        setToggle("Start", enabled: true)
-        setToggle("Due", enabled: true)
+        openSchedule()
         choose("Weekly", in: "Repeat")
-        enter(notes, into: field(placeholder: "Notes"))
-        enter(link, into: field(placeholder: "Link"))
-
-        // Image and place controls must remain available with the shared metadata. Tests
-        // do not grant Photos/location access or read private material just to prove this.
-        let image = app.staticTexts["Image"].firstMatch
-        reveal(image)
-        XCTAssertTrue(image.exists, "Connection form lost the shared image field")
-        enter(place, into: field(placeholder: "Location"))
-        enter(person, into: field(placeholder: "Waiting on / delegate to"))
-        attach("02 Connection includes the shared Details and Place People metadata")
+        finishSchedule()
+        assertRemovedSharedMetadataIsAbsent()
+        attach("02 Connection retains Image without the removed metadata fields")
 
         saveConnection()
         let newRow = authoredRows.matching(
@@ -174,6 +159,7 @@ final class SAVYConnectionEntryUITests: XCTestCase {
                       "Social Media Posts + did not open the original Post form")
         assertWhiteFormMargin("sharedEntryForm")
         attach("08 Original Post entry has white behind the existing cream fields")
+        assertRemovedSharedMetadataIsAbsent(fromTop: true)
     }
 
     func testRightSwipePinsMultipleConnectionsAtTheVeryTopAndSurvivesRelaunch() {
@@ -277,21 +263,56 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         assertValue(outcome, in: element("DoneLooksLike"))
         assertValue(step, in: field(placeholder: "Step"))
         assertChoice("Context", in: "Pattern")
-        assertToggle("Clear Signs of Success", enabled: true)
-        assertToggle("Compounding", enabled: true)
         assertChoice("Learning", in: "Lift")
         let savedTag = app.staticTexts[tag].firstMatch
         reveal(savedTag)
         XCTAssertTrue(savedTag.exists, "The tag was not retained")
         assertChoice("High", in: "Priority")
         assertChoice("Med", in: "Energy")
-        assertToggle("Start", enabled: true)
-        assertToggle("Due", enabled: true)
+        openSchedule()
         assertChoice("Weekly", in: "Repeat")
-        assertValue(notes, in: field(placeholder: "Notes"))
-        assertValue(link, in: field(placeholder: "Link"))
-        assertValue(place, in: field(placeholder: "Location"))
-        assertValue(person, in: field(placeholder: "Waiting on / delegate to"))
+        XCTAssertTrue(element("scheduleStarts").exists, "The saved schedule start is missing")
+        XCTAssertTrue(element("scheduleEnds").exists, "The saved schedule end is missing")
+        finishSchedule()
+        assertRemovedSharedMetadataIsAbsent()
+    }
+
+    private func openSchedule() {
+        let button = element("openSchedule")
+        reveal(button)
+        XCTAssertTrue(button.isHittable, "The shared Schedule entry point is missing")
+        button.tap()
+        XCTAssertTrue(element("scheduleForm").waitForExistence(timeout: 5),
+                      "Schedule did not open its separate form")
+    }
+
+    private func finishSchedule() {
+        let done = app.buttons["scheduleDone"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+        XCTAssertTrue(done.waitForNonExistence(timeout: 5), "Schedule Done did not return to the entry")
+    }
+
+    private func assertRemovedSharedMetadataIsAbsent(fromTop: Bool = false) {
+        // Reach both former locations so a lazily unloaded offscreen row cannot satisfy
+        // the removal check. Pattern/Lift remain; only their two extra toggles are gone.
+        let pattern = menu("Pattern")
+        reveal(pattern, towardBottom: fromTop)
+        XCTAssertTrue(pattern.isHittable, "The retained Pattern picker is not reachable")
+        XCTAssertFalse(app.switches["Clear Signs of Success"].firstMatch.exists)
+        XCTAssertFalse(app.switches["Compounding"].firstMatch.exists)
+
+        // Image is the remaining Details row. Do not grant Photos access to inspect it.
+        let image = app.staticTexts["Image"].firstMatch
+        reveal(image)
+        XCTAssertTrue(image.exists, "The shared entry form lost the retained image field")
+        app.swipeUp()
+        for placeholder in ["Notes", "Link", "Location", "Waiting on / delegate to"] {
+            XCTAssertFalse(field(placeholder: placeholder).exists,
+                           "The removed \(placeholder) entry field is still present")
+        }
+        XCTAssertFalse(app.staticTexts["Place / People"].firstMatch.exists,
+                       "The removed Place / People section is still present")
     }
 
     private func expectedAnswer(at index: Int) -> String {
@@ -476,20 +497,6 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         XCTAssertTrue(picker.exists, "The \(label) metadata picker is missing after reopening")
         let renderedValue = [picker.label, picker.value as? String ?? ""].joined(separator: " ")
         XCTAssertTrue(renderedValue.contains(value), "\(label) did not retain \(value): \(renderedValue)")
-    }
-
-    private func setToggle(_ label: String, enabled: Bool) {
-        let toggle = app.switches[label].firstMatch
-        reveal(toggle)
-        XCTAssertTrue(toggle.exists, "The \(label) metadata toggle is missing")
-        if (toggle.value as? String == "1") != enabled { toggle.tap() }
-        XCTAssertEqual(toggle.value as? String, enabled ? "1" : "0")
-    }
-
-    private func assertToggle(_ label: String, enabled: Bool) {
-        let toggle = app.switches[label].firstMatch
-        reveal(toggle)
-        XCTAssertEqual(toggle.value as? String, enabled ? "1" : "0", "\(label) was not retained")
     }
 
     private func reveal(_ target: XCUIElement, towardBottom: Bool = true) {

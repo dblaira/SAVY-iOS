@@ -68,70 +68,21 @@ struct NewsChannelStoriesGroup: View {
     }
 }
 
-/// One story as a card in the same style as the site's stories: status, title, subtitle, a taste of the body.
+/// Stories have no pin state, so every list card uses the shared compact presentation.
+/// The full subtitle, body, and publication metadata remain in the story editor.
 struct NewsChannelStoryRow: View {
     let story: Story
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 9, height: 9)
-
-                Text(kickerText)
-                    .font(.system(size: 12, weight: .bold))
-                    .tracking(1.6)
-                    .foregroundStyle(.black.opacity(0.4))
-                    .lineLimit(1)
-            }
-
-            Text(story.trimmedTitle.isEmpty ? "Untitled" : story.trimmedTitle)
-                .font(SavyTheme.beliefSerif(25))
-                .foregroundStyle(SavyTheme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !story.trimmedSubtitle.isEmpty {
-                Text(story.trimmedSubtitle)
-                    .font(.system(size: 17, weight: .regular, design: .serif))
-                    .lineSpacing(3)
-                    .foregroundStyle(.black.opacity(0.62))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if !story.trimmedBody.isEmpty {
-                Text(story.trimmedBody)
-                    .font(.system(size: 15))
-                    .lineSpacing(3)
-                    .foregroundStyle(.black.opacity(0.55))
-                    .lineLimit(4)
-            }
-
-            Text(secondaryText)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.black.opacity(0.42))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
-        .background(.white, in: RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
-    }
-
-    private var statusColor: Color {
-        switch story.status {
-        case .draft: return SavyTheme.bottomNavTan
-        case .ready: return SavyTheme.green
-        case .posted: return SavyTheme.crimson
-        }
-    }
-
-    private var kickerText: String {
-        "STORY · \(story.status.label.uppercased())"
-    }
-
-    private var secondaryText: String {
-        var parts: [String] = ["\(story.wordCount) words"]
-        if let when = story.whenLabel { parts.append("Posted \(when)") }
-        return parts.joined(separator: "   ·   ")
+        SavyBandCard(
+            bg: .white,
+            fg: SavyTheme.ink,
+            accent: SavyTheme.crimson,
+            title: story.trimmedTitle.isEmpty ? "Untitled" : story.trimmedTitle,
+            signalText: "",
+            secondaryText: "",
+            isCompact: true,
+            titleAccessibilityIdentifier: "storyHeadline-\(story.id.uuidString)"
+        )
     }
 }

@@ -554,7 +554,8 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         }
         XCTAssertEqual(original.id, reminder.id)
         XCTAssertEqual(original.title, reminder.title)
-        XCTAssertEqual(row.subtitle, reminder.whenLabel)
+        XCTAssertEqual(original.dueDate, reminder.dueDate)
+        XCTAssertEqual(original.dueTime, reminder.dueTime)
     }
 
     func testAWSGraphConfigurationRequiresConcreteBackendValues() {
@@ -824,7 +825,6 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(RootHomeLayout.carouselTopPadding, 24)
         XCTAssertEqual(RootHomeLayout.carouselBottomPadding, 24)
         XCTAssertEqual(RootHomeLayout.carouselCardWidth, 282)
-        XCTAssertEqual(RootHomeLayout.carouselCardHeight, 140)
         XCTAssertEqual(RootHomeLayout.homeBandCardSpacing, 10)
         XCTAssertEqual(RootHomeLayout.homeBandTopPadding, 14)
         XCTAssertEqual(RootHomeLayout.homeBandBottomPadding, 16)

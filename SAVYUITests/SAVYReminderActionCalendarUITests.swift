@@ -52,7 +52,8 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         field.typeText(title)
 
         if kind == .calendar {
-            enableDueDateIfNeeded()
+            openSchedule()
+            finishSchedule()
         }
 
         app.buttons["Save"].tap()
@@ -69,11 +70,67 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(savedElement.waitForExistence(timeout: 12), "\(title) did not appear after save")
     }
 
-    private func enableDueDateIfNeeded() {
-        let dueSwitch = app.switches["Due"]
-        if dueSwitch.waitForExistence(timeout: 3), dueSwitch.value as? String == "0" {
-            dueSwitch.tap()
+    private func entryElement(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier].firstMatch
+    }
+
+    private func revealEntryElement(_ element: XCUIElement, towardBottom: Bool = true) {
+        for _ in 0..<12 where !element.isHittable {
+            let scrollDown = element.exists && !element.frame.isEmpty
+                ? element.frame.midY > app.frame.midY : towardBottom
+            if scrollDown { app.swipeUp() } else { app.swipeDown() }
         }
+    }
+
+    private func openSchedule() {
+        let button = app.buttons["openSchedule"].firstMatch
+        revealEntryElement(button)
+        XCTAssertTrue(button.isHittable, "The shared Schedule entry point is missing")
+        button.tap()
+        XCTAssertTrue(entryElement("scheduleForm").waitForExistence(timeout: 5),
+                      "Schedule did not open its separate form")
+    }
+
+    private func finishSchedule() {
+        let done = app.buttons["scheduleDone"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+        XCTAssertTrue(done.waitForNonExistence(timeout: 5), "Schedule Done did not return to the entry")
+    }
+
+    private func cancelSchedule() {
+        guard let cancel = app.navigationBars.buttons.matching(identifier: "Cancel").allElementsBoundByIndex.first(where: { $0.isHittable }) else {
+            XCTFail("Schedule Cancel is missing")
+            return
+        }
+        cancel.tap()
+        XCTAssertTrue(app.buttons["scheduleDone"].firstMatch.waitForNonExistence(timeout: 5),
+                      "Schedule Cancel did not return to the entry")
+    }
+
+    private func chooseSchedule(_ value: String, identifier: String, towardBottom: Bool = true) {
+        let picker = entryElement(identifier)
+        revealEntryElement(picker, towardBottom: towardBottom)
+        XCTAssertTrue(picker.isHittable, "The \(identifier) picker is missing")
+        picker.tap()
+        let option = app.buttons[value].firstMatch
+        XCTAssertTrue(option.waitForExistence(timeout: 5), "The \(value) choice is missing")
+        option.tap()
+    }
+
+    private func assertScheduleChoice(_ value: String, identifier: String) {
+        let picker = entryElement(identifier)
+        revealEntryElement(picker)
+        let renderedValue = [picker.label, picker.value as? String ?? ""].joined(separator: " ")
+        XCTAssertTrue(renderedValue.contains(value), "\(identifier) did not retain \(value): \(renderedValue)")
+    }
+
+    // Compact pickers expose a combined value or separate date/time controls across iOS versions.
+    private func scheduleValues(_ picker: XCUIElement) -> [String] {
+        let elements = [picker] + picker.descendants(matching: .any).allElementsBoundByIndex
+        let values = elements.flatMap { [$0.label, $0.value as? String ?? ""] }
+            .filter { $0.rangeOfCharacter(from: .decimalDigits) != nil }
+        return Array(Set(values)).sorted()
     }
 
     private func reopenItem(_ title: String) {
@@ -103,13 +160,27 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         item.tap()
     }
 
-    private func pinAndUnpin(_ title: String) {
+    private func pinAndUnpin(_ title: String, cardIdentifier: String) {
+        let card = app.descendants(matching: .any)[cardIdentifier].firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        let compactHeight = card.frame.height
+        XCTAssertLessThanOrEqual(compactHeight, 64, "An unpinned first card must stay thin")
         revealActions(title)
         tapVisibleButton("swipePin")
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) missing after pin")
+        let expanded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            card.frame.height >= 186
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [expanded], timeout: 5), .completed,
+                       "Pinning must expand the card")
         revealActions(title)
         XCTAssertTrue(app.buttons["swipeUnpin"].waitForExistence(timeout: 5), "Unpin action did not replace Pin")
         tapVisibleButton("swipeUnpin")
+        let compact = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            abs(card.frame.height - compactHeight) <= 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [compact], timeout: 5), .completed,
+                       "Unpinning must restore the original thin height even at list position zero")
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) missing after unpin")
     }
 
@@ -216,7 +287,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         openTab("Reminders")
         reopenItem(title)
         gentlySwipeRightThenLeft(title)
-        pinAndUnpin(title)
+        pinAndUnpin(title, cardIdentifier: "upNextCard0")
         completeAndDelete(title, completedSectionId: "completedRemindersSection")
     }
 
@@ -444,10 +515,113 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         add(screenshot)
     }
 
-    func testGreatestLeverageCardOpensOriginalEntry() {
+    func testHourlySchedulePersistsAndCancelDiscardsScheduleEdits() {
+        let title = "Synthetic hourly schedule \(Int(Date().timeIntervalSince1970))"
+        let location = "Synthetic reading room"
+        let notes = "Synthetic schedule note.\nKeep both lines."
+        openComposer(.action)
+        let titleInput = titleField()
+        XCTAssertTrue(titleInput.waitForExistence(timeout: 10))
+        titleInput.tap()
+        titleInput.typeText(title)
+        openSchedule()
+
+        let locationInput = entryElement("scheduleLocation")
+        revealEntryElement(locationInput)
+        locationInput.tap()
+        locationInput.typeText(location)
+
+        // Selecting Hourly must turn an all-day entry into a bounded timed schedule.
+        let allDay = app.switches["scheduleAllDay"].firstMatch
+        revealEntryElement(allDay)
+        if allDay.value as? String == "0" { allDay.tap() }
+        XCTAssertEqual(allDay.value as? String, "1")
+        chooseSchedule("Hourly", identifier: "scheduleAlert")
+        let summary = entryElement("scheduleHourlySummary")
+        revealEntryElement(summary)
+        XCTAssertTrue(summary.label.hasPrefix("Every hour until "),
+                      "Hourly must show the finite end instead of an open-ended cadence")
+        XCTAssertNotNil(summary.label.rangeOfCharacter(from: .decimalDigits),
+                        "The Hourly summary must include its end time")
+        let expectedSummary = summary.label
+
+        let starts = entryElement("scheduleStarts")
+        let ends = entryElement("scheduleEnds")
+        revealEntryElement(starts, towardBottom: false)
+        XCTAssertEqual(allDay.value as? String, "0", "Hourly must use timed mode")
+        let expectedStarts = scheduleValues(starts)
+        let expectedEnds = scheduleValues(ends)
+        XCTAssertFalse(expectedStarts.isEmpty)
+        XCTAssertFalse(expectedEnds.isEmpty)
+        XCTAssertNotEqual(expectedStarts, expectedEnds, "The Hourly period must have a distinct end")
+
+        let calendar = entryElement("scheduleCalendar")
+        revealEntryElement(calendar)
+        XCTAssertTrue(calendar.label.contains("SAVY"), "A new schedule must stay in SAVY by default")
+        // Do not open Calendar, invite anyone, or send email during isolated UI acceptance.
+        let notesInput = entryElement("scheduleNotes")
+        revealEntryElement(notesInput)
+        notesInput.tap()
+        notesInput.typeText(notes)
+        finishSchedule()
+
+        func assertSavedSchedule() {
+            revealEntryElement(locationInput)
+            XCTAssertEqual(locationInput.value as? String, location)
+            revealEntryElement(starts)
+            XCTAssertEqual(allDay.value as? String, "0")
+            XCTAssertEqual(scheduleValues(starts), expectedStarts)
+            XCTAssertEqual(scheduleValues(ends), expectedEnds)
+            assertScheduleChoice("Hourly", identifier: "scheduleAlert")
+            revealEntryElement(summary)
+            XCTAssertEqual(summary.label, expectedSummary, "The finite Hourly end changed")
+            revealEntryElement(notesInput)
+            XCTAssertEqual(notesInput.value as? String, notes, "Schedule notes did not persist intact")
+        }
+
+        // Done applies to the entry draft; cancelling a subsequent Schedule edit must not.
+        openSchedule()
+        revealEntryElement(locationInput)
+        locationInput.tap()
+        locationInput.typeText(" cancelled change")
+        chooseSchedule("None", identifier: "scheduleAlert")
+        revealEntryElement(notesInput)
+        notesInput.tap()
+        notesInput.typeText(" cancelled change")
+        cancelSchedule()
+        openSchedule()
+        assertSavedSchedule()
+        finishSchedule()
+        app.buttons["Save"].tap()
+
+        openTab("Actions")
+        XCTAssertTrue(app.staticTexts[title].firstMatch.waitForExistence(timeout: 10))
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "SAVY_UI_TEST_RESET_REMINDERS" }
+        app.launch()
+        dismissNotificationPrompt()
+        openTab("Actions")
+        let savedEntry = app.staticTexts[title].firstMatch
+        XCTAssertTrue(savedEntry.waitForExistence(timeout: 10), "The saved scheduled entry disappeared")
+        savedEntry.tap()
+        XCTAssertTrue(titleField().waitForExistence(timeout: 10))
+        openSchedule()
+        assertSavedSchedule()
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "hourly-schedule-notes-persist-after-relaunch"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        cancelSchedule()
+    }
+
+    func testGreatestLeverageCardUsesReminderMetadataAndOpensOriginalEntry() {
         let title = "Pinned Leverage \(Int(Date().timeIntervalSince1970))"
+        let tag = "carousel-metadata"
+        func revealFormElement(_ element: XCUIElement) {
+            for _ in 0..<8 where !element.isHittable { app.swipeUp() }
+        }
         // The Event composer begins with a date. Changing its shared destination to Action
-        // proves the common form retains that date while routing the saved entry to Actions.
+        // proves Home hides the schedule without deleting it from the shared entry.
         openComposer(.calendar)
 
         let actionDestination = app.buttons["Action"].firstMatch
@@ -458,23 +632,51 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), "Entry form did not open")
         field.tap()
         field.typeText(title)
+
+        let tagField = app.textFields["Add a tag"].firstMatch
+        revealFormElement(tagField)
+        XCTAssertTrue(tagField.isHittable, "The shared Tags field was missing")
+        tagField.tap()
+        tagField.typeText(tag + ",")
+
+        openSchedule()
+        let duePicker = entryElement("scheduleStarts")
+        revealEntryElement(duePicker)
+        XCTAssertTrue(duePicker.isHittable, "The entry's stored date and time were missing")
+        let originalDueValues = scheduleValues(duePicker)
+        XCTAssertFalse(originalDueValues.isEmpty, "The date picker did not expose its stored date and time")
+        finishSchedule()
         app.buttons["Save"].tap()
 
         openTab("Actions")
         let savedTitle = app.staticTexts[title].firstMatch
         XCTAssertTrue(savedTitle.waitForExistence(timeout: 12), "Saved action did not appear")
+        let actionCard = app.descendants(matching: .any)["topActionCard"].firstMatch
+        XCTAssertLessThanOrEqual(actionCard.frame.height, 64, "An unpinned action must use the thin layout")
+        XCTAssertFalse(actionCard.staticTexts["#" + tag].exists,
+                       "Unpinned cards must not grow to display metadata")
         revealActions(title)
         tapVisibleButton("swipePin")
-
+        let schedule = actionCard.staticTexts.matching(NSPredicate(
+            format: "label MATCHES %@", ".*[0-9]:[0-9]{2}.*"
+        )).firstMatch
+        XCTAssertTrue(schedule.waitForExistence(timeout: 5), "The Actions card lost its saved schedule")
+        let savedSchedule = schedule.label
+        XCTAssertFalse(actionCard.staticTexts["ACTION"].exists, "The Actions card still repeats its type above the title")
+        XCTAssertTrue(actionCard.staticTexts["#" + tag].exists, "The shared card metadata was missing")
         openTab("Now")
         let card = app.buttons["greatestLeverageReminder"].firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 12), "Pinned entry did not appear in the homepage carousel")
         XCTAssertTrue(card.label.contains(title), "The homepage carousel card did not retain the original title")
+        XCTAssertFalse(card.label.contains("ACTION"), "The carousel still shows a type label above its title")
+        XCTAssertTrue(card.label.contains("#" + tag), "The carousel did not show the shared card metadata")
+        XCTAssertFalse(card.label.contains(savedSchedule), "The homepage carousel still shows date and time")
+        XCTAssertFalse(app.descendants(matching: .any)["greatestLeverageDate"].exists,
+                       "The old carousel date line is still present")
+        XCTAssertEqual(card.frame.width, 282, accuracy: 1, "The carousel card width changed")
 
-        let date = app.descendants(matching: .any)["greatestLeverageDate"].firstMatch
-        XCTAssertTrue(date.waitForExistence(timeout: 5), "Pinned entry date was not visible")
         let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "greatest-leverage-card-left-aligned-date"
+        screenshot.name = "homepage-carousel-reminder-metadata-without-schedule"
         screenshot.lifetime = .keepAlways
         add(screenshot)
 
@@ -482,6 +684,11 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let reopenedTitle = titleField()
         XCTAssertTrue(reopenedTitle.waitForExistence(timeout: 10), "The homepage carousel card did not open its entry")
         XCTAssertEqual(reopenedTitle.value as? String, title, "The homepage carousel opened a different entry")
+        openSchedule()
+        revealEntryElement(duePicker)
+        XCTAssertTrue(duePicker.isHittable, "The original entry's date picker did not reopen")
+        XCTAssertEqual(scheduleValues(duePicker), originalDueValues,
+                       "Hiding the carousel schedule changed the saved date or time")
     }
 
     func testActionCreateReopenSwipePinDoneDelete() {
@@ -490,7 +697,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         openTab("Actions")
         reopenItem(title)
         gentlySwipeRightThenLeft(title)
-        pinAndUnpin(title)
+        pinAndUnpin(title, cardIdentifier: "topActionCard")
         completeAndDelete(title, completedSectionId: "completedActionsSection")
     }
 

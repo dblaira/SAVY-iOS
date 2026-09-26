@@ -162,10 +162,6 @@ struct ConnectionView: View {
         let cards = displayedCards
         return VStack(alignment: .leading, spacing: ConnectionLayout.cardSpacing) {
             HStack(alignment: .firstTextBaseline) {
-                Text("CONNECTIONS")
-                    .font(.system(size: 12, weight: .bold))
-                    .tracking(2.4)
-                    .foregroundStyle(SavyTheme.crimson)
                 Spacer()
                 Text("\(cards.count)")
                     .font(.system(size: 14, weight: .heavy))
@@ -254,15 +250,7 @@ struct ConnectionView: View {
             border: palette.border,
             secondaryLineLimit: 2,
             titleAccessibilityIdentifier: titleIdentifier
-        ) {
-            HStack(spacing: 6) {
-                Image(systemName: "link")
-                    .font(.system(size: 11, weight: .bold))
-                Text("CONNECTION")
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(1.5)
-            }
-        }
+        )
     }
 
     private func isPinned(_ card: SavedConnectionCard) -> Bool {

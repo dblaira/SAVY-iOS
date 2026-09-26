@@ -216,7 +216,7 @@ struct CalendarView: View {
                     .frame(width: 52, alignment: .trailing)
                 VStack(spacing: 6) {
                     ForEach(items) { reminder in
-                        calendarEventRow(reminder, compact: true)
+                        calendarEventRow(reminder, isAllDay: true)
                     }
                 }
             }
@@ -246,7 +246,7 @@ struct CalendarView: View {
                 }
             }
             ForEach(timed) { r in
-                calendarEventRow(r, compact: false)
+                calendarEventRow(r, isAllDay: false)
                     .accessibilityIdentifier("calendarEvent-\(r.id.uuidString)")
                     .padding(.leading, gutter)
                     .padding(.trailing, 2)
@@ -269,21 +269,30 @@ struct CalendarView: View {
         .offset(y: y - 1)
     }
 
-    private func eventBlock(_ r: Reminder, compact: Bool) -> some View {
+    private func eventBlock(_ r: Reminder, isAllDay: Bool) -> some View {
         let hot = r.urgent || r.flag || r.priority == .high
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(r.title.isEmpty ? "Untitled" : r.title)
-                    .font(.system(size: 15, weight: .bold)).foregroundStyle(.black)
-                    .strikethrough(r.status == .completed).lineLimit(1)
-                if let sub = compact ? subtitle(r) : (r.dueTime.map { Self.timeFmt.string(from: $0) }) {
+                HStack(spacing: 8) {
+                    Text(r.title.isEmpty ? "Untitled" : r.title)
+                        .font(.system(size: 15, weight: .bold)).foregroundStyle(.black)
+                        .strikethrough(r.status == .completed).lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if !r.pinned, !isAllDay, let time = r.dueTime {
+                        Text(Self.timeFmt.string(from: time))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.black.opacity(0.5))
+                            .fixedSize()
+                    }
+                }
+                if r.pinned, let sub = isAllDay ? subtitle(r) : (r.dueTime.map { Self.timeFmt.string(from: $0) }) {
                     Text(sub).font(.system(size: 13, weight: .medium)).foregroundStyle(.black.opacity(0.5)).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
         }
         .padding(.vertical, 6).padding(.horizontal, 8)
-        .frame(height: compact ? 46 : hourHeight - 8, alignment: .top)
+        .frame(height: r.pinned ? 48 : 34, alignment: r.pinned ? .top : .center)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             (hot ? Brand.crimson : Color.black)
@@ -294,12 +303,12 @@ struct CalendarView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke((hot ? Brand.crimson : Color.black).opacity(0.15)))
     }
 
-    private func calendarEventRow(_ reminder: Reminder, compact: Bool) -> some View {
+    private func calendarEventRow(_ reminder: Reminder, isAllDay: Bool) -> some View {
         SavyCalendarSwipeRow(
             actions: calendarActions(reminder),
             onTap: { onOpen(reminder) }
         ) {
-            eventBlock(reminder, compact: compact)
+            eventBlock(reminder, isAllDay: isAllDay)
         }
         .accessibilityIdentifier("calendarEvent-\(reminder.id.uuidString)")
     }
@@ -335,7 +344,7 @@ struct CalendarView: View {
     private func reminders(on day: Date) -> [Reminder] {
         store.reminders
             .filter { $0.status != .deleted }
-            .filter { if let d = $0.dueDate { return cal.isDate(d, inSameDayAs: day) } else { return false } }
+            .filter { $0.occurs(on: day, calendar: cal) }
             .sorted { ($0.fireDate ?? .distantFuture) < ($1.fireDate ?? .distantFuture) }
     }
 
@@ -416,7 +425,8 @@ struct CalendarView: View {
     private func dateAtHour(_ h: Int) -> Date { cal.date(from: DateComponents(hour: h)) ?? Date() }
 
     private func yOffset(_ r: Reminder) -> CGFloat {
-        guard let t = r.dueTime else { return 0 }
+        guard let dueTime = r.dueTime else { return 0 }
+        let t = r.schedule.map { max($0.startDate, cal.startOfDay(for: selected)) } ?? dueTime
         let c = cal.dateComponents([.hour, .minute], from: t)
         return (CGFloat(c.hour ?? 0) + CGFloat(c.minute ?? 0) / 60) * hourHeight
     }

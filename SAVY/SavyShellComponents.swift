@@ -412,11 +412,7 @@ struct SavyBottomNavigationBar: View {
             }
         } label: {
             VStack(spacing: RootHomeLayout.bottomNavigationIconLabelSpacing) {
-                Image(systemName: section.symbolName)
-                    .font(.system(
-                        size: RootHomeLayout.bottomNavigationIconSize,
-                        weight: RootHomeLayout.bottomNavigationIconWeight
-                    ))
+                SavyTabIcon(section: section)
 
                 Text(section.title)
                     .font(.system(size: RootHomeLayout.bottomNavigationLabelSize, weight: isActive ? .bold : .semibold))

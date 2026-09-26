@@ -16,7 +16,7 @@ enum RootHomeLayout {
     static let carouselTopPadding: CGFloat = 24
     static let carouselBottomPadding: CGFloat = 24
     static let carouselCardWidth: CGFloat = 282
-    static let carouselCardHeight: CGFloat = 140
+    static let carouselCardHeight: CGFloat = 151
     static let carouselCardTitleFontSize: CGFloat = 24
     static let latestSectionBandHeight: CGFloat = 80
     static let pinnedEntryRowHeight: CGFloat = 96
@@ -64,6 +64,8 @@ enum RootHomeLayout {
 }
 
 struct RootView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var notificationStatus = NotificationScheduler.status
     let session: AuthSession
     let onSignOut: (() -> Void)?
     @StateObject private var navigationState: SavyNavigationState
@@ -227,6 +229,22 @@ struct RootView: View {
             }
         }
         .savySolidTopScrollEdge()
+        .environment(\.scheduleOrganizerEmail, session.user.displayEmail ?? "")
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                reminderStore.reminders.forEach(NotificationScheduler.schedule)
+                connectionStore.entries.filter { $0.metadata.schedule != nil }
+                    .forEach { NotificationScheduler.schedule($0.metadata) }
+            }
+        }
+        .alert("Reminder alerts", isPresented: Binding(
+            get: { notificationStatus.errorMessage != nil },
+            set: { if !$0 { notificationStatus.errorMessage = nil } }
+        )) {
+            Button("OK") { notificationStatus.errorMessage = nil }
+        } message: {
+            Text(notificationStatus.errorMessage ?? "")
+        }
     }
 
     /// Routes the radial "+" menu to the shared Re_Call-style entry form, backed by the
@@ -468,23 +486,27 @@ struct EditorialHomeView: View {
 
     private var homeCarousel: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 16) {
+            HStack(alignment: .top, spacing: 16) {
                 ForEach(feedRows) { entry in
                     switch entry.source {
                     case let .reminder(reminder):
                         Button {
                             editingReminder = reminder
                         } label: {
-                            HomeFeedRowView(entry: entry)
+                            HomeFeedRowView(entry: entry, isPinned: reminder.pinned)
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("greatestLeverageReminder")
 
                     case let .leverage(section, item):
+                        let isPinned = section.id == "beliefs" && connectionStore.sourcePinned(
+                            id: item.id,
+                            defaultValue: section.items.prefix(2).contains { $0.id == item.id }
+                        )
                         NavigationLink {
                             LeverageDetailView(section: section, item: item)
                         } label: {
-                            HomeFeedRowView(entry: entry)
+                            HomeFeedRowView(entry: entry, isPinned: isPinned)
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("greatestLeverageEntry")
@@ -562,8 +584,6 @@ struct HomeFeedRow: Identifiable {
 
     let id: String
     let title: String
-    let subtitle: String?
-    let alignment: Alignment
     let source: Source
 
     @MainActor
@@ -574,30 +594,25 @@ struct HomeFeedRow: Identifiable {
     ) -> [HomeFeedRow] {
         var rows: [HomeFeedRow] = []
 
-        for (index, reminder) in reminderStore.pinnedFeed.prefix(limit).enumerated() {
+        for reminder in reminderStore.pinnedFeed.prefix(limit) {
             rows.append(
                 HomeFeedRow(
                     id: reminder.id.uuidString,
                     title: reminder.title.isEmpty ? reminder.kind.label : reminder.title,
-                    subtitle: reminder.whenLabel,
-                    alignment: index.isMultiple(of: 2) ? .leading : .center,
                     source: .reminder(reminder)
                 )
             )
         }
 
         if rows.count < limit {
-            for (offset, item) in leverageStore.greatestLeverageItems(limit: limit - rows.count).enumerated() {
+            for item in leverageStore.greatestLeverageItems(limit: limit - rows.count) {
                 guard let section = leverageStore.sections.first(where: { section in
                     section.items.contains(where: { $0.id == item.id })
                 }) else { continue }
-                let index = rows.count + offset
                 rows.append(
                     HomeFeedRow(
                         id: item.id,
                         title: item.title,
-                        subtitle: item.kicker,
-                        alignment: index.isMultiple(of: 2) ? .leading : .center,
                         source: .leverage(section: section, item: item)
                     )
                 )
@@ -610,49 +625,45 @@ struct HomeFeedRow: Identifiable {
 
 private struct HomeFeedRowView: View {
     let entry: HomeFeedRow
+    let isPinned: Bool
 
     var body: some View {
-        VStack(alignment: horizontalAlignment, spacing: 8) {
-            Text(entry.title)
-                .font(SavyTheme.carouselCardTitle(RootHomeLayout.pinnedEntryFontSize))
-                .lineLimit(3)
-                .minimumScaleFactor(0.85)
-                .foregroundStyle(SavyTheme.ink)
-                .frame(maxWidth: .infinity, alignment: entry.alignment)
-
-            if let subtitle = entry.subtitle, !subtitle.isEmpty {
-                Text(subtitle.uppercased())
-                    .font(SavyTheme.readingLabel(12))
-                    .tracking(1.4)
-                    .foregroundStyle(SavyTheme.crimson)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("greatestLeverageDate")
+        Group {
+            switch entry.source {
+            case let .reminder(reminder):
+                SavyReminderBandCard(
+                    reminder: reminder,
+                    bg: Brand.card,
+                    fg: SavyTheme.deepNavy,
+                    accent: .white,
+                    detail: isPinned ? .full : .minimal,
+                    showsSchedule: false,
+                    showsCompleteMetadata: isPinned,
+                    previewHeight: isPinned ? RootHomeLayout.carouselCardHeight : nil,
+                    metadataColor: SavyTheme.crimson,
+                    metadataWeight: .regular
+                )
+            case let .leverage(_, item):
+                SavyBandCard(
+                    bg: Brand.card,
+                    fg: SavyTheme.deepNavy,
+                    accent: .white,
+                    title: item.title,
+                    signalText: item.kicker == "PINNED" ? "" : item.kicker,
+                    secondaryText: item.category ?? "",
+                    detailLine: item.summary,
+                    detail: isPinned ? .full : .minimal,
+                    isCompact: !isPinned,
+                    expandsContent: isPinned,
+                    previewHeight: isPinned ? RootHomeLayout.carouselCardHeight : nil,
+                    metadataColor: SavyTheme.crimson,
+                    metadataWeight: .regular
+                )
             }
         }
-        .padding(.horizontal, RootHomeLayout.pinnedEntryTrailingInset)
-        .padding(.vertical, 16)
-        .frame(
-            width: RootHomeLayout.carouselCardWidth,
-            height: RootHomeLayout.carouselCardHeight,
-            alignment: .topLeading
-        )
-        .background(Brand.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.black.opacity(0.08), lineWidth: 1)
-        }
-    }
-
-    private var horizontalAlignment: HorizontalAlignment {
-        switch entry.alignment {
-        case .center:
-            return .center
-        case .trailing:
-            return .trailing
-        default:
-            return .leading
-        }
+        .frame(width: RootHomeLayout.carouselCardWidth, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("homeCarouselCard-\(entry.id)")
     }
 }
 
@@ -823,9 +834,7 @@ private struct HomeContentSectionView: View {
             // while selected; the resting destination row stays compact.
             minimumHeight: isReordering ? 94 : nil,
             titleAccessibilityIdentifier: "homeCardTitle-\(card.sectionID)"
-        ) {
-            EmptyView()
-        }
+        )
     }
 
     private var countText: String {
@@ -974,18 +983,18 @@ private struct NewsCarouselCard: View {
         VStack(alignment: .leading, spacing: 10) {
             newsImage
 
+            Text(item.title)
+                .font(SavyTheme.beliefSerif(20))
+                .foregroundStyle(SavyTheme.ink)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+
             if let category = item.category, !category.isEmpty {
                 Text(category.uppercased())
                     .font(.system(size: 11, weight: .bold))
                     .tracking(1.4)
                     .foregroundStyle(SavyTheme.crimson)
             }
-
-            Text(item.title)
-                .font(SavyTheme.beliefSerif(20))
-                .foregroundStyle(SavyTheme.ink)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
 
             if !item.kicker.isEmpty {
                 Text(item.kicker)
@@ -1026,17 +1035,17 @@ private struct NewsMoreStoryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Text(item.title)
+                .font(SavyTheme.beliefSerif(22))
+                .foregroundStyle(SavyTheme.ink)
+                .lineLimit(3)
+
             if let category = item.category, !category.isEmpty {
                 Text(category.uppercased())
                     .font(.system(size: 11, weight: .bold))
                     .tracking(1.4)
                     .foregroundStyle(SavyTheme.crimson)
             }
-
-            Text(item.title)
-                .font(SavyTheme.beliefSerif(22))
-                .foregroundStyle(SavyTheme.ink)
-                .lineLimit(3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 18)
@@ -1145,46 +1154,14 @@ private struct LeverageItemRow: View {
     var isBeliefs = false
 
     var body: some View {
-        Group {
-            if isBeliefs {
-                Text(item.title)
-                    .font(SavyTypography.robotoMedium(22))
-                    .lineSpacing(2)
-                    .foregroundStyle(SavyTheme.crimson)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 16)
-            } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(SavyTheme.green)
-                            .frame(width: 9, height: 9)
-
-                        Text(item.kicker)
-                            .font(.system(size: 12, weight: .bold))
-                            .tracking(1.6)
-                            .foregroundStyle(.black.opacity(0.4))
-                    }
-
-                    Text(item.title)
-                        .font(SavyTheme.beliefSerif(25))
-                        .foregroundStyle(SavyTheme.ink)
-
-                    if !item.summary.isEmpty {
-                        Text(item.summary)
-                            .font(.system(size: 15))
-                            .lineSpacing(3)
-                            .foregroundStyle(.black.opacity(0.55))
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(22)
-            }
-        }
-        .background(
-            isBeliefs ? SavyTheme.beliefCard : .white,
-            in: RoundedRectangle(cornerRadius: 12)
+        SavyBandCard(
+            bg: isBeliefs ? SavyTheme.beliefCard : .white,
+            fg: isBeliefs ? SavyTheme.crimson : SavyTheme.ink,
+            accent: SavyTheme.crimson,
+            title: item.title,
+            signalText: "",
+            secondaryText: "",
+            isCompact: true
         )
         .shadow(color: .black.opacity(isBeliefs ? 0 : 0.04), radius: 10, y: 4)
     }

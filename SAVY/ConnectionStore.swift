@@ -2,7 +2,8 @@ import Combine
 import Foundation
 
 /// An authored Connection owns the complete shared form metadata, but never enters the
-/// Reminder, Post, notification, Harness, candidate, or validated RDF stores.
+/// Reminder, Post, Harness, candidate, or validated RDF stores. Explicit Schedule alerts
+/// use local notifications without changing where the authored Connection is stored.
 struct ConnectionEntry: Identifiable, Codable, Equatable {
     var metadata: Reminder
     var id: UUID { metadata.id }
@@ -122,6 +123,10 @@ final class ConnectionStore: ObservableObject {
                 throw CocoaError(.fileReadCorruptFile)
             }
             entries = archive.entries
+            if !isUITest {
+                entries.filter { $0.metadata.schedule != nil }
+                    .forEach { NotificationScheduler.schedule($0.metadata) }
+            }
             sourcePinOverrides = archive.sourcePins
             hiddenSourceIDs = archive.hiddenSourceIDs
         } catch {
@@ -162,12 +167,19 @@ final class ConnectionStore: ObservableObject {
         } else {
             next.insert(entry, at: 0)
         }
-        return persist(entries: next, sourcePins: sourcePinOverrides)
+        let saved = persist(entries: next, sourcePins: sourcePinOverrides)
+        if saved {
+            if metadata.schedule != nil { NotificationScheduler.schedule(metadata) }
+            else if previous?.metadata.schedule != nil { NotificationScheduler.cancel(metadata) }
+        }
+        return saved
     }
 
     @discardableResult
     func delete(_ entry: ConnectionEntry) -> Bool {
-        persist(entries: entries.filter { $0.id != entry.id }, sourcePins: sourcePinOverrides)
+        let deleted = persist(entries: entries.filter { $0.id != entry.id }, sourcePins: sourcePinOverrides)
+        if deleted, entry.metadata.schedule != nil { NotificationScheduler.cancel(entry.metadata) }
+        return deleted
     }
 
     /// Remove an existing source card from this page without modifying its source text or RDF.

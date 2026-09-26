@@ -4,6 +4,32 @@
 
 For continuation of the Connection page and September 23 appearance work, read [docs/connection-page-handoff.md](docs/connection-page-handoff.md). It consolidates Adam's intent, exact entry prompts, accepted card behavior, source and local-storage boundaries, existing Connection statements, current colors, verification evidence, and pending phone installation. The latest decisions there supersede the earlier palette trials recorded below. Adam currently needs his phone free; do not reconnect previews or control/restart/install on it without coordinating availability.
 
+## Card faces — September 25, 2026
+
+Adam requested this across every page: no label above the title on any card, no visible pin marker on the card itself, and no Cowboy/Harness hat badges on cards. The card title comes first. Keep Pin/Unpin in the swipe controls and preserve the existing larger pinned-card presentation. Retain the current backgrounds, card colors, fonts, content, and meaningful metadata below titles. Stored Post reference numbers and source/approval information stay available below the title or authored text. This supersedes earlier card-type headers and card hat-badge requests. Page headings and functional form/navigation labels are separate from card faces.
+
+This also applies to redundant section labels outside cards. Adam explicitly removed both UP NEXT from Reminders and PRIORITY from Actions: the page heading identifies the content, and larger pinned cards already communicate their emphasis. Review the whole page, including labels around card groups, when applying this direction. Retain functional controls such as the expandable Completed section.
+
+For the Home carousel only, Adam requested white small underlines and regular-weight red metadata on September 25. Keep navy titles and the existing cream cards. Use the shared card's metadata style overrides for the carousel rather than changing every card's defaults.
+
+Adam then required every unpinned entry card on every page to be the normal small, thin size. Pin state controls expanded presentation; list position must never imply a larger card. Shared compact cards show one title line and the existing small underline, with metadata/reference/detail rows hidden from the card face but retained in the saved entry. This includes Reminders, Actions, both Post formats, Connection, unpinned Home cards, Stories, Ontology, and Field Essays. Home source fallbacks must read the actual saved Connection pin state. Calendar retains its timeline typography with uniformly thin unpinned event rows and exact times on that same row. Unpinned completed entries are also single-line rows. Retain full content in the editor/detail screen and pin controls in the swipe tray.
+
+## Actions car background — September 25, 2026
+
+Adam supplied the car photo and approved the whole-car placement in `docs/design/2026-09-25-actions-car/whole-car.png`: "Yes, use this placement". Use the exact original `ActionsCarLandscape` asset, fitted to content width near the bottom of the visible Actions area, with a matching sky canvas and a short sky fade. Keep the complete car above the navy navigation band. The image position follows the viewport during scrolling instead of being pushed below a long list. Preserve the navy hero, white divider, opaque cards, tan navigation, and all current card controls. Reminders keeps its separate beach photograph.
+
+## Shared entry metadata — September 25, 2026
+
+Adam requested removing Clear Signs of Success, Compounding, Notes, Link, and the entire Place / People section from the shared entry form. This applies to Reminder, Action, Calendar, Post, and authored Connection entry routes. Remove the two independent switches, Notes and Link fields, and both Location and Waiting on / delegate to controls. Retain the Pattern picker and its existing choices, Lift, Tags, Priority, Energy, Schedule, and Image. Existing saved values remain in the record; this is a form cleanup, not a data migration. This supersedes earlier requirements to display all shared metadata controls. The separate source-attribution and publication fields in the legacy Post editor are outside this change.
+
+## Schedule details and Hourly alerts — September 25, 2026
+
+Adam requested a separate page under Schedule with the Apple Calendar screenshot's time period, location, invitees, calendar, alert, travel time, and notes. The main shared form now has a Date row opening `ReminderScheduleView`; that page holds Starts, Ends, All-day, Time Zone, Repeat, Location or Video Call, Invitees, Calendar, Alert, Travel Time, URL, and Notes. These details belong inside Schedule; do not restore the removed metadata groups to the main entry form. Cancel discards the Schedule draft; Done returns it to the entry, and the entry's Save persists it.
+
+Hourly is an Alert option, separate from Repeat. It runs at the start and each elapsed hour through the selected end, inclusive, for a window up to 24 hours. Use finite one-shot notifications, never an endless repeating hourly trigger. Edits, completion, deletion, and removal cancel old alert IDs. Calendar owns normal alarms when an Apple calendar is selected; SAVY owns Hourly alerts. User review in Mail is required for sending `.ics` invitations; ordinary Save sends nothing. Calendar selection requests access only on user action. Existing Connection records remain in their separate store; only explicitly configured Schedule alerts use notifications.
+
+Schedule data is optional for old-cache compatibility and retained locally when the current gateway omits it. Start/end mirrors keep the existing feeds working. The current gateway does not sync the new detailed Schedule payload across devices. Tests use an injected notification delivery seam and isolated entry stores; never send test invitations, create live calendar fixtures, or schedule synthetic phone alerts as an incidental test action.
+
 ## Native iOS Rule
 
 SAVY iOS is a 100% native Apple-platform app.

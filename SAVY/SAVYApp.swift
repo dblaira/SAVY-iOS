@@ -4,6 +4,7 @@ import SwiftUI
 struct SAVYApp: App {
     init() {
         SavyTypography.performAudit()
+        NotificationScheduler.configurePresentation()
         do {
             try AmplifyAuthService.configureIfNeeded()
         } catch {

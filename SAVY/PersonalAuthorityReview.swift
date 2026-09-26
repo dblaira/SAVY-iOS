@@ -1195,6 +1195,13 @@ struct PersonalAuthorityReviewView: View {
                 selectedCandidate = candidate
             } label: {
                 VStack(alignment: .leading, spacing: 12) {
+                Text(candidate.authoredText)
+                    .font(SavyTypography.displaySerif(21, weight: .bold))
+                    .foregroundStyle(SavyTheme.ink)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(5)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 HStack(spacing: 9) {
                     Text("#\(candidate.index)")
                         .font(SavyTheme.readingLabel(12))
@@ -1219,13 +1226,6 @@ struct PersonalAuthorityReviewView: View {
                             .foregroundStyle(SavyTheme.deepNavy)
                     }
                 }
-
-                Text(candidate.authoredText)
-                    .font(SavyTypography.displaySerif(21, weight: .bold))
-                    .foregroundStyle(SavyTheme.ink)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(5)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 7) {
                     Circle()

@@ -44,6 +44,10 @@ struct SavyReminderKindTabScreen: View {
         store.completed.filter { $0.kind == kind }
     }
 
+    private var hasPhotoBackground: Bool {
+        kind == .reminder || kind == .action
+    }
+
     private var title: String {
         switch kind {
         case .reminder: return "Reminders"
@@ -53,21 +57,12 @@ struct SavyReminderKindTabScreen: View {
         }
     }
 
-    private var bandTitle: String {
-        kind == .action ? "PRIORITY" : "UP NEXT"
-    }
-
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
-                VStack(spacing: 0) {
-                    hero
-                    Rectangle().fill(SavyTheme.headerDivider).frame(height: RootHomeLayout.heroDividerHeight)
-                    activeBand
-                    completedBottomSection
-                }
-                .savyHeaderPageContent(minHeight: proxy.size.height)
+                pageContent(viewportHeight: proxy.size.height)
             }
+            .coordinateSpace(name: "remindersLandscapeScroll")
             .savyHeaderOverscrollCapture(kind == .action ? "actions" : "reminders")
             .background(SavyTheme.pageBackground)
             .onScrollPhaseChange { _, phase in
@@ -85,6 +80,80 @@ struct SavyReminderKindTabScreen: View {
         }
     }
 
+    @ViewBuilder private func pageContent(viewportHeight: CGFloat) -> some View {
+        if hasPhotoBackground {
+            VStack(spacing: 0) {
+                hero
+                Rectangle().fill(SavyTheme.headerDivider).frame(height: RootHomeLayout.heroDividerHeight)
+
+                VStack(spacing: 0) {
+                    activeBand
+                    completedBottomSection
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background {
+                    GeometryReader { landscape in
+                        if kind == .action {
+                            actionsLandscape(
+                                width: landscape.size.width,
+                                contentTop: landscape.frame(in: .named("remindersLandscapeScroll")).minY,
+                                viewportHeight: viewportHeight
+                            )
+                        } else {
+                            Image("RemindersBeachLandscape")
+                                .resizable()
+                                .scaledToFill()
+                                // Bias this 4:3 photo toward the cliff without losing the ocean.
+                                .offset(x: -max(0, viewportHeight * 4 / 3 - landscape.size.width) * 0.15)
+                                .frame(
+                                    width: landscape.size.width,
+                                    height: viewportHeight
+                                )
+                                .clipped()
+                                // Preserve the cliff in a portrait crop, independent of card count.
+                                // Like Home, keep the scene behind cards once the hero scrolls away.
+                                .offset(y: max(0, -landscape.frame(in: .named("remindersLandscapeScroll")).minY))
+                        }
+                    }
+                    .clipped()
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: viewportHeight, alignment: .top)
+        } else {
+            VStack(spacing: 0) {
+                hero
+                Rectangle().fill(SavyTheme.headerDivider).frame(height: RootHomeLayout.heroDividerHeight)
+                activeBand
+                completedBottomSection
+            }
+            .savyHeaderPageContent(minHeight: viewportHeight)
+        }
+    }
+
+    private func actionsLandscape(width: CGFloat, contentTop: CGFloat, viewportHeight: CGFloat) -> some View {
+        let sky = Color(red: 0.52, green: 0.70, blue: 0.83)
+        let visibleHeight = max(0, viewportHeight - max(0, contentTop))
+
+        return ZStack(alignment: .bottom) {
+            sky
+            Image("ActionsCarLandscape")
+                .resizable()
+                .scaledToFit()
+                .frame(width: width, height: width * 480 / 959)
+                .overlay(alignment: .top) {
+                    LinearGradient(colors: [sky, sky.opacity(0)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 44)
+                }
+                // Keep the complete photograph above the existing navy navigation band.
+                .padding(.bottom, RootHomeLayout.bottomNavNavyRiserHeight + 8)
+        }
+        .frame(width: width, height: visibleHeight)
+        // Keep the photo in the visible viewport even when the Actions list is long.
+        .offset(y: max(0, -contentTop))
+    }
+
     private var hero: some View {
         Text(title)
             .font(SavyTypography.displaySerif(48, weight: .bold))
@@ -99,14 +168,10 @@ struct SavyReminderKindTabScreen: View {
     private var activeBand: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .lastTextBaseline) {
-                Text(bandTitle)
-                    .font(.system(size: 15, weight: .heavy))
-                    .tracking(2.5)
-                    .foregroundStyle(SavyTheme.deepNavy)
                 Spacer()
                 Text("\(activeItems.count)")
                     .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(SavyTheme.deepNavy.opacity(0.65))
+                    .foregroundStyle(SavyTheme.deepNavy.opacity(kind == .reminder ? 1 : 0.65))
             }
 
             if activeItems.isEmpty {
@@ -127,9 +192,8 @@ struct SavyReminderKindTabScreen: View {
                             bg: cardColors(for: index).bg,
                             fg: cardColors(for: index).fg,
                             accent: cardColors(for: index).accent,
-                            detail: cardDetail(for: index)
+                            detail: reminder.pinned ? .full : .minimal
                         )
-                        .scaleEffect(x: 1, y: kind == .action ? cardScale(for: index) : 1, anchor: .top)
                         .accessibilityIdentifier(cardIdentifier(for: index))
                     }
                     .zIndex(armedReorderId == reminder.id.uuidString ? 1 : 0)
@@ -140,7 +204,7 @@ struct SavyReminderKindTabScreen: View {
         .padding(.bottom, 16)
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(SavyTheme.contentBackground)
+        .background(hasPhotoBackground ? Color.clear : SavyTheme.contentBackground)
     }
 
     @ViewBuilder private var completedBottomSection: some View {
@@ -191,7 +255,7 @@ struct SavyReminderKindTabScreen: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(SavyTheme.contentBackground)
+        .background(hasPhotoBackground ? Color.clear : SavyTheme.contentBackground)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(kind == .action ? "completedActionsSection" : "completedRemindersSection")
     }
@@ -220,23 +284,7 @@ struct SavyReminderKindTabScreen: View {
     }
 
     private func cardColors(for index: Int) -> (bg: Color, fg: Color, accent: Color) {
-        switch index {
-        case 0: return (.white, SavyTheme.deepNavy, SavyTheme.crimson)
-        case 1: return (Brand.darkRed, .white, .white)
-        default: return (SavyTheme.bottomNavTan, SavyTheme.deepNavy, SavyTheme.crimson)
-        }
-    }
-
-    private func cardDetail(for index: Int) -> SavyCardDetail {
-        index == 0 ? .full : (index == 1 ? .medium : .minimal)
-    }
-
-    private func cardScale(for index: Int) -> CGFloat {
-        switch index {
-        case 0: return 1.08
-        case 1: return 1.02
-        default: return 1
-        }
+        SavyReminderCardAppearance.colors(for: index)
     }
 
     private func cardIdentifier(for index: Int) -> String {
@@ -587,9 +635,21 @@ private final class SavyUpNextGestureView: UIView {
 
 enum SavyCardDetail { case minimal, medium, full }
 
-/// The shared Reminders card layout. Other card types supply their own header and content
-/// while retaining the same typography, spacing, and detail hierarchy.
-struct SavyBandCard<Header: View>: View {
+/// Reminders and the Home carousel use the same card presentation.
+enum SavyReminderCardAppearance {
+    static func colors(for index: Int) -> (bg: Color, fg: Color, accent: Color) {
+        switch index {
+        case 0: return (.white, SavyTheme.deepNavy, SavyTheme.crimson)
+        case 1: return (Brand.darkRed, .white, .white)
+        default: return (SavyTheme.bottomNavTan, SavyTheme.deepNavy, SavyTheme.crimson)
+        }
+    }
+
+}
+
+/// Cards begin with their title. Reference numbers and saved metadata sit below it;
+/// type labels, pin markers, and delegation badges do not occupy the card face.
+struct SavyBandCard: View {
     let bg: Color
     let fg: Color
     let accent: Color
@@ -603,37 +663,50 @@ struct SavyBandCard<Header: View>: View {
     var border: Color = .white.opacity(0.08)
     var secondaryLineLimit: Int = 1
     var titleAccessibilityIdentifier: String? = nil
-    @ViewBuilder var header: Header
+    var referenceText: String? = nil
+    var referenceAccessibilityIdentifier: String? = nil
+    var expandsContent: Bool = false
+    var previewHeight: CGFloat? = nil
+    var metadataColor: Color? = nil
+    var metadataWeight: Font.Weight? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: isCompact ? 4 : 6) {
-            header
-                .foregroundStyle(fg.opacity(0.7))
-
             titleText
 
             Rectangle().fill(accent).frame(width: 36, height: 2)
 
-            if !signalText.isEmpty {
+            if !isCompact, let referenceText, !referenceText.isEmpty {
+                Text(referenceText)
+                    .font(.system(size: 11, weight: metadataWeight ?? .heavy))
+                    .tracking(1.5)
+                    .foregroundStyle(metadataColor ?? fg.opacity(0.7))
+                    .accessibilityIdentifier(referenceAccessibilityIdentifier ?? "cardReference")
+            }
+
+            if !isCompact, !signalText.isEmpty {
                 Text(signalText)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(fg.opacity(0.8))
-                    .lineLimit(isCompact ? 1 : 2)
+                    .font(.system(size: 13, weight: metadataWeight ?? .bold))
+                    .foregroundStyle(metadataColor ?? fg.opacity(0.8))
+                    .lineLimit(expandsContent && previewHeight == nil ? nil : (isCompact ? 1 : 2))
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !secondaryText.isEmpty {
+            if !isCompact, !secondaryText.isEmpty {
                 Text(secondaryText)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(fg.opacity(0.55))
-                    .lineLimit(isCompact ? 1 : secondaryLineLimit)
+                    .font(.system(size: 12, weight: metadataWeight ?? .medium))
+                    .foregroundStyle(metadataColor ?? fg.opacity(0.55))
+                    .lineLimit(expandsContent && previewHeight == nil ? nil : (isCompact ? 1 : secondaryLineLimit))
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            if detail != .minimal, let note = detailLine {
+            if !isCompact, (expandsContent || detail != .minimal),
+               previewHeight == nil || (signalText.isEmpty && secondaryText.isEmpty),
+               let note = detailLine {
                 Text(note)
-                    .font(.system(size: 14))
-                    .foregroundStyle(fg.opacity(0.78))
-                    .lineLimit(detail == .full ? 3 : 1)
+                    .font(.system(size: 14, weight: metadataWeight ?? .regular))
+                    .foregroundStyle(metadataColor ?? fg.opacity(0.78))
+                    .lineLimit(expandsContent && previewHeight == nil ? nil : (detail == .full ? 3 : 1))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -641,6 +714,7 @@ struct SavyBandCard<Header: View>: View {
         .padding(.vertical, isCompact ? 8 : 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: minimumHeight, alignment: .topLeading)
+        .frame(height: previewHeight, alignment: .topLeading)
         .background(bg)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(border))
@@ -651,7 +725,7 @@ struct SavyBandCard<Header: View>: View {
         let text = Text(title)
             .font(SavyTypography.displaySerif(26, weight: .regular))
             .foregroundStyle(fg)
-            .lineLimit(isCompact ? 1 : nil)
+            .lineLimit(isCompact ? 1 : (previewHeight != nil ? 2 : nil))
             .truncationMode(.tail)
             .fixedSize(horizontal: false, vertical: true)
         if let titleAccessibilityIdentifier {
@@ -668,6 +742,11 @@ struct SavyReminderBandCard: View {
     let fg: Color
     let accent: Color
     var detail: SavyCardDetail = .minimal
+    var showsSchedule: Bool = true
+    var showsCompleteMetadata: Bool = false
+    var previewHeight: CGFloat? = nil
+    var metadataColor: Color? = nil
+    var metadataWeight: Font.Weight? = nil
 
     var body: some View {
         SavyBandCard(
@@ -678,46 +757,30 @@ struct SavyReminderBandCard: View {
             signalText: signalText,
             secondaryText: secondaryText,
             detailLine: detailLine,
-            detail: detail
-        ) {
-            HStack(spacing: 6) {
-                Image(systemName: kindIcon)
-                    .font(.system(size: 11, weight: .bold))
-                Text(reminder.kind.label.uppercased())
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(1.5)
-                if reminder.pinned {
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 10, weight: .heavy))
-                }
-                // Adam: "put some type of little ... cowboy hat icon in
-                // the upper right side and that lets me know that it's
-                // been harnessed."
-                if HarnessedRegistry.isHarnessed(reminder) {
-                    Spacer(minLength: 4)
-                    // Adam's own hat artwork, template-tinted tan.
-                    Image("HarnessedHat")
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 18, height: 18)
-                        .foregroundStyle(SavyTheme.bottomNavTan)
-                        .accessibilityLabel("Harnessed")
-                }
-            }
-        }
-    }
-
-    private var kindIcon: String {
-        switch reminder.kind {
-        case .reminder: return "bell"
-        case .action: return "bolt"
-        case .event: return "calendar"
-        case .post: return "text.bubble"
-        }
+            detail: detail,
+            isCompact: !reminder.pinned,
+            minimumHeight: reminder.pinned && previewHeight == nil ? 186 : nil,
+            expandsContent: showsCompleteMetadata,
+            previewHeight: reminder.pinned ? previewHeight : nil,
+            metadataColor: metadataColor,
+            metadataWeight: metadataWeight
+        )
     }
 
     private var detailLine: String? {
+        if showsCompleteMetadata {
+            var parts: [String] = []
+            if let when = reminder.whenIAm, !when.isEmpty { parts.append("When I am: \(when)") }
+            if !reminder.outcome.isEmpty { parts.append(reminder.outcome) }
+            if !reminder.notes.isEmpty { parts.append(reminder.notes) }
+            if !reminder.url.isEmpty { parts.append(reminder.url) }
+            if !reminder.waitingOn.isEmpty { parts.append("Waiting on / delegate to: \(reminder.waitingOn)") }
+            if let theme = reminder.postThemeName, !theme.isEmpty { parts.append(theme) }
+            parts.append(contentsOf: reminder.postQuestionAndAnswers.filter { !$0.isEmpty })
+            parts.append(contentsOf: reminder.subtasks.map { "\($0.done ? "☑" : "☐") \($0.title)" })
+            if let image = reminder.imageLocalPath, !image.isEmpty { parts.append("Image attached") }
+            return parts.isEmpty ? nil : parts.joined(separator: "\n\n")
+        }
         if !reminder.notes.isEmpty { return reminder.notes }
         if !reminder.outcome.isEmpty { return reminder.outcome }
         return nil
@@ -726,17 +789,42 @@ struct SavyReminderBandCard: View {
     private var signalText: String {
         var parts: [String] = []
         if reminder.context != .none { parts.append(reminder.context.label) }
-        if reminder.priority != .none { parts.append(reminder.priority.marks) }
+        if showsCompleteMetadata {
+            if reminder.marksClearSignOfSuccess == true, reminder.context != .clearSign {
+                parts.append("Clear Signs of Success")
+            }
+            if reminder.marksCompounding == true, reminder.context != .compound {
+                parts.append("Compounding")
+            }
+        } else if reminder.priority != .none {
+            parts.append(reminder.priority.marks)
+        }
         parts.append(contentsOf: reminder.tags.map { "#\($0)" })
         return parts.joined(separator: "   ·   ")
     }
 
     private var secondaryText: String {
         var parts: [String] = []
-        if let when = reminder.whenLabel { parts.append(when) }
-        if !reminder.listName.isEmpty { parts.append(reminder.listName) }
+        if showsSchedule, let when = reminder.whenLabel { parts.append(when) }
+        if !reminder.listName.isEmpty {
+            parts.append(showsCompleteMetadata ? "Lift: \(reminder.listName)" : reminder.listName)
+        }
         if !reminder.locationName.isEmpty { parts.append(reminder.locationName) }
-        return parts.joined(separator: "   ·   ")
+        if showsCompleteMetadata {
+            if reminder.priority != .none {
+                parts.append(previewHeight == nil ? "Priority: \(reminder.priority.label)" : reminder.priority.marks)
+            }
+            if reminder.energy != .none {
+                parts.append(previewHeight == nil ? "Energy: \(reminder.energy.label)" : "\(reminder.energy.label) energy")
+            }
+            if reminder.effort != .none { parts.append("Effort: \(reminder.effort.label)") }
+            if reminder.repeatRule != .none {
+                parts.append(previewHeight == nil ? "Repeat: \(reminder.repeatRule.label)" : reminder.repeatRule.label)
+            }
+            if reminder.flag { parts.append("Flagged") }
+            if reminder.urgent { parts.append("Urgent") }
+        }
+        return parts.joined(separator: previewHeight == nil ? "   ·   " : " · ")
     }
 }
 
@@ -763,8 +851,8 @@ struct SavyCompletedReminderRow: View {
                         .foregroundStyle(SavyTheme.secondaryText)
                         .strikethrough()
                         .multilineTextAlignment(.leading)
-                        .lineLimit(3)
-                    if let when = reminder.whenLabel {
+                        .lineLimit(reminder.pinned ? 3 : 1)
+                    if reminder.pinned, let when = reminder.whenLabel {
                         Text(when)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(SavyTheme.tertiaryText)

@@ -118,6 +118,9 @@ final class ReminderStore: ObservableObject {
     }
 
     func bootstrap() async {
+        // Pending requests survive termination; reconcile saved edits and bounded hourly
+        // windows on launch even when this store is operating without a gateway.
+        reminders.forEach(NotificationScheduler.schedule)
         await flushCandidateOutbox()
         guard await repo.ensureReady() else { return }
         await pushPending()
@@ -371,6 +374,14 @@ final class ReminderStore: ObservableObject {
 
             if reminder.imageLocalPath == nil {
                 reminder.imageLocalPath = localCopy.imageLocalPath
+            }
+            // Older gateways do not know about the schedule payload. Omission must not
+            // erase the saved period, alert, calendar, or invitation addresses.
+            if reminder.schedule == nil, let savedSchedule = localCopy.schedule {
+                reminder.schedule = savedSchedule
+                reminder.dueDate = savedSchedule.startDate
+                reminder.dueTime = savedSchedule.isAllDay ? nil : savedSchedule.startDate
+                reminder.endTime = savedSchedule.isAllDay ? nil : savedSchedule.endDate
             }
             // Older gateways omit Post fields. Keep this device's saved context when
             // that happens; the marker must follow the answers it describes.

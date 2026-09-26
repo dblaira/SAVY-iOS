@@ -36,6 +36,72 @@ enum RepeatRule: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Alert cadence is independent of an entry's calendar recurrence. Hourly always ends at
+/// the selected end date, even when the entry itself repeats.
+enum ReminderAlert: String, Codable, CaseIterable, Identifiable {
+    case none, atStart, fiveMinutesBefore, fifteenMinutesBefore, thirtyMinutesBefore
+    case oneHourBefore, oneDayBefore, hourly
+
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .none: return "None"
+        case .atStart: return "At time of event"
+        case .fiveMinutesBefore: return "5 minutes before"
+        case .fifteenMinutesBefore: return "15 minutes before"
+        case .thirtyMinutesBefore: return "30 minutes before"
+        case .oneHourBefore: return "1 hour before"
+        case .oneDayBefore: return "1 day before"
+        case .hourly: return "Hourly"
+        }
+    }
+
+    var leadTime: TimeInterval? {
+        switch self {
+        case .none, .hourly: return nil
+        case .atStart: return 0
+        case .fiveMinutesBefore: return 300
+        case .fifteenMinutesBefore: return 900
+        case .thirtyMinutesBefore: return 1_800
+        case .oneHourBefore: return 3_600
+        case .oneDayBefore: return 86_400
+        }
+    }
+}
+
+/// Optional on Reminder so old caches continue to decode unchanged. A schedule stores
+/// concrete instants and its chosen time zone; legacy date/time mirrors remain available.
+struct ReminderSchedule: Codable, Equatable {
+    static let maximumHourlyDuration: TimeInterval = 24 * 3_600
+
+    var startDate: Date
+    var endDate: Date
+    var isAllDay: Bool = false
+    var timeZoneIdentifier: String = TimeZone.current.identifier
+    var alert: ReminderAlert = .atStart
+    var travelTimeMinutes: Int = 0
+    var calendarIdentifier: String? = nil
+    var calendarEventIdentifier: String? = nil
+    var invitees: [String]? = nil
+    var organizerEmail: String? = nil
+
+    var calendar: Calendar {
+        var value = Calendar(identifier: .gregorian)
+        value.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        return value
+    }
+
+    var validationMessage: String? {
+        guard endDate > startDate else { return "Choose an end after the start." }
+        guard travelTimeMinutes >= 0 else { return "Travel time cannot be negative." }
+        if isAllDay, alert == .hourly { return "Turn off All-day to use hourly alerts." }
+        if alert == .hourly, endDate.timeIntervalSince(startDate) > Self.maximumHourlyDuration {
+            return "Choose an hourly reminder period of 24 hours or less."
+        }
+        return nil
+    }
+}
+
 enum ReminderStatus: String, Codable { case active, completed, deleted }
 
 /// What an item *is*: a timed nudge, a thing you do, a time block, or a post draft.
@@ -130,6 +196,7 @@ struct Reminder: Identifiable, Codable, Equatable {
     var dueDate: Date? = nil                    // calendar date (date-only meaning)
     var dueTime: Date? = nil                    // clock time (time-only meaning)
     var endTime: Date? = nil                    // event end (time-only meaning); local-first for now
+    var schedule: ReminderSchedule? = nil       // absent on older saved entries
     var urgent: Bool = false
     var repeatRule: RepeatRule = .none
     // Organization
@@ -205,6 +272,7 @@ extension Reminder {
 
     /// The concrete moment a notification should fire, if this reminder carries a date and/or time.
     var fireDate: Date? {
+        if let schedule { return schedule.startDate }
         if dueDate == nil && dueTime == nil { return nil }
         let cal = Calendar.current
         let base = dueDate ?? Date()
@@ -220,10 +288,48 @@ extension Reminder {
         return cal.date(from: comps)
     }
 
+    /// All-day entries occupy calendar dates rather than time-zone-shifted instants.
+    /// Timed entries appear on every display day intersected by their [start, end) span.
+    func occurs(on day: Date, calendar displayCalendar: Calendar = .current) -> Bool {
+        guard let schedule else {
+            return dueDate.map { displayCalendar.isDate($0, inSameDayAs: day) } ?? false
+        }
+        guard schedule.endDate > schedule.startDate else { return false }
+        let selectedDay = displayCalendar.startOfDay(for: day)
+        if schedule.isAllDay {
+            let scheduleCalendar = schedule.calendar
+            let startParts = scheduleCalendar.dateComponents([.year, .month, .day], from: schedule.startDate)
+            let endParts = scheduleCalendar.dateComponents([.year, .month, .day], from: schedule.endDate)
+            guard let floatingStart = displayCalendar.date(from: startParts),
+                  let floatingEnd = displayCalendar.date(from: endParts) else { return false }
+            return selectedDay >= floatingStart && selectedDay < floatingEnd
+        }
+        guard let nextDay = displayCalendar.date(byAdding: .day, value: 1, to: selectedDay) else { return false }
+        return schedule.startDate < nextDay && schedule.endDate > selectedDay
+    }
+
     /// Compact "Jun 20 9:30 AM" style label for the row.
     var whenLabel: String? {
         let dayFmt = DateFormatter(); dayFmt.dateFormat = "MMM d"
         let timeFmt = DateFormatter(); timeFmt.dateFormat = "h:mm a"
+        if let schedule {
+            if schedule.isAllDay {
+                dayFmt.calendar = schedule.calendar
+                dayFmt.timeZone = schedule.calendar.timeZone
+                let inclusiveEnd = schedule.calendar.date(byAdding: .day, value: -1, to: schedule.endDate)
+                    ?? schedule.startDate
+                let startLabel = dayFmt.string(from: schedule.startDate)
+                if schedule.calendar.isDate(schedule.startDate, inSameDayAs: inclusiveEnd) { return startLabel }
+                return startLabel + " – " + dayFmt.string(from: inclusiveEnd)
+            }
+            dayFmt.timeZone = .current
+            timeFmt.timeZone = .current
+            let startLabel = dayFmt.string(from: schedule.startDate) + " " + timeFmt.string(from: schedule.startDate)
+            let endLabel = Calendar.current.isDate(schedule.startDate, inSameDayAs: schedule.endDate)
+                ? timeFmt.string(from: schedule.endDate)
+                : dayFmt.string(from: schedule.endDate) + " " + timeFmt.string(from: schedule.endDate)
+            return startLabel + " – " + endLabel
+        }
         if let date = dueDate, let time = dueTime {
             return dayFmt.string(from: date) + " " + timeFmt.string(from: time)
         } else if let date = dueDate {
@@ -232,6 +338,107 @@ extension Reminder {
             return timeFmt.string(from: time)
         }
         return nil
+    }
+}
+
+/// Foundation-only definitions consumed directly by the notification scheduler and its tests.
+/// Absolute requests use UTC components so both occurrences of a repeated DST clock hour
+/// remain separate instants. Calendar recurrence keeps its existing wall-clock behavior.
+struct ReminderNotificationRequestPlan: Equatable {
+    var identifier: String
+    var dateComponents: DateComponents
+    var repeats: Bool
+    var fireDate: Date?
+}
+
+enum ReminderNotificationPlan {
+    static func identifier(for id: UUID) -> String { "recall.reminder.\(id.uuidString)" }
+
+    static func cancellationIdentifiers(for id: UUID) -> [String] {
+        let base = identifier(for: id)
+        return [base] + (2...6).map { "\(base).\($0)" }
+            + (0...24).map { "\(base).hourly.\($0)" }
+    }
+
+    static func requests(
+        for reminder: Reminder,
+        now: Date = Date(),
+        calendar legacyCalendar: Calendar = .current
+    ) -> [ReminderNotificationRequestPlan] {
+        guard reminder.status == .active else { return [] }
+        let base = identifier(for: reminder.id)
+        let calendar = reminder.schedule?.calendar ?? legacyCalendar
+        let fire: Date
+
+        if let schedule = reminder.schedule {
+            guard schedule.validationMessage == nil, schedule.alert != .none else { return [] }
+            // A linked calendar event owns normal alarms. SAVY owns the bounded hourly
+            // run because EventKit has no finite hourly-alert cadence for one event.
+            if schedule.calendarIdentifier != nil, schedule.alert != .hourly { return [] }
+            if schedule.alert == .hourly {
+                return (0...24).compactMap { slot in
+                    let instant = schedule.startDate.addingTimeInterval(Double(slot) * 3_600)
+                    guard instant > now, instant <= schedule.endDate else { return nil }
+                    return absoluteRequest(identifier: "\(base).hourly.\(slot)", fire: instant)
+                }
+            }
+            let lead = schedule.alert.leadTime ?? 0
+            fire = schedule.startDate.addingTimeInterval(-lead - Double(schedule.travelTimeMinutes) * 60)
+        } else {
+            guard reminder.dueDate != nil || reminder.dueTime != nil else { return [] }
+            var components = calendar.dateComponents([.year, .month, .day], from: reminder.dueDate ?? now)
+            let time = reminder.dueTime.map { calendar.dateComponents([.hour, .minute], from: $0) }
+            components.hour = time?.hour ?? 9
+            components.minute = time?.minute ?? 0
+            guard let legacyFire = calendar.date(from: components) else { return [] }
+            fire = legacyFire
+        }
+
+        if reminder.repeatRule == .none {
+            guard fire > now else { return [] }
+            return [absoluteRequest(identifier: base, fire: fire)]
+        }
+
+        if reminder.repeatRule == .weekdays {
+            let time = calendar.dateComponents([.hour, .minute], from: fire)
+            return (2...6).map { weekday in
+                var components = DateComponents()
+                components.calendar = calendar
+                components.timeZone = calendar.timeZone
+                components.weekday = weekday
+                components.hour = time.hour
+                components.minute = time.minute
+                return ReminderNotificationRequestPlan(
+                    identifier: "\(base).\(weekday)", dateComponents: components, repeats: true, fireDate: nil
+                )
+            }
+        }
+
+        let fields: Set<Calendar.Component>
+        switch reminder.repeatRule {
+        case .none, .weekdays: return []
+        case .daily: fields = [.hour, .minute]
+        case .weekly: fields = [.weekday, .hour, .minute]
+        case .monthly: fields = [.day, .hour, .minute]
+        case .yearly: fields = [.month, .day, .hour, .minute]
+        }
+        var components = calendar.dateComponents(fields, from: fire)
+        components.calendar = calendar
+        components.timeZone = calendar.timeZone
+        return [ReminderNotificationRequestPlan(
+            identifier: base, dateComponents: components, repeats: true, fireDate: nil
+        )]
+    }
+
+    private static func absoluteRequest(identifier: String, fire: Date) -> ReminderNotificationRequestPlan {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        var components = utc.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fire)
+        components.calendar = utc
+        components.timeZone = utc.timeZone
+        return ReminderNotificationRequestPlan(
+            identifier: identifier, dateComponents: components, repeats: false, fireDate: fire
+        )
     }
 }
 

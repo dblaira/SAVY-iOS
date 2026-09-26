@@ -1,12 +1,12 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import MessageUI
 
 /// The entry form. One shared Action-style capture flow for Reminder, Action, and Event entries:
 /// the top selector changes where the saved item lands, while the field order stays identical.
 struct ReminderFormView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var location = LocationProvider()
 
     let existing: Reminder?
     let existingTags: [String]
@@ -16,10 +16,10 @@ struct ReminderFormView: View {
     var onSave: (Reminder) -> Void
 
     @State private var r: Reminder
-    @State private var hasDate: Bool
-    @State private var hasDefer: Bool
-    @State private var date: Date
-    @State private var deferDate: Date
+    @State private var showsSchedule = false
+    @State private var invitationEntry: Reminder?
+    @State private var isSaving = false
+    @State private var saveErrorMessage = "Your writing is still here. Please try saving again."
     @State private var tagDraft = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var pickedImage: UIImage?
@@ -33,13 +33,6 @@ struct ReminderFormView: View {
     @State private var postDraft: PostEntryDraft
 
     private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
-
-    private static func dueDateTime(on date: Date, at time: Date? = nil) -> Date {
-        let calendar = Calendar.current
-        let defaultTime = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: time ?? defaultTime)
-        return calendar.date(bySettingHour: timeComponents.hour ?? 12, minute: timeComponents.minute ?? 0, second: 0, of: date) ?? date
-    }
 
     init(initialKind: ReminderKind = .reminder, connectionMode: Bool = false, existing: Reminder?, existingTags: [String] = [], onSaveAttempt: ((Reminder) -> Bool)? = nil, onSave: @escaping (Reminder) -> Void) {
         self.existing = existing
@@ -56,10 +49,6 @@ struct ReminderFormView: View {
         _r = State(initialValue: base)
         _subtasks = State(initialValue: base.subtasks)
         _postDraft = State(initialValue: PostEntryDraft(entry: base, fixedTheme: connectionMode ? ConnectionEntry.theme : nil))
-        _hasDate = State(initialValue: base.dueDate != nil)
-        _hasDefer = State(initialValue: base.deferDate != nil)
-        _date = State(initialValue: Self.dueDateTime(on: base.dueDate ?? Date(), at: base.dueTime))
-        _deferDate = State(initialValue: base.deferDate ?? Date())
         _pickedImage = State(initialValue: LocalImageStore.load(base.imageLocalPath))
     }
 
@@ -93,12 +82,14 @@ struct ReminderFormView: View {
                     }
                     .tint(.black)
                     .accessibilityLabel("Cancel")
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { commit() } label: {
                         SaveDiskIcon(size: 24)
                     }
                     .accessibilityLabel("Save")
+                    .disabled(isSaving)
                 }
             }
             .toolbarBackground(Color.white, for: .navigationBar)
@@ -110,12 +101,28 @@ struct ReminderFormView: View {
             .alert("Couldn't save \(entryLabel)", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Your writing is still here. Please try saving again.")
+                Text(saveErrorMessage)
+            }
+        }
+        .sheet(isPresented: $showsSchedule) {
+            ReminderScheduleView(entry: r, onSave: { r = $0 }, onRemove: {
+                r.schedule = nil
+                r.dueDate = nil
+                r.dueTime = nil
+                r.endTime = nil
+                r.deferDate = nil
+                r.repeatRule = .none
+            })
+        }
+        .sheet(item: $invitationEntry, onDismiss: { dismiss() }) { entry in
+            ScheduleInvitationComposer(reminder: entry, organizerEmail: entry.schedule?.organizerEmail ?? "") { _, error in
+                if let error { NotificationScheduler.status.errorMessage = error.localizedDescription }
+                invitationEntry = nil
             }
         }
         .overlay { if showSaved { savedToast } }
         // Keep Connection writing onscreen until Save succeeds or the user chooses Cancel.
-        .interactiveDismissDisabled(connectionMode && hasContent && !committed)
+        .interactiveDismissDisabled(isSaving || (!committed && (initialEntry.schedule != nil || (hasContent && (connectionMode || r.schedule != nil)))))
         .preferredColorScheme(.light)
     }
 
@@ -141,8 +148,7 @@ struct ReminderFormView: View {
     private var hasDecideQuestions: Bool { connectionMode || r.kind == .post }
 
     @ViewBuilder private var unifiedEntrySections: some View {
-        // Post leads with its theme and the theme's Decide questions; everything the Reminder
-        // form already carries stays below, untouched.
+        // Post leads with its theme and Decide questions, followed by shared entry fields.
         if hasDecideQuestions {
             postThemeSection
             postDecideSection
@@ -179,26 +185,33 @@ struct ReminderFormView: View {
         .listRowBackground(Brand.card)
 
         Section {
-            dateGroup("Start", icon: "calendar.badge.clock", isOn: $hasDefer, date: $deferDate)
-            dueDateTimeGroup
-            repeatGroup
+            Button { showsSchedule = true } label: {
+                HStack(spacing: 12) {
+                    Label("Date", systemImage: "calendar")
+                        .foregroundStyle(.black)
+                    Spacer()
+                    Text(r.whenLabel ?? "Choose a date")
+                        .foregroundStyle(Brand.crimson)
+                        .multilineTextAlignment(.trailing)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Brand.crimson)
+                }
+            }
+            .accessibilityIdentifier("openSchedule")
+            if r.schedule?.invitees?.isEmpty == false {
+                Button { commit(sendInvitations: true) } label: {
+                    Label("Save & Send Invitations", systemImage: "envelope")
+                }
+                .disabled(isSaving)
+                .accessibilityIdentifier("sendScheduleInvitations")
+            }
         } header: { sectionHeader(EntryFormCopy.scheduleHeader) }
         .listRowBackground(Brand.card)
 
         Section {
-            TextField("Notes", text: $r.notes, axis: .vertical).lineLimit(1...5)
-            urlField("Link")
             imageRow
         } header: { sectionHeader("Details") }
-        .listRowBackground(Brand.card)
-
-        Section {
-            locationRow
-            HStack {
-                Image(systemName: "person").foregroundStyle(.secondary)
-                TextField("Waiting on / delegate to", text: $r.waitingOn)
-            }
-        } header: { sectionHeader("Place / People") }
         .listRowBackground(Brand.card)
     }
 
@@ -281,11 +294,6 @@ struct ReminderFormView: View {
             .foregroundStyle(SavyTheme.deepNavy.opacity(0.72))
     }
 
-    private func urlField(_ placeholder: String) -> some View {
-        TextField(placeholder, text: $r.url)
-            .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-    }
-
     private var whenIAmBinding: Binding<String> {
         Binding(
             get: { r.whenIAm ?? "" },
@@ -309,37 +317,6 @@ struct ReminderFormView: View {
         }
     }
 
-    private var locationRow: some View {
-        HStack {
-            Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
-            TextField("Location", text: $r.locationName)
-            Button {
-                Task { if let name = await location.currentPlaceName() { r.locationName = name } }
-            } label: {
-                if location.isResolving { ProgressView() } else { Image(systemName: "location") }
-            }.foregroundStyle(Brand.crimson)
-        }
-    }
-
-    private func dateGroup(_ title: String, icon: String, isOn: Binding<Bool>, date: Binding<Date>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: isOn) { Label(title, systemImage: icon) }
-            DatePicker(title, selection: date, displayedComponents: .date)
-                .labelsHidden().disabled(!isOn.wrappedValue).opacity(isOn.wrappedValue ? 1 : 0.45)
-        }
-    }
-
-    private var dueDateTimeGroup: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: $hasDate) { Label("Due", systemImage: "calendar") }
-            DatePicker("Due", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                .labelsHidden().disabled(!hasDate).opacity(hasDate ? 1 : 0.45)
-        }
-        .onChange(of: hasDate) { _, isEnabled in
-            if isEnabled { date = Self.dueDateTime(on: date) }
-        }
-    }
-
     /// A single clean dropdown row for a CaseIterable enum selector.
     private func enumMenu<T: CaseIterable & Identifiable & Hashable>(
         _ title: String, icon: String, selection: Binding<T>, label: @escaping (T) -> String
@@ -353,9 +330,6 @@ struct ReminderFormView: View {
         .tint(Brand.crimson)
     }
 
-    private var repeatGroup: some View {
-        enumMenu("Repeat", icon: "repeat", selection: $r.repeatRule) { $0.label }
-    }
     private var priorityGroup: some View {
         enumMenu("Priority", icon: "exclamationmark.3", selection: $r.priority) { $0.label }
     }
@@ -366,26 +340,10 @@ struct ReminderFormView: View {
     private var organizationSection: some View {
         Section {
             enumMenu(EntryFormCopy.patternTitle, icon: "list.number", selection: $r.context) { $0.label }
-            Toggle("Clear Signs of Success", isOn: clearSignOfSuccessBinding)
-            Toggle("Compounding", isOn: compoundingBinding)
             listGroup
             tagsEditor
         } header: { sectionHeader(EntryFormCopy.patternHeader) }
         .listRowBackground(Brand.card)
-    }
-
-    private var clearSignOfSuccessBinding: Binding<Bool> {
-        Binding(
-            get: { r.isClearSignOfSuccess },
-            set: { r.marksClearSignOfSuccess = $0 }
-        )
-    }
-
-    private var compoundingBinding: Binding<Bool> {
-        Binding(
-            get: { r.isCompounding },
-            set: { r.marksCompounding = $0 }
-        )
     }
 
     private var listGroup: some View {
@@ -501,9 +459,28 @@ struct ReminderFormView: View {
         }
     }
 
-    private func commit() {
-        guard persist() else { saveFailed = true; return }
-        committed = true
+    private func commit(sendInvitations: Bool = false) {
+        guard !isSaving else { return }
+        if sendInvitations, let message = ScheduleInvitation.validationMessage(for: r, organizerEmail: r.schedule?.organizerEmail ?? "") {
+            saveErrorMessage = message
+            saveFailed = true
+            return
+        }
+        if sendInvitations, !MFMailComposeViewController.canSendMail() {
+            saveErrorMessage = "Add an email account in Apple Mail to send invitations. You can still save this entry."
+            saveFailed = true
+            return
+        }
+        isSaving = true
+        Task { @MainActor in
+            defer { isSaving = false }
+            guard await persist() else { saveFailed = true; return }
+            committed = true
+            finishCommit(sendInvitations: sendInvitations)
+        }
+    }
+
+    private func finishCommit(sendInvitations: Bool) {
         // Adam's list #7: every saved entry rides home to the Harness
         // Delegation queue through the shared iCloud pocket -- his
         // three sentences (want / when I am / done), verbatim. No new
@@ -520,14 +497,22 @@ struct ReminderFormView: View {
             HarnessedRegistry.mark(r)
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if sendInvitations {
+            invitationEntry = r
+            return
+        }
         withAnimation(.spring(response: 0.3)) { showSaved = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
     }
 
     /// Save when the sheet is dismissed by swiping (not Cancel) and the user actually entered something.
     private func autosaveIfNeeded() {
-        guard !committed, !cancelled, hasContent else { return }
-        if !persist() { saveFailed = true }
+        guard !committed, !cancelled, !isSaving, hasContent else { return }
+        isSaving = true
+        Task { @MainActor in
+            defer { isSaving = false }
+            if !(await persist()) { saveFailed = true }
+        }
     }
 
     private var hasContent: Bool {
@@ -540,19 +525,24 @@ struct ReminderFormView: View {
         if !r.locationName.isEmpty || !r.waitingOn.isEmpty { return true }
         if !r.tags.isEmpty { return true }
         if subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
-        if hasDate || hasDefer || pickedImage != nil { return true }
+        if r.dueDate != nil || r.deferDate != nil || r.schedule != nil || pickedImage != nil { return true }
         return false
     }
 
-    @discardableResult private func persist() -> Bool {
+    @discardableResult private func persist() async -> Bool {
         addTag()
         if let pickedImage {
             r.imageLocalPath = LocalImageStore.save(pickedImage)
         }
-        r.dueDate = hasDate ? date : nil
-        r.dueTime = hasDate ? date : nil
-        r.deferDate = hasDefer ? deferDate : nil
-        if !connectionMode { r.endTime = nil }
+        if let schedule = r.schedule {
+            if let validation = schedule.validationMessage {
+                saveErrorMessage = validation
+                return false
+            }
+            r.dueDate = schedule.startDate
+            r.dueTime = schedule.isAllDay ? nil : schedule.startDate
+            r.endTime = schedule.isAllDay ? nil : schedule.endDate
+        }
         r.subtasks = subtasks.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
         if hasDecideQuestions {
             postDraft.apply(to: &r)
@@ -563,6 +553,23 @@ struct ReminderFormView: View {
             r.postAnswersContainQuestions = nil
         }
         if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(entryLabel)" }
+        r.updatedAt = Date()
+        if r.schedule?.calendarIdentifier != nil {
+            do {
+                let eventID = try await CalendarScheduleBridge.shared.saveEvent(for: r)
+                r.schedule?.calendarEventIdentifier = eventID
+            } catch {
+                saveErrorMessage = error.localizedDescription
+                return false
+            }
+        } else if initialEntry.schedule?.calendarIdentifier != nil {
+            do {
+                try await CalendarScheduleBridge.shared.disableAlertsForLinkedEvent(initialEntry)
+            } catch {
+                saveErrorMessage = error.localizedDescription
+                return false
+            }
+        }
         if let onSaveAttempt, !onSaveAttempt(r) { return false }
         onSave(r)
         return true
