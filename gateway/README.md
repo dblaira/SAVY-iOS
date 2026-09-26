@@ -52,3 +52,33 @@ Gateway picks the phase automatically via `lib/content-store.ts`. Health reports
 | GET | `/api/v1/correlations/latest` | `fetchCorrelations` |
 
 All routes except health require header `x-api-key: <SAVY_API_KEY>`.
+
+## Schedule sync deployment
+
+Apply `node scripts/apply-reminder-schedule-schema.mjs` from `gateway/` before
+deploying the Schedule-aware gateway. It uses the existing Aurora environment/IAM
+configuration, adds nullable `schedule` JSONB and `schedule_version` SMALLINT, and
+verifies the resulting schema. `--check` verifies without changing the database.
+Existing clients continue working after the additive migration. Deploy from `main`
+through the existing Vercel project, then install the new iOS/Mac client builds.
+After migration, `node --import tsx scripts/verify-reminder-schedule-storage.ts`
+executes the production upsert/retrieval SQL against temporary table copies and
+rolls back the outer transaction. It checks legacy migration, round trips,
+explicit removal, and older-client preservation without changing user records.
+
+Reminder POSTs send `schedule_version: 1` with either `schedule: { ... }` or an
+explicit `schedule: null` to remove it. Omitted fields mean an older client has
+no Schedule opinion; its edits preserve the saved Schedule and its date/time
+mirrors. Rows predating Schedule sync retain a null version until a new client
+uploads a known value. A known null Schedule therefore differs from old data.
+
+The Schedule object contains ISO8601 `startDate`/`endDate`, `isAllDay`,
+`timeZoneIdentifier`, `alert`, `travelTimeMinutes`, and optional `invitees` and
+`organizerEmail`. Hourly periods must be timed, ordered, and at most 24 hours.
+Location, URL, Notes, and Repeat use the entry's existing shared fields. Calendar
+and event identifiers stay on each device and are stripped from incoming data.
+
+Connection document entries use `metadata.scheduleSyncVersion: 1` with the same
+portable Schedule object. Swift may omit `metadata.schedule` when it is nil;
+the version still makes that an explicit removal. Legacy Connection edits that
+omit both fields preserve the server's Schedule and mirrored date/time fields.

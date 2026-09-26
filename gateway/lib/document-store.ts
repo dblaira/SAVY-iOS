@@ -42,7 +42,7 @@ export async function mergeUserDocument(
 ): Promise<SyncDocument> {
   await aurora.ensureSavyUser(userId, email);
   const row = await aurora.mergeDocumentForUser(userId, key, (stored) =>
-    mergeEntries(storedEntries(stored), incoming)
+    mergeEntries(storedEntries(stored), incoming, key)
   );
   return toDocument(row) ?? { key, entries: {}, revision: 0, updatedAt: null };
 }

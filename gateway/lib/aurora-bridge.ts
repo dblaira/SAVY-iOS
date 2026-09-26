@@ -2,6 +2,7 @@ import pg from "pg";
 import { Signer } from "@aws-sdk/rds-signer";
 import type { CaptureRow, CorrelationSnapshot, EntryRow, RdfTripleRow } from "./types.js";
 import { normalizeCategoryStats, normalizeCorrelations } from "./normalize.js";
+import { normalizeScheduleFields, type ReminderSchedule } from "./reminder-schedule.js";
 import {
   AUTHORITATIVE_SOURCE_APPS,
   CONNECTION_CLASS,
@@ -662,6 +663,8 @@ export type ReminderRow = {
   post_answers: string[] | null;
   post_answers_contain_questions: boolean | null;
   end_time: string | null;
+  schedule: ReminderSchedule | null;
+  schedule_version: 1 | null;
   outcome: string | null;
   effort: string | null;
   energy: string | null;
@@ -719,6 +722,8 @@ export async function fetchRemindersForUser(userId: string): Promise<ReminderRow
          r.post_answers,
          r.post_answers_contain_questions,
          r.end_time::text,
+         r.schedule,
+         r.schedule_version,
          r.outcome,
          r.effort,
          r.energy,
@@ -791,8 +796,10 @@ export async function fetchRemindersForUser(userId: string): Promise<ReminderRow
 
 export type ReminderUpsertInput = Omit<
   ReminderRow,
-  "user_id" | "created_at" | "updated_at" | "tags" | "subtasks"
+  "user_id" | "created_at" | "updated_at" | "tags" | "subtasks" | "schedule" | "schedule_version"
 > & {
+  schedule?: ReminderSchedule | null;
+  schedule_version?: 1;
   tags?: string[];
   subtasks?: ReminderSubtaskRow[];
 };
@@ -801,6 +808,8 @@ export async function upsertReminderForUser(
   userId: string,
   input: ReminderUpsertInput
 ): Promise<void> {
+  // Validate again at the storage boundary, including non-HTTP callers.
+  const scheduleFields = normalizeScheduleFields(input);
   await withClient(async (client) => {
     await client.query("BEGIN");
     try {
@@ -811,22 +820,26 @@ export async function upsertReminderForUser(
            list_name, flag, priority, location_name, when_messaging_person,
            kind, end_time, outcome, effort, energy, context, defer_date, waiting_on,
            pinned, up_next_order, seeded_from_template_id, status, completed_at,
-           post_theme_id, post_theme_name, post_answers, post_answers_contain_questions, post_number
+           post_theme_id, post_theme_name, post_answers, post_answers_contain_questions, post_number,
+           schedule, schedule_version
          ) VALUES (
            $1::uuid, $2, $3, $4, $5, $6,
            $7::date, $8::time, $9, $10, $11,
            $12, $13, $14, $15, $16,
            $17, $18::time, $19, $20, $21, $22, $23::date, $24,
            $25, $26, $27, $28, $29::timestamptz,
-           $30, $31, $32::text[], $33::boolean, $34::integer
+           $30, $31, $32::text[], $33::boolean, $34::integer,
+           $35::jsonb, $36::smallint
          )
          ON CONFLICT (id) DO UPDATE SET
            title = EXCLUDED.title,
            notes = EXCLUDED.notes,
            url = EXCLUDED.url,
            image_path = COALESCE(EXCLUDED.image_path, savy.reminders.image_path),
-           due_date = EXCLUDED.due_date,
-           due_time = EXCLUDED.due_time,
+           due_date = CASE WHEN EXCLUDED.schedule_version IS NULL AND savy.reminders.schedule_version = 1
+             THEN savy.reminders.due_date ELSE EXCLUDED.due_date END,
+           due_time = CASE WHEN EXCLUDED.schedule_version IS NULL AND savy.reminders.schedule_version = 1
+             THEN savy.reminders.due_time ELSE EXCLUDED.due_time END,
            urgent = EXCLUDED.urgent,
            repeat_rule = EXCLUDED.repeat_rule,
            early_reminder = EXCLUDED.early_reminder,
@@ -843,7 +856,10 @@ export async function upsertReminderForUser(
            post_answers_contain_questions = CASE WHEN EXCLUDED.kind = 'post' THEN
              CASE WHEN EXCLUDED.post_answers IS NULL THEN savy.reminders.post_answers_contain_questions
                   ELSE EXCLUDED.post_answers_contain_questions END END,
-           end_time = EXCLUDED.end_time,
+           end_time = CASE WHEN EXCLUDED.schedule_version IS NULL AND savy.reminders.schedule_version = 1
+             THEN savy.reminders.end_time ELSE EXCLUDED.end_time END,
+           schedule = CASE WHEN EXCLUDED.schedule_version = 1 THEN EXCLUDED.schedule ELSE savy.reminders.schedule END,
+           schedule_version = COALESCE(EXCLUDED.schedule_version, savy.reminders.schedule_version),
            outcome = EXCLUDED.outcome,
            effort = EXCLUDED.effort,
            energy = EXCLUDED.energy,
@@ -892,6 +908,8 @@ export async function upsertReminderForUser(
           input.kind === "post" ? input.post_answers : null,
           input.kind === "post" ? input.post_answers_contain_questions : null,
           input.post_number,
+          scheduleFields.schedule == null ? null : JSON.stringify(scheduleFields.schedule),
+          scheduleFields.schedule_version ?? null,
         ]
       );
 

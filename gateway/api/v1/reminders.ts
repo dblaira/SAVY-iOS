@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { requireBearerUser } from "../../lib/cognito-auth.js";
 import { cors, requireApiKey } from "../../lib/http.js";
+import { normalizeScheduleFields, ScheduleValidationError } from "../../lib/reminder-schedule.js";
 import type { ReminderUpsertInput } from "../../lib/reminder-store.js";
 import {
   deleteUserReminder,
@@ -46,6 +47,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await upsertUserReminder(userId, input, body.email ?? null);
       res.status(200).json({ ok: true, id: input.id });
     } catch (error) {
+      if (error instanceof ScheduleValidationError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
       console.error("v1/reminders POST", error);
       res.status(500).json({ error: "Failed to save reminder" });
     }
@@ -57,6 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 export function normalizeReminderInput(body: Partial<ReminderUpsertInput>): ReminderUpsertInput {
   return {
+    ...normalizeScheduleFields(body),
     id: String(body.id ?? ""),
     title: String(body.title ?? ""),
     notes: String(body.notes ?? ""),

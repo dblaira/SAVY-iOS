@@ -1,3 +1,5 @@
+import { normalizeScheduleFields, ScheduleValidationError } from "./reminder-schedule.js";
+
 /**
  * Per-user sync documents hold records that used to live on a single device: authored
  * Connections, older News/Advertising posts, Stories, card order and pins, the post-number
@@ -85,14 +87,16 @@ export function storedEntries(input: unknown): SyncEntries {
 
 export function mergeEntries(
   existing: SyncEntries,
-  incoming: SyncEntries
+  incoming: SyncEntries,
+  documentKey?: DocumentKey
 ): { merged: SyncEntries; changed: boolean } {
   const merged: SyncEntries = { ...existing };
   let changed = false;
   for (const [key, entry] of Object.entries(incoming)) {
     const current = merged[key];
     if (!current || entry.modifiedAt > current.modifiedAt) {
-      merged[key] = entry;
+      merged[key] = documentKey === "connections" && key.startsWith("entry:")
+        ? mergeConnectionSchedule(current, entry) : entry;
       changed = true;
     }
   }
@@ -100,4 +104,44 @@ export function mergeEntries(
     throw new DocumentValidationError(`a document holds at most ${MAX_ENTRIES_PER_DOCUMENT} entries`);
   }
   return { merged, changed };
+}
+
+function object(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown> : undefined;
+}
+
+/** Old document clients omit Schedule entirely when editing an entry's writing. */
+function mergeConnectionSchedule(current: SyncEntry | undefined, incoming: SyncEntry): SyncEntry {
+  if (incoming.deleted) return incoming;
+  const value = object(incoming.value);
+  const originalMetadata = object(value?.metadata);
+  if (!value || !originalMetadata) return incoming;
+  const metadata = { ...originalMetadata };
+  const currentMetadata = object(object(current?.value)?.metadata);
+  const hasSchedule = Object.prototype.hasOwnProperty.call(metadata, "schedule");
+  if (!hasSchedule && metadata.scheduleSyncVersion == null) {
+    if (currentMetadata?.scheduleSyncVersion === 1) {
+      for (const field of ["schedule", "scheduleSyncVersion", "dueDate", "dueTime", "endTime"]) {
+        if (Object.prototype.hasOwnProperty.call(currentMetadata, field)) metadata[field] = currentMetadata[field];
+        else delete metadata[field];
+      }
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(metadata, "schedule") || metadata.scheduleSyncVersion != null) {
+    try {
+      const normalized = normalizeScheduleFields({
+        schedule: metadata.schedule ?? null,
+        schedule_version: metadata.scheduleSyncVersion,
+      });
+      metadata.scheduleSyncVersion = normalized.schedule_version;
+      // The Swift document encoder omits nil optionals. Keep that representation on clear.
+      if (normalized.schedule == null) delete metadata.schedule;
+      else metadata.schedule = normalized.schedule;
+    } catch (error) {
+      if (error instanceof ScheduleValidationError) throw new DocumentValidationError(error.message);
+      throw error;
+    }
+  }
+  return { ...incoming, value: { ...value, metadata } };
 }

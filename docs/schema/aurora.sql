@@ -116,6 +116,8 @@ CREATE TABLE IF NOT EXISTS savy.reminders (
   post_answers            TEXT[],
   post_answers_contain_questions BOOLEAN,
   end_time                TIME,
+  schedule                JSONB,
+  schedule_version        SMALLINT,
   outcome                 TEXT,
   effort                  TEXT,
   energy                  TEXT,
