@@ -96,6 +96,37 @@ struct PlannerChecks {
         let encoded = try JSONEncoder.recall.encode(item)
         let decoded = try JSONDecoder.recall.decode(Reminder.self, from: encoded)
         expect(decoded == item, "Every schedule field must survive a real cache round trip")
+        let received = ReminderScheduleSync.merging(remote: item, local: nil)
+        expect(received.schedule == item.schedule?.portable, "Fresh device must receive every portable field")
+        expect(received.schedule?.calendarIdentifier == nil && received.schedule?.calendarEventIdentifier == nil,
+               "Receiving another device's schedule must never adopt its native Calendar IDs")
+        expect(received.scheduleSyncVersion == 1, "A received Schedule must be marked as sync aware")
+        expect(ReminderNotificationPlan.requests(for: received, now: now) == hourly,
+               "A receiving device must produce the same finite Hourly instants")
+        var edited = received
+        edited.schedule!.endDate = start.addingTimeInterval(3_600)
+        edited.schedule!.invitees = ["updated@example.com"]
+        let merged = ReminderScheduleSync.merging(remote: edited, local: item)
+        expect(merged.schedule?.endDate == edited.schedule?.endDate && merged.schedule?.invitees == edited.schedule?.invitees,
+               "Remote period and invitee edits must replace local portable values")
+        expect(merged.schedule?.calendarEventIdentifier == "event-id" && merged.schedule?.calendarIdentifier == "calendar-id",
+               "Remote edits must retain the receiving device's own Calendar link")
+        expect(merged.endTime == edited.schedule?.endDate, "Date mirrors must follow the received period")
+        var removed = edited
+        removed.schedule = nil
+        let cleared = ReminderScheduleSync.merging(remote: removed, local: item)
+        expect(cleared.schedule == nil && cleared.dueDate == nil && cleared.dueTime == nil && cleared.endTime == nil,
+               "An explicit remote removal must clear Schedule and legacy mirrors")
+        expect(ReminderNotificationPlan.requests(for: cleared, now: now).isEmpty,
+               "Removed Schedule must not resurrect as a legacy alert")
+        var oldRemote = item
+        oldRemote.schedule = nil
+        oldRemote.scheduleSyncVersion = nil
+        oldRemote.title = "New writing from an older client"
+        let migrated = ReminderScheduleSync.merging(remote: oldRemote, local: item)
+        expect(migrated.schedule == item.schedule && migrated.needsSync && migrated.scheduleSyncVersion == 1,
+               "Previously local settings must be retained and queued for migration")
+        expect(migrated.title == oldRemote.title, "Schedule migration must retain newer writing from the server")
         var legacyJSON = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
         legacyJSON.removeValue(forKey: "schedule")
         let legacy = try JSONDecoder.recall.decode(Reminder.self, from: JSONSerialization.data(withJSONObject: legacyJSON))

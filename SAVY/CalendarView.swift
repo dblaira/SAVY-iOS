@@ -310,6 +310,9 @@ struct CalendarView: View {
         ) {
             eventBlock(reminder, isAllDay: isAllDay)
         }
+        // The hidden swipe tray must not expand to the full timeline height and
+        // vertically center the card twelve hours below its scheduled position.
+        .frame(height: reminder.pinned ? 48 : 34)
         .accessibilityIdentifier("calendarEvent-\(reminder.id.uuidString)")
     }
 

@@ -183,6 +183,7 @@ struct RootView: View {
         await accessTokens.refresh()
         await reminderStore.refresh()
         await documentSync.syncNow()
+        await CalendarScheduleBridge.shared.retryPendingSync()
     }
 
     var body: some View {

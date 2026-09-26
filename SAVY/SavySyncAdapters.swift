@@ -48,19 +48,24 @@ final class ConnectionsSyncAdapter: SavySyncAdapter {
         }
         for (id, pinned) in store.sourcePinOverrides { values["sourcePin:\(id)"] = .bool(pinned) }
         for id in store.hiddenSourceIDs { values["hidden:\(id)"] = .bool(true) }
-        // Schedule delivery and Calendar bindings belong to the device that created them.
-        // Sanitize passthrough entries too, including records from a newer app version.
-        return passthrough.merged(into: values).mapValues(Self.withoutLocalSchedule)
+        // Schedule choices travel with the entry; EventKit identifiers only name objects
+        // on one device. Sanitize undecodable newer entries without discarding their data.
+        return passthrough.merged(into: values).mapValues(Self.withoutNativeCalendarBindings)
     }
 
-    private static func withoutLocalSchedule(_ value: SyncJSON) -> SyncJSON {
+    private static func withoutNativeCalendarBindings(_ value: SyncJSON) -> SyncJSON {
         guard case .object(var entry) = value,
               case .object(var metadata) = entry["metadata"] else { return value }
-        if let schedule = metadata.removeValue(forKey: "schedule"), schedule != .null {
-            metadata.removeValue(forKey: "dueDate")
-            metadata.removeValue(forKey: "dueTime")
-            metadata.removeValue(forKey: "endTime")
+        if case .object(var schedule) = metadata["schedule"] {
+            schedule.removeValue(forKey: "calendarIdentifier")
+            schedule.removeValue(forKey: "calendarEventIdentifier")
+            metadata["schedule"] = .object(schedule)
+            if metadata["scheduleSyncVersion"]?.numberValue == nil {
+                metadata["scheduleSyncVersion"] = .number(1)
+            }
         }
+        // Nil Schedule without a version is an older app's omission, not a deletion.
+        // A versioned nil Schedule is retained so explicit removals reach other devices.
         entry["metadata"] = .object(metadata)
         return .object(entry)
     }
@@ -76,13 +81,17 @@ final class ConnectionsSyncAdapter: SavySyncAdapter {
     }
 
     func apply(_ values: [String: SyncJSON]) {
+        _ = applyAndConfirm(values)
+    }
+
+    func applyAndConfirm(_ values: [String: SyncJSON]) -> Bool {
         var entries: [ConnectionEntry] = []
         var pins: [String: Bool] = [:]
         var hidden: Set<String> = []
         var undecodable: [String: SyncJSON] = [:]
         for (key, value) in values {
             if key.hasPrefix("entry:") {
-                let sharedValue = Self.withoutLocalSchedule(value)
+                let sharedValue = Self.withoutNativeCalendarBindings(value)
                 if let entry = try? sharedValue.decode(ConnectionEntry.self) { entries.append(entry) } else { undecodable[key] = sharedValue }
             } else if key.hasPrefix("sourcePin:"), let pinned = value.boolValue {
                 pins[String(key.dropFirst("sourcePin:".count))] = pinned
@@ -90,13 +99,14 @@ final class ConnectionsSyncAdapter: SavySyncAdapter {
                 hidden.insert(String(key.dropFirst("hidden:".count)))
             }
         }
-        passthrough.keep(undecodable)
         entries.sort {
             $0.metadata.createdAt == $1.metadata.createdAt
                 ? $0.id.uuidString < $1.id.uuidString
                 : $0.metadata.createdAt > $1.metadata.createdAt
         }
-        store.applySynced(entries: entries, sourcePins: pins, hiddenSourceIDs: hidden)
+        guard store.applySynced(entries: entries, sourcePins: pins, hiddenSourceIDs: hidden) else { return false }
+        passthrough.keep(undecodable)
+        return true
     }
 }
 

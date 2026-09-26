@@ -149,6 +149,15 @@ protocol SavySyncAdapter: AnyObject {
     func stamp(key: String, value: SyncJSON, context: SyncChangeContext) -> SyncStamp
     /// Replaces the local records with the merged document's live entries.
     func apply(_ values: [String: SyncJSON])
+    /// Stores with fallible writes can refuse acknowledgement until local persistence succeeds.
+    func applyAndConfirm(_ values: [String: SyncJSON]) -> Bool
+}
+
+extension SavySyncAdapter {
+    func applyAndConfirm(_ values: [String: SyncJSON]) -> Bool {
+        apply(values)
+        return true
+    }
 }
 
 extension SyncChangeContext {
@@ -245,9 +254,11 @@ final class SavySyncDocument {
         next.initialized = true
         guard next != shadow else { return false }
         let valuesChanged = next.liveValues != shadow.liveValues
+        // Keep the last confirmed shadow on a failed local write. Otherwise the next
+        // snapshot would treat stale local content as a new edit and upload it again.
+        if valuesChanged, !adapter.applyAndConfirm(next.liveValues) { return false }
         shadow = next
         save()
-        if valuesChanged { adapter.apply(next.liveValues) }
         return valuesChanged
     }
 

@@ -556,6 +556,65 @@ private struct GatewayReminderSubtaskRow: Codable {
     let position: Int
 }
 
+/// The gateway uses ISO 8601 instants, while Calendar identifiers belong to the
+/// device that created them. Keep the wire shape explicit to enforce that boundary.
+private struct GatewayReminderSchedule: Codable {
+    let value: ReminderSchedule
+
+    enum CodingKeys: String, CodingKey {
+        case startDate, endDate, isAllDay, timeZoneIdentifier, alert, travelTimeMinutes
+        case invitees, organizerEmail
+    }
+
+    init(_ schedule: ReminderSchedule) { value = schedule.portable }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        func instant(_ key: CodingKeys) throws -> Date {
+            let text = try container.decode(String.self, forKey: key)
+            guard let date = GatewayReminderDates.parseTimestamp(text) else {
+                throw DecodingError.dataCorruptedError(forKey: key, in: container,
+                                                       debugDescription: "Expected an ISO 8601 schedule instant")
+            }
+            return date
+        }
+        value = ReminderSchedule(
+            startDate: try instant(.startDate),
+            endDate: try instant(.endDate),
+            isAllDay: try container.decode(Bool.self, forKey: .isAllDay),
+            timeZoneIdentifier: try container.decode(String.self, forKey: .timeZoneIdentifier),
+            alert: try container.decode(ReminderAlert.self, forKey: .alert),
+            travelTimeMinutes: try container.decode(Int.self, forKey: .travelTimeMinutes),
+            invitees: try container.decodeIfPresent([String].self, forKey: .invitees),
+            organizerEmail: try container.decodeIfPresent(String.self, forKey: .organizerEmail)
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(GatewayReminderDates.timestamp(value.startDate), forKey: .startDate)
+        try container.encode(GatewayReminderDates.timestamp(value.endDate), forKey: .endDate)
+        try container.encode(value.isAllDay, forKey: .isAllDay)
+        try container.encode(value.timeZoneIdentifier, forKey: .timeZoneIdentifier)
+        try container.encode(value.alert, forKey: .alert)
+        try container.encode(value.travelTimeMinutes, forKey: .travelTimeMinutes)
+        try container.encodeIfPresent(value.invitees, forKey: .invitees)
+        try container.encodeIfPresent(value.organizerEmail, forKey: .organizerEmail)
+    }
+}
+
+/// A missing wrapper omits the field for legacy records. A wrapper holding nil
+/// sends an explicit JSON null when the user removes a previously synced Schedule.
+private struct GatewayOptionalSchedule: Encodable {
+    let value: GatewayReminderSchedule?
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if let value { try container.encode(value) }
+        else { try container.encodeNil() }
+    }
+}
+
 private struct GatewayReminderPayload: Encodable {
     let id: String
     let title: String
@@ -577,6 +636,8 @@ private struct GatewayReminderPayload: Encodable {
     let postAnswers: [String]?
     let postAnswersContainQuestions: Bool?
     let endTime: String?
+    let schedule: GatewayOptionalSchedule?
+    let scheduleVersion: Int?
     let outcome: String?
     let effort: String?
     let energy: String?
@@ -608,6 +669,8 @@ private struct GatewayReminderPayload: Encodable {
         case postAnswers = "post_answers"
         case postAnswersContainQuestions = "post_answers_contain_questions"
         case endTime = "end_time"
+        case schedule
+        case scheduleVersion = "schedule_version"
         case deferDate = "defer_date"
         case waitingOn = "waiting_on"
         case upNextOrder = "up_next_order"
@@ -636,6 +699,13 @@ private struct GatewayReminderPayload: Encodable {
         postAnswers = reminder.kind == .post ? reminder.postQuestionAndAnswers : nil
         postAnswersContainQuestions = reminder.kind == .post ? true : nil
         endTime = GatewayReminderDates.timeOnly(reminder.endTime)
+        if reminder.schedule != nil || reminder.scheduleSyncVersion != nil {
+            schedule = GatewayOptionalSchedule(value: reminder.schedule.map(GatewayReminderSchedule.init))
+            scheduleVersion = 1
+        } else {
+            schedule = nil
+            scheduleVersion = nil
+        }
         outcome = reminder.outcome.nilIfEmpty
         effort = reminder.effort == .none ? nil : reminder.effort.rawValue
         energy = reminder.energy == .none ? nil : reminder.energy.rawValue
@@ -681,6 +751,8 @@ private struct GatewayReminderRow: Decodable {
     let postAnswers: [String]?
     let postAnswersContainQuestions: Bool?
     let endTime: String?
+    let schedule: GatewayReminderSchedule?
+    let scheduleVersion: Int?
     let outcome: String?
     let effort: String?
     let energy: String?
@@ -713,6 +785,8 @@ private struct GatewayReminderRow: Decodable {
         case postAnswers = "post_answers"
         case postAnswersContainQuestions = "post_answers_contain_questions"
         case endTime = "end_time"
+        case schedule
+        case scheduleVersion = "schedule_version"
         case deferDate = "defer_date"
         case waitingOn = "waiting_on"
         case upNextOrder = "up_next_order"
@@ -733,6 +807,8 @@ private struct GatewayReminderRow: Decodable {
             dueDate: GatewayReminderDates.parseDateOnly(dueDate),
             dueTime: GatewayReminderDates.parseTimeOnly(dueTime),
             endTime: GatewayReminderDates.parseTimeOnly(endTime),
+            schedule: schedule?.value,
+            scheduleSyncVersion: scheduleVersion,
             urgent: urgent,
             repeatRule: RepeatRule(rawValue: repeatRule) ?? .none,
             listName: listName,
@@ -813,7 +889,10 @@ private enum GatewayReminderDates {
 
     static func parseTimestamp(_ value: String?) -> Date? {
         guard let value else { return nil }
-        return ISO8601DateFormatter().date(from: value)
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: value) { return date }
+        formatter.formatOptions.insert(.withFractionalSeconds)
+        return formatter.date(from: value)
     }
 }
 

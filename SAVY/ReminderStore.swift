@@ -130,6 +130,7 @@ final class ReminderStore: ObservableObject {
     func refresh() async {
         do {
             let remote = try await repo.fetchAll()
+            let previous = reminders
             // A fetched record's existing number must be reserved before an unnumbered
             // record in the same response can consume the next number.
             postNumberAllocator?.seed(reminders: remote.filter { ($0.postNumber ?? 0) > 0 }, socialPosts: [])
@@ -137,9 +138,21 @@ final class ReminderStore: ObservableObject {
             reminders = merged
             assignPostNumbers()
             saveCache()
+            let retainedIDs = Set(reminders.map(\.id))
+            for removed in previous where !retainedIDs.contains(removed.id) {
+                NotificationScheduler.cancel(removed)
+            }
+#if canImport(UIKit)
+            for old in previous where old.schedule?.calendarIdentifier != nil {
+                let current = reminders.first { $0.id == old.id }
+                if current != old {
+                    await CalendarScheduleBridge.shared.reconcileSynced(previous: old, current: current)
+                }
+            }
+#endif
             reminders.forEach(NotificationScheduler.schedule)
-            // A first refresh from the expanded gateway can reveal older cloud Posts
-            // without context. Send this device's retained fields through normal sync.
+            // Migrate retained local Schedule/Post fields through normal sync after
+            // merging the latest server content, so migration cannot overwrite it.
             await pushPending()
         } catch {
             // Stay on the local cache; no intrusive error.
@@ -148,6 +161,11 @@ final class ReminderStore: ObservableObject {
 
     func save(_ reminder: Reminder) {
         var r = reminder
+        let existing = reminders.first { $0.id == r.id }
+        if r.schedule != nil || r.scheduleSyncVersion != nil
+            || existing?.schedule != nil || existing?.scheduleSyncVersion != nil {
+            r.scheduleSyncVersion = 1
+        }
         let savedNumber = reminders.first { $0.id == r.id }?.postNumber ?? r.postNumber
         r.postNumber = r.kind == .post
             ? postNumberAllocator?.number(for: .reminder, id: r.id, savedNumber: savedNumber) ?? savedNumber
@@ -158,6 +176,14 @@ final class ReminderStore: ObservableObject {
         enqueueCandidateCapture(for: r)
         NotificationScheduler.schedule(r)
         Task {
+#if canImport(UIKit)
+            if r.status != .active || (existing != nil && existing?.status != r.status) {
+                // Resolve the latest row when this task runs. A later completion,
+                // deletion, or reopening must supersede an older queued Calendar edit.
+                let current = reminders.first { $0.id == r.id }
+                await CalendarScheduleBridge.shared.reconcileSynced(previous: existing ?? r, current: current)
+            }
+#endif
             await sync(r)
             await flushCandidateOutbox()
         }
@@ -267,6 +293,7 @@ final class ReminderStore: ObservableObject {
     }
 
     func delete(_ reminder: Reminder) {
+        let previous = reminders.first { $0.id == reminder.id } ?? reminder
         var r = reminder
         r.postNumber = reminders.first { $0.id == r.id }?.postNumber ?? r.postNumber
         r.status = .deleted
@@ -274,7 +301,13 @@ final class ReminderStore: ObservableObject {
         r.needsSync = true
         upsertLocal(r)
         NotificationScheduler.cancel(reminder)
-        Task { await sync(r) }
+        Task {
+#if canImport(UIKit)
+            let current = reminders.first { $0.id == r.id }
+            await CalendarScheduleBridge.shared.reconcileSynced(previous: previous, current: current)
+#endif
+            await sync(r)
+        }
     }
 
     func recentClearSignEntries(limit: Int) -> [TechnicalCapture] {
@@ -361,27 +394,15 @@ final class ReminderStore: ObservableObject {
 
     private func mergeRemote(_ remote: [Reminder], withLocal local: [Reminder]) -> [Reminder] {
         var merged = remote.map { incoming -> Reminder in
-            guard let localCopy = local.first(where: { $0.id == incoming.id }) else { return incoming }
-            var reminder = incoming
-
-            if localCopy.needsSync {
-                reminder = localCopy
-                if reminder.imageLocalPath == nil {
-                    reminder.imageLocalPath = localCopy.imageLocalPath
-                }
-                return reminder
-            }
+            let localCopy = local.first(where: { $0.id == incoming.id })
+            // A locally edited row still wins until its normal upload succeeds.
+            // Schedule migration must not replace an offline edit with the server copy.
+            if let localCopy, localCopy.needsSync { return localCopy }
+            var reminder = ReminderScheduleSync.merging(remote: incoming, local: localCopy)
+            guard let localCopy else { return reminder }
 
             if reminder.imageLocalPath == nil {
                 reminder.imageLocalPath = localCopy.imageLocalPath
-            }
-            // Older gateways do not know about the schedule payload. Omission must not
-            // erase the saved period, alert, calendar, or invitation addresses.
-            if reminder.schedule == nil, let savedSchedule = localCopy.schedule {
-                reminder.schedule = savedSchedule
-                reminder.dueDate = savedSchedule.startDate
-                reminder.dueTime = savedSchedule.isAllDay ? nil : savedSchedule.startDate
-                reminder.endTime = savedSchedule.isAllDay ? nil : savedSchedule.endDate
             }
             // Older gateways omit Post fields. Keep this device's saved context when
             // that happens; the marker must follow the answers it describes.
@@ -406,9 +427,8 @@ final class ReminderStore: ObservableObject {
         }
 
         // Keep local rows that haven't synced yet; they win over the remote copy.
-        for u in local where u.needsSync {
-            if let idx = merged.firstIndex(where: { $0.id == u.id }) { merged[idx] = u }
-            else { merged.append(u) }
+        for u in local where u.needsSync && !merged.contains(where: { $0.id == u.id }) {
+            merged.append(u)
         }
 
         return merged

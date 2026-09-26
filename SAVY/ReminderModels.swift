@@ -85,6 +85,14 @@ struct ReminderSchedule: Codable, Equatable {
     var invitees: [String]? = nil
     var organizerEmail: String? = nil
 
+    /// EventKit identifiers are local to one installation, never account data.
+    var portable: ReminderSchedule {
+        var copy = self
+        copy.calendarIdentifier = nil
+        copy.calendarEventIdentifier = nil
+        return copy
+    }
+
     var calendar: Calendar {
         var value = Calendar(identifier: .gregorian)
         value.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
@@ -197,6 +205,8 @@ struct Reminder: Identifiable, Codable, Equatable {
     var dueTime: Date? = nil                    // clock time (time-only meaning)
     var endTime: Date? = nil                    // event end (time-only meaning); local-first for now
     var schedule: ReminderSchedule? = nil       // absent on older saved entries
+    /// nil means this record predates Schedule sync; 1 + nil schedule is an explicit removal.
+    var scheduleSyncVersion: Int? = nil
     var urgent: Bool = false
     var repeatRule: RepeatRule = .none
     // Organization
@@ -235,6 +245,43 @@ struct Reminder: Identifiable, Codable, Equatable {
     var updatedAt: Date = Date()
     var completedAt: Date? = nil
     var needsSync: Bool = false
+}
+
+/// Shared by gateway reminders and Connection documents. Only portable fields cross devices;
+/// each installation retains its own existing Calendar link when a schedule is updated.
+enum ReminderScheduleSync {
+    static func merging(remote: Reminder, local: Reminder?) -> Reminder {
+        var result = remote
+        result.schedule = remote.schedule?.portable
+        if let shared = result.schedule {
+            var schedule = shared
+            schedule.calendarIdentifier = local?.schedule?.calendarIdentifier
+            schedule.calendarEventIdentifier = local?.schedule?.calendarEventIdentifier
+            result.schedule = schedule
+            result.scheduleSyncVersion = 1
+        } else if remote.scheduleSyncVersion == nil {
+            // A legacy server/document cannot remove settings it never carried. Migrate
+            // only Schedule into the current remote record, preserving newer shared writing.
+            if let local, local.schedule != nil || local.scheduleSyncVersion != nil {
+                result.schedule = local.schedule
+                result.scheduleSyncVersion = 1
+                result.dueDate = local.dueDate
+                result.dueTime = local.dueTime
+                result.endTime = local.endTime
+                result.needsSync = true
+            }
+        } else {
+            result.dueDate = nil
+            result.dueTime = nil
+            result.endTime = nil
+        }
+        if let schedule = result.schedule {
+            result.dueDate = schedule.startDate
+            result.dueTime = schedule.isAllDay ? nil : schedule.startDate
+            result.endTime = schedule.isAllDay ? nil : schedule.endDate
+        }
+        return result
+    }
 }
 
 extension Reminder {

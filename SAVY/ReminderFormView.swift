@@ -105,8 +105,12 @@ struct ReminderFormView: View {
             }
         }
         .sheet(isPresented: $showsSchedule) {
-            ReminderScheduleView(entry: r, onSave: { r = $0 }, onRemove: {
+            ReminderScheduleView(entry: r, onSave: {
+                r = $0
+                r.scheduleSyncVersion = 1
+            }, onRemove: {
                 r.schedule = nil
+                r.scheduleSyncVersion = 1
                 r.dueDate = nil
                 r.dueTime = nil
                 r.endTime = nil
@@ -573,6 +577,7 @@ struct ReminderFormView: View {
         }
         if let onSaveAttempt, !onSaveAttempt(r) { return false }
         onSave(r)
+        CalendarScheduleBridge.shared.discardPendingSync(for: r.id)
         return true
     }
 }

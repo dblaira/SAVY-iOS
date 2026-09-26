@@ -17,6 +17,11 @@ final class CalendarScheduleBridge: ObservableObject {
 
     private let eventStore = EKEventStore()
     private let defaults: UserDefaults
+    private struct PendingCalendarUpdate: Codable {
+        let previous: Reminder
+        let current: Reminder?
+    }
+    private let pendingSyncKey = "savy.schedule.pendingCalendarUpdates"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -49,6 +54,53 @@ final class CalendarScheduleBridge: ObservableObject {
             return "Selected calendar"
         }
         return eventStore.calendar(withIdentifier: id)?.title ?? "Calendar unavailable"
+    }
+
+    /// Receiving account data never creates another calendar event. Only this device's
+    /// existing link is updated. Failed removals are retained so a later refresh can retry.
+    func reconcileSynced(previous: Reminder, current: Reminder?) async {
+        var pending = pendingCalendarUpdates
+        let linked = previous.schedule?.calendarEventIdentifier != nil
+            ? previous : pending[previous.id.uuidString]?.previous
+        guard let linked else { return }
+        pending[previous.id.uuidString] = PendingCalendarUpdate(previous: linked, current: current)
+        savePendingCalendarUpdates(pending)
+        await retryPendingSync()
+    }
+
+    func retryPendingSync() async {
+        var pending = pendingCalendarUpdates
+        for (key, update) in pending {
+            do {
+                if let current = update.current, current.status == .active,
+                   current.schedule?.calendarIdentifier != nil,
+                   current.schedule?.calendarEventIdentifier != nil {
+                    _ = try await saveEvent(for: current)
+                } else {
+                    try await disableAlertsForLinkedEvent(update.previous)
+                    defaults.removeObject(forKey: "savy.schedule.event.\(update.previous.id.uuidString)")
+                }
+                pending.removeValue(forKey: key)
+            } catch {
+                NotificationScheduler.status.errorMessage = error.localizedDescription
+            }
+        }
+        savePendingCalendarUpdates(pending)
+    }
+
+    private var pendingCalendarUpdates: [String: PendingCalendarUpdate] {
+        guard let data = defaults.data(forKey: pendingSyncKey) else { return [:] }
+        return (try? JSONDecoder().decode([String: PendingCalendarUpdate].self, from: data)) ?? [:]
+    }
+
+    private func savePendingCalendarUpdates(_ updates: [String: PendingCalendarUpdate]) {
+        if let data = try? JSONEncoder().encode(updates) { defaults.set(data, forKey: pendingSyncKey) }
+    }
+
+    func discardPendingSync(for id: UUID) {
+        var pending = pendingCalendarUpdates
+        pending.removeValue(forKey: id.uuidString)
+        savePendingCalendarUpdates(pending)
     }
 
     /// Only the explicit selected calendar is written. The caller persists the returned ID.
@@ -112,6 +164,10 @@ final class CalendarScheduleBridge: ObservableObject {
             throw ScheduleIntegrationError.calendarSaveFailed("Calendar did not return an event identifier.")
         }
         defaults.set(identifier, forKey: recoveryKey)
+        // An explicit successful user save supersedes a previously failed remote update.
+        var pending = pendingCalendarUpdates
+        pending.removeValue(forKey: reminder.id.uuidString)
+        savePendingCalendarUpdates(pending)
         return identifier
     }
 

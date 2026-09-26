@@ -160,6 +160,9 @@ final class ConnectionStore: ObservableObject {
         metadata.postAnswersContainQuestions = true
         metadata.createdAt = previous?.metadata.createdAt ?? metadata.createdAt
         metadata.updatedAt = Date()
+        if metadata.schedule != nil || metadata.scheduleSyncVersion != nil || previous?.metadata.schedule != nil {
+            metadata.scheduleSyncVersion = 1
+        }
         var next = entries
         let entry = ConnectionEntry(metadata: metadata)
         if let index = next.firstIndex(where: { $0.id == entry.id }) {
@@ -179,6 +182,13 @@ final class ConnectionStore: ObservableObject {
     func delete(_ entry: ConnectionEntry) -> Bool {
         let deleted = persist(entries: entries.filter { $0.id != entry.id }, sourcePins: sourcePinOverrides)
         if deleted, entry.metadata.schedule != nil { NotificationScheduler.cancel(entry.metadata) }
+        #if canImport(UIKit)
+        if deleted {
+            Task { @MainActor in
+                await CalendarScheduleBridge.shared.reconcileSynced(previous: entry.metadata, current: nil)
+            }
+        }
+        #endif
         return deleted
     }
 
@@ -221,20 +231,9 @@ final class ConnectionStore: ObservableObject {
         let previous = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
         let merged = nextEntries.map { incoming -> ConnectionEntry in
             var entry = incoming
-            // Never adopt another device's Schedule or EventKit identifiers. Legacy dates
-            // can still sync when they are not mirrors of a device-local Schedule.
-            if entry.metadata.schedule != nil {
-                entry.metadata.schedule = nil
-                entry.metadata.dueDate = nil
-                entry.metadata.dueTime = nil
-                entry.metadata.endTime = nil
-            }
-            if let local = previous[entry.id]?.metadata, local.schedule != nil {
-                entry.metadata.schedule = local.schedule
-                entry.metadata.dueDate = local.dueDate
-                entry.metadata.dueTime = local.dueTime
-                entry.metadata.endTime = local.endTime
-            }
+            entry.metadata = ReminderScheduleSync.merging(remote: entry.metadata, local: previous[entry.id]?.metadata)
+            // Connection dirtiness is tracked by the document snapshot, not ReminderStore.
+            entry.metadata.needsSync = false
             return entry
         }
         guard merged != entries || sourcePins != sourcePinOverrides || nextHidden != hiddenSourceIDs else { return true }
@@ -244,10 +243,23 @@ final class ConnectionStore: ObservableObject {
         for removed in previous.values where !retainedIDs.contains(removed.id) && removed.metadata.schedule != nil {
             NotificationScheduler.cancel(removed.metadata)
         }
-        for entry in merged where entry.metadata.schedule != nil && previous[entry.id] != entry {
-            // Remote title/status edits must update or cancel this device's existing alerts.
-            NotificationScheduler.schedule(entry.metadata)
+        for entry in merged where previous[entry.id] != entry {
+            if entry.metadata.schedule != nil {
+                // Remote Schedule, title, and status edits replace this device's alerts.
+                NotificationScheduler.schedule(entry.metadata)
+            } else if let local = previous[entry.id], local.metadata.schedule != nil {
+                NotificationScheduler.cancel(local.metadata)
+            }
         }
+        #if canImport(UIKit)
+        let currentByID = Dictionary(uniqueKeysWithValues: merged.map { ($0.id, $0) })
+        for local in previous.values where local.metadata.schedule?.calendarIdentifier != nil && currentByID[local.id] != local {
+            let current = currentByID[local.id]?.metadata
+            Task { @MainActor in
+                await CalendarScheduleBridge.shared.reconcileSynced(previous: local.metadata, current: current)
+            }
+        }
+        #endif
         return true
     }
 
