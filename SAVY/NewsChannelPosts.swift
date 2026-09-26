@@ -106,8 +106,10 @@ struct NewsChannelPostsGroup: View {
             if posts.isEmpty {
                 emptyRow
             } else {
-                ForEach(Array(posts.enumerated()), id: \.element.id) { index, post in
-                    postRow(post, palette: NewsChannelPostPalette(index: index))
+                SavyCardFlow(spacing: 14) {
+                    ForEach(Array(posts.enumerated()), id: \.element.id) { index, post in
+                        postRow(post, palette: NewsChannelPostPalette(index: index))
+                    }
                 }
             }
         }

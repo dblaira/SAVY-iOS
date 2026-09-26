@@ -191,12 +191,14 @@ extension SocialPost {
 
 // MARK: - Store
 //
-// Local-first, on this phone: posts.json under Application Support/SAVY, the same
-// pocket the technical captures use. No gateway, no sync — "Manual at First".
+// Local-first: posts.json under Application Support/SAVY, the same pocket the technical
+// captures use. SavyDocumentSync carries the file to Adam's other signed-in devices.
 
 @MainActor
 final class SocialPostStore: ObservableObject {
     @Published private(set) var posts: [SocialPost]
+    /// An unreadable posts.json is not synced as an empty list; the shared copy restores it later.
+    private(set) var loadFailed = false
 
     private let fileURL: URL
     private var postNumberAllocator: PostNumberAllocator?
@@ -210,8 +212,23 @@ final class SocialPostStore: ObservableObject {
         do {
             return try SocialPostStore(fileURL: defaultFileURL)
         } catch {
-            return SocialPostStore(posts: [], fileURL: defaultFileURL)
+            let store = SocialPostStore(posts: [], fileURL: defaultFileURL)
+            store.loadFailed = true
+            return store
         }
+    }
+
+    /// Synced posts keep the numbers they were given; the ledger adopts them rather than renumbering.
+    func applySynced(_ synced: [SocialPost]) {
+        guard !loadFailed, synced != posts else { return }
+        posts = synced
+        if let allocator = postNumberAllocator {
+            for post in synced {
+                if let number = post.postNumber { allocator.adopt(.socialPost, id: post.id, number: number) }
+            }
+            configurePostNumbering(allocator)
+        }
+        persist()
     }
 
     // MARK: Reading

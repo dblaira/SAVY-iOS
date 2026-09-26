@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 /// One sequence shared by both saved Post formats. Deleted assignments stay in this ledger
@@ -5,6 +6,8 @@ import Foundation
 @MainActor
 final class PostNumberAllocator {
     enum Source: String { case reminder, socialPost }
+
+    let changes = PassthroughSubject<Void, Never>()
 
     private struct Ledger: Codable {
         var assignments: [String: Int] = [:]
@@ -72,6 +75,25 @@ final class PostNumberAllocator {
         return assigned
     }
 
+    var lastIssuedNumber: Int { ledger.lastIssued }
+
+    /// Another device issued numbers up to `number`; new posts here continue after it.
+    func raiseLastIssued(to number: Int) {
+        guard number > ledger.lastIssued else { return }
+        ledger.lastIssued = number
+        persist()
+    }
+
+    /// A synced post keeps the number its own device gave it.
+    func adopt(_ source: Source, id: UUID, number: Int) {
+        guard number > 0 else { return }
+        let recordKey = Self.key(source: source, id: id)
+        guard ledger.assignments[recordKey] != number else { return }
+        ledger.assignments[recordKey] = number
+        ledger.lastIssued = max(ledger.lastIssued, number)
+        persist()
+    }
+
     private nonisolated static func key(source: Source, id: UUID) -> String {
         "\(source.rawValue):\(id.uuidString.lowercased())"
     }
@@ -81,5 +103,6 @@ final class PostNumberAllocator {
         if let data = try? JSONEncoder().encode(ledger) {
             try? data.write(to: fileURL, options: .atomic)
         }
+        changes.send()
     }
 }

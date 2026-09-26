@@ -213,6 +213,44 @@ final class ConnectionStore: ObservableObject {
         errorMessage = nil
     }
 
+    /// A damaged archive is kept for recovery, so it is neither uploaded nor overwritten by sync.
+    var canSync: Bool { !loadFailed }
+
+    @discardableResult
+    func applySynced(entries nextEntries: [ConnectionEntry], sourcePins: [String: Bool], hiddenSourceIDs nextHidden: Set<String>) -> Bool {
+        let previous = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
+        let merged = nextEntries.map { incoming -> ConnectionEntry in
+            var entry = incoming
+            // Never adopt another device's Schedule or EventKit identifiers. Legacy dates
+            // can still sync when they are not mirrors of a device-local Schedule.
+            if entry.metadata.schedule != nil {
+                entry.metadata.schedule = nil
+                entry.metadata.dueDate = nil
+                entry.metadata.dueTime = nil
+                entry.metadata.endTime = nil
+            }
+            if let local = previous[entry.id]?.metadata, local.schedule != nil {
+                entry.metadata.schedule = local.schedule
+                entry.metadata.dueDate = local.dueDate
+                entry.metadata.dueTime = local.dueTime
+                entry.metadata.endTime = local.endTime
+            }
+            return entry
+        }
+        guard merged != entries || sourcePins != sourcePinOverrides || nextHidden != hiddenSourceIDs else { return true }
+        guard persist(entries: merged, sourcePins: sourcePins, hiddenSourceIDs: nextHidden) else { return false }
+
+        let retainedIDs = Set(merged.map(\.id))
+        for removed in previous.values where !retainedIDs.contains(removed.id) && removed.metadata.schedule != nil {
+            NotificationScheduler.cancel(removed.metadata)
+        }
+        for entry in merged where entry.metadata.schedule != nil && previous[entry.id] != entry {
+            // Remote title/status edits must update or cancel this device's existing alerts.
+            NotificationScheduler.schedule(entry.metadata)
+        }
+        return true
+    }
+
     private func persist(
         entries nextEntries: [ConnectionEntry],
         sourcePins: [String: Bool],

@@ -949,3 +949,67 @@ export async function setReminderImagePath(
     );
   });
 }
+
+export type UserDocumentRow = {
+  doc_key: string;
+  entries: unknown;
+  revision: string | number;
+  updated_at: string | null;
+};
+
+export async function fetchDocumentsForUser(userId: string): Promise<UserDocumentRow[]> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<UserDocumentRow>(
+      `SELECT doc_key, entries, revision, updated_at::text
+       FROM savy.user_documents
+       WHERE user_id = $1
+       ORDER BY doc_key`,
+      [userId]
+    );
+    return rows;
+  });
+}
+
+/** Locks the user's document row so concurrent devices merge in sequence rather than overwrite. */
+export async function mergeDocumentForUser(
+  userId: string,
+  docKey: string,
+  merge: (stored: unknown) => { merged: unknown; changed: boolean }
+): Promise<UserDocumentRow> {
+  return withClient(async (client) => {
+    await client.query("BEGIN");
+    try {
+      await client.query(
+        `INSERT INTO savy.user_documents (user_id, doc_key)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id, doc_key) DO NOTHING`,
+        [userId, docKey]
+      );
+      const { rows } = await client.query<UserDocumentRow>(
+        `SELECT doc_key, entries, revision, updated_at::text
+         FROM savy.user_documents
+         WHERE user_id = $1 AND doc_key = $2
+         FOR UPDATE`,
+        [userId, docKey]
+      );
+      const stored = rows[0];
+      const { merged, changed } = merge(stored?.entries ?? {});
+      let result = stored;
+      if (changed) {
+        const updated = await client.query<UserDocumentRow>(
+          `UPDATE savy.user_documents
+           SET entries = $3::jsonb, revision = revision + 1, updated_at = NOW()
+           WHERE user_id = $1 AND doc_key = $2
+           RETURNING doc_key, entries, revision, updated_at::text`,
+          [userId, docKey, JSON.stringify(merged)]
+        );
+        result = updated.rows[0];
+      }
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+  });
+}

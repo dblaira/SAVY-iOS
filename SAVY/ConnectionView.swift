@@ -25,7 +25,7 @@ private enum SavedConnectionCard: Identifiable {
 struct ConnectionView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var store: ConnectionStore
-    @StateObject private var cardOrder = PostCardOrderStore(key: "savy.connections.cardOrder.v1")
+    @StateObject private var cardOrder = PostCardOrderStore(key: PostCardOrderStore.connectionsDefaultsKey)
     @State private var armedConnectionID: String?
     @State private var editingEntry: ConnectionEntry?
     @State private var isComposing = false
@@ -77,7 +77,9 @@ struct ConnectionView: View {
             }
         }
         .background(SavyTheme.pageBackground.ignoresSafeArea())
+        #if !targetEnvironment(macCatalyst)
         .toolbar(.visible, for: .navigationBar)
+        #endif
         .toolbarBackground(SavyTheme.pageBackground, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -91,6 +93,7 @@ struct ConnectionView: View {
                 ToolbarItem(placement: .topBarLeading) { backButton }
             }
         }
+        .savyMacNavigationBar()
         .navigationDestination(isPresented: $showsSourceDetail) {
             if let selectedSource {
                 LeverageDetailView(section: section, item: selectedSource)
@@ -154,6 +157,7 @@ struct ConnectionView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .keyboardShortcut("[", modifiers: .command)
         .accessibilityLabel("Back")
         .accessibilityIdentifier("connectionBack")
     }
@@ -190,11 +194,13 @@ struct ConnectionView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(22)
             } else {
-                ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
-                    connectionRow(card, palette: NewsChannelPostPalette(index: index))
-                        .accessibilityElement(children: .contain)
-                        .accessibilityIdentifier("connectionCard-\(index)")
-                        .accessibilityValue(isPinned(card) ? "Pinned" : "Unpinned")
+                SavyCardFlow(spacing: ConnectionLayout.cardSpacing) {
+                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                        connectionRow(card, palette: NewsChannelPostPalette(index: index))
+                            .accessibilityElement(children: .contain)
+                            .accessibilityIdentifier("connectionCard-\(index)")
+                            .accessibilityValue(isPinned(card) ? "Pinned" : "Unpinned")
+                    }
                 }
             }
         }

@@ -104,6 +104,7 @@ struct ReminderScheduleView: View {
             }
         }
         .preferredColorScheme(.light)
+        .savyMacFormSheet()
     }
 
     private var locationSection: some View {

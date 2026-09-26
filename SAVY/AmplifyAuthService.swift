@@ -151,6 +151,16 @@ enum AmplifyAuthService {
         _ = await Amplify.Auth.signOut()
     }
 
+    /// Amplify refreshes an expired access token with the stored refresh token.
+    static func freshAccessToken() async -> String? {
+        guard isConfigured,
+              let session = try? await Amplify.Auth.fetchAuthSession(),
+              session.isSignedIn,
+              let tokenProvider = session as? AuthCognitoTokensProvider,
+              let tokens = try? tokenProvider.getCognitoTokens().get() else { return nil }
+        return tokens.accessToken
+    }
+
     static func currentSession() async throws -> AuthSession {
         let authSession = try await Amplify.Auth.fetchAuthSession()
         guard authSession.isSignedIn else {

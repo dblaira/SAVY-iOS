@@ -63,6 +63,8 @@ extension Story {
 @MainActor
 final class StoryStore: ObservableObject {
     @Published private(set) var stories: [Story]
+    /// An unreadable stories.json is not synced as an empty list; the shared copy restores it later.
+    private(set) var loadFailed = false
 
     private let fileURL: URL
 
@@ -75,8 +77,16 @@ final class StoryStore: ObservableObject {
         do {
             return try StoryStore(fileURL: defaultFileURL)
         } catch {
-            return StoryStore(stories: [], fileURL: defaultFileURL)
+            let store = StoryStore(stories: [], fileURL: defaultFileURL)
+            store.loadFailed = true
+            return store
         }
+    }
+
+    func applySynced(_ synced: [Story]) {
+        guard !loadFailed, synced != stories else { return }
+        stories = synced
+        persist()
     }
 
     /// Drafts and ready first, newest first; posted after.
