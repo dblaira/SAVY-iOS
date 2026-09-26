@@ -27,7 +27,8 @@ struct ReminderFormView: View {
     @State private var cancelled = false
     @State private var showSaved = false
     @State private var saveFailed = false
-    @FocusState private var focusedSubtaskID: UUID?
+    // One cursor for the whole form. The keyboard row moves it; the boxes report it.
+    @FocusState private var focusedField: EntryField?
     @State private var subtasks: [Subtask]
     // Editable questions and answers are shared by Post themes and the fixed Connection theme.
     @State private var postDraft: PostEntryDraft
@@ -91,6 +92,7 @@ struct ReminderFormView: View {
                     .accessibilityLabel("Save")
                     .disabled(isSaving)
                 }
+                keyboardRow
             }
             .toolbarBackground(Color.white, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -165,16 +167,19 @@ struct ReminderFormView: View {
                 .lineLimit(1...)
                 .textFieldStyle(.plain)
                 .fixedSize(horizontal: false, vertical: true)
+                .focused($focusedField, equals: .title)
                 .accessibilityIdentifier("Title")
             TextField(EntryFormCopy.whenPrompt, text: whenIAmBinding, axis: .vertical)
                 .lineLimit(1...)
                 .textFieldStyle(.plain)
                 .fixedSize(horizontal: false, vertical: true)
+                .focused($focusedField, equals: .whenIAm)
                 .accessibilityIdentifier("WhenIAm")
             TextField(EntryFormCopy.donePrompt, text: $r.outcome, axis: .vertical)
                 .lineLimit(1...)
                 .textFieldStyle(.plain)
                 .fixedSize(horizontal: false, vertical: true)
+                .focused($focusedField, equals: .doneLooksLike)
                 .accessibilityIdentifier("DoneLooksLike")
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
         .listRowBackground(Brand.card)
@@ -275,6 +280,7 @@ struct ReminderFormView: View {
                         .textFieldStyle(.plain)
                         .foregroundStyle(.black)
                         .fixedSize(horizontal: false, vertical: true)
+                        .focused($focusedField, equals: .decide(index))
                         .accessibilityLabel(question?.prompt ?? "Decide")
                         .accessibilityIdentifier("DecideAnswer\(index)")
                 }
@@ -289,6 +295,85 @@ struct ReminderFormView: View {
             get: { postDraft.answers.indices.contains(index) ? postDraft.answers[index] : "" },
             set: { postDraft.setAnswer($0, at: index) }
         )
+    }
+
+    // MARK: - Keyboard row
+
+    /// Every box the cursor can sit in, in the order the keyboard row walks them.
+    private enum EntryField: Hashable {
+        case decide(Int)
+        case title
+        case whenIAm
+        case doneLooksLike
+        case step(UUID)
+        case tag
+    }
+
+    /// The row that rides on top of the keyboard — Adam, 2026-09-26: "a row of buttons that
+    /// could be used for quickly navigating different sections with a form without leaving the
+    /// keyboard area". Up and down step box to box, the Decide icons jump straight to their
+    /// question, Done drops the keyboard and the row with it. Seven buttons on a four-question
+    /// theme, eight on The 5 Ws; Reminder, Action and Calendar get the three-button row.
+    @ToolbarContentBuilder private var keyboardRow: some ToolbarContent {
+        ToolbarItemGroup(placement: .keyboard) {
+            Button { moveFocus(by: -1) } label: {
+                Image(systemName: "chevron.up")
+            }
+            .tint(Brand.crimson)
+            .accessibilityLabel("Previous box")
+            .accessibilityIdentifier("KeyboardRowUp")
+
+            Button { moveFocus(by: 1) } label: {
+                Image(systemName: "chevron.down")
+            }
+            .tint(Brand.crimson)
+            .accessibilityLabel("Next box")
+            .accessibilityIdentifier("KeyboardRowDown")
+
+            if hasDecideQuestions {
+                Spacer()
+                // The same icons that sit beside each question in the form, so no reading is needed.
+                ForEach(postDraft.answers.indices, id: \.self) { index in
+                    let question = selectedPostTheme.questions.indices.contains(index) ? selectedPostTheme.questions[index] : nil
+                    Button { focusedField = .decide(index) } label: {
+                        Image(systemName: question?.symbol ?? "text.bubble")
+                    }
+                    .tint(Brand.crimson)
+                    .accessibilityLabel(question?.prompt ?? "Decide \(index + 1)")
+                    .accessibilityIdentifier("KeyboardRowDecide\(index)")
+                }
+            }
+
+            Spacer()
+            Button("Done") { focusedField = nil }
+                .fontWeight(.semibold)
+                .tint(Brand.crimson)
+                .accessibilityIdentifier("KeyboardRowDone")
+        }
+    }
+
+    /// The boxes in form order: Decide first on a Post, then Delegate, then the Steps, then the tag box.
+    private var fieldOrder: [EntryField] {
+        var order: [EntryField] = []
+        if hasDecideQuestions {
+            order += postDraft.answers.indices.map { EntryField.decide($0) }
+        }
+        order += [.title, .whenIAm, .doneLooksLike]
+        order += subtasks.map { EntryField.step($0.id) }
+        order.append(.tag)
+        return order
+    }
+
+    /// One box up or down. At either end the row does nothing.
+    private func moveFocus(by step: Int) {
+        let order = fieldOrder
+        guard let current = focusedField, let index = order.firstIndex(of: current) else {
+            focusedField = order.first
+            return
+        }
+        let next = index + step
+        guard order.indices.contains(next) else { return }
+        focusedField = order[next]
     }
 
     // MARK: - Reusable field groups
@@ -367,6 +452,7 @@ struct ReminderFormView: View {
             Label("Tags", systemImage: "tag")
             HStack {
                 TextField("Add a tag", text: $tagDraft)
+                    .focused($focusedField, equals: .tag)
                     .onSubmit(addTag)
                     .onChange(of: tagDraft) { _, value in if value.contains(",") { addTag() } }
                 Button("Add", action: addTag)
@@ -413,7 +499,7 @@ struct ReminderFormView: View {
                 HStack {
                     Image(systemName: "circle").foregroundStyle(.secondary)
                     TextField("Step", text: $sub.title)
-                        .focused($focusedSubtaskID, equals: sub.id)
+                        .focused($focusedField, equals: .step(sub.id))
                     Button { subtasks.removeAll { $0.id == sub.id } } label: {
                         Image(systemName: "minus.circle.fill")
                     }
@@ -436,7 +522,7 @@ struct ReminderFormView: View {
     private func addSubtask() {
         let subtask = Subtask()
         subtasks.append(subtask)
-        DispatchQueue.main.async { focusedSubtaskID = subtask.id }
+        DispatchQueue.main.async { focusedField = .step(subtask.id) }
     }
 
     private func addTag() {

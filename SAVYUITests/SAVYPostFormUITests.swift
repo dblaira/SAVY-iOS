@@ -64,6 +64,41 @@ final class SAVYPostFormUITests: XCTestCase {
         attach("02 bolt post reopened with question and answer")
     }
 
+    /// Adam, 2026-09-26: "a row of buttons that could be used for quickly navigating different
+    /// sections with a form without leaving the keyboard area". The row rides on the keyboard:
+    /// the Decide icons jump the cursor, up and down step it, Done drops the keyboard and the row.
+    func testKeyboardRowMovesTheCursorWithoutLeavingTheKeyboard() {
+        let fab = element("chargeFab")
+        XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
+        fab.tap()
+        let postDoor = app.buttons["Post"].firstMatch
+        XCTAssertTrue(postDoor.waitForExistence(timeout: 5), "Post door missing from the fan")
+        postDoor.tap()
+        assertSharedPostForm()
+
+        // Tapping the first question raises the keyboard, and the row with it.
+        let first = element("DecideAnswer0")
+        scrollTo(first, upward: false)
+        first.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.9)).tap()
+        let jumpToSecond = element("KeyboardRowDecide1")
+        XCTAssertTrue(jumpToSecond.waitForExistence(timeout: 5), "Keyboard row missing")
+        attach("01 keyboard row above the keyboard")
+
+        // The question's own icon jumps straight to its box.
+        jumpToSecond.tap()
+        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer1")), "Decide icon did not move the cursor")
+
+        // Down steps one box; up steps back.
+        element("KeyboardRowDown").tap()
+        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer2")), "Down did not step to the next box")
+        element("KeyboardRowUp").tap()
+        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer1")), "Up did not step back")
+
+        // Done drops the keyboard and the row goes with it.
+        element("KeyboardRowDone").tap()
+        XCTAssertTrue(jumpToSecond.waitForNonExistence(timeout: 5), "Done did not drop the keyboard row")
+    }
+
     func testThemePickerOffersAdamsNewThemesAndLoadsTheirQuestions() {
         openPostsPage()
         openNewPost()
@@ -273,6 +308,13 @@ final class SAVYPostFormUITests: XCTestCase {
 
     private func element(_ identifier: String) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+    }
+
+    /// True once the cursor has landed in the field. Focus moves take a moment to settle.
+    private func hasKeyboardFocus(_ field: XCUIElement) -> Bool {
+        let focused = NSPredicate(format: "hasKeyboardFocus == true")
+        let landed = XCTNSPredicateExpectation(predicate: focused, object: field)
+        return XCTWaiter.wait(for: [landed], timeout: 5) == .completed
     }
 
     private var postRows: XCUIElementQuery {
