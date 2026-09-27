@@ -714,29 +714,26 @@ private struct HomeFeedRowView: View {
                     reminder: reminder,
                     bg: Brand.card,
                     fg: SavyTheme.deepNavy,
-                    accent: .white,
+                    accent: Brand.crimson,
                     detail: isPinned ? .full : .minimal,
                     showsSchedule: false,
-                    showsCompleteMetadata: isPinned,
+                    showsCompleteMetadata: false,
                     previewHeight: isPinned ? RootHomeLayout.carouselCardHeight : nil,
-                    metadataColor: SavyTheme.crimson,
-                    metadataWeight: .regular
+                    carouselDetails: SavyCarouselDetail.values(for: reminder)
                 )
             case let .leverage(_, item):
                 SavyBandCard(
                     bg: Brand.card,
                     fg: SavyTheme.deepNavy,
-                    accent: .white,
+                    accent: Brand.crimson,
                     title: item.title,
-                    signalText: item.kicker == "PINNED" ? "" : item.kicker,
-                    secondaryText: item.category ?? "",
-                    detailLine: item.summary,
+                    signalText: "",
+                    secondaryText: "",
                     detail: isPinned ? .full : .minimal,
                     isCompact: !isPinned,
                     expandsContent: isPinned,
                     previewHeight: isPinned ? RootHomeLayout.carouselCardHeight : nil,
-                    metadataColor: SavyTheme.crimson,
-                    metadataWeight: .regular
+                    carouselDetails: []
                 )
             }
         }

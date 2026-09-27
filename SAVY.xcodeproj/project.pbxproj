@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CA90CE1DE7A34324A1146011 /* SavyCarouselDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA90CE1DE7A34324A1146012 /* SavyCarouselDetails.swift */; };
 		09B7E4626804496E1984EDFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 78F623BD250D3308A5C58730 /* Assets.xcassets */; };
 		0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */; };
 		0DEC481DE44FA8A87924CE5F /* PersonalAuthorityReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A499383C68DF06FF84C7D0BE /* PersonalAuthorityReview.swift */; };
@@ -105,6 +106,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		CA90CE1DE7A34324A1146012 /* SavyCarouselDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCarouselDetails.swift; sourceTree = "<group>"; };
 		0664053D22FAA613F02569D1 /* SAVY.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAVY.entitlements; sourceTree = "<group>"; };
 		0DA56611B45F0D0FC844211C /* CaptureEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEntry.swift; sourceTree = "<group>"; };
 		13CD74063706864F16360321 /* SavyLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyLocationProvider.swift; sourceTree = "<group>"; };
@@ -301,6 +303,7 @@
 				13CD74063706864F16360321 /* SavyLocationProvider.swift */,
 				E1D0B59B31ED879E86FA80A2 /* SavyNavigation.swift */,
 				AA30048EC8E5615CFB651053 /* SavyReminderScreens.swift */,
+				CA90CE1DE7A34324A1146012 /* SavyCarouselDetails.swift */,
 				B6CB7BB5DD39D8EDDEAAC1FD /* SavyScreenCapture.swift */,
 				A6A831A22DE6C20BC44B1AC8 /* SavyShellComponents.swift */,
 				9EAD95340C4858069CE362D8 /* SavySyncAdapters.swift */,
@@ -549,6 +552,7 @@
 				D4978EC1F20F344B087862B3 /* SavyLocationProvider.swift in Sources */,
 				91EA48E78D5BAC34666F30A4 /* SavyNavigation.swift in Sources */,
 				DA958E6153EFC6478AD8DCDA /* SavyReminderScreens.swift in Sources */,
+				CA90CE1DE7A34324A1146011 /* SavyCarouselDetails.swift in Sources */,
 				41E646BDCFF2919AA70E8175 /* SavyScreenCapture.swift in Sources */,
 				AAA2D77A09E280E865841C8C /* SavyShellComponents.swift in Sources */,
 				52111471B8C3400BBC20495B /* SavySyncAdapters.swift in Sources */,

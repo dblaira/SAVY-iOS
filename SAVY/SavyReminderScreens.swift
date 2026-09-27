@@ -688,8 +688,35 @@ struct SavyBandCard: View {
     var previewHeight: CGFloat? = nil
     var metadataColor: Color? = nil
     var metadataWeight: Font.Weight? = nil
+    /// A non-nil projection replaces the ordinary metadata on Home's carousel only.
+    var carouselDetails: [SavyCarouselDetail]? = nil
 
     var body: some View {
+        Group {
+            if let carouselDetails, !isCompact {
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        titleText
+                        Rectangle().fill(accent).frame(width: 36, height: 2)
+                    }
+                    Spacer(minLength: 0)
+                    SavyCarouselDetailPills(details: carouselDetails)
+                }
+            } else {
+                standardContent
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, isCompact ? 8 : 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: minimumHeight, alignment: .topLeading)
+        .frame(height: previewHeight, alignment: .topLeading)
+        .background(bg)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(border))
+    }
+
+    private var standardContent: some View {
         VStack(alignment: .leading, spacing: isCompact ? 4 : 6) {
             titleText
 
@@ -729,14 +756,6 @@ struct SavyBandCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, isCompact ? 8 : 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: minimumHeight, alignment: .topLeading)
-        .frame(height: previewHeight, alignment: .topLeading)
-        .background(bg)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(border))
     }
 
     @ViewBuilder
@@ -766,6 +785,7 @@ struct SavyReminderBandCard: View {
     var previewHeight: CGFloat? = nil
     var metadataColor: Color? = nil
     var metadataWeight: Font.Weight? = nil
+    var carouselDetails: [SavyCarouselDetail]? = nil
 
     var body: some View {
         SavyBandCard(
@@ -782,7 +802,8 @@ struct SavyReminderBandCard: View {
             expandsContent: showsCompleteMetadata,
             previewHeight: reminder.pinned ? previewHeight : nil,
             metadataColor: metadataColor,
-            metadataWeight: metadataWeight
+            metadataWeight: metadataWeight,
+            carouselDetails: carouselDetails
         )
     }
 
