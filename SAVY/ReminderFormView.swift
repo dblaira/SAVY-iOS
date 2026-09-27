@@ -70,8 +70,6 @@ struct ReminderFormView: View {
             }
             .scrollContentBackground(.hidden)
             .background(SavyTheme.contentBackground.ignoresSafeArea())
-            // No word prediction in this form, so the keyboard row takes the bar's place.
-            .autocorrectionDisabled(Self.hidesWordPrediction)
             .accessibilityIdentifier(connectionMode ? "connectionEntryForm" : "sharedEntryForm")
             .tint(Brand.crimson)
             // The keyboard row sits on top of the keyboard while any box has the cursor.
@@ -304,16 +302,13 @@ struct ReminderFormView: View {
 
     // MARK: - Keyboard row
 
-    /// Adam, 2026-09-26: "why can't it replace the word prediction I never fucking use?" and
-    /// "I use it on other apps, just not in SAVY." Apple's suggestion bar leaves only when
-    /// autocorrection is off, so this form turns it off on iPhone and iPad and the keyboard row
-    /// sits directly on the keys. Apple ties the bar, gray inline completion, and autocorrection
-    /// together; an app cannot keep one and drop the others. The Mac has no suggestion bar.
+    /// Adam, 2026-09-26: "why can't it replace the word prediction I never fucking use?" It can't.
+    /// With autocorrection off in this form, iOS 27 still kept its suggestion bar above the keys,
+    /// empty. Turning prediction off won no space and cost autocorrect and gray completion, so
+    /// prediction stays on and the row sits on top of Apple's bar. The Mac has no keyboard to ride.
     #if targetEnvironment(macCatalyst)
-    private static let hidesWordPrediction = false
     private static let showsKeyboardRow = false
     #else
-    private static let hidesWordPrediction = true
     private static let showsKeyboardRow = true
     #endif
 
