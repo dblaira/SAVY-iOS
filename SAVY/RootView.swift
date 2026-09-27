@@ -628,7 +628,9 @@ struct EditorialHomeView: View {
                         isReordering: armedHomeCardID == card.sectionID,
                         bg: colors.bg,
                         fg: colors.fg,
-                        accent: colors.accent
+                        accent: colors.accent,
+                        pillBackground: colors.pillBackground,
+                        pillText: colors.pillText
                     )
                     .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                 }
@@ -645,11 +647,16 @@ struct EditorialHomeView: View {
     }
 
     /// Copied from Understood `ActionsHomeView.cardColors` / `SavyReminderScreens.cardColors`.
-    private static func homeBandCardColors(for index: Int) -> (bg: Color, fg: Color, accent: Color) {
+    private static func homeBandCardColors(for index: Int) -> (
+        bg: Color, fg: Color, accent: Color, pillBackground: Color, pillText: Color
+    ) {
         switch index {
-        case 0: return (.white, SavyTheme.deepNavy, SavyTheme.crimson)
-        case 1: return (Brand.darkRed, .white, .white)
-        default: return (SavyTheme.bottomNavTan, SavyTheme.deepNavy, SavyTheme.crimson)
+        case 0:
+            return (.white, SavyTheme.deepNavy, SavyTheme.crimson, Color(hex: 0xEBEBEB), Color(hex: 0x737373))
+        case 1:
+            return (Brand.darkRed, .white, .white, Color(hex: 0x98011F), Color(hex: 0xCEC7C9))
+        default:
+            return (SavyTheme.bottomNavTan, SavyTheme.deepNavy, SavyTheme.crimson, Color(hex: 0xBCA489), Color(hex: 0x595653))
         }
     }
 
@@ -909,21 +916,29 @@ private struct HomeContentSectionView: View {
     let bg: Color
     let fg: Color
     let accent: Color
+    let pillBackground: Color
+    let pillText: Color
     var body: some View {
         SavyBandCard(
             bg: bg,
             fg: fg,
             accent: accent,
             title: card.title,
-            signalText: isPinned ? countText : "",
-            secondaryText: isPinned ? postReferences : "",
+            signalText: "",
+            secondaryText: "",
             detailLine: previewText,
             detail: isPinned ? .full : .minimal,
             isCompact: !isPinned,
             // The existing pair of reorder buttons needs its normal touch area only
             // while selected; the resting destination row stays compact.
             minimumHeight: isReordering ? 94 : nil,
-            titleAccessibilityIdentifier: "homeCardTitle-\(card.sectionID)"
+            titleAccessibilityIdentifier: "homeCardTitle-\(card.sectionID)",
+            homeDetails: isPinned ? SavyHomeCardDetails(
+                countText: countText,
+                postReferences: postReferences,
+                background: pillBackground,
+                foreground: pillText
+            ) : nil
         )
     }
 

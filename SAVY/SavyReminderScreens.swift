@@ -690,6 +690,8 @@ struct SavyBandCard: View {
     var metadataWeight: Font.Weight? = nil
     /// A non-nil projection replaces the ordinary metadata on Home's carousel only.
     var carouselDetails: [SavyCarouselDetail]? = nil
+    /// Lower Home destinations retain their plain preview and place counts in a tonal footer.
+    var homeDetails: SavyHomeCardDetails? = nil
 
     var body: some View {
         Group {
@@ -701,6 +703,22 @@ struct SavyBandCard: View {
                     }
                     Spacer(minLength: 0)
                     SavyCarouselDetailPills(details: carouselDetails)
+                }
+            } else if let homeDetails, !isCompact {
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        titleText
+                        Rectangle().fill(accent).frame(width: 36, height: 2)
+                        if let note = detailLine {
+                            Text(note)
+                                .font(.system(size: 14, weight: metadataWeight ?? .regular))
+                                .foregroundStyle(metadataColor ?? fg.opacity(0.78))
+                                .lineLimit(detail == .full ? 3 : 1)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer(minLength: 6)
+                    SavyHomeCardDetailPills(details: homeDetails)
                 }
             } else {
                 standardContent

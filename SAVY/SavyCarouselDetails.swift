@@ -102,6 +102,44 @@ struct SavyCarouselDetailPills: View {
     }
 }
 
+/// The existing counts and post references on an expanded lower Home destination card.
+struct SavyHomeCardDetails {
+    let countText: String
+    let postReferences: String
+    let background: Color
+    let foreground: Color
+}
+
+struct SavyHomeCardDetailPills: View {
+    let details: SavyHomeCardDetails
+
+    var body: some View {
+        SavyCarouselPillLayout(spacing: 4) {
+            if !details.countText.isEmpty {
+                pill(details.countText, identifier: "homeCardDetail-count")
+            }
+            if !details.postReferences.isEmpty {
+                pill(details.postReferences, identifier: "homeCardDetail-posts")
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .environment(\.legibilityWeight, .regular)
+    }
+
+    private func pill(_ text: String, identifier: String) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .regular))
+            .foregroundStyle(details.foreground)
+            .lineLimit(1)
+            .padding(.horizontal, 6)
+            .frame(height: 16)
+            .background(details.background, in: Capsule())
+            .accessibilityLabel(text)
+            .accessibilityIdentifier(identifier)
+    }
+}
+
 /// Wraps whole pills in their saved-field order. The layout never scales the text.
 private struct SavyCarouselPillLayout: Layout {
     let spacing: CGFloat
