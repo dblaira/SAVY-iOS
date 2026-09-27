@@ -91,6 +91,7 @@ final class SAVYPostFormUITests: XCTestCase {
         // The cursor lands on the line right under the question, not a line lower.
         second.typeText("Answer")
         XCTAssertEqual(second.value as? String, "Who was involved?\nAnswer", "The jump did not land right under the question")
+        attach("02 cursor right under the question, row on the keys")
 
         // Down steps one box; up steps back.
         element("KeyboardRowDown").tap()
@@ -99,8 +100,11 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer1")), "Up did not step back")
 
         // Done drops the keyboard and the row goes with it.
-        element("KeyboardRowDone").tap()
+        let done = element("KeyboardRowDone")
+        XCTAssertTrue(done.isHittable, "Done is not reachable in the keyboard row")
+        done.tap()
         XCTAssertTrue(jumpToSecond.waitForNonExistence(timeout: 5), "Done did not drop the keyboard row")
+        attach("03 keyboard and row gone after Done")
     }
 
     func testThemePickerOffersAdamsNewThemesAndLoadsTheirQuestions() {

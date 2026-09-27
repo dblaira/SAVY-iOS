@@ -74,6 +74,10 @@ struct ReminderFormView: View {
             .autocorrectionDisabled(Self.hidesWordPrediction)
             .accessibilityIdentifier(connectionMode ? "connectionEntryForm" : "sharedEntryForm")
             .tint(Brand.crimson)
+            // The keyboard row sits on top of the keyboard while any box has the cursor.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if Self.showsKeyboardRow, focusedField != nil { keyboardRow }
+            }
             // Header mirrors the Title as you type — the type name until the first character, then
             // the live title at full size. Compact icon buttons leave it more room.
             .savyPageTitle(r.title.trimmingCharacters(in: .whitespaces).isEmpty ? entryLabel : r.title,
@@ -94,7 +98,6 @@ struct ReminderFormView: View {
                     .accessibilityLabel("Save")
                     .disabled(isSaving)
                 }
-                keyboardRow
             }
             .toolbarBackground(Color.white, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -308,8 +311,10 @@ struct ReminderFormView: View {
     /// together; an app cannot keep one and drop the others. The Mac has no suggestion bar.
     #if targetEnvironment(macCatalyst)
     private static let hidesWordPrediction = false
+    private static let showsKeyboardRow = false
     #else
     private static let hidesWordPrediction = true
+    private static let showsKeyboardRow = true
     #endif
 
     /// Every box the cursor can sit in, in the order the keyboard row walks them.
@@ -327,42 +332,56 @@ struct ReminderFormView: View {
     /// keyboard area". Up and down step box to box, the Decide icons jump straight to their
     /// question, Done drops the keyboard and the row with it. Seven buttons on a four-question
     /// theme, eight on The 5 Ws; Reminder, Action and Calendar get the three-button row.
-    @ToolbarContentBuilder private var keyboardRow: some ToolbarContent {
-        ToolbarItemGroup(placement: .keyboard) {
-            Button { moveFocus(by: -1) } label: {
-                Image(systemName: "chevron.up")
-            }
-            .tint(Brand.crimson)
-            .accessibilityLabel("Previous box")
-            .accessibilityIdentifier("KeyboardRowUp")
+    ///
+    /// The row is the form's own bar, not Apple's keyboard toolbar: Apple's toolbar pushed
+    /// Done out of sight when The 5 Ws put eight buttons in it. Fixed 38-point buttons keep all
+    /// eight on the narrowest iPhone, and the bar is 40 points tall.
+    private var keyboardRow: some View {
+        HStack(spacing: 0) {
+            keyboardRowButton("chevron.up", label: "Previous box", id: "KeyboardRowUp") { moveFocus(by: -1) }
+            keyboardRowButton("chevron.down", label: "Next box", id: "KeyboardRowDown") { moveFocus(by: 1) }
 
-            Button { moveFocus(by: 1) } label: {
-                Image(systemName: "chevron.down")
-            }
-            .tint(Brand.crimson)
-            .accessibilityLabel("Next box")
-            .accessibilityIdentifier("KeyboardRowDown")
-
+            Spacer(minLength: 4)
             if hasDecideQuestions {
-                Spacer()
                 // The same icons that sit beside each question in the form, so no reading is needed.
                 ForEach(postDraft.answers.indices, id: \.self) { index in
                     let question = selectedPostTheme.questions.indices.contains(index) ? selectedPostTheme.questions[index] : nil
-                    Button { focusedField = .decide(index) } label: {
-                        Image(systemName: question?.symbol ?? "text.bubble")
-                    }
-                    .tint(Brand.crimson)
-                    .accessibilityLabel(question?.prompt ?? "Decide \(index + 1)")
-                    .accessibilityIdentifier("KeyboardRowDecide\(index)")
+                    keyboardRowButton(question?.symbol ?? "text.bubble",
+                                      label: question?.prompt ?? "Decide \(index + 1)",
+                                      id: "KeyboardRowDecide\(index)") { focusedField = .decide(index) }
                 }
+                Spacer(minLength: 4)
             }
 
-            Spacer()
-            Button("Done") { focusedField = nil }
-                .fontWeight(.semibold)
-                .tint(Brand.crimson)
-                .accessibilityIdentifier("KeyboardRowDone")
+            Button { focusedField = nil } label: {
+                Text("Done")
+                    .font(.system(size: 17, weight: .semibold))
+                    .padding(.horizontal, 10)
+                    .frame(height: 40)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Brand.crimson)
+            .accessibilityIdentifier("KeyboardRowDone")
         }
+        .padding(.horizontal, 6)
+        .frame(maxWidth: .infinity)
+        .frame(height: 40)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
+    private func keyboardRowButton(_ symbol: String, label: String, id: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .medium))
+                .frame(width: 38, height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Brand.crimson)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(id)
     }
 
     /// The boxes in form order: Decide first on a Post, then Delegate, then the Steps, then the tag box.
