@@ -53,7 +53,7 @@ final class SAVYPostFormUITests: XCTestCase {
         // The question is actual editable content before anything is typed.
         let answer = "Synthetic bolt acceptance answer."
         appendAnswer(answer, at: 0)
-        let firstValue = firstPrompt + "\n\n" + answer
+        let firstValue = firstPrompt + "\n" + answer
         XCTAssertEqual(element("DecideAnswer0").value as? String, firstValue)
         savePost()
         let row = postRows.firstMatch
@@ -86,7 +86,11 @@ final class SAVYPostFormUITests: XCTestCase {
 
         // The question's own icon jumps straight to its box.
         jumpToSecond.tap()
-        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer1")), "Decide icon did not move the cursor")
+        let second = element("DecideAnswer1")
+        XCTAssertTrue(hasKeyboardFocus(second), "Decide icon did not move the cursor")
+        // The cursor lands on the line right under the question, not a line lower.
+        second.typeText("Answer")
+        XCTAssertEqual(second.value as? String, "Who was involved?\nAnswer", "The jump did not land right under the question")
 
         // Down steps one box; up steps back.
         element("KeyboardRowDown").tap()
@@ -131,7 +135,7 @@ final class SAVYPostFormUITests: XCTestCase {
         let answer = "Synthetic acceptance answer: connect several related examples, explain their differences, "
             + "and preserve every sentence alongside the full question when the post is reopened."
         appendAnswer(answer, at: 0)
-        let expected = advancedPrompts[0] + "\n\n" + answer
+        let expected = advancedPrompts[0] + "\n" + answer
         XCTAssertEqual(firstAnswer.value as? String, expected, "Typing must retain the entire question above the answer")
         XCTAssertGreaterThan(firstAnswer.frame.height, initialHeight + 10, "The field did not grow with the answer")
         attach("11 question and answer visible in expanded field")
@@ -360,7 +364,7 @@ final class SAVYPostFormUITests: XCTestCase {
         let field = element("DecideAnswer\(index)")
         scrollTo(field)
         XCTAssertTrue(field.waitForExistence(timeout: 5), "Decide question \(index) missing")
-        XCTAssertEqual(field.value as? String, prompt + "\n\n", "Question \(index) must be editable saved content")
+        XCTAssertEqual(field.value as? String, prompt + "\n", "Question \(index) must be editable saved content")
         XCTAssertTrue(field.placeholderValue?.isEmpty ?? true, "Question \(index) must not be placeholder text")
     }
 
@@ -433,7 +437,7 @@ final class SAVYPostFormUITests: XCTestCase {
         openNewPost()
         assertPrefilledQuestion(firstPrompt, at: 0)
         appendAnswer(answer, at: 0)
-        XCTAssertEqual(element("DecideAnswer0").value as? String, firstPrompt + "\n\n" + answer)
+        XCTAssertEqual(element("DecideAnswer0").value as? String, firstPrompt + "\n" + answer)
         savePost()
         let newRow = postRows.matching(NSPredicate(format: "NOT (identifier IN %@)", Array(previousIDs))).firstMatch
         XCTAssertTrue(newRow.waitForExistence(timeout: 10), "Saving did not create a new post entry")

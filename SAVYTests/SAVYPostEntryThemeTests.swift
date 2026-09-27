@@ -138,7 +138,7 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         var draft = PostEntryDraft(entry: Reminder())
         for theme in PostThemeCatalog.themes {
             draft.selectTheme(theme.id)
-            XCTAssertEqual(draft.answers, theme.questions.map { $0.prompt + "\n\n" })
+            XCTAssertEqual(draft.answers, theme.questions.map { $0.prompt + "\n" })
             XCTAssertFalse(draft.hasUserContent, "Choosing \(theme.name) alone must not autosave a post")
         }
     }
@@ -222,6 +222,11 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         draft.apply(to: &entry)
         XCTAssertEqual(entry.postAnswerTexts[0], "I can now see the connection.")
         XCTAssertEqual(entry.postAnsweredCount, 1)
+        // The answer right under an edited question, no blank line, counts the same way.
+        draft.setAnswer("What changed in my thinking?\nI can now see the connection.", at: 0)
+        draft.apply(to: &entry)
+        XCTAssertEqual(entry.postAnswerTexts[0], "I can now see the connection.")
+        XCTAssertEqual(entry.postAnsweredCount, 1)
     }
 
     func testMissingFieldsArePrefilledAndExtraSavedTextIsNeverDropped() {
@@ -229,7 +234,7 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         entry.postAnswers = ["Only one answer was saved."]
         var draft = PostEntryDraft(entry: entry)
         XCTAssertEqual(draft.answers.count, 5)
-        XCTAssertEqual(draft.answers[1], "Who was involved?\n\n")
+        XCTAssertEqual(draft.answers[1], "Who was involved?\n")
 
         let extraText = "An extra saved field.\nEvery line stays."
         entry.postAnswers = (entry.postAnswers ?? []) + Array(repeating: "", count: 4) + [extraText]

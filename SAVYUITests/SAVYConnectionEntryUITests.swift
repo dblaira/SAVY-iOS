@@ -54,9 +54,9 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         for index in prompts.indices {
             let field = element("DecideAnswer\(index)")
             reveal(field)
-            XCTAssertEqual(field.value as? String, prompts[index] + "\n\n",
+            XCTAssertEqual(field.value as? String, prompts[index] + "\n",
                            "Connection prompt \(index) must be editable text above the answer")
-            // The blank final line places the insertion point below the complete prompt.
+            // The empty last line places the insertion point right under the complete prompt.
             field.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.9)).tap()
             field.typeText(answers[index])
             XCTAssertEqual(field.value as? String, expectedAnswer(at: index))
@@ -316,7 +316,7 @@ final class SAVYConnectionEntryUITests: XCTestCase {
     }
 
     private func expectedAnswer(at index: Int) -> String {
-        prompts[index] + "\n\n" + answers[index]
+        prompts[index] + "\n" + answers[index]
     }
 
     private func createConnection(_ answer: String) -> String {

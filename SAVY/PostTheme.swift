@@ -16,9 +16,11 @@ struct PostTheme: Identifiable, Codable, Equatable {
     let name: String
     let questions: [PostThemeQuestion]
 
-    /// The blank line puts the answer beneath the question in the same saved field.
+    /// The answer starts on the line right under the question, in the same saved field.
+    /// Adam, 2026-09-26: "Then the strarting point of the text is one line below where it
+    /// should be. More fucking screen real estate removed." — so no blank line between them.
     var prefilledAnswers: [String] {
-        questions.map { $0.prompt + "\n\n" }
+        questions.map { $0.prompt + "\n" }
     }
 
     /// Older entries saved only answers. Supply their questions once while preserving every
@@ -46,6 +48,11 @@ struct PostTheme: Identifiable, Codable, Equatable {
             if field.hasPrefix(prompt + "\n") || field.hasPrefix(prompt + "\r\n") {
                 return String(field.dropFirst(prompt.count)).trimmingCharacters(in: .whitespacesAndNewlines)
             }
+        }
+        // An edited question keeps the first line; its answer starts on the line under it.
+        // Older fields put a blank line between them, and the trim below absorbs it.
+        if originalPrompt != nil, let lineBreak = field.range(of: "\n") {
+            return String(field[lineBreak.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if let separator = field.range(of: "\n\n") {
             return String(field[separator.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
