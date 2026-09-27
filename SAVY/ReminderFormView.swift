@@ -29,6 +29,9 @@ struct ReminderFormView: View {
     @State private var saveFailed = false
     // One cursor for the whole form. The keyboard row moves it; the boxes report it.
     @FocusState private var focusedField: EntryField?
+    // The Decide boxes are UIKit text views, which SwiftUI's focus cannot move. This holds
+    // which Decide box has the cursor; the keyboard row reads both through `activeField`.
+    @State private var decideFocus: Int?
     @State private var subtasks: [Subtask]
     // Editable questions and answers are shared by Post themes and the fixed Connection theme.
     @State private var postDraft: PostEntryDraft
@@ -74,7 +77,7 @@ struct ReminderFormView: View {
             .tint(Brand.crimson)
             // The keyboard row sits on top of the keyboard while any box has the cursor.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if Self.showsKeyboardRow, focusedField != nil { keyboardRow }
+                if Self.showsKeyboardRow, activeField != nil { keyboardRow }
             }
             // Header mirrors the Title as you type — the type name until the first character, then
             // the live title at full size. Compact icon buttons leave it more room.
@@ -280,19 +283,18 @@ struct ReminderFormView: View {
                         .frame(width: 24)
                     PredictiveWritingField(
                         text: postAnswerBinding(index),
-                        isFocused: focusedField == .decide(index),
+                        isFocused: decideFocus == index,
                         label: question?.prompt ?? "Decide",
                         identifier: "DecideAnswer\(index)",
                         onFocusChange: { editing in
                             if editing {
-                                focusedField = .decide(index)
-                            } else if focusedField == .decide(index) {
-                                focusedField = nil
+                                decideFocus = index
+                            } else if decideFocus == index {
+                                decideFocus = nil
                             }
                         }
                     )
                     .id("\(postDraft.themeID)-\(index)")
-                    .focused($focusedField, equals: .decide(index))
                     .alignmentGuide(.firstTextBaseline) { _ in
                         UIFont.preferredFont(forTextStyle: .body).ascender
                     }
@@ -357,12 +359,12 @@ struct ReminderFormView: View {
                     let question = selectedPostTheme.questions.indices.contains(index) ? selectedPostTheme.questions[index] : nil
                     keyboardRowButton(question?.symbol ?? "text.bubble",
                                       label: question?.prompt ?? "Decide \(index + 1)",
-                                      id: "KeyboardRowDecide\(index)") { focusedField = .decide(index) }
+                                      id: "KeyboardRowDecide\(index)") { moveCursor(to: .decide(index)) }
                 }
                 Spacer(minLength: 4)
             }
 
-            Button { focusedField = nil } label: {
+            Button { moveCursor(to: nil) } label: {
                 Text("Done")
                     .font(.system(size: 17, weight: .semibold))
                     .padding(.horizontal, 10)
@@ -408,13 +410,35 @@ struct ReminderFormView: View {
     /// One box up or down. At either end the row does nothing.
     private func moveFocus(by step: Int) {
         let order = fieldOrder
-        guard let current = focusedField, let index = order.firstIndex(of: current) else {
-            focusedField = order.first
+        guard let current = activeField, let index = order.firstIndex(of: current) else {
+            moveCursor(to: order.first)
             return
         }
         let next = index + step
         guard order.indices.contains(next) else { return }
-        focusedField = order[next]
+        moveCursor(to: order[next])
+    }
+
+    /// The box that has the cursor, whether it is a SwiftUI box or a UIKit Decide box.
+    private var activeField: EntryField? {
+        if let index = decideFocus { return .decide(index) }
+        return focusedField
+    }
+
+    /// Puts the cursor in one box, or nowhere. Decide boxes are UIKit, the rest are SwiftUI.
+    private func moveCursor(to field: EntryField?) {
+        switch field {
+        case .decide(let index)?:
+            // The UIKit box takes the cursor itself; clearing SwiftUI's focus here as well
+            // would dismiss the keyboard out from under it.
+            decideFocus = index
+        case let other?:
+            decideFocus = nil
+            focusedField = other
+        case nil:
+            decideFocus = nil
+            focusedField = nil
+        }
     }
 
     // MARK: - Reusable field groups
@@ -563,7 +587,7 @@ struct ReminderFormView: View {
     private func addSubtask() {
         let subtask = Subtask()
         subtasks.append(subtask)
-        DispatchQueue.main.async { focusedField = .step(subtask.id) }
+        DispatchQueue.main.async { moveCursor(to: .step(subtask.id)) }
     }
 
     private func addTag() {
@@ -749,8 +773,8 @@ private struct PredictiveWritingField: UIViewRepresentable {
         view.accessibilityIdentifier = identifier
         // Marked text is the gray continuation. Replacing storage or moving the
         // cursor here drops it. Space accepts it through the system keyboard.
-        if view.markedTextRange != nil { return }
-        if view.text != text {
+        // Focus still follows the keyboard row while a continuation is showing.
+        if view.markedTextRange == nil, view.text != text {
             let selection = view.selectedRange
             view.text = text
             let length = (text as NSString).length
@@ -784,8 +808,19 @@ private struct PredictiveWritingField: UIViewRepresentable {
         }
 
         func textViewDidChange(_ textView: UITextView) {
-            guard textView.markedTextRange == nil else { return }
-            if parent.text != textView.text { parent.text = textView.text }
+            let committed = Self.committedText(in: textView)
+            if parent.text != committed { parent.text = committed }
+        }
+
+        /// Everything typed, without the gray continuation. Saving while a continuation is
+        /// showing keeps every typed word and never saves the gray suggestion.
+        static func committedText(in textView: UITextView) -> String {
+            guard let marked = textView.markedTextRange else { return textView.text }
+            let start = textView.offset(from: textView.beginningOfDocument, to: marked.start)
+            let end = textView.offset(from: textView.beginningOfDocument, to: marked.end)
+            let storage = textView.text as NSString
+            guard start >= 0, end >= start, end <= storage.length else { return textView.text }
+            return storage.replacingCharacters(in: NSRange(location: start, length: end - start), with: "")
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
@@ -793,9 +828,8 @@ private struct PredictiveWritingField: UIViewRepresentable {
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
-            if textView.markedTextRange == nil, parent.text != textView.text {
-                parent.text = textView.text
-            }
+            let committed = Self.committedText(in: textView)
+            if parent.text != committed { parent.text = committed }
             if parent.isFocused { parent.onFocusChange(false) }
         }
     }

@@ -90,7 +90,9 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(hasKeyboardFocus(second), "Decide icon did not move the cursor")
         // The cursor lands on the line right under the question, not a line lower.
         second.typeText("Answer")
-        XCTAssertEqual(second.value as? String, "Who was involved?\nAnswer", "The jump did not land right under the question")
+        // A gray continuation may trail the typed word, so check what was typed and where.
+        XCTAssertTrue((second.value as? String ?? "").hasPrefix("Who was involved?\nAnswer"),
+                      "The jump did not land right under the question")
         attach("02 cursor right under the question, row on the keys")
 
         // Down steps one box; up steps back.
@@ -98,6 +100,14 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer2")), "Down did not step to the next box")
         element("KeyboardRowUp").tap()
         XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer1")), "Up did not step back")
+
+        // Across the border between the Decide boxes and the Delegate boxes, both ways.
+        element("KeyboardRowDecide4").tap()
+        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer4")), "The last Decide icon did not move the cursor")
+        element("KeyboardRowDown").tap()
+        XCTAssertTrue(hasKeyboardFocus(element("Title")), "Down did not step from the last question to What do I want?")
+        element("KeyboardRowUp").tap()
+        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer4")), "Up did not step back into the last question")
 
         // Done drops the keyboard and the row goes with it.
         let done = element("KeyboardRowDone")
