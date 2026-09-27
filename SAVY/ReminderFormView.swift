@@ -278,14 +278,24 @@ struct ReminderFormView: View {
                         .font(.system(size: 16))
                         .foregroundStyle(Brand.crimson)
                         .frame(width: 24)
-                    TextField("", text: postAnswerBinding(index), axis: .vertical)
-                        .lineLimit(3...)
-                        .textFieldStyle(.plain)
-                        .foregroundStyle(.black)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .focused($focusedField, equals: .decide(index))
-                        .accessibilityLabel(question?.prompt ?? "Decide")
-                        .accessibilityIdentifier("DecideAnswer\(index)")
+                    PredictiveWritingField(
+                        text: postAnswerBinding(index),
+                        isFocused: focusedField == .decide(index),
+                        label: question?.prompt ?? "Decide",
+                        identifier: "DecideAnswer\(index)",
+                        onFocusChange: { editing in
+                            if editing {
+                                focusedField = .decide(index)
+                            } else if focusedField == .decide(index) {
+                                focusedField = nil
+                            }
+                        }
+                    )
+                    .id("\(postDraft.themeID)-\(index)")
+                    .focused($focusedField, equals: .decide(index))
+                    .alignmentGuide(.firstTextBaseline) { _ in
+                        UIFont.preferredFont(forTextStyle: .body).ascender
+                    }
                 }
             }
         } header: { sectionHeader(EntryFormCopy.decideHeader) }
@@ -294,9 +304,13 @@ struct ReminderFormView: View {
 
     /// The field contains both question and answer; its question is editable saved content.
     private func postAnswerBinding(_ index: Int) -> Binding<String> {
-        Binding(
+        let themeID = postDraft.themeID
+        return Binding(
             get: { postDraft.answers.indices.contains(index) ? postDraft.answers[index] : "" },
-            set: { postDraft.setAnswer($0, at: index) }
+            set: {
+                guard postDraft.themeID == themeID else { return }
+                postDraft.setAnswer($0, at: index)
+            }
         )
     }
 
@@ -692,6 +706,98 @@ struct ReminderFormView: View {
         onSave(r)
         CalendarScheduleBridge.shared.discardPendingSync(for: r.id)
         return true
+    }
+}
+
+/// UIKit owns the live writing session, including the keyboard's gray inline completion.
+/// SwiftUI stores the writing and does not replace the text while a completion is pending.
+private struct PredictiveWritingField: UIViewRepresentable {
+    @Binding var text: String
+    let isFocused: Bool
+    let label: String
+    let identifier: String
+    let onFocusChange: (Bool) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeUIView(context: Context) -> UITextView {
+        let view = UITextView()
+        view.delegate = context.coordinator
+        view.backgroundColor = .clear
+        view.textColor = .black
+        view.tintColor = UIColor(Brand.crimson)
+        view.font = UIFont.preferredFont(forTextStyle: .body)
+        view.adjustsFontForContentSizeCategory = true
+        view.textContainerInset = .zero
+        view.textContainer.lineFragmentPadding = 0
+        view.isScrollEnabled = false
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.keyboardType = .default
+        view.autocapitalizationType = .sentences
+        view.autocorrectionType = .yes
+        view.spellCheckingType = .yes
+        view.inlinePredictionType = .yes
+        view.text = text
+        view.accessibilityLabel = label
+        view.accessibilityIdentifier = identifier
+        return view
+    }
+
+    func updateUIView(_ view: UITextView, context: Context) {
+        context.coordinator.parent = self
+        view.accessibilityLabel = label
+        view.accessibilityIdentifier = identifier
+        // Marked text is the gray continuation. Replacing storage or moving the
+        // cursor here drops it. Space accepts it through the system keyboard.
+        if view.markedTextRange != nil { return }
+        if view.text != text {
+            let selection = view.selectedRange
+            view.text = text
+            let length = (text as NSString).length
+            let location = min(selection.location, length)
+            view.selectedRange = NSRange(location: location, length: min(selection.length, length - location))
+        }
+        if isFocused, !view.isFirstResponder {
+            view.becomeFirstResponder()
+        } else if !isFocused, view.isFirstResponder {
+            view.resignFirstResponder()
+        }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width > 0 else { return nil }
+        let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        let minimum = (uiView.font ?? UIFont.preferredFont(forTextStyle: .body)).lineHeight * 3
+        return CGSize(width: width, height: ceil(max(minimum, fitted.height)))
+    }
+
+    static func dismantleUIView(_ view: UITextView, coordinator: Coordinator) {
+        view.delegate = nil
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var parent: PredictiveWritingField
+        init(parent: PredictiveWritingField) { self.parent = parent }
+
+        func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+            true
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            guard textView.markedTextRange == nil else { return }
+            if parent.text != textView.text { parent.text = textView.text }
+        }
+
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            if !parent.isFocused { parent.onFocusChange(true) }
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            if textView.markedTextRange == nil, parent.text != textView.text {
+                parent.text = textView.text
+            }
+            if parent.isFocused { parent.onFocusChange(false) }
+        }
     }
 }
 
