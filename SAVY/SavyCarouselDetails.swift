@@ -80,17 +80,17 @@ struct SavyCarouselDetailPills: View {
                 ForEach(row) { detail in
                     HStack(spacing: 3) {
                         Image(systemName: detail.systemImage)
-                            .font(.system(size: 10, weight: .regular))
+                            .font(.system(size: 13, weight: .regular))
                             .symbolRenderingMode(.monochrome)
                             .foregroundStyle(Brand.crimson)
                             .accessibilityHidden(true)
                         Text(detail.text)
-                            .font(.system(size: 9, weight: .regular))
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundStyle(Color(hex: 0x737373))
                             .lineLimit(1)
                     }
-                    .padding(.horizontal, 6)
-                    .frame(height: 16)
+                    .padding(.horizontal, 8)
+                    .frame(height: 24)
                     .background(Color(hex: 0xE2D4B9), in: Capsule())
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(detail.accessibilityLabel)

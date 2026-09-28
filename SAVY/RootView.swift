@@ -17,7 +17,8 @@ enum RootHomeLayout {
     static let carouselTopPadding: CGFloat = 24
     static let carouselBottomPadding: CGFloat = 24
     static let carouselCardWidth: CGFloat = 282
-    static let carouselCardHeight: CGFloat = 151
+    /// Fits a two-line title and up to three rows of readable 24-point detail pills.
+    static let carouselCardHeight: CGFloat = 182
     static let carouselCardTitleFontSize: CGFloat = 24
     static let latestSectionBandHeight: CGFloat = 80
     static let pinnedEntryRowHeight: CGFloat = 96

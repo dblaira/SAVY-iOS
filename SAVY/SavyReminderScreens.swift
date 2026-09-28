@@ -701,7 +701,7 @@ struct SavyBandCard: View {
                         titleText
                         Rectangle().fill(accent).frame(width: 36, height: 2)
                     }
-                    Spacer(minLength: 0)
+                    Spacer(minLength: 6)
                     SavyCarouselDetailPills(details: carouselDetails)
                 }
             } else if let homeDetails, !isCompact {
