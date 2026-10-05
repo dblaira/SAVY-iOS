@@ -128,7 +128,7 @@ final class SAVYPostFormUITests: XCTestCase {
 
         selectTheme("Mental Model")
         let mentalModelQuestions = [
-            "What situation do we want to try a different mental model on?",
+            "What situation to we want to try a different mental model on?",
             "Which mental model have I chosen to adopt?",
             "How do I intend this new perspective to help?",
         ]
