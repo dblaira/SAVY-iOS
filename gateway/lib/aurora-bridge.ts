@@ -2,6 +2,7 @@ import pg from "pg";
 import { Signer } from "@aws-sdk/rds-signer";
 import type { CaptureRow, CorrelationSnapshot, EntryRow, RdfTripleRow } from "./types.js";
 import { normalizeCategoryStats, normalizeCorrelations } from "./normalize.js";
+import { gatewayInstant } from "./gateway-instant.js";
 import { normalizeScheduleFields, type ReminderSchedule } from "./reminder-schedule.js";
 import {
   AUTHORITATIVE_SOURCE_APPS,
@@ -754,6 +755,9 @@ export async function fetchRemindersForUser(userId: string): Promise<ReminderRow
 
     const reminders = rows.map((row) => ({
       ...row,
+      created_at: gatewayInstant(row.created_at) ?? row.created_at,
+      updated_at: gatewayInstant(row.updated_at) ?? row.updated_at,
+      completed_at: gatewayInstant(row.completed_at) ?? row.completed_at,
       tags: row.tags ?? [],
       subtasks: [] as ReminderSubtaskRow[],
     }));

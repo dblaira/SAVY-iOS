@@ -842,7 +842,7 @@ private struct GatewayReminderRow: Decodable {
     }
 }
 
-private enum GatewayReminderDates {
+enum GatewayReminderDates {
     static func dateOnly(_ date: Date?) -> String? {
         guard let date else { return nil }
         let formatter = DateFormatter()
@@ -879,6 +879,12 @@ private enum GatewayReminderDates {
 
     static func parseTimeOnly(_ value: String?) -> Date? {
         guard let value else { return nil }
+        if let date = timeOnly(from: value) { return date }
+        guard let fraction = value.firstIndex(of: ".") else { return nil }
+        return timeOnly(from: String(value[..<fraction]))
+    }
+
+    private static func timeOnly(from value: String) -> Date? {
         let formatter = DateFormatter()
         formatter.calendar = Calendar.current
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -887,12 +893,53 @@ private enum GatewayReminderDates {
         return formatter.date(from: value)
     }
 
+    /// Aurora returns `timestamptz::text` as `2026-10-05 20:16:48.331407+00`.
+    /// ISO 8601, with or without fractional seconds, is accepted too.
     static func parseTimestamp(_ value: String?) -> Date? {
-        guard let value else { return nil }
+        guard let raw = value?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
+        if let date = parseISO8601(raw) { return date }
+        let normalized = normalizePostgresTimestamp(raw)
+        guard normalized != raw else { return nil }
+        return parseISO8601(normalized)
+    }
+
+    private static func parseISO8601(_ value: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         if let date = formatter.date(from: value) { return date }
         formatter.formatOptions.insert(.withFractionalSeconds)
         return formatter.date(from: value)
+    }
+
+    /// Turns `2026-10-05 20:16:48.331407+00` into an ISO 8601 instant.
+    private static func normalizePostgresTimestamp(_ value: String) -> String {
+        let pieces = value.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+        guard pieces.count == 2, pieces[0].count == 10 else { return value }
+        let rest = String(pieces[1])
+        if rest.hasSuffix("Z") {
+            return "\(pieces[0])T\(rest)"
+        }
+        guard let sign = rest.firstIndex(where: { $0 == "+" || $0 == "-" }), rest.distance(from: rest.startIndex, to: sign) >= 8 else {
+            return value
+        }
+        let time = rest[..<sign]
+        let zone = String(rest[sign...])
+        return "\(pieces[0])T\(time)\(isoZone(zone))"
+    }
+
+    private static func isoZone(_ zone: String) -> String {
+        if zone == "Z" || zone == "+00" || zone == "-00" || zone == "+0000" || zone == "-0000" || zone == "+00:00" || zone == "-00:00" {
+            return "Z"
+        }
+        if zone.count == 3, zone.hasPrefix("+") || zone.hasPrefix("-") {
+            return "\(zone):00"
+        }
+        if zone.count == 5, zone.contains(":") == false {
+            let sign = zone.prefix(1)
+            let hours = zone.dropFirst().prefix(2)
+            let minutes = zone.suffix(2)
+            return "\(sign)\(hours):\(minutes)"
+        }
+        return zone
     }
 }
 

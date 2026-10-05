@@ -269,3 +269,31 @@ final class SAVYDocumentSyncTests: XCTestCase {
         XCTAssertEqual(mac.allocator.lastIssuedNumber, 4)
     }
 }
+
+final class SAVYGatewayTimestampTests: XCTestCase {
+    func testPostgresReminderTimestampSurvivesTheRoundTrip() {
+        let live = "2026-10-05 20:16:48.331407+00"
+        let parsed = GatewayReminderDates.parseTimestamp(live)
+        let wholeSecond = ISO8601DateFormatter().date(from: "2026-10-05T20:16:48Z")
+        XCTAssertNotNil(parsed)
+        XCTAssertNotNil(wholeSecond)
+        XCTAssertEqual(
+            parsed!.timeIntervalSince1970,
+            wholeSecond!.timeIntervalSince1970 + 0.331,
+            accuracy: 0.001
+        )
+    }
+
+    func testISOReminderTimestampsStillParse() {
+        XCTAssertNotNil(GatewayReminderDates.parseTimestamp("2026-10-05T20:16:48Z"))
+        XCTAssertNotNil(GatewayReminderDates.parseTimestamp("2026-10-05T20:16:48.331Z"))
+        XCTAssertNotNil(GatewayReminderDates.parseTimestamp("2026-10-05T20:16:48.331407Z"))
+        XCTAssertNil(GatewayReminderDates.parseTimestamp(nil))
+        XCTAssertNil(GatewayReminderDates.parseTimestamp("not-a-date"))
+    }
+
+    func testFractionalClockTimeStillParses() {
+        XCTAssertNotNil(GatewayReminderDates.parseTimeOnly("14:30:00"))
+        XCTAssertNotNil(GatewayReminderDates.parseTimeOnly("14:30:00.331407"))
+    }
+}

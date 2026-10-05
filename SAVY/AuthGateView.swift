@@ -29,11 +29,17 @@ struct AuthGateView: View {
                 case .locked(let session):
                     LockedView(store: authStore, session: session)
                 case .unlocked(let session):
-                    RootView(session: session) {
-                        Task {
-                            await authStore.signOut()
-                        }
-                    }
+                    RootView(
+                        session: session,
+                        onSignOut: {
+                            Task {
+                                await authStore.signOut()
+                            }
+                        },
+                        initialSection: ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_OPEN_REMINDERS")
+                            ? .reminders
+                            : .now
+                    )
                 }
             }
         }

@@ -11,6 +11,10 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
             || name.contains("testHomepageRemovesHistoricalCowboyCard")
             || name.contains("testHomepageUsesGreatestLeverageCarouselAndVerticalContentOrder")
             || name.contains("testBottomNavigationHasLargeRaisedEdgeToEdgeTargets")
+        if name.contains("testLiveAccountSync") {
+            app.launchArguments = []
+            return
+        }
         if !preservesExistingData {
             app.launchArguments.append("SAVY_UI_TEST_RESET_REMINDERS")
         }
@@ -770,6 +774,120 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let identified = app.buttons[identifier].firstMatch
         if identified.exists { return identified }
         return app.buttons[visibleActionTitle(for: identifier)].firstMatch
+    }
+
+    /// Signed-in copies of SAVY. Modes: create, receive-retitle, receive-delete.
+    /// Credentials come from the test process environment and are never written into the repo.
+    func testLiveAccountSync() throws {
+        let mode = (try? String(contentsOfFile: "/tmp/savy-sync-probe-mode.txt", encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        try XCTSkipIf(mode.isEmpty, "Live account sync runs only when /tmp/savy-sync-probe-mode.txt is set")
+        guard
+            let data = try? Data(contentsOf: URL(fileURLWithPath: "/tmp/savy-sync-probe-session.json")),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let email = json["email"] as? String, !email.isEmpty,
+            let password = json["password"] as? String, !password.isEmpty
+        else {
+            XCTFail("Probe session file is missing")
+            return
+        }
+        let iosTitle = "SAVY SYNC PROBE from iOS facf"
+        let macTitle = "SAVY SYNC PROBE from Mac facf"
+
+        app.launchArguments = mode == "receive-delete" ? ["SAVY_UI_TEST_OPEN_REMINDERS"] : []
+        app.launch()
+        dismissNotificationPrompt()
+        signInIfNeeded(email: email, password: password)
+        if mode != "receive-delete" {
+            openTab("Reminders")
+        }
+
+        switch mode {
+        case "create":
+            createItem(.reminder, title: iosTitle)
+            waitForUpload()
+        case "receive-retitle":
+            let arrived = app.staticTexts[iosTitle].firstMatch
+            XCTAssertTrue(arrived.waitForExistence(timeout: 60), "The iOS reminder did not show on this copy")
+            replaceTitle(iosTitle, with: macTitle)
+            XCTAssertTrue(app.staticTexts[macTitle].firstMatch.waitForExistence(timeout: 15), "Retitled reminder did not show")
+            waitForUpload()
+        case "receive-delete":
+            let page = app.descendants(matching: .any)["remindersHome"].firstMatch
+            if !page.waitForExistence(timeout: 8) {
+                try? XCUIScreen.main.screenshot().pngRepresentation.write(
+                    to: URL(fileURLWithPath: "/tmp/savy-ios-reminders.png")
+                )
+                try? app.debugDescription.write(toFile: "/tmp/savy-ios-ax.txt", atomically: true, encoding: .utf8)
+            }
+            XCTAssertTrue(page.waitForExistence(timeout: 12), "Reminders page did not open")
+            let titled = elementLabeled(macTitle)
+            let card = app.descendants(matching: .any)["upNextCard0"].firstMatch
+            let shown = titled.waitForExistence(timeout: 20) || card.waitForExistence(timeout: 5)
+            if !shown {
+                try? XCUIScreen.main.screenshot().pngRepresentation.write(
+                    to: URL(fileURLWithPath: "/tmp/savy-ios-reminders.png")
+                )
+                try? app.debugDescription.write(
+                    toFile: "/tmp/savy-ios-ax.txt",
+                    atomically: true,
+                    encoding: .utf8
+                )
+            }
+            XCTAssertTrue(shown, "The Mac reminder did not show on this copy")
+            XCTAssertFalse(elementLabeled(iosTitle).exists, "The old iOS title was still showing")
+            try? XCUIScreen.main.screenshot().pngRepresentation.write(
+                to: URL(fileURLWithPath: "/tmp/savy-ios-mac-title.png")
+            )
+            let notNow = app.buttons["Not Now"].firstMatch
+            if notNow.waitForExistence(timeout: 3) {
+                notNow.tap()
+            }
+            revealActions(card.exists ? card : titled, title: macTitle)
+            tapVisibleButton("swipeDelete")
+            XCTAssertFalse(elementLabeled(macTitle).waitForExistence(timeout: 8), "Deleted reminder was still showing")
+            waitForUpload()
+        default:
+            XCTFail("SAVY_SYNC_PROBE_MODE must be create, receive-retitle, or receive-delete")
+        }
+    }
+
+    private func signInIfNeeded(email: String, password: String) {
+        let passwordInstead = app.buttons["Use password instead"].firstMatch
+        if passwordInstead.waitForExistence(timeout: 8) {
+            passwordInstead.tap()
+        }
+        let emailField = app.textFields["Email"].firstMatch
+        guard emailField.waitForExistence(timeout: 25) else { return }
+        emailField.tap()
+        emailField.typeText(email)
+        let passwordField = app.secureTextFields["Password"].firstMatch
+        XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Password field missing")
+        passwordField.tap()
+        passwordField.typeText(password)
+        app.buttons["Continue"].firstMatch.tap()
+        dismissNotificationPrompt()
+        XCTAssertTrue(app.buttons["Reminders"].waitForExistence(timeout: 40), "Sign-in did not reach SAVY")
+    }
+
+    private func replaceTitle(_ current: String, with replacement: String) {
+        let item = app.staticTexts[current].firstMatch
+        item.tap()
+        let field = titleField()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "Entry form did not reopen")
+        field.tap()
+        field.press(forDuration: 1.1)
+        if app.menuItems["Select All"].waitForExistence(timeout: 2) {
+            app.menuItems["Select All"].tap()
+        }
+        field.typeText(replacement)
+        app.buttons["Save"].firstMatch.tap()
+    }
+
+    private func waitForUpload() {
+        let done = expectation(description: "reminder upload")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12) { done.fulfill() }
+        wait(for: [done], timeout: 20)
     }
 
     private func visibleActionTitle(for identifier: String) -> String {
