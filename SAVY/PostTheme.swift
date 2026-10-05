@@ -409,7 +409,7 @@ enum PostThemeCatalog {
             id: "mental-model",
             name: "Mental Model",
             questions: [
-                PostThemeQuestion(prompt: "What situation to we want to try a different mental model on?", symbol: "mappin.and.ellipse"),
+                PostThemeQuestion(prompt: "What situation do I want to approach differently?", symbol: "mappin.and.ellipse"),
                 PostThemeQuestion(prompt: "Which mental model have I chosen to adopt?", symbol: "lightbulb"),
                 PostThemeQuestion(prompt: "How do I intend this new perspective to help?", symbol: "arrow.up.right"),
             ]
