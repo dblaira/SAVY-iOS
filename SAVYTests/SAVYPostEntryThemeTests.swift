@@ -51,12 +51,12 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         XCTAssertEqual(fiveWs.questions[3].prompt, "Why did it happen?")
     }
 
-    func testEveryThemeHasAtLeastFourQuestionsAndAUniqueID() {
-        XCTAssertGreaterThanOrEqual(PostThemeCatalog.themes.count, 5, "Seed catalog ships the original 8 plus Adam's 11–30")
+    func testEveryThemeHasItsExpectedQuestionCountAndAUniqueID() {
         for theme in PostThemeCatalog.themes {
-            XCTAssertGreaterThanOrEqual(
-                theme.questions.count, 4,
-                "\(theme.name) needs at least four questions"
+            let expectedCount = theme.id == "five-ws" ? 5 : (theme.id == "mental-model" ? 3 : 4)
+            XCTAssertEqual(
+                theme.questions.count, expectedCount,
+                "\(theme.name) must keep its intended question count"
             )
         }
         let ids = PostThemeCatalog.themes.map(\.id)
@@ -88,9 +88,10 @@ final class SAVYPostEntryThemeTests: XCTestCase {
             "Frequently Misunderstood Concepts",
             "Your Personal Take & Lessons Learned",
         ]
-        XCTAssertEqual(PostThemeCatalog.themes.count, 28, "8 original themes + Adam's 20")
-        XCTAssertEqual(Array(PostThemeCatalog.themes.suffix(20).map(\.name)), expectedNewNames)
-        for theme in PostThemeCatalog.themes.suffix(20) {
+        XCTAssertEqual(PostThemeCatalog.themes.count, 29, "8 original themes + Adam's 20 + Mental Model")
+        let septemberThemes = PostThemeCatalog.themes.dropFirst(8).prefix(20)
+        XCTAssertEqual(Array(septemberThemes.map(\.name)), expectedNewNames)
+        for theme in septemberThemes {
             XCTAssertEqual(theme.questions.count, 4, "\(theme.name) asks exactly four questions")
         }
 
@@ -183,7 +184,7 @@ final class SAVYPostEntryThemeTests: XCTestCase {
 
     func testThemeSwitchingRetainsEachThemesOwnEdits() throws {
         let first = PostThemeCatalog.defaultTheme
-        let second = try XCTUnwrap(PostThemeCatalog.theme(id: "advanced-strategies"))
+        let second = try XCTUnwrap(PostThemeCatalog.theme(id: "mental-model"))
         var draft = PostEntryDraft(entry: Reminder())
         let firstAnswer = first.questions[0].prompt + "\n\nThe first theme's answer."
         let secondAnswer = second.questions[0].prompt + "\n\nThe second theme's answer."

@@ -22,7 +22,7 @@ final class SAVYPostFormUITests: XCTestCase {
         "Core Principles Explained", "Debunking Popular Industry Beliefs", "History of the Topic",
         "Alternative Approaches", "Step-by-Step Breakdown", "Checklist for Breakdown",
         "Checklist for Beginners", "Advanced Strategies", "Frequently Misunderstood Concepts",
-        "Your Personal Take & Lessons Learned",
+        "Your Personal Take & Lessons Learned", "Mental Model",
     ]
 
     override func setUpWithError() throws {
@@ -125,6 +125,13 @@ final class SAVYPostFormUITests: XCTestCase {
         assertPrefilledQuestion("What success can they demonstrate and describe in their own words?", at: 3)
         XCTAssertFalse(element("DecideAnswer4").exists, "Customer Success Story asks exactly four questions")
         attach("03 customer success story prefilled questions")
+
+        selectTheme("Mental Model")
+        for (index, heading) in ["Situation", "Mental model", "Intended benefit"].enumerated() {
+            assertPrefilledQuestion(heading, at: index)
+        }
+        XCTAssertFalse(element("DecideAnswer3").exists, "Mental Model asks exactly three questions")
+        attach("04 mental model prefilled headings")
     }
 
     /// Replaces the older + → 280-character SocialPost composer requirement.
@@ -442,7 +449,7 @@ final class SAVYPostFormUITests: XCTestCase {
             let end = origin.withOffset(CGVector(dx: x - app.frame.minX, dy: endY - app.frame.minY))
             start.press(forDuration: 0.1, thenDragTo: end)
         }
-        XCTFail("\(name) was not reachable in the 28-theme menu")
+        XCTFail("\(name) was not reachable in the \(themeNames.count)-theme menu")
     }
 
     @discardableResult

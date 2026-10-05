@@ -257,7 +257,7 @@ final class SAVYConnectionStoreTests: XCTestCase {
         let blank = PostEntryDraft(entry: Reminder(), fixedTheme: ConnectionEntry.theme)
         XCTAssertEqual(blank.answers, ConnectionEntry.theme.prefilledAnswers)
         XCTAssertFalse(blank.hasUserContent)
-        XCTAssertEqual(PostThemeCatalog.themes.count, 28)
+        XCTAssertEqual(PostThemeCatalog.themes.count, 29)
         XCTAssertNil(PostThemeCatalog.theme(id: ConnectionEntry.theme.id))
         XCTAssertEqual(ReminderKind.allCases, [.reminder, .action, .event, .post])
         XCTAssertEqual(PostEntryDraft(entry: Reminder()).theme, PostThemeCatalog.defaultTheme)
