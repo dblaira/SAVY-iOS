@@ -127,11 +127,16 @@ final class SAVYPostFormUITests: XCTestCase {
         attach("03 customer success story prefilled questions")
 
         selectTheme("Mental Model")
-        for (index, heading) in ["Situation", "Mental model", "Intended benefit"].enumerated() {
-            assertPrefilledQuestion(heading, at: index)
+        let mentalModelQuestions = [
+            "What situation do we want to try a different mental model on?",
+            "Which mental model have I chosen to adopt?",
+            "How do I intend this new perspective to help?",
+        ]
+        for (index, question) in mentalModelQuestions.enumerated() {
+            assertPrefilledQuestion(question, at: index)
         }
         XCTAssertFalse(element("DecideAnswer3").exists, "Mental Model asks exactly three questions")
-        attach("04 mental model prefilled headings")
+        attach("04 mental model prefilled questions")
     }
 
     /// Replaces the older + → 280-character SocialPost composer requirement.
