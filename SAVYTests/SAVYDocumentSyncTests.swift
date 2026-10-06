@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 @testable import SAVY
 
 /// Mirrors the gateway: an incoming entry replaces the stored one only when it is strictly newer.
@@ -150,6 +151,30 @@ final class SAVYDocumentSyncTests: XCTestCase {
                        ["beliefs", "news-channel", "ontology", "field-essays"])
         XCTAssertGreaterThanOrEqual(mac.allocator.lastIssuedNumber, phonePostNumber)
         XCTAssertEqual(try mac.posts.posts.map(SyncJSON.encode), try phone.posts.posts.map(SyncJSON.encode))
+    }
+
+    @MainActor
+    func testBackgroundPreferenceNotificationsReachSyncOnMainThread() async throws {
+        let device = try Device(name: "background-preferences")
+        defer { device.tearDown() }
+        let received = expectation(description: "Both preferences adapters receive on the main thread")
+        received.expectedFulfillmentCount = 2
+        var subscriptions = Set<AnyCancellable>()
+        let adapters: [any SavySyncAdapter] = [
+            CardPreferencesSyncAdapter(defaults: device.cardDefaults),
+            PersonalAuthoritySyncAdapter(defaults: device.authorityDefaults)
+        ]
+        for adapter in adapters {
+            adapter.localChanges.sink {
+                XCTAssertTrue(Thread.isMainThread)
+                received.fulfill()
+            }.store(in: &subscriptions)
+        }
+        DispatchQueue.global().async {
+            NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: nil)
+        }
+        await fulfillment(of: [received], timeout: 3)
+        withExtendedLifetime(subscriptions) {}
     }
 
     @MainActor

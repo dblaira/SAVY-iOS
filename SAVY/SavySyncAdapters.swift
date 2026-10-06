@@ -223,6 +223,7 @@ final class CardPreferencesSyncAdapter: SavySyncAdapter {
 
     var localChanges: AnyPublisher<Void, Never> {
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: RunLoop.main)
             .map { _ in () }
             .eraseToAnyPublisher()
     }
@@ -302,6 +303,7 @@ final class PersonalAuthoritySyncAdapter: SavySyncAdapter {
 
     var localChanges: AnyPublisher<Void, Never> {
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: RunLoop.main)
             .map { _ in () }
             .eraseToAnyPublisher()
     }
