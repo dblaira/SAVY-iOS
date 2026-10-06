@@ -158,10 +158,10 @@ struct ReminderFormView: View {
     // MARK: - Shared entry flow
 
     private var entryLabel: String { connectionMode ? "Connection" : r.kind.label }
-    private var hasDecideQuestions: Bool { connectionMode || r.kind == .post }
+    private var hasDecideQuestions: Bool { true }
 
     @ViewBuilder private var unifiedEntrySections: some View {
-        // Post leads with its theme and Decide questions, followed by shared entry fields.
+        // Every entry leads with its theme and Decide questions, followed by shared fields.
         if hasDecideQuestions {
             postThemeSection
             postDecideSection
@@ -646,8 +646,8 @@ struct ReminderFormView: View {
                 want: r.title,
                 think: r.whenIAm ?? "",
                 done: r.outcome,
-                postContext: r.kind == .post
-                    ? "Theme: \(r.postThemeName ?? "Post")\n\nDecide\n\n" + r.postQuestionAndAnswers.joined(separator: "\n\n")
+                postContext: r.postThemeID != nil
+                    ? "Theme: \(r.postThemeName ?? "Theme")\n\nDecide\n\n" + r.postQuestionAndAnswers.joined(separator: "\n\n")
                     : nil
             )
             HarnessedRegistry.mark(r)

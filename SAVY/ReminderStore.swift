@@ -415,6 +415,9 @@ final class ReminderStore: ObservableObject {
                 reminder.whenIAm = reminder.whenIAm ?? localCopy.whenIAm
                 reminder.marksClearSignOfSuccess = reminder.marksClearSignOfSuccess ?? localCopy.marksClearSignOfSuccess
                 reminder.marksCompounding = reminder.marksCompounding ?? localCopy.marksCompounding
+            }
+            // Preserve omitted theme context for every kind; a kind change uses the remote payload.
+            if reminder.kind == localCopy.kind {
                 if reminder.postThemeID == nil { reminder.postThemeID = localCopy.postThemeID }
                 if reminder.postThemeName == nil { reminder.postThemeName = localCopy.postThemeName }
                 if reminder.postAnswers == nil {

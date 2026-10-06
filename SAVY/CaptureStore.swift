@@ -83,10 +83,10 @@ struct TechnicalCaptureMetadata: Codable, Equatable, Sendable {
 
     init(reminder: Reminder) {
         self.kind = reminder.kind
-        self.postThemeID = reminder.kind == .post ? reminder.postThemeID : nil
-        self.postThemeName = reminder.kind == .post ? reminder.postThemeName : nil
-        self.postAnswers = reminder.kind == .post ? reminder.postQuestionAndAnswers : nil
-        self.postAnswersContainQuestions = reminder.kind == .post ? true : nil
+        self.postThemeID = reminder.postThemeID
+        self.postThemeName = reminder.postThemeName
+        self.postAnswers = reminder.postAnswers != nil ? reminder.postQuestionAndAnswers : nil
+        self.postAnswersContainQuestions = reminder.postAnswers != nil ? true : nil
         self.priority = reminder.priority
         self.energy = reminder.energy
         self.flags = TechnicalCaptureFlags(reminder: reminder)

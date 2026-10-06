@@ -287,14 +287,14 @@ enum ReminderScheduleSync {
 extension Reminder {
     /// Complete Decide context, including catalog questions for answer-only legacy posts.
     var postQuestionAndAnswers: [String] {
-        guard kind == .post else { return [] }
+        guard postThemeID != nil || postAnswers != nil else { return [] }
         guard let theme = PostThemeCatalog.theme(id: postThemeID) else { return postAnswers ?? [] }
         return theme.questionAndAnswers(from: postAnswers, containQuestions: postAnswersContainQuestions == true)
     }
 
     /// Display-only answer portions for the post card; never use these to overwrite saved text.
     var postAnswerTexts: [String] {
-        guard kind == .post else { return [] }
+        guard postThemeID != nil || postAnswers != nil else { return [] }
         let theme = PostThemeCatalog.theme(id: postThemeID)
         guard theme != nil || postAnswersContainQuestions == true else {
             return (postAnswers ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

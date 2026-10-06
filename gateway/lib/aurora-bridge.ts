@@ -854,12 +854,11 @@ export async function upsertReminderForUser(
            when_messaging_person = EXCLUDED.when_messaging_person,
            kind = EXCLUDED.kind,
            post_number = COALESCE(savy.reminders.post_number, EXCLUDED.post_number),
-           post_theme_id = CASE WHEN EXCLUDED.kind = 'post' THEN COALESCE(EXCLUDED.post_theme_id, savy.reminders.post_theme_id) END,
-           post_theme_name = CASE WHEN EXCLUDED.kind = 'post' THEN COALESCE(EXCLUDED.post_theme_name, savy.reminders.post_theme_name) END,
-           post_answers = CASE WHEN EXCLUDED.kind = 'post' THEN COALESCE(EXCLUDED.post_answers, savy.reminders.post_answers) END,
-           post_answers_contain_questions = CASE WHEN EXCLUDED.kind = 'post' THEN
-             CASE WHEN EXCLUDED.post_answers IS NULL THEN savy.reminders.post_answers_contain_questions
-                  ELSE EXCLUDED.post_answers_contain_questions END END,
+           post_theme_id = COALESCE(EXCLUDED.post_theme_id, savy.reminders.post_theme_id),
+           post_theme_name = COALESCE(EXCLUDED.post_theme_name, savy.reminders.post_theme_name),
+           post_answers = COALESCE(EXCLUDED.post_answers, savy.reminders.post_answers),
+           post_answers_contain_questions = CASE WHEN EXCLUDED.post_answers IS NULL THEN savy.reminders.post_answers_contain_questions
+                  ELSE EXCLUDED.post_answers_contain_questions END,
            end_time = CASE WHEN EXCLUDED.schedule_version IS NULL AND savy.reminders.schedule_version = 1
              THEN savy.reminders.end_time ELSE EXCLUDED.end_time END,
            schedule = CASE WHEN EXCLUDED.schedule_version = 1 THEN EXCLUDED.schedule ELSE savy.reminders.schedule END,
@@ -907,10 +906,10 @@ export async function upsertReminderForUser(
           input.seeded_from_template_id,
           input.status,
           input.completed_at,
-          input.kind === "post" ? input.post_theme_id : null,
-          input.kind === "post" ? input.post_theme_name : null,
-          input.kind === "post" ? input.post_answers : null,
-          input.kind === "post" ? input.post_answers_contain_questions : null,
+          input.post_theme_id,
+          input.post_theme_name,
+          input.post_answers,
+          input.post_answers_contain_questions,
           input.post_number,
           scheduleFields.schedule == null ? null : JSON.stringify(scheduleFields.schedule),
           scheduleFields.schedule_version ?? null,

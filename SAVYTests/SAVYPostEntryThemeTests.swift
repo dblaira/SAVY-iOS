@@ -53,7 +53,7 @@ final class SAVYPostEntryThemeTests: XCTestCase {
 
     func testEveryThemeHasItsExpectedQuestionCountAndAUniqueID() {
         for theme in PostThemeCatalog.themes {
-            let expectedCount = theme.id == "five-ws" ? 5 : (theme.id == "mental-model" ? 3 : 4)
+            let expectedCount = theme.id == "five-ws" ? 5 : (["mental-model", "pattern-recognition"].contains(theme.id) ? 3 : 4)
             XCTAssertEqual(
                 theme.questions.count, expectedCount,
                 "\(theme.name) must keep its intended question count"
@@ -88,7 +88,7 @@ final class SAVYPostEntryThemeTests: XCTestCase {
             "Frequently Misunderstood Concepts",
             "Your Personal Take & Lessons Learned",
         ]
-        XCTAssertEqual(PostThemeCatalog.themes.count, 29, "8 original themes + Adam's 20 + Mental Model")
+        XCTAssertEqual(PostThemeCatalog.themes.count, 31, "8 original themes + Adam's 20 + Mental Model + October additions")
         let septemberThemes = PostThemeCatalog.themes.dropFirst(8).prefix(20)
         XCTAssertEqual(Array(septemberThemes.map(\.name)), expectedNewNames)
         for theme in septemberThemes {
@@ -540,6 +540,22 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         let cachedEntries = try JSONDecoder.recall.decode([Reminder].self, from: Data(contentsOf: cacheURL))
         let cached = try XCTUnwrap(cachedEntries.first { $0.id == local.id })
         return (merged, cached, await repository.upserts)
+    }
+
+    func testThemesSaveAndReopenAcrossEveryEntryKind() throws {
+        for kind in ReminderKind.allCases {
+            var entry = Reminder()
+            entry.kind = kind
+            var draft = PostEntryDraft(entry: entry)
+            draft.selectTheme("pattern-recognition")
+            draft.setAnswer("What new pattern has emerged?\nMy exact answer.", at: 0)
+            draft.apply(to: &entry)
+            let reopened = try JSONDecoder.recall.decode(Reminder.self, from: JSONEncoder.recall.encode(entry))
+            XCTAssertEqual(reopened.kind, kind)
+            XCTAssertEqual(reopened.postThemeID, "pattern-recognition")
+            XCTAssertEqual(PostEntryDraft(entry: reopened).answers, draft.answers)
+            XCTAssertEqual(reopened.postAnswerTexts.first, "My exact answer.")
+        }
     }
 
     // MARK: - Non-Post types stay as today

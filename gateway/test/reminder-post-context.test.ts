@@ -46,10 +46,11 @@ describe("saved Post context", () => {
     assert.equal(normalizeReminderInput({ post_answers: ["Question", 17] as never }).post_answers, null);
   });
 
-  it("passes exact Post data into the database and returns it through record retrieval", async () => {
+  for (const kind of ["reminder", "action", "event", "post"]) {
+  it(`preserves exact theme data for ${kind} through database save and retrieval`, async () => {
     const previousHost = process.env.AURORA_HOST;
     process.env.AURORA_HOST = "postgresql://localhost/savy-post-contract-test";
-    const input = postInput();
+    const input = { ...postInput(), kind };
     let persisted: Record<string, unknown> | undefined;
     let checkedRead = false;
     const connection = {
@@ -57,6 +58,7 @@ describe("saved Post context", () => {
         if (sql.includes("INSERT INTO savy.reminders")) {
           const columns = sql.match(/INSERT INTO savy\.reminders \(([\s\S]*?)\) VALUES/)![1].split(",").map((column) => column.trim());
           persisted = Object.fromEntries(columns.map((column, index) => [column, values[index]]));
+          assert.equal(persisted.kind, kind);
           assert.deepEqual(persisted.post_answers, savedFields);
           assert.equal(persisted.post_answers_contain_questions, true);
           assert.equal(persisted.post_theme_id, input.post_theme_id);
@@ -94,4 +96,5 @@ describe("saved Post context", () => {
       else process.env.AURORA_HOST = previousHost;
     }
   });
+  }
 });

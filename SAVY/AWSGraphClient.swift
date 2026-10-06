@@ -694,10 +694,10 @@ private struct GatewayReminderPayload: Encodable {
         locationName = reminder.locationName
         kind = reminder.kind.rawValue
         postNumber = reminder.postNumber.flatMap { (1...2_147_483_647).contains($0) ? $0 : nil }
-        postThemeID = reminder.kind == .post ? reminder.postThemeID : nil
-        postThemeName = reminder.kind == .post ? reminder.postThemeName : nil
-        postAnswers = reminder.kind == .post ? reminder.postQuestionAndAnswers : nil
-        postAnswersContainQuestions = reminder.kind == .post ? true : nil
+        postThemeID = reminder.postThemeID
+        postThemeName = reminder.postThemeName
+        postAnswers = reminder.postAnswers != nil ? reminder.postQuestionAndAnswers : nil
+        postAnswersContainQuestions = reminder.postAnswers != nil ? true : nil
         endTime = GatewayReminderDates.timeOnly(reminder.endTime)
         if reminder.schedule != nil || reminder.scheduleSyncVersion != nil {
             schedule = GatewayOptionalSchedule(value: reminder.schedule.map(GatewayReminderSchedule.init))

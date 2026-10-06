@@ -119,7 +119,7 @@ struct PostEntryDraft {
 
 /// The seed catalog. Add a theme here (or grow this into a loaded file later) and it appears in
 /// the Post form's Theme picker — no new screens. Most themes ask four questions; The 5 Ws asks five
-/// and Mental Model asks three.
+/// and Mental Model and Pattern Recognition ask three.
 enum PostThemeCatalog {
     static let themes: [PostTheme] = [
         PostTheme(
@@ -412,6 +412,25 @@ enum PostThemeCatalog {
                 PostThemeQuestion(prompt: "What situation do I want to approach differently?", symbol: "mappin.and.ellipse"),
                 PostThemeQuestion(prompt: "Which mental model have I chosen to adopt?", symbol: "lightbulb"),
                 PostThemeQuestion(prompt: "How do I intend this new perspective to help?", symbol: "arrow.up.right"),
+            ]
+        ),
+        PostTheme(
+            id: "inductive-reasoning",
+            name: "Inductive Reasoning",
+            questions: [
+                PostThemeQuestion(prompt: "Why does this feel special?", symbol: "sparkles"),
+                PostThemeQuestion(prompt: "What difference does it make?", symbol: "arrow.left.arrow.right"),
+                PostThemeQuestion(prompt: "What can I do now?", symbol: "figure.walk"),
+                PostThemeQuestion(prompt: "How much value can I keep from what I build?", symbol: "diamond"),
+            ]
+        ),
+        PostTheme(
+            id: "pattern-recognition",
+            name: "Pattern Recognition",
+            questions: [
+                PostThemeQuestion(prompt: "What new pattern has emerged?", symbol: "lightbulb"),
+                PostThemeQuestion(prompt: "How has the pattern changed?", symbol: "arrow.left.arrow.right"),
+                PostThemeQuestion(prompt: "When does the value of the new pattern exceed the old?", symbol: "arrow.up.right"),
             ]
         ),
     ]
