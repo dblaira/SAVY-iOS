@@ -88,6 +88,11 @@ export function normalizeReminderInput(body: Partial<ReminderUpsertInput>): Remi
     post_answers_contain_questions: typeof body.post_answers_contain_questions === "boolean"
       ? body.post_answers_contain_questions : null,
     end_time: body.end_time ?? null,
+    created_at: typeof body.created_at === "string" && Number.isFinite(Date.parse(body.created_at))
+      ? new Date(body.created_at).toISOString() : null,
+    when_i_am: typeof body.when_i_am === "string" ? body.when_i_am : null,
+    marks_clear_sign_of_success: typeof body.marks_clear_sign_of_success === "boolean" ? body.marks_clear_sign_of_success : null,
+    marks_compounding: typeof body.marks_compounding === "boolean" ? body.marks_compounding : null,
     outcome: body.outcome ?? null,
     effort: body.effort ?? null,
     energy: body.energy ?? null,

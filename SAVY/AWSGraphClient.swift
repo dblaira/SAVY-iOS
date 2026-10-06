@@ -638,6 +638,9 @@ private struct GatewayReminderPayload: Encodable {
     let endTime: String?
     let schedule: GatewayOptionalSchedule?
     let scheduleVersion: Int?
+    let whenIAm: String?
+    let marksClearSignOfSuccess: Bool?
+    let marksCompounding: Bool?
     let outcome: String?
     let effort: String?
     let energy: String?
@@ -649,12 +652,16 @@ private struct GatewayReminderPayload: Encodable {
     let seededFromTemplateID: String?
     let status: String
     let completedAt: String?
+    let createdAt: String
     let tags: [String]
     let subtasks: [GatewayReminderSubtaskRow]
     let email: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, notes, url, urgent, kind, outcome, effort, energy, context, pinned, status, tags, subtasks, email
+        case whenIAm = "when_i_am"
+        case marksClearSignOfSuccess = "marks_clear_sign_of_success"
+        case marksCompounding = "marks_compounding"
         case imagePath = "image_path"
         case dueDate = "due_date"
         case dueTime = "due_time"
@@ -676,6 +683,7 @@ private struct GatewayReminderPayload: Encodable {
         case upNextOrder = "up_next_order"
         case seededFromTemplateID = "seeded_from_template_id"
         case completedAt = "completed_at"
+        case createdAt = "created_at"
     }
 
     init(reminder: Reminder, email: String?) {
@@ -706,6 +714,10 @@ private struct GatewayReminderPayload: Encodable {
             schedule = nil
             scheduleVersion = nil
         }
+        whenIAm = reminder.whenIAm
+        marksClearSignOfSuccess = reminder.marksClearSignOfSuccess
+        marksCompounding = reminder.marksCompounding
+        createdAt = GatewayReminderDates.timestamp(reminder.createdAt)
         outcome = reminder.outcome.nilIfEmpty
         effort = reminder.effort == .none ? nil : reminder.effort.rawValue
         energy = reminder.energy == .none ? nil : reminder.energy.rawValue
@@ -753,6 +765,9 @@ private struct GatewayReminderRow: Decodable {
     let endTime: String?
     let schedule: GatewayReminderSchedule?
     let scheduleVersion: Int?
+    let whenIAm: String?
+    let marksClearSignOfSuccess: Bool?
+    let marksCompounding: Bool?
     let outcome: String?
     let effort: String?
     let energy: String?
@@ -771,6 +786,9 @@ private struct GatewayReminderRow: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case id, title, notes, url, urgent, kind, outcome, effort, energy, context, pinned, status, tags, subtasks
+        case whenIAm = "when_i_am"
+        case marksClearSignOfSuccess = "marks_clear_sign_of_success"
+        case marksCompounding = "marks_compounding"
         case imagePath = "image_path"
         case dueDate = "due_date"
         case dueTime = "due_time"
@@ -814,10 +832,13 @@ private struct GatewayReminderRow: Decodable {
             listName: listName,
             flag: flag,
             priority: Priority(rawValue: priority) ?? .none,
+            whenIAm: whenIAm,
             outcome: outcome ?? "",
             effort: effort.flatMap(Effort.init(rawValue:)) ?? .none,
             energy: energy.flatMap(Energy.init(rawValue:)) ?? .none,
             context: context.flatMap(SuccessStep.init(rawValue:)) ?? .none,
+            marksClearSignOfSuccess: marksClearSignOfSuccess,
+            marksCompounding: marksCompounding,
             deferDate: GatewayReminderDates.parseDateOnly(deferDate),
             waitingOn: waitingOn ?? "",
             locationName: locationName,

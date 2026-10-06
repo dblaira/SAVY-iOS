@@ -238,7 +238,11 @@ final class CardPreferencesSyncAdapter: SavySyncAdapter {
     func stamp(key: String, value: SyncJSON, context: SyncChangeContext) -> SyncStamp {
         switch context {
         case .firstRun(let legacyDevice):
-            return SyncStamp(modifiedAt: legacyDevice ? 1 : 0, uploads: legacyDevice)
+            let automaticPin = key == "home.pinned"
+                && value.stringArray == [HomeSectionPinStore.defaultPinnedSectionID]
+                && defaults.object(forKey: HomeSectionPinStore.orderDefaultsKey) == nil
+            return SyncStamp(modifiedAt: legacyDevice && !automaticPin ? 1 : 0,
+                             uploads: legacyDevice && !automaticPin)
         case .change(let previous, let now):
             return changeStamp(previous, now: now)
         }
@@ -334,7 +338,8 @@ extension SavyDocumentSync {
         connectionStore: ConnectionStore,
         postStore: SocialPostStore,
         storyStore: StoryStore,
-        cardDefaults: UserDefaults
+        cardDefaults: UserDefaults,
+        authorityDefaults: UserDefaults = .standard
     ) -> Bool {
         if !connectionStore.entries.isEmpty || !connectionStore.sourcePinOverrides.isEmpty || !connectionStore.hiddenSourceIDs.isEmpty {
             return true
@@ -342,6 +347,6 @@ extension SavyDocumentSync {
         if !postStore.posts.isEmpty || !storyStore.stories.isEmpty { return true }
         let arrangementKeys = [PostCardOrderStore.defaultsKey, PostCardOrderStore.connectionsDefaultsKey, HomeSectionPinStore.orderDefaultsKey]
         return arrangementKeys.contains { cardDefaults.object(forKey: $0) != nil }
-            || UserDefaults.standard.object(forKey: PersonalAuthorityReviewStore.reviewDefaultsKey) != nil
+            || authorityDefaults.object(forKey: PersonalAuthorityReviewStore.reviewDefaultsKey) != nil
     }
 }

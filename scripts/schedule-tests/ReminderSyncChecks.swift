@@ -259,6 +259,41 @@ struct ReminderSyncChecks {
         let removeAgain = try store("remove-again", unscheduledGateway, cached: [cleared])
         removeAgain.save(legacy)
         check(removeAgain.reminders[0].scheduleSyncVersion == 1, "saving a known Schedule removal retains its sync marker")
+        // Reproduce the installed device mismatch without touching either live cache.
+        for kind in [ReminderKind.reminder, .action, .event, .post] {
+            var original = Reminder(title: "Portable context")
+            original.kind = kind
+            original.createdAt = Date(timeIntervalSince1970: 1_790_000_000)
+            original.updatedAt = original.createdAt
+            original.whenIAm = "When I am learning...I like to connect the dots"
+            original.marksClearSignOfSuccess = true
+            original.marksCompounding = false
+            let wire = try payload(original)
+            check(wire["created_at"] as? String == GatewayReminderDates.timestamp(original.createdAt), "creation time uploads for \(kind.label)")
+            let roundTrip = try row(wire)
+            check(roundTrip.whenIAm == original.whenIAm && roundTrip.marksClearSignOfSuccess == true
+                  && roundTrip.marksCompounding == false, "portable context survives \(kind.label) wire round trip")
+            var stale = original
+            stale.createdAt = original.createdAt.addingTimeInterval(3600)
+            let gateway = FakeReminderGateway([original])
+            let device = try store("stale-\(kind.rawValue)", gateway, cached: [stale])
+            await device.refresh()
+            check(device.reminders[0].createdAt == original.createdAt, "valid older server creation heals \(kind.label) cache")
+            var legacyRemote = original
+            legacyRemote.createdAt = stale.createdAt
+            legacyRemote.whenIAm = nil
+            legacyRemote.marksClearSignOfSuccess = nil
+            legacyRemote.marksCompounding = nil
+            await gateway.setRows([legacyRemote])
+            await device.refresh()
+            let migrated = await gateway.uploaded()
+            check(migrated.last?.createdAt == original.createdAt && migrated.last?.whenIAm == original.whenIAm,
+                  "earlier creation and retained context migrate through \(kind.label) normal upload")
+            let other = try store("fresh-\(kind.rawValue)", gateway)
+            await other.refresh()
+            check(other.reminders[0].createdAt == original.createdAt && other.reminders[0].whenIAm == original.whenIAm,
+                  "fresh \(kind.label) device receives original creation and context")
+        }
         print("\(checks) Reminder Schedule sync checks passed")
     }
 }

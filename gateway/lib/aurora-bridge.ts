@@ -666,6 +666,9 @@ export type ReminderRow = {
   end_time: string | null;
   schedule: ReminderSchedule | null;
   schedule_version: 1 | null;
+  when_i_am?: string | null;
+  marks_clear_sign_of_success?: boolean | null;
+  marks_compounding?: boolean | null;
   outcome: string | null;
   effort: string | null;
   energy: string | null;
@@ -725,6 +728,9 @@ export async function fetchRemindersForUser(userId: string): Promise<ReminderRow
          r.end_time::text,
          r.schedule,
          r.schedule_version,
+         r.when_i_am,
+         r.marks_clear_sign_of_success,
+         r.marks_compounding,
          r.outcome,
          r.effort,
          r.energy,
@@ -802,6 +808,7 @@ export type ReminderUpsertInput = Omit<
   ReminderRow,
   "user_id" | "created_at" | "updated_at" | "tags" | "subtasks" | "schedule" | "schedule_version"
 > & {
+  created_at?: string | null;
   schedule?: ReminderSchedule | null;
   schedule_version?: 1;
   tags?: string[];
@@ -825,7 +832,7 @@ export async function upsertReminderForUser(
            kind, end_time, outcome, effort, energy, context, defer_date, waiting_on,
            pinned, up_next_order, seeded_from_template_id, status, completed_at,
            post_theme_id, post_theme_name, post_answers, post_answers_contain_questions, post_number,
-           schedule, schedule_version
+           schedule, schedule_version, created_at, when_i_am, marks_clear_sign_of_success, marks_compounding
          ) VALUES (
            $1::uuid, $2, $3, $4, $5, $6,
            $7::date, $8::time, $9, $10, $11,
@@ -833,9 +840,13 @@ export async function upsertReminderForUser(
            $17, $18::time, $19, $20, $21, $22, $23::date, $24,
            $25, $26, $27, $28, $29::timestamptz,
            $30, $31, $32::text[], $33::boolean, $34::integer,
-           $35::jsonb, $36::smallint
+           $35::jsonb, $36::smallint, COALESCE($37::timestamptz, NOW()), $38, $39::boolean, $40::boolean
          )
          ON CONFLICT (id) DO UPDATE SET
+           created_at = LEAST(savy.reminders.created_at, EXCLUDED.created_at),
+           when_i_am = COALESCE(EXCLUDED.when_i_am, savy.reminders.when_i_am),
+           marks_clear_sign_of_success = COALESCE(EXCLUDED.marks_clear_sign_of_success, savy.reminders.marks_clear_sign_of_success),
+           marks_compounding = COALESCE(EXCLUDED.marks_compounding, savy.reminders.marks_compounding),
            title = EXCLUDED.title,
            notes = EXCLUDED.notes,
            url = EXCLUDED.url,
@@ -913,6 +924,10 @@ export async function upsertReminderForUser(
           input.post_number,
           scheduleFields.schedule == null ? null : JSON.stringify(scheduleFields.schedule),
           scheduleFields.schedule_version ?? null,
+          input.created_at ?? null,
+          input.when_i_am ?? null,
+          input.marks_clear_sign_of_success ?? null,
+          input.marks_compounding ?? null,
         ]
       );
 

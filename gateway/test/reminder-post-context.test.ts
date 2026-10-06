@@ -14,6 +14,9 @@ function postInput() {
   return normalizeReminderInput({
     id: "11111111-1111-4111-8111-111111111111", kind: "post",
     post_number: 6,
+    created_at: "2026-09-19T00:42:39Z",
+    when_i_am: "When I am learning...I like to connect the dots",
+    marks_clear_sign_of_success: true, marks_compounding: false,
     post_theme_id: "audience-poll-survey-results", post_theme_name: "Audience Poll or Survey Results",
     post_answers: savedFields, post_answers_contain_questions: true,
   });
@@ -59,6 +62,11 @@ describe("saved Post context", () => {
           const columns = sql.match(/INSERT INTO savy\.reminders \(([\s\S]*?)\) VALUES/)![1].split(",").map((column) => column.trim());
           persisted = Object.fromEntries(columns.map((column, index) => [column, values[index]]));
           assert.equal(persisted.kind, kind);
+          assert.equal(persisted.created_at, input.created_at);
+          assert.equal(persisted.when_i_am, input.when_i_am);
+          assert.equal(persisted.marks_clear_sign_of_success, true);
+          assert.equal(persisted.marks_compounding, false);
+          assert.match(sql, /created_at = LEAST\(savy.reminders.created_at, EXCLUDED.created_at\)/);
           assert.deepEqual(persisted.post_answers, savedFields);
           assert.equal(persisted.post_answers_contain_questions, true);
           assert.equal(persisted.post_theme_id, input.post_theme_id);
@@ -90,6 +98,8 @@ describe("saved Post context", () => {
       assert.equal(loaded.post_answers_contain_questions, true);
       assert.equal(loaded.post_theme_name, input.post_theme_name);
       assert.equal(loaded.post_number, 6);
+      assert.equal(loaded.when_i_am, input.when_i_am);
+      assert.equal(loaded.marks_compounding, false);
     } finally {
       connect.mock.restore();
       if (previousHost === undefined) delete process.env.AURORA_HOST;

@@ -411,13 +411,28 @@ final class ReminderStore: ObservableObject {
                     reminder.postNumber = number
                     reminder.needsSync = true
                 }
+            }
+            // Creation is immutable identity metadata. Older gateways stamped first upload,
+            // and an old parser stamped first fetch. Converge to the earliest known creation
+            // through the normal gateway rather than retaining a different date on each device.
+            if localCopy.createdAt < reminder.createdAt {
                 reminder.createdAt = localCopy.createdAt
-                reminder.whenIAm = reminder.whenIAm ?? localCopy.whenIAm
-                reminder.marksClearSignOfSuccess = reminder.marksClearSignOfSuccess ?? localCopy.marksClearSignOfSuccess
-                reminder.marksCompounding = reminder.marksCompounding ?? localCopy.marksCompounding
+                reminder.needsSync = true
             }
             // Preserve omitted theme context for every kind; a kind change uses the remote payload.
             if reminder.kind == localCopy.kind {
+                if reminder.whenIAm == nil, let value = localCopy.whenIAm {
+                    reminder.whenIAm = value
+                    reminder.needsSync = true
+                }
+                if reminder.marksClearSignOfSuccess == nil, let value = localCopy.marksClearSignOfSuccess {
+                    reminder.marksClearSignOfSuccess = value
+                    reminder.needsSync = true
+                }
+                if reminder.marksCompounding == nil, let value = localCopy.marksCompounding {
+                    reminder.marksCompounding = value
+                    reminder.needsSync = true
+                }
                 if reminder.postThemeID == nil { reminder.postThemeID = localCopy.postThemeID }
                 if reminder.postThemeName == nil { reminder.postThemeName = localCopy.postThemeName }
                 if reminder.postAnswers == nil {

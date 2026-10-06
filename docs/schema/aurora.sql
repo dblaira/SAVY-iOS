@@ -111,6 +111,9 @@ CREATE TABLE IF NOT EXISTS savy.reminders (
   kind                    TEXT NOT NULL DEFAULT 'reminder'
     CHECK (kind IN ('reminder', 'action', 'event', 'post')),
   post_number             INTEGER CONSTRAINT reminders_post_number_positive CHECK (post_number > 0),
+  when_i_am               TEXT,
+  marks_clear_sign_of_success BOOLEAN,
+  marks_compounding       BOOLEAN,
   post_theme_id           TEXT,
   post_theme_name         TEXT,
   post_answers            TEXT[],

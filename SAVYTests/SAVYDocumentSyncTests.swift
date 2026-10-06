@@ -62,8 +62,8 @@ private final class Device {
 
     func connect(to client: any SavyDocumentSyncClient) {
         let legacy = SavyDocumentSync.holdsLocalRecords(
-            connectionStore: connections, postStore: posts, storyStore: stories, cardDefaults: cardDefaults
-        ) || authorityDefaults.object(forKey: PersonalAuthorityReviewStore.reviewDefaultsKey) != nil
+            connectionStore: connections, postStore: posts, storyStore: stories, cardDefaults: cardDefaults, authorityDefaults: authorityDefaults
+        )
         sync = SavyDocumentSync(
             adapters: [
                 ConnectionsSyncAdapter(store: connections),
@@ -150,6 +150,21 @@ final class SAVYDocumentSyncTests: XCTestCase {
                        ["beliefs", "news-channel", "ontology", "field-essays"])
         XCTAssertGreaterThanOrEqual(mac.allocator.lastIssuedNumber, phonePostNumber)
         XCTAssertEqual(try mac.posts.posts.map(SyncJSON.encode), try phone.posts.posts.map(SyncJSON.encode))
+    }
+
+    @MainActor
+    func testAutomaticHomePinDoesNotUploadEvenWithExistingContent() throws {
+        let device = try Device(name: "legacy-default-pin")
+        defer { device.tearDown() }
+        _ = HomeSectionPinStore(defaults: device.cardDefaults)
+        let adapter = CardPreferencesSyncAdapter(defaults: device.cardDefaults)
+        let value = try XCTUnwrap(adapter.snapshot()["home.pinned"])
+        let stamp = adapter.stamp(key: "home.pinned", value: value, context: .firstRun(legacyDevice: true))
+        XCTAssertFalse(stamp.uploads)
+        XCTAssertEqual(stamp.modifiedAt, 0)
+        // A deliberate later change still takes precedence over the received arrangement.
+        XCTAssertTrue(adapter.stamp(key: "home.pinned", value: value,
+                                   context: .change(previous: nil, now: 100)).uploads)
     }
 
     @MainActor
