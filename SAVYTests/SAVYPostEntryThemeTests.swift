@@ -88,7 +88,7 @@ final class SAVYPostEntryThemeTests: XCTestCase {
             "Frequently Misunderstood Concepts",
             "Your Personal Take & Lessons Learned",
         ]
-        XCTAssertEqual(PostThemeCatalog.themes.count, 31, "8 original themes + Adam's 20 + Mental Model + October additions")
+        XCTAssertEqual(PostThemeCatalog.themes.count, 32, "8 original themes + Adam's 20 + Mental Model + October additions")
         let septemberThemes = PostThemeCatalog.themes.dropFirst(8).prefix(20)
         XCTAssertEqual(Array(septemberThemes.map(\.name)), expectedNewNames)
         for theme in septemberThemes {
@@ -543,18 +543,25 @@ final class SAVYPostEntryThemeTests: XCTestCase {
     }
 
     func testThemesSaveAndReopenAcrossEveryEntryKind() throws {
-        for kind in ReminderKind.allCases {
-            var entry = Reminder()
-            entry.kind = kind
-            var draft = PostEntryDraft(entry: entry)
-            draft.selectTheme("pattern-recognition")
-            draft.setAnswer("What new pattern has emerged?\nMy exact answer.", at: 0)
-            draft.apply(to: &entry)
-            let reopened = try JSONDecoder.recall.decode(Reminder.self, from: JSONEncoder.recall.encode(entry))
-            XCTAssertEqual(reopened.kind, kind)
-            XCTAssertEqual(reopened.postThemeID, "pattern-recognition")
-            XCTAssertEqual(PostEntryDraft(entry: reopened).answers, draft.answers)
-            XCTAssertEqual(reopened.postAnswerTexts.first, "My exact answer.")
+        for theme in PostThemeCatalog.themes {
+            for kind in ReminderKind.allCases {
+                var entry = Reminder()
+                entry.kind = kind
+                var draft = PostEntryDraft(entry: entry)
+                draft.selectTheme(theme.id)
+                draft.apply(to: &entry)
+                XCTAssertEqual(entry.postAnsweredCount, 0, "Labels and questions alone are not answers")
+                for index in theme.questions.indices {
+                    draft.setAnswer(theme.questions[index].prompt + "\nMy exact answer \(index).", at: index)
+                }
+                draft.apply(to: &entry)
+                let reopened = try JSONDecoder.recall.decode(Reminder.self, from: JSONEncoder.recall.encode(entry))
+                XCTAssertEqual(reopened.kind, kind)
+                XCTAssertEqual(reopened.postThemeID, theme.id)
+                XCTAssertEqual(PostEntryDraft(entry: reopened).answers, draft.answers)
+                XCTAssertEqual(reopened.postAnswerTexts, theme.questions.indices.map { "My exact answer \($0)." })
+                XCTAssertEqual(reopened.postAnsweredCount, theme.questions.count)
+            }
         }
     }
 

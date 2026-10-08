@@ -433,6 +433,28 @@ enum PostThemeCatalog {
                 PostThemeQuestion(prompt: "When does the value of the new pattern exceed the old?", symbol: "arrow.up.right"),
             ]
         ),
+        PostTheme(
+            id: "a-strong-yes",
+            name: "A Strong Yes",
+            questions: [
+                PostThemeQuestion(
+                    prompt: "Problem\nWhat part of the process creates the most cognitive load?",
+                    symbol: "exclamationmark.triangle"
+                ),
+                PostThemeQuestion(
+                    prompt: "Pattern Interrupt\nWhat new data interrupts the pattern, by offering a new possibility?",
+                    symbol: "lightbulb"
+                ),
+                PostThemeQuestion(
+                    prompt: "Opportunity\nIs this an A+ opportunity. While trying to implement the new process does my energy rise, fall, or remain undisturbed?",
+                    symbol: "arrow.up.right"
+                ),
+                PostThemeQuestion(
+                    prompt: "Pay off\nDoes thinking, and working on this new process create a sense of FLOW that pulls me and yet also leaves me more capable and ambitious? I just can't get enough?",
+                    symbol: "sparkles"
+                ),
+            ]
+        ),
     ]
 
     /// The theme a fresh Post starts on — the mockup's default.

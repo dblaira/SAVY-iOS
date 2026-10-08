@@ -22,7 +22,8 @@ final class SAVYPostFormUITests: XCTestCase {
         "Core Principles Explained", "Debunking Popular Industry Beliefs", "History of the Topic",
         "Alternative Approaches", "Step-by-Step Breakdown", "Checklist for Breakdown",
         "Checklist for Beginners", "Advanced Strategies", "Frequently Misunderstood Concepts",
-        "Your Personal Take & Lessons Learned", "Mental Model",
+        "Your Personal Take & Lessons Learned", "Mental Model", "Inductive Reasoning",
+        "Pattern Recognition", "A Strong Yes",
     ]
 
     override func setUpWithError() throws {
@@ -137,6 +138,43 @@ final class SAVYPostFormUITests: XCTestCase {
         }
         XCTAssertFalse(element("DecideAnswer3").exists, "Mental Model asks exactly three questions")
         attach("04 mental model prefilled questions")
+    }
+
+    func testStrongYesThemePreservesLabelsQuestionsAndAnswersAfterRelaunch() {
+        openPostsPage()
+        openNewPost()
+        selectTheme("A Strong Yes")
+        let prompts = [
+            "Problem\nWhat part of the process creates the most cognitive load?",
+            "Pattern Interrupt\nWhat new data interrupts the pattern, by offering a new possibility?",
+            "Opportunity\nIs this an A+ opportunity. While trying to implement the new process does my energy rise, fall, or remain undisturbed?",
+            "Pay off\nDoes thinking, and working on this new process create a sense of FLOW that pulls me and yet also leaves me more capable and ambitious? I just can't get enough?",
+        ]
+        for (index, prompt) in prompts.enumerated() {
+            assertPrefilledQuestion(prompt, at: index)
+            attach("A Strong Yes field \(index + 1)")
+        }
+        XCTAssertFalse(element("DecideAnswer4").exists)
+        appendAnswer("Synthetic process answer.", at: 0)
+        let expected = prompts[0] + "\nSynthetic process answer."
+        XCTAssertEqual(element("DecideAnswer0").value as? String, expected)
+        savePost()
+
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "SAVY_UI_TEST_RESET_REMINDERS" }
+        app.launch()
+        dismissSystemPrompt()
+        openPostsPage()
+        let row = postRows.firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["A Strong Yes"].firstMatch.exists)
+        XCTAssertEqual(element("DecideAnswer0").value as? String, expected)
+        for index in 1..<prompts.count {
+            assertPrefilledQuestion(prompts[index], at: index)
+        }
+        attach("A Strong Yes reopened after relaunch")
     }
 
     /// Replaces the older + → 280-character SocialPost composer requirement.
