@@ -25,23 +25,8 @@ struct AWSGraphConfiguration: Equatable {
     }
 
     static func fromBundle() -> AWSGraphConfiguration? {
-        #if targetEnvironment(macCatalyst)
-        // Adam cancelled AWS. The desktop app reads and writes its existing local stores.
+        // Adam cancelled AWS. Both apps read and write their existing local stores.
         return nil
-        #else
-        let baseURL = Bundle.main.object(forInfoDictionaryKey: "AWS_API_BASE_URL") as? String
-        let key = Bundle.main.object(forInfoDictionaryKey: "AWS_API_KEY") as? String
-        guard
-            let baseURL,
-            let key,
-            !baseURL.hasPrefix("$("),
-            !key.hasPrefix("$(")
-        else {
-            return nil
-        }
-
-        return AWSGraphConfiguration(baseURLString: baseURL, apiKey: key)
-        #endif
     }
 }
 

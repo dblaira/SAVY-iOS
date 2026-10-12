@@ -1,10 +1,12 @@
 # SAVY iOS Agent Instructions
 
-## Desktop without AWS — October 12, 2026
+## iPhone and desktop without AWS — October 12, 2026
 
 Adam: "I cancelled AWS last night. Can we remove the log in?"
 
-The Mac Catalyst app opens the existing `RootView` directly, without configuring Cognito, reading a sign-in session, or requiring an account. It uses `LocalReminderRepository` and the existing application container for all saved entries, Connections, Posts, Stories, numbering, and card preferences. AWS gateway configuration and background document sync are disabled on the Mac; preserve every existing local record and do not fabricate an authentication token or replace the live cache with test fixtures. Local saves are expected behavior, not failed cloud uploads. The existing CowboyAI menu remains available without a Sign Out item. This desktop change does not install or control Adam's iPhone.
+Adam: "Check ios too.  Make sure my phone app works.  It is connected."
+
+Both apps open the existing `RootView` directly, without configuring Cognito, reading a sign-in session, or requiring an account. They use `LocalReminderRepository` and each device's existing application container for all saved entries, Connections, Posts, Stories, numbering, and card preferences. AWS gateway configuration and background document sync are disabled; preserve every existing local record and do not fabricate an authentication token or replace a live cache with test fixtures. Local saves are expected behavior, not failed cloud uploads. The existing CowboyAI menu remains available without a Sign Out item. Each device saves independently; AWS no longer synchronizes the phone and Mac. Adam explicitly authorized connected-iPhone installation and verification for this request.
 
 ## Current Connection handoff — read first
 
