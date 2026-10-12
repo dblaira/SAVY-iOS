@@ -1,6 +1,6 @@
 import Foundation
 
-/// Card positions are local presentation preferences, separate from authored entries.
+/// Card positions sync separately from authored entries.
 /// Physical-device UI checks use their own defaults domain and reset it once per launch.
 @MainActor
 enum SavyCardPreferences {
@@ -8,14 +8,14 @@ enum SavyCardPreferences {
     static let didApplySync = Notification.Name("SavyCardPreferencesDidApplySync")
 
     static let defaults: UserDefaults = {
-        guard ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED") else {
-            return .standard
+        guard !SavyRuntime.isTesting else {
+            let suite = "com.adamblair.savy.ui-test.card-preferences"
+            let defaults = UserDefaults(suiteName: suite)!
+            if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
+                defaults.removePersistentDomain(forName: suite)
+            }
+            return defaults
         }
-        let suite = "com.adamblair.savy.ui-test.card-preferences"
-        let defaults = UserDefaults(suiteName: suite)!
-        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
-            defaults.removePersistentDomain(forName: suite)
-        }
-        return defaults
+        return .standard
     }()
 }

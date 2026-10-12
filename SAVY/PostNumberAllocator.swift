@@ -25,6 +25,7 @@ final class PostNumberAllocator {
 
     private let fileURL: URL
     private var ledger: Ledger
+    private(set) var lastWriteFailed = false
 
     init(fileURL: URL) throws {
         self.fileURL = fileURL
@@ -77,32 +78,54 @@ final class PostNumberAllocator {
 
     var lastIssuedNumber: Int { ledger.lastIssued }
 
+    /// The confirmed content file owns its saved reference, even after a failed import.
+    func numberPreservingSavedReference(for source: Source, id: UUID, savedNumber: Int?) -> Int {
+        if let savedNumber, savedNumber > 0 {
+            _ = adopt(source, id: id, number: savedNumber)
+            return savedNumber
+        }
+        return number(for: source, id: id)
+    }
+
     /// Another device issued numbers up to `number`; new posts here continue after it.
-    func raiseLastIssued(to number: Int) {
-        guard number > ledger.lastIssued else { return }
-        ledger.lastIssued = number
-        persist()
+    @discardableResult
+    func raiseLastIssued(to number: Int) -> Bool {
+        guard number > ledger.lastIssued else { return !lastWriteFailed || persist() }
+        var next = ledger
+        next.lastIssued = number
+        return persist(next)
     }
 
     /// A synced post keeps the number its own device gave it.
-    func adopt(_ source: Source, id: UUID, number: Int) {
-        guard number > 0 else { return }
+    @discardableResult
+    func adopt(_ source: Source, id: UUID, number: Int) -> Bool {
+        guard number > 0 else { return false }
         let recordKey = Self.key(source: source, id: id)
-        guard ledger.assignments[recordKey] != number else { return }
-        ledger.assignments[recordKey] = number
-        ledger.lastIssued = max(ledger.lastIssued, number)
-        persist()
+        guard ledger.assignments[recordKey] != number else { return !lastWriteFailed || persist() }
+        var next = ledger
+        next.assignments[recordKey] = number
+        next.lastIssued = max(next.lastIssued, number)
+        return persist(next)
     }
 
     private nonisolated static func key(source: Source, id: UUID) -> String {
         "\(source.rawValue):\(id.uuidString.lowercased())"
     }
 
-    private func persist() {
-        try? FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let data = try? JSONEncoder().encode(ledger) {
-            try? data.write(to: fileURL, options: .atomic)
+    @discardableResult
+    private func persist(_ replacement: Ledger? = nil) -> Bool {
+        let next = replacement ?? ledger
+        do {
+            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(next)
+            try data.write(to: fileURL, options: .atomic)
+            ledger = next
+            lastWriteFailed = false
+            changes.send()
+            return true
+        } catch {
+            lastWriteFailed = true
+            return false
         }
-        changes.send()
     }
 }

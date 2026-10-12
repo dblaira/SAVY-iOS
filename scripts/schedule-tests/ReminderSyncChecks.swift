@@ -39,6 +39,8 @@ struct CowboyCandidateClient: CowboyCandidateSubmitting {
     enum Source { case reminder }
     func seed(reminders: [Reminder], socialPosts: [String]) {}
     func number(for: Source, id: UUID, savedNumber: Int?) -> Int { savedNumber ?? 1 }
+    func numberPreservingSavedReference(for: Source, id: UUID, savedNumber: Int?) -> Int { savedNumber ?? 1 }
+    func adopt(_ source: Source, id: UUID, number: Int) -> Bool { true }
 }
 private extension String { var nilIfEmpty: String? { isEmpty ? nil : self } }
 

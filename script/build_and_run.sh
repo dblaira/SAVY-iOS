@@ -14,7 +14,7 @@ cd "$savy_root"
 
 pkill -x SAVY >/dev/null 2>&1 || true
 savy_build_args=(-project SAVY.xcodeproj -scheme SAVY -configuration Release
-  -destination 'platform=macOS,variant=Mac Catalyst' -disableAutomaticPackageResolution)
+  -destination 'platform=macOS,variant=Mac Catalyst' -disableAutomaticPackageResolution -allowProvisioningUpdates)
 xcodebuild "${savy_build_args[@]}" build > "$savy_artifacts/build.log" 2>&1 || {
   tail -60 "$savy_artifacts/build.log" >&2
   exit 1

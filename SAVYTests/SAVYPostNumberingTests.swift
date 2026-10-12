@@ -3,6 +3,22 @@ import XCTest
 
 final class SAVYPostNumberingTests: XCTestCase {
     @MainActor
+    func testSyncedHighWaterIsAcknowledgedOnlyAfterItsFileConfirms() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("numbers.json")
+        let allocator = try PostNumberAllocator(fileURL: file)
+        let adapter = PostNumbersSyncAdapter(allocator: allocator)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+        XCTAssertFalse(adapter.applyAndConfirm(["lastIssued": .number(500)]))
+        XCTAssertEqual(allocator.lastIssuedNumber, 0)
+        XCTAssertFalse(adapter.applyAndConfirm(["lastIssued": .number(1e100)]))
+        try FileManager.default.removeItem(at: file)
+        XCTAssertTrue(adapter.applyAndConfirm(["lastIssued": .number(500)]))
+        XCTAssertEqual(try PostNumberAllocator(fileURL: file).lastIssuedNumber, 500)
+    }
+
+    @MainActor
     func testBothFormatsReceiveChronologicalNumbersWithoutEditingOrCapturingContent() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

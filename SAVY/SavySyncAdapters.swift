@@ -392,7 +392,8 @@ final class CardPreferencesSyncAdapter: SavySyncAdapter {
 }
 
 /// The highest post number issued anywhere. It only rises, so a number used on one device is
-/// never handed out again on another. The number doubles as the entry's time so the larger wins.
+/// reserved before that device creates another Post. Simultaneous offline references stay intact.
+/// The number doubles as the entry's time so the larger wins.
 @MainActor
 final class PostNumbersSyncAdapter: SavySyncAdapter {
     let documentKey = "post-numbers"
@@ -417,7 +418,13 @@ final class PostNumbersSyncAdapter: SavySyncAdapter {
     }
 
     func apply(_ values: [String: SyncJSON]) {
-        if let number = values["lastIssued"]?.numberValue { allocator.raiseLastIssued(to: Int(number)) }
+        _ = applyAndConfirm(values)
+    }
+
+    func applyAndConfirm(_ values: [String: SyncJSON]) -> Bool {
+        guard let number = values["lastIssued"]?.numberValue else { return true }
+        guard number.isFinite, number >= 0, number < Double(Int.max), number.rounded() == number else { return false }
+        return allocator.raiseLastIssued(to: Int(number))
     }
 }
 

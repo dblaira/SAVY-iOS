@@ -260,6 +260,10 @@ final class SAVYPostEntryThemeTests: XCTestCase {
 
     private func makePostEntry() -> Reminder {
         var entry = Reminder()
+        // Match the cache/gateway ISO 8601 precision so these context tests do not
+        // accidentally exercise the separate earliest-created-date repair.
+        entry.createdAt = Date(timeIntervalSince1970: 1_800_000_000)
+        entry.updatedAt = Date(timeIntervalSince1970: 1_800_000_100)
         entry.kind = .post
         entry.title = "The cost of trying fell to zero"
         entry.postThemeID = "five-ws"

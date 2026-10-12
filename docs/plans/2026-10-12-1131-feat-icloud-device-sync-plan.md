@@ -9,17 +9,13 @@ execution: code
 
 # SAVY iCloud Sync - Plan
 
-Current step: build the sync foundation; activate iCloud after Adam approves this plan.
-
-Local apps ✓ → Plan HERE → Merge foundation → CloudKit → Install both → Verify both
-
-Next move: prove the merge and offline queue in isolated storage, then connect the two installed apps.
+Execution progress is recorded in `docs/savy-migration-map.html`.
 
 ## Goal Capsule
 
 - **Objective:** Adam sees the same SAVY entries on his Mac and iPhone after saving on either device.
 - **Means:** Native CloudKit sync (KTD1).
-- **Approval:** Adam requested: “Ok. Build a plan i can approve and let's begin implementing cloud sync”. Code and isolated verification begin now; uploading existing data and activating the installed apps follow approval.
+- **Approval:** Adam requested: “Ok. Build a plan i can approve and let's begin implementing cloud sync”. Adam then approved activation: “icloud activation approved”. Implementation, installation and syncing the existing collections are authorized.
 - **Delivery:** Codex implements, signs, installs, and checks both devices. Adam approves the plan; he does not become the migration operator.
 
 ---
@@ -89,7 +85,7 @@ Older card order and source-pin preferences have no reliable modification date. 
 
 Both installed profiles authorize the shared container and Development environment. The Mac entitlement file still needs iCloud keys; the phone currently lists only CloudDocuments. Add CloudKit while preserving the phone's delegation-file capability. Neither installed app currently has push entitlements, and `SAVY/Info.plist` needs the remote-notification background mode. The Mac build script must allow automatic provisioning updates when push is added.
 
-Correctness rests on fetch-and-send at launch, on returning to the foreground, and after local saves. Push accelerates delivery. Verify matching signed CloudKit configuration and actual account/zone access before activation; verify push/background delivery separately so a delayed push setup does not prevent working foreground sync.
+Correctness rests on fetch-and-send at launch, on returning to the foreground, and after local saves. The foreground path also uses Apple's scoped `CKDatabase.recordZoneChanges` API with a separate opaque cursor in the same durable journal. Retain all assets and incoming records before advancing that cursor; block outgoing records until catch-up succeeds. This is necessary because the installed Mac's long-lived engine reported successful manual fetches while missing a newer phone record until relaunch. CKSyncEngine still owns automatic transport and retries. Push accelerates delivery. Verify matching signed CloudKit configuration and actual account/zone access before activation; verify push/background delivery separately so a delayed push setup does not prevent working foreground sync.
 
 ### High-Level Technical Design
 
@@ -212,7 +208,7 @@ stateDiagram-v2
 
 **Files:** `SAVYTests/SAVYCloudSyncTests.swift`, `scripts/test-cloudkit-sync.sh`, `AGENTS.md`, `docs/savy-migration-map.html`, ignored verification report under `artifacts/icloud-sync-20261012/`.
 
-**Approach:** Use genuine existing divergences for physical proof in both directions. Use isolated stores and a separate test zone for create/edit/delete/offline/conflict checks; never place synthetic entries in Adam's live store. Remove abandoned code, review, commit and push main under repository conventions.
+**Approach:** Use genuine existing divergences for physical proof in both directions. Use isolated real file-backed stores and native CKRecord/CKAsset transport checks without a container or network for create/edit/delete/offline/conflict checks; never place synthetic entries in Adam's live store or CloudKit. Remove abandoned code, review, commit and push main under repository conventions.
 
 **Test scenarios:** Covers AE1-AE4. Check both installed Home/entry screens, restart persistence, propagation after reconnect, ordering/pins/numbers, attachment retrieval and zero capture/invitation side effects.
 
@@ -242,6 +238,7 @@ The implementation and focused checks are reviewed, unused attempts are removed,
 
 - [Apple: Sync to iCloud with CKSyncEngine](https://developer.apple.com/videos/play/wwdc2023/10188/) — engine lifecycle, durable state and delegate boundaries.
 - [Apple: CloudKit](https://developer.apple.com/icloud/cloudkit/) — private iCloud storage and supported Apple platforms.
+- [Apple: recordZoneChanges](https://developer.apple.com/documentation/cloudkit/ckdatabase/recordzonechanges(inzonewith:since:desiredkeys:resultslimit:)) — scoped foreground deltas and opaque cursor handling.
 - [Apple's CKSyncEngine sample](https://github.com/apple/sample-cloudkit-sync-engine) — conflict handling and controlled two-client tests.
 - Current implementation: `SAVY/SavyDocumentSync.swift`, `SAVY/SavySyncAdapters.swift`, `SAVY/ReminderStore.swift`, `SAVY/LocalImageStore.swift`.
 - Current signed Mac and iPhone profiles authorize the shared container; the two portable content divergences were compared from the preserved pre-migration device backups.

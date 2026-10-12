@@ -1,5 +1,17 @@
 # SAVY iOS Agent Instructions
 
+## Native iCloud sync — October 12, 2026
+
+Adam: "icloud activation approved"
+
+The Mac and iPhone retain immediate local saves and open without a SAVY/AWS login. Native CloudKit sync runs through the system Apple account, in the private `SAVYEntriesV1` zone of `iCloud.com.adamblair.harness`, with Development explicitly matching both local signed builds. Scope every fetch, send and event to SAVY; never modify Harness records or delegation files.
+
+The durable journal at `SAVY/CloudKit/state.json` is separate from old AWS shadows. Preserve record IDs, writing, original dates, conflict originals, stored Post references and the high-water mark. Retain assets and incoming entries before advancing engine or foreground checkpoints, confirm actual store writes, and acknowledge only the exact saved version. Owner identity and account epochs gate every callback and request; a different Apple account cannot receive the original owner's entries. Local data remains usable without iCloud.
+
+Before installing or restarting on the physical iPhone, verify that SAVY has no active editor with unsaved writing. A connected phone and activation approval do not establish that. The current Post editors save on explicit Save or eligible form dismissal; typing is held in memory and termination can lose it. Keep an active editor undisturbed until the writing is safely saved. Recovery checks must inspect actual saved files and original screen snapshots, never reconstruct Adam's words.
+
+Launch, foreground entry and local saves fetch scoped native zone deltas before sending; automatic CKSyncEngine transport and push accelerate delivery. Remote apply keeps native Calendar bindings, reconciles local notifications, and never recaptures writing or creates calendar invitations. Both installed collections were audited against their original backups: all 42 original IDs and full newer versions, existing pins/order/numbers, 709 portable authority decisions, and unchanged device-local captures/outboxes. Physical verification uses `/Applications/SAVY.app` and the connected iPhone, plus fresh container readbacks. Do not put synthetic test writing in a live app, cloud zone or Harness.
+
 ## iPhone and desktop without AWS — October 12, 2026
 
 Adam: "I cancelled AWS last night. Can we remove the log in?"

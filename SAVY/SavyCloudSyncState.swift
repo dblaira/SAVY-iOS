@@ -27,7 +27,7 @@ enum SavyCloudSyncStateError: Error, Equatable {
 }
 
 /// One atomic journal owns the confirmed versions, exact pending versions, incoming replay,
-/// conflict originals, CloudKit system fields, and engine checkpoint. It never opens a network.
+/// conflict originals, CloudKit system fields, and fetch checkpoints. It never opens a network.
 @MainActor
 final class SavyCloudSyncState {
     enum AccountStatus: Equatable {
@@ -40,6 +40,10 @@ final class SavyCloudSyncState {
         var entries: [String: SyncEntry] = [:]
         var pending: [String: SyncEntry] = [:]
         var incoming: [String: SyncEntry] = [:]
+        // The inbox keeps the portable winner; only the latest fetched payload proves
+        // what the server contains. One receipt per incoming key, released after apply.
+        // Legacy journals omit this field and conservatively re-send their winner.
+        var incomingReceipts: [String: SyncEntry]? = nil
         var systemFields: [String: Data] = [:]
         // Written before a store apply. If the journal's final write fails after the store
         // succeeds, this target identifies that durable store content as replay, not an edit.
@@ -57,6 +61,7 @@ final class SavyCloudSyncState {
         var documents: [String: Document] = [:]
         var conflicts: [SavyCloudConflict] = []
         var engineState: Data? = nil
+        var foregroundChangeToken: Data? = nil
     }
 
     let fileURL: URL
@@ -66,6 +71,7 @@ final class SavyCloudSyncState {
 
     var originalOwner: String? { archive.originalOwner }
     var engineState: Data? { archive.engineState }
+    var foregroundChangeToken: Data? { archive.foregroundChangeToken }
     var conflicts: [SavyCloudConflict] { archive.conflicts }
     var accountStatus: AccountStatus {
         guard let currentAccount else { return .unavailable }
@@ -81,7 +87,8 @@ final class SavyCloudSyncState {
             archive = try JSONDecoder().decode(Archive.self, from: Data(contentsOf: fileURL))
             guard archive.formatVersion == 1 else { throw SavyCloudSyncStateError.invalidState }
             for document in archive.documents.values {
-                for entry in Array(document.entries.values) + Array(document.pending.values) + Array(document.incoming.values) {
+                for entry in Array(document.entries.values) + Array(document.pending.values)
+                    + Array(document.incoming.values) + Array((document.incomingReceipts ?? [:]).values) {
                     _ = try Self.normalized(entry)
                 }
             }
@@ -193,6 +200,9 @@ final class SavyCloudSyncState {
             } else {
                 document.incoming[record.id.key] = incoming
             }
+            var receipts = document.incomingReceipts ?? [:]
+            receipts[record.id.key] = incoming
+            document.incomingReceipts = receipts
             // Retain a prior staged target until replay replaces it. It still identifies
             // already-applied store content when a newer fetch arrives after a failed ack.
             next.documents[record.id.documentKey] = document
@@ -214,15 +224,18 @@ final class SavyCloudSyncState {
             var prepared = archive
             for (key, incoming) in document.incoming {
                 let id = SavyCloudRecordID(documentKey: documentKey, key: key)
+                let winner: SyncEntry
                 if let previous = target[key] {
-                    let winner = try Self.winner(previous, incoming)
+                    winner = try Self.winner(previous, incoming)
                     Self.preserve(id: id, first: previous, second: incoming, winner: winner, in: &prepared)
-                    target[key] = winner
-                    if winner == incoming { pending.removeValue(forKey: key) }
-                    else if previous != incoming { pending[key] = winner }
                 } else {
-                    target[key] = incoming
+                    winner = incoming
+                }
+                target[key] = winner
+                if winner == document.incomingReceipts?[key] {
                     pending.removeValue(forKey: key)
+                } else {
+                    pending[key] = winner
                 }
             }
             // If B reached the store but its final journal confirmation failed, staging C
@@ -241,6 +254,7 @@ final class SavyCloudSyncState {
             document.entries = target
             document.pending = pending
             document.incoming = [:]
+            document.incomingReceipts = nil
             document.applyTarget = nil
             document.materializedTarget = nil
             document.initialized = true
@@ -271,6 +285,15 @@ final class SavyCloudSyncState {
         try requireGeneration(generation)
         var next = archive
         next.engineState = serialization
+        try commit(next)
+    }
+
+    /// The foreground zone cursor is opaque and independent of the engine checkpoint.
+    /// Retain fetched records durably before advancing this cursor in the same journal.
+    func persistForegroundChangeToken(_ data: Data?, generation: UInt64) throws {
+        try requireGeneration(generation)
+        var next = archive
+        next.foregroundChangeToken = data
         try commit(next)
     }
 

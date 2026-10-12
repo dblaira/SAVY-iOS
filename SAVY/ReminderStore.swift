@@ -119,7 +119,7 @@ final class ReminderStore: ObservableObject {
         allocator.seed(reminders: reminders, socialPosts: [])
         var changed = false
         for index in reminders.indices where reminders[index].kind == .post && reminders[index].status != .deleted {
-            let number = allocator.number(for: .reminder, id: reminders[index].id, savedNumber: reminders[index].postNumber)
+            let number = allocator.numberPreservingSavedReference(for: .reminder, id: reminders[index].id, savedNumber: reminders[index].postNumber)
             if reminders[index].postNumber != number {
                 reminders[index].postNumber = number
                 if syncNewAssignments { reminders[index].needsSync = true }
@@ -570,7 +570,7 @@ final class ReminderStore: ObservableObject {
             entry.needsSync = false
             return entry
         }
-        guard next != reminders else { return true }
+        if next != reminders {
         guard persist(next) else { return false }
         let retainedIDs = Set(next.map(\.id))
         for removed in previous.values where !retainedIDs.contains(removed.id) {
@@ -580,8 +580,9 @@ final class ReminderStore: ObservableObject {
             NotificationScheduler.schedule(entry)
         }
         #if canImport(UIKit)
+        let nextByID = Dictionary(next.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for local in previous.values where local.schedule?.calendarIdentifier != nil {
-            let current = next.first { $0.id == local.id }
+            let current = nextByID[local.id]
             if current != local {
                 Task { @MainActor in
                     await CalendarScheduleBridge.shared.reconcileSynced(previous: local, current: current)
@@ -589,6 +590,13 @@ final class ReminderStore: ObservableObject {
             }
         }
         #endif
+        }
+        if let allocator = postNumberAllocator {
+            for entry in next where entry.kind == .post {
+                if let number = entry.postNumber,
+                   !allocator.adopt(.reminder, id: entry.id, number: number) { return false }
+            }
+        }
         return true
     }
 

@@ -78,12 +78,10 @@ struct RootView: View {
     @StateObject private var postCardOrder = PostCardOrderStore()
     @StateObject private var connectionStore: ConnectionStore
     @StateObject private var storyStore: StoryStore
-    @StateObject private var documentSync: SavyDocumentSync
+    @StateObject private var documentSync: CloudKitDocumentSync
     @State private var isPersonalAuthorityReviewPresented = false
     @State private var isPostsPresented = false
     @State private var opensPostsAfterComposer = false
-    /// State keeps the first instance, the one the retained reminder store and sync client hold.
-    @State private var accessTokens: SavyAccessTokens?
     private let syncsWithCloud: Bool
 
     init(
@@ -96,14 +94,12 @@ struct RootView: View {
         let navigationState = SavyNavigationState()
         navigationState.activeSection = initialSection
         _navigationState = StateObject(wrappedValue: navigationState)
-        let isUITest = ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED")
-        let tokens = session.map { SavyAccessTokens(initial: $0.accessToken) }
-        _accessTokens = State(initialValue: tokens)
-        syncsWithCloud = !isUITest && session != nil && AWSGraphConfiguration.fromBundle() != nil
+        let isUITest = SavyRuntime.isTesting
+        syncsWithCloud = !isUITest
         let loadedPostStore: SocialPostStore
         let loadedStoryStore: StoryStore
         let loadedReminderStore: ReminderStore
-        let loadedConnectionStore = ConnectionStore()
+        let loadedConnectionStore = ConnectionStore(fileURL: isUITest ? ConnectionStore.isolatedFileURL : nil)
         let numberLedgerURL: URL
         if isUITest {
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent("SAVYUITests", isDirectory: true)
@@ -129,16 +125,7 @@ struct RootView: View {
         } else {
             loadedPostStore = SocialPostStore.live()
             loadedStoryStore = StoryStore.live()
-            let repository: any ReminderRepository
-            if syncsWithCloud {
-                repository = GatewayReminderRepository(
-                    accessToken: { tokens?.current },
-                    userEmail: { session?.user.displayEmail }
-                )
-            } else {
-                repository = LocalReminderRepository()
-            }
-            loadedReminderStore = ReminderStore(repo: repository)
+            loadedReminderStore = ReminderStore(repo: LocalReminderRepository())
             numberLedgerURL = PostNumberAllocator.defaultFileURL
         }
         // Both formats participate in the initial chronological sequence. A damaged ledger
@@ -153,6 +140,7 @@ struct RootView: View {
         var adapters: [any SavySyncAdapter] = []
         if syncsWithCloud {
             adapters = [
+                RemindersSyncAdapter(store: loadedReminderStore),
                 ConnectionsSyncAdapter(store: loadedConnectionStore),
                 SocialPostsSyncAdapter(store: loadedPostStore),
                 StoriesSyncAdapter(store: loadedStoryStore),
@@ -167,15 +155,20 @@ struct RootView: View {
             storyStore: loadedStoryStore,
             cardDefaults: SavyCardPreferences.defaults
         )
-        let syncClient = GatewayDocumentSyncClient(
-            accessToken: { await tokens?.refresh() },
-            email: session?.user.displayEmail
-        )
-        _documentSync = StateObject(wrappedValue: SavyDocumentSync(
+        let cloudSync = CloudKitDocumentSync(
             adapters: adapters,
-            client: syncClient,
-            legacyDevice: holdsLocalRecords
-        ))
+            legacyDevice: holdsLocalRecords || !loadedReminderStore.reminders.isEmpty,
+            enabled: syncsWithCloud,
+            accountCheckOnly: ProcessInfo.processInfo.arguments.contains("SAVY_CLOUDKIT_ACCOUNT_CHECK_ONLY")
+        )
+        let imageCache = LocalImageStore.cache
+        cloudSync.prepareOutgoingRecord = { record, portable in
+            try SavyCloudKitAssets.attach(to: record, portable: portable, cache: imageCache)
+        }
+        cloudSync.prepareIncomingRecord = { record, portable in
+            try SavyCloudKitAssets.retain(from: record, portable: portable, cache: imageCache)
+        }
+        _documentSync = StateObject(wrappedValue: cloudSync)
         _postStore = StateObject(wrappedValue: loadedPostStore)
         _storyStore = StateObject(wrappedValue: loadedStoryStore)
         _connectionStore = StateObject(wrappedValue: loadedConnectionStore)
@@ -185,8 +178,6 @@ struct RootView: View {
     /// Pull what Adam changed on his other devices.
     private func refreshFromCloud() async {
         guard syncsWithCloud else { return }
-        await accessTokens?.refresh()
-        await reminderStore.refresh()
         await documentSync.syncNow()
         await CalendarScheduleBridge.shared.retryPendingSync()
     }

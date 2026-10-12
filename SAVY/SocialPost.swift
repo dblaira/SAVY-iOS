@@ -224,11 +224,11 @@ final class SocialPostStore: ObservableObject {
     @discardableResult
     func applySynced(_ synced: [SocialPost]) -> Bool {
         guard !loadFailed else { return false }
-        guard synced != posts else { return true }
-        guard persist(synced) else { return false }
+        if synced != posts, !persist(synced) { return false }
         if let allocator = postNumberAllocator {
             for post in synced {
-                if let number = post.postNumber { allocator.adopt(.socialPost, id: post.id, number: number) }
+                if let number = post.postNumber,
+                   !allocator.adopt(.socialPost, id: post.id, number: number) { return false }
             }
         }
         return true
@@ -283,7 +283,7 @@ final class SocialPostStore: ObservableObject {
         guard !loadFailed else { return }
         var next = posts
         for index in next.indices {
-            let number = allocator.number(for: .socialPost, id: next[index].id, savedNumber: next[index].postNumber)
+            let number = allocator.numberPreservingSavedReference(for: .socialPost, id: next[index].id, savedNumber: next[index].postNumber)
             next[index].postNumber = number
         }
         if next != posts { _ = persist(next) }
@@ -293,7 +293,7 @@ final class SocialPostStore: ObservableObject {
         guard !loadFailed else { return }
         var p = post
         let savedNumber = posts.first { $0.id == p.id }?.postNumber ?? p.postNumber
-        p.postNumber = postNumberAllocator?.number(for: .socialPost, id: p.id, savedNumber: savedNumber) ?? savedNumber
+        p.postNumber = postNumberAllocator?.numberPreservingSavedReference(for: .socialPost, id: p.id, savedNumber: savedNumber) ?? savedNumber
         p.updatedAt = Date()
         if p.status == .posted, p.postedAt == nil {
             p.postedAt = p.updatedAt

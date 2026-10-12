@@ -69,7 +69,64 @@ struct CloudSyncChecks {
         try accountBoundary(directory)
         try passthroughAndPins(directory)
         try mixedFailureReplay(directory)
+        try fetchedReceiptAfterFailedStoreApply(directory)
+        try legacyInboxWithoutReceipt(directory)
+        try foregroundCursorPersistence(directory)
+        try failedNumberedContentWrite(directory)
         print("\(checks) Cloud sync checks passed")
+    }
+
+    static func failedNumberedContentWrite(_ directory: URL) throws {
+        for isReminder in [false, true] {
+            let folder = directory.appendingPathComponent("numbered-recovery-\(isReminder)")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let file = folder.appendingPathComponent("content.json")
+            let ledger = folder.appendingPathComponent("numbers.json")
+            let allocator = try PostNumberAllocator(fileURL: ledger)
+            if isReminder {
+                var old = Reminder()
+                old.kind = .post; old.title = "Saved A"; old.postNumber = 1
+                old.createdAt = Date(timeIntervalSince1970: 100); old.updatedAt = old.createdAt
+                let store = try reminders(file, [old])
+                store.configurePostNumbering(allocator)
+                let bytes = try Data(contentsOf: file)
+                var incoming = old; incoming.title = "Incoming B"; incoming.postNumber = 2
+                incoming.updatedAt = Date(timeIntervalSince1970: 200)
+                try FileManager.default.removeItem(at: file)
+                try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+                try check(!store.applySynced([incoming]), "failed numbered Reminder content is not acknowledged")
+                try check(allocator.number(for: .reminder, id: old.id) == 1, "failed Reminder content cannot advance its reference ledger")
+                try FileManager.default.removeItem(at: file); try bytes.write(to: file)
+                let reopened = ReminderStore(cacheURL: file, technicalCaptureStore: .init(), candidateOutbox: .init())
+                let reopenedAllocator = try PostNumberAllocator(fileURL: ledger)
+                _ = reopenedAllocator.adopt(.reminder, id: old.id, number: 2)
+                reopened.configurePostNumbering(reopenedAllocator)
+                try check(reopened.reminders[0].title == old.title && reopened.reminders[0].postNumber == 1 && reopened.reminders[0].updatedAt == old.updatedAt,
+                          "Reminder restart preserves its actual saved reference and date over a stale ledger")
+                try check(reopened.applySynced([incoming]) && reopened.reminders[0].title == incoming.title && reopened.reminders[0].postNumber == 2,
+                          "numbered Reminder retries and confirms incoming content after repair")
+            } else {
+                var old = SocialPost(); old.text = "Saved A"; old.postNumber = 1
+                old.createdAt = Date(timeIntervalSince1970: 100); old.updatedAt = old.createdAt
+                try JSONEncoder.recall.encode([old]).write(to: file)
+                let store = try SocialPostStore(fileURL: file)
+                store.configurePostNumbering(allocator)
+                let bytes = try Data(contentsOf: file)
+                var incoming = old; incoming.text = "Incoming B"; incoming.postNumber = 2
+                incoming.updatedAt = Date(timeIntervalSince1970: 200)
+                try FileManager.default.removeItem(at: file)
+                try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+                try check(!store.applySynced([incoming]), "failed numbered Post content is not acknowledged")
+                try check(allocator.number(for: .socialPost, id: old.id) == 1, "failed Post content cannot advance its reference ledger")
+                try FileManager.default.removeItem(at: file); try bytes.write(to: file)
+                let reopened = try SocialPostStore(fileURL: file)
+                let reopenedAllocator = try PostNumberAllocator(fileURL: ledger)
+                _ = reopenedAllocator.adopt(.socialPost, id: old.id, number: 2)
+                reopened.configurePostNumbering(reopenedAllocator)
+                try check(reopened.posts[0] == old, "Post restart preserves saved writing, reference and dates over a stale ledger")
+                try check(reopened.applySynced([incoming]) && reopened.posts == [incoming], "numbered Post retries and confirms incoming content after repair")
+            }
+        }
     }
 
     static func state(_ directory: URL, _ name: String) throws -> SavyCloudSyncState {
@@ -457,6 +514,15 @@ struct CloudSyncChecks {
         let emptyFile = directory.appendingPathComponent("empty-posts.json")
         try Data().write(to: emptyFile)
         try mustThrow("an existing empty Post file is unreadable, not an empty collection") { _ = try SocialPostStore(fileURL: emptyFile) }
+        let blockedNumbers = directory.appendingPathComponent("blocked-numbers.json")
+        let blockedAllocator = try PostNumberAllocator(fileURL: blockedNumbers)
+        try FileManager.default.createDirectory(at: blockedNumbers, withIntermediateDirectories: false)
+        blockedAllocator.raiseLastIssued(to: 500)
+        try check(blockedAllocator.lastIssuedNumber == 0, "failed high-water write does not publish an unconfirmed number")
+        try FileManager.default.removeItem(at: blockedNumbers)
+        blockedAllocator.raiseLastIssued(to: 500)
+        let recoveredNumbers = try PostNumberAllocator(fileURL: blockedNumbers)
+        try check(recoveredNumbers.lastIssuedNumber == 500, "high-water retry persists the number across restart")
     }
 
     static func mixedFailureReplay(_ directory: URL) throws {
@@ -512,5 +578,188 @@ struct CloudSyncChecks {
         try check(restarted.incomingRecords.isEmpty && restarted.entry(for: first.id) == recordC.entry
                   && relaunchedStore.stories.first?.body == c.body,
                   "filesystem recovery confirms C without inventing an edit of B")
+    }
+
+    static func fetchedReceiptAfterFailedStoreApply(_ directory: URL) throws {
+        var a = Story()
+        a.body = "A original writing.  \n"
+        a.createdAt = Date(timeIntervalSince1970: 10)
+        a.updatedAt = Date(timeIntervalSince1970: 100)
+        var b = a; b.body = "B newer writing.  \n"; b.updatedAt = Date(timeIntervalSince1970: 200)
+        let file = directory.appendingPathComponent("fetched-receipt-stories.json")
+        let store = try stories(file, [a])
+        let adapter = StoriesSyncAdapter(store: store)
+        let journal = try state(directory, "fetched-receipt")
+        let recordA = try journal.observeLocal(adapter: adapter, legacyDevice: true, now: 100)[0]
+        let recordB = record("stories", recordA.id.key, try SyncJSON.encode(b), 200,
+                             fields: Data("B-fetched-fields".utf8))
+        let originalBytes = try Data(contentsOf: file)
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+        try journal.retainIncoming([recordB], generation: journal.generation)
+        try check(try journal.replayIncoming(using: ["stories": adapter], generation: journal.generation).isEmpty
+                  && store.stories == [a] && journal.pendingRecords.map(\.entry) == [recordA.entry],
+                  "blocked actual Story file retains A pending and newer incoming B")
+        var fetchedA = recordA
+        fetchedA.systemFields = Data("A-latest-fetched-fields".utf8)
+        try journal.retainIncoming([fetchedA], generation: journal.generation)
+        try check(journal.incomingRecords.map(\.entry) == [recordB.entry]
+                  && journal.systemFields(for: recordA.id) == fetchedA.systemFields,
+                  "older latest server payload keeps inbox winner B with current A change tag")
+        let retainedArchive = try JSONSerialization.jsonObject(with: Data(contentsOf: journal.fileURL)) as! [String: Any]
+        let retainedDocuments = retainedArchive["documents"] as! [String: [String: Any]]
+        let receipts = retainedDocuments["stories"]?["incomingReceipts"] as? [String: Any]
+        try check(receipts?.count == 1 && receipts?[recordA.id.key] != nil,
+                  "repeated fetched payloads retain one bounded receipt for the incoming key")
+        try FileManager.default.removeItem(at: file)
+        try originalBytes.write(to: file)
+        let recoveredStore = try StoryStore(fileURL: file)
+        let restarted = try SavyCloudSyncState(fileURL: journal.fileURL)
+        try restarted.accountChanged(to: "original-owner")
+        _ = try restarted.replayIncoming(using: ["stories": StoriesSyncAdapter(store: recoveredStore)], generation: restarted.generation)
+        try check(recoveredStore.stories == [b] && restarted.entry(for: recordB.id) == recordB.entry
+                  && restarted.incomingRecords.isEmpty,
+                  "receipt recovery applies exact newer B to the repaired Story file after restart")
+        try check(restarted.pendingRecords.map(\.entry) == [recordB.entry]
+                  && restarted.pendingRecords.first?.systemFields == fetchedA.systemFields,
+                  "merged inbox B stays pending because latest fetched server receipt contains A")
+        let confirmedArchive = try JSONSerialization.jsonObject(with: Data(contentsOf: restarted.fileURL)) as! [String: Any]
+        let confirmedDocuments = confirmedArchive["documents"] as! [String: [String: Any]]
+        try check(confirmedDocuments["stories"]?["incomingReceipts"] == nil,
+                  "confirmed actual-store replay releases the bounded incoming receipt map")
+        try check(restarted.conflicts.contains { $0.id == recordA.id && $0.displaced == recordA.entry && $0.retained == recordB.entry },
+                  "receipt recovery archives both exact original A and winning B")
+        let restartedAgain = try SavyCloudSyncState(fileURL: restarted.fileURL)
+        try restartedAgain.accountChanged(to: "original-owner")
+        try check(restartedAgain.pendingRecords.map(\.entry) == [recordB.entry],
+                  "recovered B upload intent survives another journal restart")
+        try restartedAgain.acknowledgeSaved([fetchedA], generation: restartedAgain.generation)
+        try check(restartedAgain.pendingRecords.map(\.entry) == [recordB.entry],
+                  "a real older A save receipt cannot acknowledge recovered pending B")
+        var savedB = recordB
+        savedB.systemFields = Data("B-actual-save-fields".utf8)
+        try restartedAgain.acknowledgeSaved([savedB], generation: restartedAgain.generation)
+        try check(restartedAgain.pendingRecords.isEmpty && restartedAgain.systemFields(for: savedB.id) == savedB.systemFields,
+                  "only the exact B save receipt clears recovered B pending")
+    }
+
+    static func legacyInboxWithoutReceipt(_ directory: URL) throws {
+        var a = Story()
+        a.body = "Legacy original A"
+        a.createdAt = Date(timeIntervalSince1970: 10)
+        a.updatedAt = Date(timeIntervalSince1970: 100)
+        var b = a; b.body = "Legacy incoming B"; b.updatedAt = Date(timeIntervalSince1970: 200)
+        let file = directory.appendingPathComponent("legacy-receipt-stories.json")
+        let store = try stories(file, [a])
+        let adapter = StoriesSyncAdapter(store: store)
+        let journal = try state(directory, "legacy-receipt")
+        let recordA = try journal.observeLocal(adapter: adapter, legacyDevice: true, now: 100)[0]
+        let recordB = record("stories", recordA.id.key, try SyncJSON.encode(b), 200)
+        try journal.retainIncoming([recordB], generation: journal.generation)
+        // Model a V1 journal written before fetched payload receipts and the separate cursor.
+        var legacy = try JSONSerialization.jsonObject(with: Data(contentsOf: journal.fileURL)) as! [String: Any]
+        var documents = legacy["documents"] as! [String: [String: Any]]
+        documents["stories"]?.removeValue(forKey: "incomingReceipts")
+        legacy["documents"] = documents
+        legacy.removeValue(forKey: "foregroundChangeToken")
+        try JSONSerialization.data(withJSONObject: legacy, options: [.sortedKeys]).write(to: journal.fileURL, options: .atomic)
+        let restarted = try SavyCloudSyncState(fileURL: journal.fileURL)
+        try check(restarted.foregroundChangeToken == nil && restarted.incomingRecords.map(\.entry) == [recordB.entry],
+                  "legacy V1 journal decodes an incoming inbox without receipt or foreground cursor")
+        try restarted.accountChanged(to: "original-owner")
+        _ = try restarted.replayIncoming(using: ["stories": adapter], generation: restarted.generation)
+        try check(store.stories == [b] && restarted.incomingRecords.isEmpty
+                  && restarted.pendingRecords.map(\.entry) == [recordB.entry],
+                  "legacy inbox without server proof re-sends the applied B winner conservatively")
+        let afterApply = try SavyCloudSyncState(fileURL: journal.fileURL)
+        try afterApply.accountChanged(to: "original-owner")
+        try check(afterApply.pendingRecords.map(\.entry) == [recordB.entry],
+                  "legacy conservative upload remains pending across restart")
+        try afterApply.acknowledgeSaved([recordB], generation: afterApply.generation)
+        try check(afterApply.pendingRecords.isEmpty, "an exact save receipt acknowledges a recovered legacy inbox winner")
+    }
+
+    static func foregroundCursorPersistence(_ directory: URL) throws {
+        var a = Story()
+        a.body = "Foreground original A"
+        a.createdAt = Date(timeIntervalSince1970: 10)
+        a.updatedAt = Date(timeIntervalSince1970: 100)
+        var b = a; b.body = "Foreground retained B"; b.updatedAt = Date(timeIntervalSince1970: 200)
+        let file = directory.appendingPathComponent("foreground-stories.json")
+        let store = try stories(file, [a])
+        let adapter = StoriesSyncAdapter(store: store)
+        let journal = try state(directory, "foreground")
+        let recordA = try journal.observeLocal(adapter: adapter, legacyDevice: true, now: 100)[0]
+        let recordB = record("stories", recordA.id.key, try SyncJSON.encode(b), 200)
+        let engineCheckpoint = Data("independent-engine-checkpoint".utf8)
+        let cursor = Data("opaque-foreground-cursor".utf8)
+        let advancedCursor = Data("next-opaque-foreground-cursor".utf8)
+        try journal.persistEngineState(engineCheckpoint, generation: journal.generation)
+        try journal.retainIncoming([recordB], generation: journal.generation)
+        let originalBytes = try Data(contentsOf: file)
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+        try check(try journal.replayIncoming(using: ["stories": adapter], generation: journal.generation).isEmpty,
+                  "foreground cursor fixture leaves incoming B retained after a real-store write failure")
+        // This is the storage API ordering: retain the fetched records, then persist progress.
+        // The bridge owns actual CKServerChangeToken archiving and callback ordering.
+        try journal.persistForegroundChangeToken(cursor, generation: journal.generation)
+        let durableBytes = try Data(contentsOf: journal.fileURL)
+        let encoded = try JSONSerialization.jsonObject(with: durableBytes) as! [String: Any]
+        try check(encoded["formatVersion"] as? Int == 1, "foreground cursor storage preserves journal format V1")
+        let restarted = try SavyCloudSyncState(fileURL: journal.fileURL)
+        try check(restarted.foregroundChangeToken == cursor && restarted.engineState == engineCheckpoint
+                  && restarted.incomingRecords.map(\.entry) == [recordB.entry],
+                  "foreground cursor and independent engine checkpoint restart beside unapplied incoming B")
+        try mustThrow("unverified restart cannot advance the foreground cursor") {
+            try restarted.persistForegroundChangeToken(advancedCursor, generation: restarted.generation)
+        }
+        try check(restarted.foregroundChangeToken == cursor && (try Data(contentsOf: restarted.fileURL)) == durableBytes,
+                  "unverified cursor callback leaves durable progress and incoming unchanged")
+        try restarted.accountChanged(to: "original-owner")
+        let authorizedGeneration = restarted.generation
+        let savedJournal = try Data(contentsOf: restarted.fileURL)
+        try FileManager.default.removeItem(at: restarted.fileURL)
+        try FileManager.default.createDirectory(at: restarted.fileURL, withIntermediateDirectories: false)
+        try mustThrow("foreground cursor journal-write failure is surfaced") {
+            try restarted.persistForegroundChangeToken(advancedCursor, generation: authorizedGeneration)
+        }
+        try check(restarted.foregroundChangeToken == cursor && restarted.engineState == engineCheckpoint
+                  && restarted.incomingRecords.map(\.entry) == [recordB.entry],
+                  "failed atomic cursor write cannot publish new progress or discard retained incoming")
+        try FileManager.default.removeItem(at: restarted.fileURL)
+        try savedJournal.write(to: restarted.fileURL)
+        let afterFailure = try SavyCloudSyncState(fileURL: restarted.fileURL)
+        try check(afterFailure.foregroundChangeToken == cursor && afterFailure.incomingRecords.map(\.entry) == [recordB.entry],
+                  "old cursor and retained incoming survive restart after failed cursor persistence")
+        try restarted.accountChanged(to: nil)
+        try mustThrow("signed-out account cannot advance the foreground cursor") {
+            try restarted.persistForegroundChangeToken(advancedCursor, generation: restarted.generation)
+        }
+        try restarted.accountChanged(to: "different-owner")
+        try mustThrow("different account cannot advance the foreground cursor") {
+            try restarted.persistForegroundChangeToken(advancedCursor, generation: restarted.generation)
+        }
+        try restarted.accountChanged(to: "original-owner")
+        try mustThrow("original owner rejects an old-generation foreground cursor callback") {
+            try restarted.persistForegroundChangeToken(advancedCursor, generation: authorizedGeneration)
+        }
+        try check(restarted.foregroundChangeToken == cursor && restarted.engineState == engineCheckpoint,
+                  "invalid-account cursor attempts preserve both original-owner checkpoints")
+        try restarted.persistForegroundChangeToken(advancedCursor, generation: restarted.generation)
+        try check(restarted.foregroundChangeToken == advancedCursor && restarted.engineState == engineCheckpoint
+                  && restarted.incomingRecords.map(\.entry) == [recordB.entry],
+                  "authorized cursor advancement retains incoming B and independent engine progress")
+        try FileManager.default.removeItem(at: file)
+        try originalBytes.write(to: file)
+        let recoveredStore = try StoryStore(fileURL: file)
+        _ = try restarted.replayIncoming(using: ["stories": StoriesSyncAdapter(store: recoveredStore)], generation: restarted.generation)
+        try check(recoveredStore.stories == [b] && restarted.incomingRecords.isEmpty
+                  && restarted.foregroundChangeToken == advancedCursor,
+                  "retained foreground B still replays to the repaired actual store after cursor advancement")
+        try restarted.persistForegroundChangeToken(nil, generation: restarted.generation)
+        let afterReset = try SavyCloudSyncState(fileURL: restarted.fileURL)
+        try check(afterReset.foregroundChangeToken == nil && afterReset.engineState == engineCheckpoint,
+                  "authorized foreground cursor reset persists without resetting the engine checkpoint")
     }
 }

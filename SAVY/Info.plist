@@ -24,6 +24,14 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>SAVY uses Face ID to unlock your private workspace after you sign in.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>SAVY_CLOUDKIT_CONTAINER</key>
+	<string>iCloud.com.adamblair.harness</string>
+	<key>SAVY_CLOUDKIT_ENVIRONMENT</key>
+	<string>Development</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>SAVY uses your calendars when you choose a calendar for a scheduled entry, so it can save and update that event.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
