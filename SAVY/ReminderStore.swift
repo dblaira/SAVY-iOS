@@ -7,6 +7,9 @@ import SwiftUI
 final class ReminderStore: ObservableObject {
     @Published private(set) var reminders: [Reminder] = []
     @Published var lastSyncFailed = false
+    private(set) var loadFailed = false
+    private(set) var lastWriteFailed = false
+    private var confirmedReminders: [Reminder] = []
 
     private let repo: ReminderRepository
     private let cacheURL: URL
@@ -28,9 +31,12 @@ final class ReminderStore: ObservableObject {
         self.candidateOutbox = candidateOutbox
         self.candidateClient = candidateClient
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         self.cacheURL = cacheURL ?? dir.appendingPathComponent("reminders.json")
-        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
+        let testDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("SAVYUITests", isDirectory: true)
+        if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED"),
+           ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS"),
+           self.cacheURL.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL.path
+            == testDirectory.resolvingSymlinksInPath().standardizedFileURL.path {
             try? FileManager.default.removeItem(at: self.cacheURL)
         }
         loadCache()
@@ -55,6 +61,9 @@ final class ReminderStore: ObservableObject {
     var pendingSyncCount: Int {
         reminders.filter(\.needsSync).count
     }
+
+    /// A damaged source stays intact and cannot be treated as an empty cloud collection.
+    var canSync: Bool { !loadFailed }
 
     var technicalCaptures: [TechnicalCapture] {
         technicalCaptureStore.captures
@@ -117,7 +126,7 @@ final class ReminderStore: ObservableObject {
                 changed = true
             }
         }
-        if changed { saveCache() }
+        if changed { _ = saveCache() }
     }
 
     func bootstrap() async {
@@ -138,9 +147,8 @@ final class ReminderStore: ObservableObject {
             // record in the same response can consume the next number.
             postNumberAllocator?.seed(reminders: remote.filter { ($0.postNumber ?? 0) > 0 }, socialPosts: [])
             let merged = mergeRemote(remote, withLocal: reminders)
-            reminders = merged
+            guard persist(merged) else { return }
             assignPostNumbers()
-            saveCache()
             let retainedIDs = Set(reminders.map(\.id))
             for removed in previous where !retainedIDs.contains(removed.id) {
                 NotificationScheduler.cancel(removed)
@@ -162,7 +170,9 @@ final class ReminderStore: ObservableObject {
         }
     }
 
-    func save(_ reminder: Reminder) {
+    @discardableResult
+    func save(_ reminder: Reminder) -> Bool {
+        guard !loadFailed else { return false }
         var r = reminder
         let existing = reminders.first { $0.id == r.id }
         if r.schedule != nil || r.scheduleSyncVersion != nil
@@ -175,7 +185,7 @@ final class ReminderStore: ObservableObject {
             : savedNumber
         r.updatedAt = Date()
         r.needsSync = true
-        upsertLocal(r)
+        guard upsertLocal(r) else { return false }
         enqueueCandidateCapture(for: r)
         NotificationScheduler.schedule(r)
         Task {
@@ -190,14 +200,14 @@ final class ReminderStore: ObservableObject {
             await sync(r)
             await flushCandidateOutbox()
         }
+        return true
     }
 
     func complete(_ reminder: Reminder) {
         var r = reminder
         r.status = .completed
         r.completedAt = Date()
-        NotificationScheduler.cancel(r)
-        save(r)
+        if save(r) { NotificationScheduler.cancel(r) }
     }
 
     func uncomplete(_ reminder: Reminder) {
@@ -209,29 +219,38 @@ final class ReminderStore: ObservableObject {
 
     func togglePin(_ reminder: Reminder) {
         guard let idx = reminders.firstIndex(where: { $0.id == reminder.id }) else { return }
+        var next = reminders
         var r = reminders[idx]
         r.pinned.toggle()
         r.updatedAt = Date()
         r.needsSync = true
-        reminders[idx] = r
+        next[idx] = r
 
+        var ordered: [(id: UUID, rank: Int)] = []
+        let nextActive = next.filter { $0.status == .active }.sorted { compareUpNext($0, $1) }
         if r.pinned {
-            applyBlockOrder(active.filter { !$0.pinned })
-            var pinned = active.filter { $0.pinned }
+            ordered += nextActive.filter { !$0.pinned }.enumerated().map { ($0.element.id, $0.offset) }
+            var pinned = nextActive.filter { $0.pinned }
             pinned.removeAll { $0.id == r.id }
-            pinned.insert(reminders[idx], at: 0)
-            applyBlockOrder(pinned)
+            pinned.insert(r, at: 0)
+            ordered += pinned.enumerated().map { ($0.element.id, $0.offset) }
         } else {
-            applyBlockOrder(active.filter { $0.pinned })
-            var unpinned = active.filter { !$0.pinned }
+            ordered += nextActive.filter { $0.pinned }.enumerated().map { ($0.element.id, $0.offset) }
+            var unpinned = nextActive.filter { !$0.pinned }
             unpinned.removeAll { $0.id == r.id }
-            unpinned.insert(reminders[idx], at: 0)
-            applyBlockOrder(unpinned)
+            unpinned.insert(r, at: 0)
+            ordered += unpinned.enumerated().map { ($0.element.id, $0.offset) }
         }
-        // Pinning a sole item may leave every rank unchanged. Persist and sync the
-        // pin itself even when neither applyBlockOrder call has anything to save.
-        saveCache()
-        if let updated = reminders.first(where: { $0.id == r.id }) {
+        var touched = Set([r.id])
+        for item in ordered {
+            guard let index = next.firstIndex(where: { $0.id == item.id }), next[index].upNextOrder != item.rank else { continue }
+            next[index].upNextOrder = item.rank
+            next[index].updatedAt = Date()
+            next[index].needsSync = true
+            touched.insert(item.id)
+        }
+        guard persist(next) else { return }
+        for updated in next where touched.contains(updated.id) {
             Task { await sync(updated) }
         }
     }
@@ -277,19 +296,20 @@ final class ReminderStore: ObservableObject {
     }
 
     private func applyOrderMetadata(_ ordered: [(id: UUID, rank: Int)]) {
+        var next = reminders
         var touched: [Reminder] = []
         for item in ordered {
-            guard let idx = reminders.firstIndex(where: { $0.id == item.id }) else { continue }
-            guard reminders[idx].upNextOrder != item.rank else { continue }
-            var r = reminders[idx]
+            guard let idx = next.firstIndex(where: { $0.id == item.id }) else { continue }
+            guard next[idx].upNextOrder != item.rank else { continue }
+            var r = next[idx]
             r.upNextOrder = item.rank
             r.updatedAt = Date()
             r.needsSync = true
-            reminders[idx] = r
+            next[idx] = r
             touched.append(r)
         }
         guard !touched.isEmpty else { return }
-        saveCache()
+        guard persist(next) else { return }
         for r in touched {
             Task { await sync(r) }
         }
@@ -302,7 +322,7 @@ final class ReminderStore: ObservableObject {
         r.status = .deleted
         r.updatedAt = Date()
         r.needsSync = true
-        upsertLocal(r)
+        guard upsertLocal(r) else { return }
         NotificationScheduler.cancel(reminder)
         Task {
 #if canImport(UIKit)
@@ -376,10 +396,11 @@ final class ReminderStore: ObservableObject {
         }
     }
 
-    private func upsertLocal(_ r: Reminder) {
-        if let idx = reminders.firstIndex(where: { $0.id == r.id }) { reminders[idx] = r }
-        else { reminders.append(r) }
-        saveCache()
+    private func upsertLocal(_ r: Reminder) -> Bool {
+        var next = reminders
+        if let idx = next.firstIndex(where: { $0.id == r.id }) { next[idx] = r }
+        else { next.append(r) }
+        return persist(next)
     }
 
     private func markSynced(_ id: UUID, updatedAt: Date) {
@@ -497,15 +518,78 @@ final class ReminderStore: ObservableObject {
     }
 
     private func loadCache() {
-        guard let data = try? Data(contentsOf: cacheURL),
-              let decoded = try? JSONDecoder.recall.decode([Reminder].self, from: data) else { return }
-        reminders = decoded
+        guard FileManager.default.fileExists(atPath: cacheURL.path) else { return }
+        do {
+            let decoded = try JSONDecoder.recall.decode([Reminder].self, from: Data(contentsOf: cacheURL))
+            guard Set(decoded.map(\.id)).count == decoded.count else { throw CocoaError(.fileReadCorruptFile) }
+            reminders = decoded
+            confirmedReminders = decoded
+        } catch {
+            loadFailed = true
+            lastSyncFailed = true
+        }
     }
 
-    private func saveCache() {
-        if let data = try? JSONEncoder.recall.encode(reminders) {
-            try? data.write(to: cacheURL, options: .atomic)
+    @discardableResult
+    private func saveCache() -> Bool {
+        let next = reminders
+        guard persist(next) else {
+            // Legacy metadata/isolated-fixture callers mutate an array before this boundary.
+            reminders = confirmedReminders
+            return false
         }
+        return true
+    }
+
+    private func persist(_ next: [Reminder]) -> Bool {
+        guard !loadFailed else { return false }
+        do {
+            guard Set(next.map(\.id)).count == next.count else { throw CocoaError(.fileWriteUnknown) }
+            let data = try JSONEncoder.recall.encode(next)
+            try FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: cacheURL, options: [.atomic])
+            reminders = next
+            confirmedReminders = next
+            lastWriteFailed = false
+            return true
+        } catch {
+            lastWriteFailed = true
+            lastSyncFailed = true
+            return false
+        }
+    }
+
+    /// CloudKit imports are already merged by portable version. Gateway dirtiness must not
+    /// override a newer received record, and receiving it must never re-enter save/capture.
+    @discardableResult
+    func applySynced(_ synced: [Reminder]) -> Bool {
+        guard canSync else { return false }
+        let previous = Dictionary(uniqueKeysWithValues: reminders.map { ($0.id, $0) })
+        let next = synced.map { incoming in
+            var entry = ReminderScheduleSync.merging(remote: incoming, local: previous[incoming.id])
+            entry.needsSync = false
+            return entry
+        }
+        guard next != reminders else { return true }
+        guard persist(next) else { return false }
+        let retainedIDs = Set(next.map(\.id))
+        for removed in previous.values where !retainedIDs.contains(removed.id) {
+            NotificationScheduler.cancel(removed)
+        }
+        for entry in next where previous[entry.id] != entry {
+            NotificationScheduler.schedule(entry)
+        }
+        #if canImport(UIKit)
+        for local in previous.values where local.schedule?.calendarIdentifier != nil {
+            let current = next.first { $0.id == local.id }
+            if current != local {
+                Task { @MainActor in
+                    await CalendarScheduleBridge.shared.reconcileSynced(previous: local, current: current)
+                }
+            }
+        }
+        #endif
+        return true
     }
 
     /// Physical UI fixtures are written only into the unlocked test app's temporary cache.

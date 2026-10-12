@@ -14,6 +14,35 @@ private final class Passthrough {
     func merged(into snapshot: [String: SyncJSON]) -> [String: SyncJSON] {
         snapshot.merging(values) { current, _ in current }
     }
+
+    func restore(_ archived: [String: SyncJSON]) {
+        values.merge(archived) { current, _ in current }
+    }
+}
+
+/// Some stores retain a deleted row until transport confirms its version.
+@MainActor
+protocol SavyTombstoneSyncAdapter: SavySyncAdapter {
+    var localTombstones: [String: Double] { get }
+}
+
+/// The durable journal restores only undecodable values, which have no editable row in this
+/// build. This keeps a process restart from turning a newer app's unknown content into deletion.
+@MainActor
+protocol SavyPassthroughSyncAdapter: SavySyncAdapter {
+    func restoreUndecodable(_ values: [String: SyncJSON])
+}
+
+private func portableReminderValue(_ value: SyncJSON) -> SyncJSON {
+    guard case .object(var reminder) = value else { return value }
+    reminder["needsSync"] = .bool(false)
+    if case .object(var schedule) = reminder["schedule"] {
+        schedule.removeValue(forKey: "calendarIdentifier")
+        schedule.removeValue(forKey: "calendarEventIdentifier")
+        reminder["schedule"] = .object(schedule)
+        if reminder["scheduleSyncVersion"]?.numberValue == nil { reminder["scheduleSyncVersion"] = .number(1) }
+    }
+    return .object(reminder)
 }
 
 private func firstRunContentStamp(_ date: Date?) -> SyncStamp {
@@ -26,7 +55,7 @@ private func changeStamp(_ previous: SyncEntry?, now: Double) -> SyncStamp {
 
 /// Authored Connections, source-card pins, and hidden source cards.
 @MainActor
-final class ConnectionsSyncAdapter: SavySyncAdapter {
+final class ConnectionsSyncAdapter: SavyPassthroughSyncAdapter {
     let documentKey = "connections"
     private let store: ConnectionStore
     private let passthrough = Passthrough()
@@ -55,26 +84,30 @@ final class ConnectionsSyncAdapter: SavySyncAdapter {
 
     private static func withoutNativeCalendarBindings(_ value: SyncJSON) -> SyncJSON {
         guard case .object(var entry) = value,
-              case .object(var metadata) = entry["metadata"] else { return value }
-        if case .object(var schedule) = metadata["schedule"] {
-            schedule.removeValue(forKey: "calendarIdentifier")
-            schedule.removeValue(forKey: "calendarEventIdentifier")
-            metadata["schedule"] = .object(schedule)
-            if metadata["scheduleSyncVersion"]?.numberValue == nil {
-                metadata["scheduleSyncVersion"] = .number(1)
-            }
-        }
+              case .object(let metadata) = entry["metadata"] else { return value }
         // Nil Schedule without a version is an older app's omission, not a deletion.
         // A versioned nil Schedule is retained so explicit removals reach other devices.
-        entry["metadata"] = .object(metadata)
+        entry["metadata"] = portableReminderValue(.object(metadata))
         return .object(entry)
+    }
+
+    func restoreUndecodable(_ values: [String: SyncJSON]) {
+        passthrough.restore(values.filter { key, value in
+            guard key.hasPrefix("entry:") else { return false }
+            guard let entry = try? value.decode(ConnectionEntry.self) else { return true }
+            return key != "entry:\(entry.id.uuidString.lowercased())"
+        }
+            .mapValues(Self.withoutNativeCalendarBindings))
     }
 
     func stamp(key: String, value: SyncJSON, context: SyncChangeContext) -> SyncStamp {
         switch context {
         case .firstRun:
             let entry = key.hasPrefix("entry:") ? try? value.decode(ConnectionEntry.self) : nil
-            return firstRunContentStamp(entry?.metadata.updatedAt)
+            let stored = store.entries.first { "entry:\($0.id.uuidString.lowercased())" == key }
+            let contentDate = stored?.metadata.updatedAt ?? entry?.metadata.updatedAt
+            let changed = store.syncModificationDates[key]
+            return firstRunContentStamp([contentDate, changed].compactMap { $0 }.max())
         case .change(let previous, let now):
             return changeStamp(previous, now: now)
         }
@@ -92,7 +125,9 @@ final class ConnectionsSyncAdapter: SavySyncAdapter {
         for (key, value) in values {
             if key.hasPrefix("entry:") {
                 let sharedValue = Self.withoutNativeCalendarBindings(value)
-                if let entry = try? sharedValue.decode(ConnectionEntry.self) { entries.append(entry) } else { undecodable[key] = sharedValue }
+                if let entry = try? sharedValue.decode(ConnectionEntry.self), key == "entry:\(entry.id.uuidString.lowercased())" {
+                    entries.append(entry)
+                } else { undecodable[key] = sharedValue }
             } else if key.hasPrefix("sourcePin:"), let pinned = value.boolValue {
                 pins[String(key.dropFirst("sourcePin:".count))] = pinned
             } else if key.hasPrefix("hidden:"), value.boolValue == true {
@@ -112,7 +147,7 @@ final class ConnectionsSyncAdapter: SavySyncAdapter {
 
 /// The older News/Advertising posts.
 @MainActor
-final class SocialPostsSyncAdapter: SavySyncAdapter {
+final class SocialPostsSyncAdapter: SavyPassthroughSyncAdapter {
     let documentKey = "social-posts"
     private let store: SocialPostStore
     private let passthrough = Passthrough()
@@ -138,27 +173,43 @@ final class SocialPostsSyncAdapter: SavySyncAdapter {
     func stamp(key: String, value: SyncJSON, context: SyncChangeContext) -> SyncStamp {
         switch context {
         case .firstRun:
-            return firstRunContentStamp((try? value.decode(SocialPost.self))?.updatedAt)
+            let stored = store.posts.first { "post:\($0.id.uuidString.lowercased())" == key }
+            return firstRunContentStamp(stored?.updatedAt ?? (try? value.decode(SocialPost.self))?.updatedAt)
         case .change(let previous, let now):
             return changeStamp(previous, now: now)
         }
     }
 
     func apply(_ values: [String: SyncJSON]) {
+        _ = applyAndConfirm(values)
+    }
+
+    func restoreUndecodable(_ values: [String: SyncJSON]) {
+        passthrough.restore(values.filter { key, value in
+            guard key.hasPrefix("post:") else { return false }
+            guard let post = try? value.decode(SocialPost.self) else { return true }
+            return key != "post:\(post.id.uuidString.lowercased())"
+        })
+    }
+
+    func applyAndConfirm(_ values: [String: SyncJSON]) -> Bool {
         var posts: [SocialPost] = []
         var undecodable: [String: SyncJSON] = [:]
         for (key, value) in values where key.hasPrefix("post:") {
-            if let post = try? value.decode(SocialPost.self) { posts.append(post) } else { undecodable[key] = value }
+            if let post = try? value.decode(SocialPost.self), key == "post:\(post.id.uuidString.lowercased())" {
+                posts.append(post)
+            } else { undecodable[key] = value }
         }
-        passthrough.keep(undecodable)
         posts.sort { $0.updatedAt == $1.updatedAt ? $0.id.uuidString < $1.id.uuidString : $0.updatedAt > $1.updatedAt }
-        store.applySynced(posts)
+        guard store.applySynced(posts) else { return false }
+        passthrough.keep(undecodable)
+        return true
     }
 }
 
 /// Long-form Stories.
 @MainActor
-final class StoriesSyncAdapter: SavySyncAdapter {
+final class StoriesSyncAdapter: SavyPassthroughSyncAdapter {
     let documentKey = "stories"
     private let store: StoryStore
     private let passthrough = Passthrough()
@@ -184,21 +235,103 @@ final class StoriesSyncAdapter: SavySyncAdapter {
     func stamp(key: String, value: SyncJSON, context: SyncChangeContext) -> SyncStamp {
         switch context {
         case .firstRun:
-            return firstRunContentStamp((try? value.decode(Story.self))?.updatedAt)
+            let stored = store.stories.first { "story:\($0.id.uuidString.lowercased())" == key }
+            return firstRunContentStamp(stored?.updatedAt ?? (try? value.decode(Story.self))?.updatedAt)
         case .change(let previous, let now):
             return changeStamp(previous, now: now)
         }
     }
 
     func apply(_ values: [String: SyncJSON]) {
+        _ = applyAndConfirm(values)
+    }
+
+    func restoreUndecodable(_ values: [String: SyncJSON]) {
+        passthrough.restore(values.filter { key, value in
+            guard key.hasPrefix("story:") else { return false }
+            guard let story = try? value.decode(Story.self) else { return true }
+            return key != "story:\(story.id.uuidString.lowercased())"
+        })
+    }
+
+    func applyAndConfirm(_ values: [String: SyncJSON]) -> Bool {
         var stories: [Story] = []
         var undecodable: [String: SyncJSON] = [:]
         for (key, value) in values where key.hasPrefix("story:") {
-            if let story = try? value.decode(Story.self) { stories.append(story) } else { undecodable[key] = value }
+            if let story = try? value.decode(Story.self), key == "story:\(story.id.uuidString.lowercased())" {
+                stories.append(story)
+            } else { undecodable[key] = value }
         }
-        passthrough.keep(undecodable)
         stories.sort { $0.updatedAt == $1.updatedAt ? $0.id.uuidString < $1.id.uuidString : $0.updatedAt > $1.updatedAt }
-        store.applySynced(stories)
+        guard store.applySynced(stories) else { return false }
+        passthrough.keep(undecodable)
+        return true
+    }
+}
+
+/// Reminder-based Reminders, Actions, Calendar entries, and Posts share one portable store.
+@MainActor
+final class RemindersSyncAdapter: SavyTombstoneSyncAdapter, SavyPassthroughSyncAdapter {
+    let documentKey = "reminders"
+    private let store: ReminderStore
+    private let passthrough = Passthrough()
+
+    init(store: ReminderStore) { self.store = store }
+    var isReady: Bool { store.canSync }
+    var localChanges: AnyPublisher<Void, Never> {
+        store.objectWillChange.map { _ in () }.eraseToAnyPublisher()
+    }
+
+    var localTombstones: [String: Double] {
+        store.reminders.filter { $0.status == .deleted }.reduce(into: [:]) { result, reminder in
+            result["reminder:\(reminder.id.uuidString.lowercased())"] = reminder.updatedAt.timeIntervalSince1970
+        }
+    }
+
+    func snapshot() -> [String: SyncJSON] {
+        var values: [String: SyncJSON] = [:]
+        for reminder in store.reminders where reminder.status != .deleted {
+            if let value = try? SyncJSON.encode(reminder) {
+                values["reminder:\(reminder.id.uuidString.lowercased())"] = portableReminderValue(value)
+            }
+        }
+        return passthrough.merged(into: values).mapValues(portableReminderValue)
+    }
+
+    func stamp(key: String, value: SyncJSON, context: SyncChangeContext) -> SyncStamp {
+        switch context {
+        case .firstRun:
+            let stored = store.reminders.first { "reminder:\($0.id.uuidString.lowercased())" == key }
+            return firstRunContentStamp(stored?.updatedAt ?? (try? value.decode(Reminder.self))?.updatedAt)
+        case .change(let previous, let now):
+            return changeStamp(previous, now: now)
+        }
+    }
+
+    func restoreUndecodable(_ values: [String: SyncJSON]) {
+        passthrough.restore(values.filter { key, value in
+            guard key.hasPrefix("reminder:") else { return false }
+            guard let reminder = try? value.decode(Reminder.self) else { return true }
+            return reminder.status == .deleted || key != "reminder:\(reminder.id.uuidString.lowercased())"
+        }
+            .mapValues(portableReminderValue))
+    }
+
+    func apply(_ values: [String: SyncJSON]) { _ = applyAndConfirm(values) }
+
+    func applyAndConfirm(_ values: [String: SyncJSON]) -> Bool {
+        var reminders: [Reminder] = []
+        var undecodable: [String: SyncJSON] = [:]
+        for (key, value) in values where key.hasPrefix("reminder:") {
+            let portable = portableReminderValue(value)
+            if let reminder = try? portable.decode(Reminder.self), reminder.status != .deleted,
+               key == "reminder:\(reminder.id.uuidString.lowercased())" { reminders.append(reminder) }
+            else { undecodable[key] = portable }
+        }
+        reminders.sort { $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt }
+        guard store.applySynced(reminders) else { return false }
+        passthrough.keep(undecodable)
+        return true
     }
 }
 

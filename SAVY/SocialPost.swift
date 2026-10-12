@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 // MARK: - Post model
@@ -197,8 +198,9 @@ extension SocialPost {
 @MainActor
 final class SocialPostStore: ObservableObject {
     @Published private(set) var posts: [SocialPost]
-    /// An unreadable posts.json is not synced as an empty list; the shared copy restores it later.
+    /// An unreadable posts.json is preserved and cannot become an empty synced collection.
     private(set) var loadFailed = false
+    private(set) var lastWriteFailed = false
 
     private let fileURL: URL
     private var postNumberAllocator: PostNumberAllocator?
@@ -219,16 +221,17 @@ final class SocialPostStore: ObservableObject {
     }
 
     /// Synced posts keep the numbers they were given; the ledger adopts them rather than renumbering.
-    func applySynced(_ synced: [SocialPost]) {
-        guard !loadFailed, synced != posts else { return }
-        posts = synced
+    @discardableResult
+    func applySynced(_ synced: [SocialPost]) -> Bool {
+        guard !loadFailed else { return false }
+        guard synced != posts else { return true }
+        guard persist(synced) else { return false }
         if let allocator = postNumberAllocator {
             for post in synced {
                 if let number = post.postNumber { allocator.adopt(.socialPost, id: post.id, number: number) }
             }
-            configurePostNumbering(allocator)
         }
-        persist()
+        return true
     }
 
     // MARK: Reading
@@ -277,18 +280,17 @@ final class SocialPostStore: ObservableObject {
     func configurePostNumbering(_ allocator: PostNumberAllocator) {
         postNumberAllocator = allocator
         allocator.seed(reminders: [], socialPosts: posts)
-        var changed = false
-        for index in posts.indices {
-            let number = allocator.number(for: .socialPost, id: posts[index].id, savedNumber: posts[index].postNumber)
-            if posts[index].postNumber != number {
-                posts[index].postNumber = number
-                changed = true
-            }
+        guard !loadFailed else { return }
+        var next = posts
+        for index in next.indices {
+            let number = allocator.number(for: .socialPost, id: next[index].id, savedNumber: next[index].postNumber)
+            next[index].postNumber = number
         }
-        if changed { persist() }
+        if next != posts { _ = persist(next) }
     }
 
     func save(_ post: SocialPost) {
+        guard !loadFailed else { return }
         var p = post
         let savedNumber = posts.first { $0.id == p.id }?.postNumber ?? p.postNumber
         p.postNumber = postNumberAllocator?.number(for: .socialPost, id: p.id, savedNumber: savedNumber) ?? savedNumber
@@ -296,9 +298,9 @@ final class SocialPostStore: ObservableObject {
         if p.status == .posted, p.postedAt == nil {
             p.postedAt = p.updatedAt
         }
-        posts.removeAll { $0.id == p.id }
-        posts.insert(p, at: 0)
-        persist()
+        var next = posts.filter { $0.id != p.id }
+        next.insert(p, at: 0)
+        _ = persist(next)
     }
 
     func markPosted(_ post: SocialPost) {
@@ -315,8 +317,7 @@ final class SocialPostStore: ObservableObject {
     }
 
     func delete(_ post: SocialPost) {
-        posts.removeAll { $0.id == post.id }
-        persist()
+        _ = persist(posts.filter { $0.id != post.id })
     }
 
     // MARK: Disk
@@ -335,15 +336,24 @@ final class SocialPostStore: ObservableObject {
     private static func load(from fileURL: URL) throws -> [SocialPost] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
         let data = try Data(contentsOf: fileURL)
-        guard !data.isEmpty else { return [] }
-        return try JSONDecoder.recall.decode([SocialPost].self, from: data)
+        let posts = try JSONDecoder.recall.decode([SocialPost].self, from: data)
+        guard Set(posts.map(\.id)).count == posts.count else { throw CocoaError(.fileReadCorruptFile) }
+        return posts
     }
 
-    private func persist() {
-        let directory = fileURL.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        if let data = try? JSONEncoder.recall.encode(posts) {
-            try? data.write(to: fileURL, options: .atomic)
+    private func persist(_ next: [SocialPost]) -> Bool {
+        guard !loadFailed else { return false }
+        do {
+            guard Set(next.map(\.id)).count == next.count else { throw CocoaError(.fileWriteUnknown) }
+            let data = try JSONEncoder.recall.encode(next)
+            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: fileURL, options: .atomic)
+            posts = next
+            lastWriteFailed = false
+            return true
+        } catch {
+            lastWriteFailed = true
+            return false
         }
     }
 }

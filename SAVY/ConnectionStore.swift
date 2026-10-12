@@ -66,6 +66,7 @@ final class ConnectionStore: ObservableObject {
     @Published private(set) var sourcePinOverrides: [String: Bool] = [:]
     @Published private(set) var hiddenSourceIDs: Set<String> = []
     @Published private(set) var errorMessage: String?
+    private(set) var syncModificationDates: [String: Date] = [:]
 
     let fileURL: URL
     private var loadFailed = false
@@ -74,15 +75,17 @@ final class ConnectionStore: ObservableObject {
         var entries: [ConnectionEntry]
         var sourcePins: [String: Bool]
         var hiddenSourceIDs: Set<String>
+        var syncModificationDates: [String: Date]
 
         enum CodingKeys: String, CodingKey {
-            case entries, sourcePins, hiddenSourceIDs
+            case entries, sourcePins, hiddenSourceIDs, syncModificationDates
         }
 
-        init(entries: [ConnectionEntry], sourcePins: [String: Bool], hiddenSourceIDs: Set<String>) {
+        init(entries: [ConnectionEntry], sourcePins: [String: Bool], hiddenSourceIDs: Set<String>, syncModificationDates: [String: Date]) {
             self.entries = entries
             self.sourcePins = sourcePins
             self.hiddenSourceIDs = hiddenSourceIDs
+            self.syncModificationDates = syncModificationDates
         }
 
         init(from decoder: Decoder) throws {
@@ -90,6 +93,15 @@ final class ConnectionStore: ObservableObject {
             entries = try container.decode([ConnectionEntry].self, forKey: .entries)
             sourcePins = try container.decode([String: Bool].self, forKey: .sourcePins)
             hiddenSourceIDs = try container.decodeIfPresent(Set<String>.self, forKey: .hiddenSourceIDs) ?? []
+            syncModificationDates = try container.decodeIfPresent([String: Date].self, forKey: .syncModificationDates) ?? [:]
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(entries, forKey: .entries)
+            try container.encode(sourcePins, forKey: .sourcePins)
+            try container.encode(hiddenSourceIDs, forKey: .hiddenSourceIDs)
+            if !syncModificationDates.isEmpty { try container.encode(syncModificationDates, forKey: .syncModificationDates) }
         }
     }
 
@@ -129,6 +141,7 @@ final class ConnectionStore: ObservableObject {
             }
             sourcePinOverrides = archive.sourcePins
             hiddenSourceIDs = archive.hiddenSourceIDs
+            syncModificationDates = archive.syncModificationDates
         } catch {
             loadFailed = true
             errorMessage = "Your saved connections could not be opened. The original file has been kept."
@@ -197,7 +210,9 @@ final class ConnectionStore: ObservableObject {
     func deleteSource(id: String) -> Bool {
         var hidden = hiddenSourceIDs
         hidden.insert(id)
-        return persist(entries: entries, sourcePins: sourcePinOverrides, hiddenSourceIDs: hidden)
+        var dates = syncModificationDates
+        dates["hidden:\(id)"] = Date()
+        return persist(entries: entries, sourcePins: sourcePinOverrides, hiddenSourceIDs: hidden, syncModificationDates: dates)
     }
 
     @discardableResult
@@ -205,7 +220,9 @@ final class ConnectionStore: ObservableObject {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }) else { return false }
         var next = entries
         next[index].metadata.pinned.toggle()
-        return persist(entries: next, sourcePins: sourcePinOverrides)
+        var dates = syncModificationDates
+        dates["entry:\(entry.id.uuidString.lowercased())"] = Date()
+        return persist(entries: next, sourcePins: sourcePinOverrides, syncModificationDates: dates)
     }
 
     func sourcePinned(id: String, defaultValue: Bool) -> Bool {
@@ -215,8 +232,11 @@ final class ConnectionStore: ObservableObject {
     @discardableResult
     func setSourcePinned(id: String, isPinned: Bool) -> Bool {
         var pins = sourcePinOverrides
+        guard pins[id] != isPinned else { return true }
         pins[id] = isPinned
-        return persist(entries: entries, sourcePins: pins)
+        var dates = syncModificationDates
+        dates["sourcePin:\(id)"] = Date()
+        return persist(entries: entries, sourcePins: pins, syncModificationDates: dates)
     }
 
     func clearError() {
@@ -228,6 +248,7 @@ final class ConnectionStore: ObservableObject {
 
     @discardableResult
     func applySynced(entries nextEntries: [ConnectionEntry], sourcePins: [String: Bool], hiddenSourceIDs nextHidden: Set<String>) -> Bool {
+        guard canSync else { return false }
         let previous = Dictionary(uniqueKeysWithValues: entries.map { ($0.id, $0) })
         let merged = nextEntries.map { incoming -> ConnectionEntry in
             var entry = incoming
@@ -266,7 +287,8 @@ final class ConnectionStore: ObservableObject {
     private func persist(
         entries nextEntries: [ConnectionEntry],
         sourcePins: [String: Bool],
-        hiddenSourceIDs nextHiddenSourceIDs: Set<String>? = nil
+        hiddenSourceIDs nextHiddenSourceIDs: Set<String>? = nil,
+        syncModificationDates nextDates: [String: Date]? = nil
     ) -> Bool {
         guard !loadFailed else {
             errorMessage = "Your original connections file needs to be recovered before new changes can be saved."
@@ -274,12 +296,15 @@ final class ConnectionStore: ObservableObject {
         }
         do {
             let hidden = nextHiddenSourceIDs ?? hiddenSourceIDs
+            let dates = nextDates ?? syncModificationDates
+            guard Set(nextEntries.map(\.id)).count == nextEntries.count else { throw CocoaError(.fileWriteUnknown) }
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let data = try JSONEncoder.recall.encode(Archive(entries: nextEntries, sourcePins: sourcePins, hiddenSourceIDs: hidden))
+            let data = try JSONEncoder.recall.encode(Archive(entries: nextEntries, sourcePins: sourcePins, hiddenSourceIDs: hidden, syncModificationDates: dates))
             try data.write(to: fileURL, options: [.atomic])
             entries = nextEntries
             sourcePinOverrides = sourcePins
             hiddenSourceIDs = hidden
+            syncModificationDates = dates
             errorMessage = nil
             return true
         } catch {

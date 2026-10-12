@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 // MARK: - Story — the long form
@@ -63,8 +64,9 @@ extension Story {
 @MainActor
 final class StoryStore: ObservableObject {
     @Published private(set) var stories: [Story]
-    /// An unreadable stories.json is not synced as an empty list; the shared copy restores it later.
+    /// An unreadable stories.json is preserved and cannot become an empty synced collection.
     private(set) var loadFailed = false
+    private(set) var lastWriteFailed = false
 
     private let fileURL: URL
 
@@ -83,10 +85,11 @@ final class StoryStore: ObservableObject {
         }
     }
 
-    func applySynced(_ synced: [Story]) {
-        guard !loadFailed, synced != stories else { return }
-        stories = synced
-        persist()
+    @discardableResult
+    func applySynced(_ synced: [Story]) -> Bool {
+        guard !loadFailed else { return false }
+        guard synced != stories else { return true }
+        return persist(synced)
     }
 
     /// Drafts and ready first, newest first; posted after.
@@ -103,9 +106,9 @@ final class StoryStore: ObservableObject {
         if s.status == .posted, s.postedAt == nil {
             s.postedAt = s.updatedAt
         }
-        stories.removeAll { $0.id == s.id }
-        stories.insert(s, at: 0)
-        persist()
+        var next = stories.filter { $0.id != s.id }
+        next.insert(s, at: 0)
+        _ = persist(next)
     }
 
     func markPosted(_ story: Story) {
@@ -116,8 +119,7 @@ final class StoryStore: ObservableObject {
     }
 
     func delete(_ story: Story) {
-        stories.removeAll { $0.id == story.id }
-        persist()
+        _ = persist(stories.filter { $0.id != story.id })
     }
 
     private init(stories: [Story], fileURL: URL) {
@@ -134,15 +136,24 @@ final class StoryStore: ObservableObject {
     private static func load(from fileURL: URL) throws -> [Story] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
         let data = try Data(contentsOf: fileURL)
-        guard !data.isEmpty else { return [] }
-        return try JSONDecoder.recall.decode([Story].self, from: data)
+        let stories = try JSONDecoder.recall.decode([Story].self, from: data)
+        guard Set(stories.map(\.id)).count == stories.count else { throw CocoaError(.fileReadCorruptFile) }
+        return stories
     }
 
-    private func persist() {
-        let directory = fileURL.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        if let data = try? JSONEncoder.recall.encode(stories) {
-            try? data.write(to: fileURL, options: .atomic)
+    private func persist(_ next: [Story]) -> Bool {
+        guard !loadFailed else { return false }
+        do {
+            guard Set(next.map(\.id)).count == next.count else { throw CocoaError(.fileWriteUnknown) }
+            let data = try JSONEncoder.recall.encode(next)
+            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: fileURL, options: .atomic)
+            stories = next
+            lastWriteFailed = false
+            return true
+        } catch {
+            lastWriteFailed = true
+            return false
         }
     }
 }
