@@ -22,6 +22,7 @@ Host studio
   IdentityFile ~/.ssh/id_ed25519
   IdentitiesOnly yes
   StrictHostKeyChecking accept-new
+  ProxyCommand tailscale nc %h %p
 
 Host mbp
   HostName 100.111.154.126
@@ -29,6 +30,7 @@ Host mbp
   IdentityFile ~/.ssh/id_ed25519
   IdentitiesOnly yes
   StrictHostKeyChecking accept-new
+  ProxyCommand tailscale nc %h %p
 
 Host mbp2
   HostName 100.88.144.50
@@ -36,11 +38,12 @@ Host mbp2
   IdentityFile ~/.ssh/id_ed25519
   IdentitiesOnly yes
   StrictHostKeyChecking accept-new
+  ProxyCommand tailscale nc %h %p
 SSHCFG
 chmod 600 "$HOME/.ssh/config"
 
 pkill -f "tailscaled.*userspace" 2>/dev/null || true
-tailscaled --tun=userspace-networking \
+tailscaled --tun=userspace-networking --no-logs-no-support \
   --socks5-server=localhost:1055 \
   --outbound-http-proxy-listen=localhost:1054 \
   --state=/tmp/ts-state/tailscaled.state \
