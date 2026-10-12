@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A3A0D3406A228E428734A901 /* EntryDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3A0D3406A228E428734A902 /* EntryDraftStore.swift */; };
 		09B7E4626804496E1984EDFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 78F623BD250D3308A5C58730 /* Assets.xcassets */; };
 		0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */; };
 		0DEC481DE44FA8A87924CE5F /* PersonalAuthorityReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A499383C68DF06FF84C7D0BE /* PersonalAuthorityReview.swift */; };
@@ -112,6 +113,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A3A0D3406A228E428734A902 /* EntryDraftStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDraftStore.swift; sourceTree = "<group>"; };
 		0664053D22FAA613F02569D1 /* SAVY.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAVY.entitlements; sourceTree = "<group>"; };
 		0DA56611B45F0D0FC844211C /* CaptureEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEntry.swift; sourceTree = "<group>"; };
 		13CD74063706864F16360321 /* SavyLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyLocationProvider.swift; sourceTree = "<group>"; };
@@ -309,6 +311,7 @@
 				4102AF21CEECC9B183B07C38 /* ReminderRepository.swift */,
 				778D6D330400704956EDB2E6 /* ReminderScheduleView.swift */,
 				871BD4E6C5423FBBB43C168D /* ReminderStore.swift */,
+				A3A0D3406A228E428734A902 /* EntryDraftStore.swift */,
 				BA02A326CF8327C0B2833F07 /* RootView.swift */,
 				5921F17E5659B27B8A23DCCC /* SAVY-Mac.entitlements */,
 				0664053D22FAA613F02569D1 /* SAVY.entitlements */,
@@ -566,6 +569,7 @@
 				1BC480F076BA7FF0EE901491 /* ReminderRepository.swift in Sources */,
 				59806C1E6B49BDD2A2876D74 /* ReminderScheduleView.swift in Sources */,
 				112871D3E216094034CC342B /* ReminderStore.swift in Sources */,
+				A3A0D3406A228E428734A901 /* EntryDraftStore.swift in Sources */,
 				91BDC3FB046133C9C67A83DA /* RootView.swift in Sources */,
 				1B367673938BEF897C285682 /* SAVYApp.swift in Sources */,
 				3F7B3160739570FC3FC121F6 /* SavyCardPreferences.swift in Sources */,

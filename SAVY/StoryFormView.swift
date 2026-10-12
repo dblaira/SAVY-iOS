@@ -5,9 +5,11 @@ import UIKit
 /// is: bullets, numbered lines, quotes, blank lines. Same shell as the post form.
 struct StoryFormView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     let existing: Story?
-    var onSave: (Story) -> Void
+    var onSave: (Story) -> Bool
+    private let recoveryID: String
 
     @State private var story: Story
     @State private var postedDate: Date
@@ -15,10 +17,17 @@ struct StoryFormView: View {
     @State private var cancelled = false
     @State private var showSaved = false
     @State private var showCopied = false
+    @State private var saveFailed = false
 
-    init(existing: Story?, onSave: @escaping (Story) -> Void) {
+    init(existing: Story?, recoveryDraft: EntryRecoveryDraft? = nil, onSave: @escaping (Story) -> Bool) {
         self.existing = existing
         self.onSave = onSave
+        recoveryID = recoveryDraft?.id ?? EntryRecoveryDraft.storyKey(existing)
+        if case .story(let writing) = (recoveryDraft ?? EntryDraftStore.shared.draft(for: recoveryID))?.contents {
+            _story = State(initialValue: writing.story)
+            _postedDate = State(initialValue: writing.postedDate)
+            return
+        }
         let base = existing ?? Story()
         _story = State(initialValue: base)
         _postedDate = State(initialValue: base.postedAt ?? Date())
@@ -40,7 +49,7 @@ struct StoryFormView: View {
             .savyPageTitle(story.headline, color: SavyTheme.deepNavy)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { cancelled = true; dismiss() } label: {
+                    Button { cancel() } label: {
                         Image(systemName: "xmark.circle").font(.system(size: 22))
                     }
                     .tint(.black)
@@ -63,6 +72,13 @@ struct StoryFormView: View {
                 }
             }
             .onDisappear { autosaveIfNeeded() }
+            .onChange(of: recoveryContents) { _, _ in saveRecoveryDraft() }
+            .onChange(of: scenePhase) { _, phase in if phase != .active { saveRecoveryDraft() } }
+            .alert("Couldn't save Story", isPresented: $saveFailed) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Keep this form open. Your latest changes could not be saved to this device.")
+            }
         }
         .overlay { if showSaved { toast("Saved") } }
         .overlay { if showCopied { toast("Copied") } }
@@ -194,8 +210,8 @@ struct StoryFormView: View {
     }
 
     private func commit() {
+        guard persist() else { saveFailed = true; return }
         committed = true
-        persist()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation(.spring(response: 0.3)) { showSaved = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
@@ -203,13 +219,29 @@ struct StoryFormView: View {
 
     private func autosaveIfNeeded() {
         guard !committed, !cancelled, story.hasContent else { return }
-        persist()
+        if persist() { committed = true } else { saveFailed = true }
     }
 
-    private func persist() {
+    private var recoveryContents: EntryRecoveryDraft.Contents {
+        .story(.init(original: existing, story: story, postedDate: postedDate))
+    }
+
+    private func saveRecoveryDraft() {
+        guard !committed, !cancelled else { return }
+        if !EntryDraftStore.shared.save(id: recoveryID, contents: recoveryContents) { saveFailed = true }
+    }
+
+    private func cancel() {
+        guard EntryDraftStore.shared.remove(recoveryID) else { saveFailed = true; return }
+        cancelled = true
+        dismiss()
+    }
+
+    private func persist() -> Bool {
         if story.status == .posted {
             story.postedAt = postedDate
         }
-        onSave(story)
+        guard onSave(story) else { return false }
+        return EntryDraftStore.shared.remove(recoveryID)
     }
 }

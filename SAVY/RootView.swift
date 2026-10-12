@@ -82,6 +82,7 @@ struct RootView: View {
     @State private var isPersonalAuthorityReviewPresented = false
     @State private var isPostsPresented = false
     @State private var opensPostsAfterComposer = false
+    @State private var recoveringDraft: EntryRecoveryDraft?
     private let syncsWithCloud: Bool
 
     init(
@@ -96,6 +97,7 @@ struct RootView: View {
         _navigationState = StateObject(wrappedValue: navigationState)
         let isUITest = SavyRuntime.isTesting
         syncsWithCloud = !isUITest
+        _recoveringDraft = State(initialValue: EntryDraftStore.shared.latest)
         let loadedPostStore: SocialPostStore
         let loadedStoryStore: StoryStore
         let loadedReminderStore: ReminderStore
@@ -299,6 +301,9 @@ struct RootView: View {
         }
         .savySolidTopScrollEdge()
         .environment(\.scheduleOrganizerEmail, session?.user.displayEmail ?? "")
+        .sheet(item: $recoveringDraft) { draft in
+            recoveredEntrySheet(draft)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 reminderStore.reminders.forEach(NotificationScheduler.schedule)
@@ -322,28 +327,42 @@ struct RootView: View {
     private func reminderEntrySheet(for kind: MetadataEntryKind) -> some View {
         switch kind {
         case .reminder:
-            ReminderFormView(initialKind: .reminder, existing: nil, existingTags: reminderStore.recentTags) { reminder in
-                reminderStore.save(reminder)
+            ReminderFormView(initialKind: .reminder, existing: nil, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in
                 navigationState.activeSection = .reminders
             }
         case .action:
-            ReminderFormView(initialKind: .action, existing: nil, existingTags: reminderStore.recentTags) { reminder in
-                reminderStore.save(reminder)
+            ReminderFormView(initialKind: .action, existing: nil, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in
                 navigationState.activeSection = .actions
             }
         case .post:
             // Adam approved the Post mockup on the Reminder form path (2026-09-13: "That looks
             // good. Let's build that.") — Post is the fourth face of the same entry form.
             // Nothing posts on its own; saved entries land on the Social Media Posts page.
-            ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags) { reminder in
-                reminderStore.save(reminder)
+            ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in
                 opensPostsAfterComposer = true
             }
         case .calendar:
-            ReminderFormView(initialKind: .event, existing: nil, existingTags: reminderStore.recentTags) { reminder in
-                reminderStore.save(reminder)
+            ReminderFormView(initialKind: .event, existing: nil, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in
                 navigationState.activeSection = .calendar
             }
+        }
+    }
+
+    @ViewBuilder
+    private func recoveredEntrySheet(_ draft: EntryRecoveryDraft) -> some View {
+        switch draft.contents {
+        case .reminder(let writing):
+            ReminderFormView(initialKind: writing.entry.kind, connectionMode: writing.connectionMode,
+                             existing: writing.original,
+                             existingTags: writing.connectionMode ? connectionStore.recentTags : reminderStore.recentTags,
+                             recoveryDraft: draft,
+                             onSaveAttempt: { writing.connectionMode ? connectionStore.save($0) : reminderStore.save($0) },
+                             onSave: { _ in })
+        case .post(let writing):
+            SocialPostFormView(existing: writing.original, recentAreas: postStore.recentAreas,
+                               recoveryDraft: draft, onSave: { postStore.save($0) })
+        case .story(let writing):
+            StoryFormView(existing: writing.original, recoveryDraft: draft, onSave: { storyStore.save($0) })
         }
     }
 
@@ -472,9 +491,7 @@ struct EditorialHomeView: View {
             }
         }
         .sheet(item: $editingReminder) { reminder in
-            ReminderFormView(existing: reminder, existingTags: reminderStore.recentTags) { updated in
-                reminderStore.save(updated)
-            }
+            ReminderFormView(existing: reminder, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in }
         }
         #if DEBUG
         .onReceive(NotificationCenter.default.publisher(for: SavyScreenCapture.openHomeSection)) { note in

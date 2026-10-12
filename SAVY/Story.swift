@@ -100,7 +100,8 @@ final class StoryStore: ObservableObject {
         return open + posted
     }
 
-    func save(_ story: Story) {
+    @discardableResult
+    func save(_ story: Story) -> Bool {
         var s = story
         s.updatedAt = Date()
         if s.status == .posted, s.postedAt == nil {
@@ -108,7 +109,7 @@ final class StoryStore: ObservableObject {
         }
         var next = stories.filter { $0.id != s.id }
         next.insert(s, at: 0)
-        _ = persist(next)
+        return persist(next)
     }
 
     func markPosted(_ story: Story) {

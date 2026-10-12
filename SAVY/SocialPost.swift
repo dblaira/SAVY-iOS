@@ -289,8 +289,9 @@ final class SocialPostStore: ObservableObject {
         if next != posts { _ = persist(next) }
     }
 
-    func save(_ post: SocialPost) {
-        guard !loadFailed else { return }
+    @discardableResult
+    func save(_ post: SocialPost) -> Bool {
+        guard !loadFailed else { return false }
         var p = post
         let savedNumber = posts.first { $0.id == p.id }?.postNumber ?? p.postNumber
         p.postNumber = postNumberAllocator?.numberPreservingSavedReference(for: .socialPost, id: p.id, savedNumber: savedNumber) ?? savedNumber
@@ -300,7 +301,7 @@ final class SocialPostStore: ObservableObject {
         }
         var next = posts.filter { $0.id != p.id }
         next.insert(p, at: 0)
-        _ = persist(next)
+        return persist(next)
     }
 
     func markPosted(_ post: SocialPost) {

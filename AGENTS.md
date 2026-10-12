@@ -1,5 +1,11 @@
 # SAVY iOS Agent Instructions
 
+## Entry draft recovery — October 12, 2026
+
+Adam: "Fix the autosave too. I don't want to lose another entry."
+
+The shared entry form, legacy Post form and Story form write private local recovery drafts synchronously and atomically as their editable values change, and flush when leaving the foreground. Relaunch restores the latest unfinished form automatically, including exact writing, all explored Post themes, pending tags and selected image data. Recovery drafts stay in `SAVY/entry-drafts.json`; they do not enter CloudKit, Calendar, Harness or candidate capture. Only confirmed Save or explicit Cancel removes a draft. Do not bypass the existing no-open-editor gate before installing or restarting either live app. UI recovery tests use the isolated `SAVYUITests` store only.
+
 ## Native iCloud sync — October 12, 2026
 
 Adam: "icloud activation approved"

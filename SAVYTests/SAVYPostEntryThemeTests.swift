@@ -585,3 +585,89 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         }
     }
 }
+
+
+@MainActor
+final class SAVYDraftRecoveryTests: XCTestCase {
+    func testEveryTypedFieldAndThemeSurvivesReopeningWithoutSavingAnEntry() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appendingPathComponent("drafts.json")
+        let store = EntryDraftStore(fileURL: file)
+        var entry = Reminder()
+        entry.kind = .post
+        entry.title = "Synthetic unfinished title 🐾"
+        entry.notes = "Line one\n\nLine two  "
+        var questions = PostEntryDraft(entry: entry)
+        questions.setAnswer("First theme\nExact answer.", at: 0)
+        let firstTheme = questions.themeID
+        questions.selectTheme("problem-solution")
+        questions.setAnswer("Second theme\nOther answer.", at: 0)
+        let writing = EntryRecoveryDraft.ReminderWriting(original: nil, entry: entry,
+            questions: questions, subtasks: entry.subtasks, tagDraft: "unfinished tag",
+            imageData: Data([0, 1, 2, 255]), connectionMode: false)
+        XCTAssertTrue(store.save(id: "post-draft", contents: .reminder(writing)))
+        let reopened = EntryDraftStore(fileURL: file)
+        guard case .reminder(let restored) = reopened.latest?.contents else { return XCTFail("Draft missing") }
+        XCTAssertEqual(restored, writing)
+        var restoredQuestions = restored.questions
+        restoredQuestions.selectTheme(firstTheme)
+        XCTAssertEqual(restoredQuestions.answers[0], "First theme\nExact answer.")
+        XCTAssertEqual(restored.entry.id, entry.id)
+        XCTAssertEqual(restored.entry.updatedAt, entry.updatedAt)
+    }
+
+    func testFailedWriteRetainsLastConfirmedDraftAndCanRetry() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appendingPathComponent("drafts.json")
+        let store = EntryDraftStore(fileURL: file)
+        var story = Story()
+        story.body = "First saved keystrokes"
+        let old = EntryRecoveryDraft.Contents.story(.init(original: nil, story: story, postedDate: Date(timeIntervalSince1970: 10)))
+        XCTAssertTrue(store.save(id: "story:new", contents: old))
+        let bytes = try Data(contentsOf: file)
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: true)
+        story.body = "Newest keystrokes"
+        let new = EntryRecoveryDraft.Contents.story(.init(original: nil, story: story, postedDate: Date(timeIntervalSince1970: 10)))
+        XCTAssertFalse(store.save(id: "story:new", contents: new))
+        XCTAssertEqual(store.latest?.contents, old)
+        XCTAssertFalse(store.remove("story:new"))
+        try FileManager.default.removeItem(at: file)
+        try bytes.write(to: file)
+        XCTAssertTrue(store.save(id: "story:new", contents: new))
+        XCTAssertEqual(EntryDraftStore(fileURL: file).latest?.contents, new)
+    }
+
+    func testCancelOnlyDiscardsTheChosenDraftAndEmptyEditsAreRetained() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let store = EntryDraftStore(fileURL: folder.appendingPathComponent("drafts.json"))
+        var post = SocialPost()
+        post.text = "Text to erase"
+        XCTAssertTrue(store.save(id: "a", contents: .post(.init(original: nil, post: post, postedDate: post.createdAt, areaDraft: "area"))))
+        post.text = ""
+        let empty = EntryRecoveryDraft.Contents.post(.init(original: nil, post: post, postedDate: post.createdAt, areaDraft: ""))
+        XCTAssertTrue(store.save(id: "a", contents: empty))
+        XCTAssertEqual(store.draft(for: "a")?.contents, empty)
+        XCTAssertTrue(store.save(id: "b", contents: empty))
+        XCTAssertTrue(store.remove("a"))
+        XCTAssertNil(store.draft(for: "a"))
+        XCTAssertNotNil(store.draft(for: "b"))
+    }
+
+    func testUnreadableDraftFileIsNeverOverwritten() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appendingPathComponent("drafts.json")
+        let original = Data("broken original".utf8)
+        try original.write(to: file)
+        let store = EntryDraftStore(fileURL: file)
+        XCTAssertTrue(store.loadFailed)
+        let story = Story()
+        XCTAssertFalse(store.save(id: "new", contents: .story(.init(original: nil, story: story, postedDate: story.createdAt))))
+        XCTAssertEqual(try Data(contentsOf: file), original)
+    }
+}

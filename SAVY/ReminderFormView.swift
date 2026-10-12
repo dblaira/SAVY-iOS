@@ -7,11 +7,13 @@ import MessageUI
 /// the top selector changes where the saved item lands, while the field order stays identical.
 struct ReminderFormView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     let existing: Reminder?
     let existingTags: [String]
     let connectionMode: Bool
     private let initialEntry: Reminder
+    private let recoveryID: String
     var onSaveAttempt: ((Reminder) -> Bool)?
     var onSave: (Reminder) -> Void
 
@@ -23,6 +25,7 @@ struct ReminderFormView: View {
     @State private var tagDraft = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var pickedImage: UIImage?
+    @State private var recoveryImageData: Data?
     @State private var committed = false
     @State private var cancelled = false
     @State private var showSaved = false
@@ -38,18 +41,29 @@ struct ReminderFormView: View {
 
     private let listChoices = ["Learning", "Leverage", "Delegation", "Inspiration", "Risk", "Health"]
 
-    init(initialKind: ReminderKind = .reminder, connectionMode: Bool = false, existing: Reminder?, existingTags: [String] = [], onSaveAttempt: ((Reminder) -> Bool)? = nil, onSave: @escaping (Reminder) -> Void) {
+    init(initialKind: ReminderKind = .reminder, connectionMode: Bool = false, existing: Reminder?, existingTags: [String] = [], recoveryDraft: EntryRecoveryDraft? = nil, onSaveAttempt: ((Reminder) -> Bool)? = nil, onSave: @escaping (Reminder) -> Void) {
         self.existing = existing
         self.existingTags = existingTags
         self.connectionMode = connectionMode
         self.onSaveAttempt = onSaveAttempt
         self.onSave = onSave
+        recoveryID = recoveryDraft?.id ?? EntryRecoveryDraft.reminderKey(existing: existing, kind: initialKind, connectionMode: connectionMode)
         var base = existing ?? Reminder()
         if existing == nil {
             base.kind = initialKind
             if initialKind == .event { base.dueDate = Date() }
         }
         self.initialEntry = base
+        let recovered = recoveryDraft ?? EntryDraftStore.shared.draft(for: recoveryID)
+        if case .reminder(let writing) = recovered?.contents {
+            _r = State(initialValue: writing.entry)
+            _subtasks = State(initialValue: writing.subtasks)
+            _postDraft = State(initialValue: writing.questions)
+            _tagDraft = State(initialValue: writing.tagDraft)
+            _recoveryImageData = State(initialValue: writing.imageData)
+            _pickedImage = State(initialValue: writing.imageData.flatMap(UIImage.init(data:)) ?? LocalImageStore.load(writing.entry.imageLocalPath))
+            return
+        }
         _r = State(initialValue: base)
         _subtasks = State(initialValue: base.subtasks)
         _postDraft = State(initialValue: PostEntryDraft(entry: base, fixedTheme: connectionMode ? ConnectionEntry.theme : nil))
@@ -85,7 +99,7 @@ struct ReminderFormView: View {
                            color: SavyTheme.deepNavy)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { cancelled = true; dismiss() } label: {
+                    Button { cancel() } label: {
                         Image(systemName: "xmark.circle").font(.system(size: 22))
                     }
                     .tint(.black)
@@ -104,8 +118,12 @@ struct ReminderFormView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.light, for: .navigationBar)
             .onChange(of: photoItem) { _, item in loadPhoto(item) }
+            .onChange(of: recoveryContents) { _, _ in saveRecoveryDraft(force: true) }
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active { saveRecoveryDraft() }
+            }
             // Auto-save: if the form is swiped away (not via Cancel) and has content, keep it.
-            .onDisappear { autosaveIfNeeded() }
+            .onDisappear { saveRecoveryDraft(); autosaveIfNeeded() }
             .alert("Couldn't save \(entryLabel)", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -610,6 +628,7 @@ struct ReminderFormView: View {
         guard let item else { return }
         Task {
             if let data = try? await item.loadTransferable(type: Data.self), let img = UIImage(data: data) {
+                recoveryImageData = data
                 pickedImage = img
             }
         }
@@ -667,8 +686,28 @@ struct ReminderFormView: View {
         isSaving = true
         Task { @MainActor in
             defer { isSaving = false }
-            if !(await persist()) { saveFailed = true }
+            if await persist() { committed = true } else { saveFailed = true }
         }
+    }
+
+    private var recoveryContents: EntryRecoveryDraft.Contents {
+        .reminder(.init(original: existing, entry: r, questions: postDraft, subtasks: subtasks,
+                        tagDraft: tagDraft, imageData: recoveryImageData, connectionMode: connectionMode))
+    }
+
+    private func saveRecoveryDraft(force: Bool = false) {
+        guard !committed, !cancelled else { return }
+        guard force || hasContent || EntryDraftStore.shared.draft(for: recoveryID) != nil else { return }
+        if !EntryDraftStore.shared.save(id: recoveryID, contents: recoveryContents) {
+            saveErrorMessage = "Your latest changes could not be saved to this device. Keep this form open and try Save again."
+            saveFailed = true
+        }
+    }
+
+    private func cancel() {
+        guard EntryDraftStore.shared.remove(recoveryID) else { saveFailed = true; return }
+        cancelled = true
+        dismiss()
     }
 
     private var hasContent: Bool {
@@ -728,6 +767,7 @@ struct ReminderFormView: View {
         }
         if let onSaveAttempt, !onSaveAttempt(r) { return false }
         onSave(r)
+        guard EntryDraftStore.shared.remove(recoveryID) else { return false }
         CalendarScheduleBridge.shared.discardPendingSync(for: r.id)
         return true
     }

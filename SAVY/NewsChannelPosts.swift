@@ -119,14 +119,10 @@ struct NewsChannelPostsGroup: View {
             }
         }
         .sheet(item: $editingEntry) { entry in
-            ReminderFormView(existing: entry, existingTags: reminderStore.recentTags) { updated in
-                reminderStore.save(updated)
-            }
+            ReminderFormView(existing: entry, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in }
         }
         .sheet(isPresented: $isComposing) {
-            ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags) { entry in
-                reminderStore.save(entry)
-            }
+            ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("newsChannelPosts")

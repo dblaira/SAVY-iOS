@@ -9,11 +9,13 @@ import UIKit
 /// after he pressed Post over on X.
 struct SocialPostFormView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
 
     let existing: SocialPost?
     let recentAreas: [String]
-    var onSave: (SocialPost) -> Void
+    var onSave: (SocialPost) -> Bool
+    private let recoveryID: String
 
     @State private var post: SocialPost
     @State private var postedDate: Date
@@ -22,11 +24,19 @@ struct SocialPostFormView: View {
     @State private var cancelled = false
     @State private var showSaved = false
     @State private var showCopied = false
+    @State private var saveFailed = false
 
-    init(existing: SocialPost?, recentAreas: [String] = [], onSave: @escaping (SocialPost) -> Void) {
+    init(existing: SocialPost?, recentAreas: [String] = [], recoveryDraft: EntryRecoveryDraft? = nil, onSave: @escaping (SocialPost) -> Bool) {
         self.existing = existing
         self.recentAreas = recentAreas
         self.onSave = onSave
+        recoveryID = recoveryDraft?.id ?? EntryRecoveryDraft.postKey(existing)
+        if case .post(let writing) = (recoveryDraft ?? EntryDraftStore.shared.draft(for: recoveryID))?.contents {
+            _post = State(initialValue: writing.post)
+            _postedDate = State(initialValue: writing.postedDate)
+            _areaDraft = State(initialValue: writing.areaDraft)
+            return
+        }
         let base = existing ?? SocialPost()
         _post = State(initialValue: base)
         _postedDate = State(initialValue: base.postedAt ?? Date())
@@ -52,7 +62,7 @@ struct SocialPostFormView: View {
             .savyPageTitle(post.headline, color: SavyTheme.deepNavy)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { cancelled = true; dismiss() } label: {
+                    Button { cancel() } label: {
                         Image(systemName: "xmark.circle").font(.system(size: 22))
                     }
                     .tint(.black)
@@ -75,7 +85,14 @@ struct SocialPostFormView: View {
                 }
             }
             // Swiped away with content, not cancelled: keep it.
+            .onChange(of: recoveryContents) { _, _ in saveRecoveryDraft() }
+            .onChange(of: scenePhase) { _, phase in if phase != .active { saveRecoveryDraft() } }
             .onDisappear { autosaveIfNeeded() }
+            .alert("Couldn't save Post", isPresented: $saveFailed) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Keep this form open. Your latest changes could not be saved to this device.")
+            }
         }
         .overlay { if showSaved { toast("Saved") } }
         .overlay { if showCopied { toast("Copied") } }
@@ -336,8 +353,8 @@ struct SocialPostFormView: View {
     }
 
     private func commit() {
+        guard persist() else { saveFailed = true; return }
         committed = true
-        persist()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation(.spring(response: 0.3)) { showSaved = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
@@ -345,15 +362,31 @@ struct SocialPostFormView: View {
 
     private func autosaveIfNeeded() {
         guard !committed, !cancelled, post.hasContent else { return }
-        persist()
+        if persist() { committed = true } else { saveFailed = true }
     }
 
-    private func persist() {
+    private var recoveryContents: EntryRecoveryDraft.Contents {
+        .post(.init(original: existing, post: post, postedDate: postedDate, areaDraft: areaDraft))
+    }
+
+    private func saveRecoveryDraft() {
+        guard !committed, !cancelled else { return }
+        if !EntryDraftStore.shared.save(id: recoveryID, contents: recoveryContents) { saveFailed = true }
+    }
+
+    private func cancel() {
+        guard EntryDraftStore.shared.remove(recoveryID) else { saveFailed = true; return }
+        cancelled = true
+        dismiss()
+    }
+
+    private func persist() -> Bool {
         addArea()
         if post.status == .posted {
             post.postedAt = postedDate
         }
-        onSave(post)
+        guard onSave(post) else { return false }
+        return EntryDraftStore.shared.remove(recoveryID)
     }
 }
 

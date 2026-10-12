@@ -374,6 +374,36 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(element("homeContentSection-news-channel").waitForExistence(timeout: 5))
     }
 
+    func testDraftRecoversAfterTerminationWithoutPressingSave() {
+        let fab = element("chargeFab")
+        XCTAssertTrue(fab.waitForExistence(timeout: 15))
+        fab.tap()
+        let postDoor = app.buttons["Post"].firstMatch
+        XCTAssertTrue(postDoor.waitForExistence(timeout: 5))
+        postDoor.tap()
+        assertSharedPostForm()
+        let answer = "Synthetic autosave recovery: exact words 123."
+        appendAnswer(answer, at: 0)
+        XCTAssertEqual(element("DecideAnswer0").value as? String, firstPrompt + "\n" + answer)
+        // No Save, dismissal, or focus change: terminate directly while typing.
+        app.terminate()
+        app.launchArguments.append("SAVY_UI_TEST_KEEP_DRAFTS")
+        app.launch()
+        XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 15), "Unfinished editor was not restored automatically")
+        XCTAssertEqual(element("DecideAnswer0").value as? String, firstPrompt + "\n" + answer)
+        attach("Autosaved writing restored after termination without Save")
+        XCUIDevice.shared.press(.home)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 15))
+        XCTAssertEqual(element("DecideAnswer0").value as? String, firstPrompt + "\n" + answer)
+        app.buttons["Cancel"].firstMatch.tap()
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(element("chargeFab").waitForExistence(timeout: 15))
+        XCTAssertFalse(element("sharedEntryForm").exists, "Explicit Cancel must discard this draft")
+    }
+
     private func element(_ identifier: String) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }

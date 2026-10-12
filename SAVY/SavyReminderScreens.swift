@@ -20,9 +20,7 @@ struct SavyCalendarTabScreen: View {
             editing = reminder
         }
         .sheet(item: $editing) { reminder in
-            ReminderFormView(existing: reminder, existingTags: store.recentTags) { updated in
-                store.save(updated)
-            }
+            ReminderFormView(existing: reminder, existingTags: store.recentTags, onSaveAttempt: { store.save($0) }) { _ in }
         }
     }
 }
@@ -74,9 +72,7 @@ struct SavyReminderKindTabScreen: View {
         .ignoresSafeArea(edges: .top)
         .accessibilityIdentifier(kind == .action ? "actionsHome" : "remindersHome")
         .sheet(item: $editing) { reminder in
-            ReminderFormView(existing: reminder, existingTags: store.recentTags) { updated in
-                store.save(updated)
-            }
+            ReminderFormView(existing: reminder, existingTags: store.recentTags, onSaveAttempt: { store.save($0) }) { _ in }
         }
     }
 
@@ -312,9 +308,7 @@ struct SavyCalendarScreen: View {
         }
         .presentationDragIndicator(.visible)
         .sheet(item: $editing) { reminder in
-            ReminderFormView(existing: reminder, existingTags: store.recentTags) { updated in
-                store.save(updated)
-            }
+            ReminderFormView(existing: reminder, existingTags: store.recentTags, onSaveAttempt: { store.save($0) }) { _ in }
         }
     }
 }

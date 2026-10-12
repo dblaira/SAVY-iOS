@@ -62,7 +62,7 @@ struct PostTheme: Identifiable, Codable, Equatable {
 }
 
 /// One open form can explore several themes without erasing the words entered in any of them.
-struct PostEntryDraft {
+struct PostEntryDraft: Codable, Equatable {
     private(set) var themeID: String
     private var answersByTheme: [String: [String]]
     private let fixedTheme: PostTheme?
