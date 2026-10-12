@@ -65,6 +65,9 @@ final class ReminderStore: ObservableObject {
     }
 
     var syncStatusLabel: String {
+        if repo is LocalReminderRepository {
+            return "local"
+        }
         if lastSyncFailed {
             return "failed"
         }
@@ -329,7 +332,10 @@ final class ReminderStore: ObservableObject {
     // MARK: - sync
 
     private func sync(_ r: Reminder) async {
-        guard await repo.ensureReady() else { lastSyncFailed = true; return }
+        guard await repo.ensureReady() else {
+            lastSyncFailed = !(repo is LocalReminderRepository)
+            return
+        }
         do {
             if r.status == .deleted {
                 try await repo.delete(id: r.id)

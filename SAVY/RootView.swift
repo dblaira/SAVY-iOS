@@ -68,7 +68,7 @@ enum RootHomeLayout {
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var notificationStatus = NotificationScheduler.status
-    let session: AuthSession
+    let session: AuthSession?
     let onSignOut: (() -> Void)?
     @StateObject private var navigationState: SavyNavigationState
     @StateObject private var leverageStore = LeverageDataStore()
@@ -83,11 +83,11 @@ struct RootView: View {
     @State private var isPostsPresented = false
     @State private var opensPostsAfterComposer = false
     /// State keeps the first instance, the one the retained reminder store and sync client hold.
-    @State private var accessTokens: SavyAccessTokens
+    @State private var accessTokens: SavyAccessTokens?
     private let syncsWithCloud: Bool
 
     init(
-        session: AuthSession,
+        session: AuthSession? = nil,
         onSignOut: (() -> Void)? = nil,
         initialSection: SavyNavigationSection = .now
     ) {
@@ -97,9 +97,9 @@ struct RootView: View {
         navigationState.activeSection = initialSection
         _navigationState = StateObject(wrappedValue: navigationState)
         let isUITest = ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_UNLOCKED")
-        let tokens = SavyAccessTokens(initial: session.accessToken)
+        let tokens = session.map { SavyAccessTokens(initial: $0.accessToken) }
         _accessTokens = State(initialValue: tokens)
-        syncsWithCloud = !isUITest
+        syncsWithCloud = !isUITest && session != nil && AWSGraphConfiguration.fromBundle() != nil
         let loadedPostStore: SocialPostStore
         let loadedStoryStore: StoryStore
         let loadedReminderStore: ReminderStore
@@ -129,12 +129,16 @@ struct RootView: View {
         } else {
             loadedPostStore = SocialPostStore.live()
             loadedStoryStore = StoryStore.live()
-            loadedReminderStore = ReminderStore(
-                repo: GatewayReminderRepository(
-                    accessToken: { tokens.current },
-                    userEmail: { session.user.displayEmail }
+            let repository: any ReminderRepository
+            if syncsWithCloud {
+                repository = GatewayReminderRepository(
+                    accessToken: { tokens?.current },
+                    userEmail: { session?.user.displayEmail }
                 )
-            )
+            } else {
+                repository = LocalReminderRepository()
+            }
+            loadedReminderStore = ReminderStore(repo: repository)
             numberLedgerURL = PostNumberAllocator.defaultFileURL
         }
         // Both formats participate in the initial chronological sequence. A damaged ledger
@@ -147,7 +151,7 @@ struct RootView: View {
         }
 
         var adapters: [any SavySyncAdapter] = []
-        if !isUITest {
+        if syncsWithCloud {
             adapters = [
                 ConnectionsSyncAdapter(store: loadedConnectionStore),
                 SocialPostsSyncAdapter(store: loadedPostStore),
@@ -157,15 +161,15 @@ struct RootView: View {
             ]
             if let numberAllocator { adapters.append(PostNumbersSyncAdapter(allocator: numberAllocator)) }
         }
-        let holdsLocalRecords = !isUITest && SavyDocumentSync.holdsLocalRecords(
+        let holdsLocalRecords = syncsWithCloud && SavyDocumentSync.holdsLocalRecords(
             connectionStore: loadedConnectionStore,
             postStore: loadedPostStore,
             storyStore: loadedStoryStore,
             cardDefaults: SavyCardPreferences.defaults
         )
         let syncClient = GatewayDocumentSyncClient(
-            accessToken: { await tokens.refresh() },
-            email: session.user.displayEmail
+            accessToken: { await tokens?.refresh() },
+            email: session?.user.displayEmail
         )
         _documentSync = StateObject(wrappedValue: SavyDocumentSync(
             adapters: adapters,
@@ -181,7 +185,7 @@ struct RootView: View {
     /// Pull what Adam changed on his other devices.
     private func refreshFromCloud() async {
         guard syncsWithCloud else { return }
-        await accessTokens.refresh()
+        await accessTokens?.refresh()
         await reminderStore.refresh()
         await documentSync.syncNow()
         await CalendarScheduleBridge.shared.retryPendingSync()
@@ -303,7 +307,7 @@ struct RootView: View {
             #endif
         }
         .savySolidTopScrollEdge()
-        .environment(\.scheduleOrganizerEmail, session.user.displayEmail ?? "")
+        .environment(\.scheduleOrganizerEmail, session?.user.displayEmail ?? "")
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 reminderStore.reminders.forEach(NotificationScheduler.schedule)
@@ -415,10 +419,12 @@ struct EditorialHomeView: View {
 
                         homeContentSections
 
-                        contentSourceBand
-                            .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .padding(.horizontal, RootHomeLayout.horizontalPadding)
-                            .padding(.top, 24)
+                        if onSignOut != nil {
+                            contentSourceBand
+                                .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .padding(.horizontal, RootHomeLayout.horizontalPadding)
+                                .padding(.top, 24)
+                        }
                     }
                     .padding(.bottom, 40)
                     .frame(
@@ -540,13 +546,11 @@ struct EditorialHomeView: View {
 
             Spacer(minLength: 0)
 
-            if let onSignOut {
-                SavyAccountMenuButton(
-                    onSignOut: onSignOut,
-                    onOpenPersonalAuthorityReview: onOpenPersonalAuthorityReview
-                )
-                    .padding(.top, RootHomeLayout.accountMenuHeroWordmarkOffset)
-            }
+            SavyAccountMenuButton(
+                onSignOut: onSignOut,
+                onOpenPersonalAuthorityReview: onOpenPersonalAuthorityReview
+            )
+                .padding(.top, RootHomeLayout.accountMenuHeroWordmarkOffset)
         }
         .padding(.horizontal, RootHomeLayout.horizontalPadding)
         .padding(.top, topInset + RootHomeLayout.heroContentTopPadding)

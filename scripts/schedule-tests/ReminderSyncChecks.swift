@@ -294,6 +294,41 @@ struct ReminderSyncChecks {
             check(other.reminders[0].createdAt == original.createdAt && other.reminders[0].whenIAm == original.whenIAm,
                   "fresh \(kind.label) device receives original creation and context")
         }
+        // Switching off the backend must retain even fully synced cached entries.
+        let localCache = root.appendingPathComponent("local-only.json")
+        let savedEntries = [ReminderKind.reminder, .action, .event, .post].map { kind in
+            var entry = Reminder(kind: kind, title: "Saved \(kind.label)", notes: "Keep the full saved writing.")
+            entry.needsSync = false
+            entry.pinned = true
+            entry.tags = ["local"]
+            return entry
+        }
+        try JSONEncoder.recall.encode(savedEntries).write(to: localCache)
+        let savedCache = try JSONDecoder.recall.decode([Reminder].self, from: Data(contentsOf: localCache))
+        func localStore() -> ReminderStore {
+            ReminderStore(repo: LocalReminderRepository(), cacheURL: localCache,
+                          technicalCaptureStore: .init(), candidateOutbox: .init())
+        }
+        let local = localStore()
+        await local.bootstrap()
+        await local.refresh()
+        check(local.reminders == savedCache, "local launch and refresh retain all four saved entry kinds unchanged")
+        check(local.syncStatusLabel == "local", "a local desktop does not claim cloud sync is live or pending")
+        var localEdit = local.reminders[0]
+        localEdit.title = "Edited without an account"
+        localEdit.notes = "Full writing survives closing and reopening the app."
+        local.save(localEdit)
+        await Task.yield()
+        // The existing ISO 8601 cache encoding normalizes subsecond Date precision.
+        let expectedAfterEdit = try JSONDecoder.recall.decode([Reminder].self, from: JSONEncoder.recall.encode(local.reminders))
+        let reopened = localStore()
+        check(reopened.reminders == expectedAfterEdit, "local edits survive reload without a sign-in session or backend")
+        check(reopened.reminders[0].title == localEdit.title && reopened.reminders[0].notes == localEdit.notes,
+              "local saving preserves the complete edited title and writing")
+        check(reopened.reminders.count == savedEntries.count, "local editing preserves every other saved entry")
+        check(reopened.reminders[0].pinned && reopened.reminders[0].tags == ["local"],
+              "local editing retains pin state and saved metadata")
+        check(!local.lastSyncFailed, "local saving is not reported as a failed cloud upload")
         print("\(checks) Reminder Schedule sync checks passed")
     }
 }
