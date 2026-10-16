@@ -247,7 +247,6 @@ struct CalendarView: View {
             }
             ForEach(timed) { r in
                 calendarEventRow(r, isAllDay: false)
-                    .accessibilityIdentifier("calendarEvent-\(r.id.uuidString)")
                     .padding(.leading, gutter)
                     .padding(.trailing, 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -304,8 +303,9 @@ struct CalendarView: View {
     }
 
     private func calendarEventRow(_ reminder: Reminder, isAllDay: Bool) -> some View {
-        SavyCalendarSwipeRow(
+        SavySwipeRow(
             actions: calendarActions(reminder),
+            gestureAccessibilityIdentifier: "calendarSwipe-\(reminder.id.uuidString)",
             onTap: { onOpen(reminder) }
         ) {
             eventBlock(reminder, isAllDay: isAllDay)
@@ -313,6 +313,7 @@ struct CalendarView: View {
         // The hidden swipe tray must not expand to the full timeline height and
         // vertically center the card twelve hours below its scheduled position.
         .frame(height: reminder.pinned ? 48 : 34)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendarEvent-\(reminder.id.uuidString)")
     }
 
@@ -458,72 +459,5 @@ struct CalendarView: View {
         guard let start = cal.date(byAdding: .day, value: -(weekdayOfFirst - 1), to: monthStart) else { return [] }
         let days = (0..<42).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
         return stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
-    }
-}
-
-private struct SavyCalendarSwipeRow<Content: View>: View {
-    let actions: [SavySwipeAction]
-    var onTap: () -> Void
-    @ViewBuilder var content: Content
-
-    @State private var offset: CGFloat = 0
-    private var actionsWidth: CGFloat { CGFloat(actions.count) * 64 }
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            HStack(spacing: 0) {
-                ForEach(actions) { action in
-                    Button {
-                        withAnimation(.snappy) { offset = 0 }
-                        action.run()
-                    } label: {
-                        VStack(spacing: 3) {
-                            Image(systemName: action.icon)
-                                .font(.system(size: 16, weight: .bold))
-                            Text(action.title)
-                                .font(.system(size: 10, weight: .heavy))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(width: 64)
-                        .frame(maxHeight: .infinity)
-                        .background(action.bg)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("swipe\(action.title)")
-                }
-            }
-            .frame(width: actionsWidth)
-            .frame(maxHeight: .infinity)
-            .opacity(offset > 0 ? 1 : 0)
-            .allowsHitTesting(offset > 0)
-            .accessibilityHidden(offset <= 0)
-
-            Button {
-                if offset != 0 {
-                    withAnimation(.snappy) { offset = 0 }
-                } else {
-                    onTap()
-                }
-            } label: {
-                content
-            }
-            .buttonStyle(.plain)
-            .offset(x: offset)
-            .highPriorityGesture(swipeGesture)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { value in
-                guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                offset = min(max(value.translation.width, 0), actionsWidth)
-            }
-            .onEnded { _ in
-                withAnimation(.snappy) {
-                    offset = offset > actionsWidth / 2 ? actionsWidth : 0
-                }
-            }
     }
 }

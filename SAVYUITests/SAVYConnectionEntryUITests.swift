@@ -44,6 +44,17 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         await MainActor.run { app?.terminate() }
     }
 
+    func testConnectionCardsUseTheReminderSwipeBehavior() {
+        let source = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'connectionSourceRow-'" )).firstMatch
+        XCTAssertTrue(source.waitForExistence(timeout: 10))
+        let pin = cardContainer(for: source.identifier).value as? String == "Pinned" ? "Unpin" : "Pin"
+        assertCardSwipeBehavior(in: app, card: source, actions: [pin, "Delete"], name: "Source Connection")
+        let authoredID = createConnection("Synthetic swipe consistency connection.")
+        assertCardSwipeBehavior(in: app, card: element(authoredID),
+                                actions: ["Pin", "Delete"], name: "Authored Connection")
+    }
+
     func testConnectionAnswersAndMetadataSurviveSaveAndRelaunch() {
         let initialIDs = authoredRowIDs()
         openNewConnection()

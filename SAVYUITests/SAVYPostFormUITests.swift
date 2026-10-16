@@ -250,6 +250,7 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertEqual(postContainer(rowID: firstID).value as? String, "Unpinned")
     }
 
+    @MainActor
     func testStoriesPlusOpensStoryFormAndSaves() {
         openPostsPage()
         let plus = element("newStory")
@@ -276,12 +277,24 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertLessThanOrEqual(row.frame.height, 84, "Story list cards stay thin: a type label and one title line")
         XCTAssertFalse(app.staticTexts["Synthetic story acceptance subtitle"].exists,
                        "An unpinned Story card should show only its title")
+        assertCardSwipeBehavior(in: app, card: row,
+                                actions: ["Posted", "Delete"], name: "Draft Story")
         row.tap()
         XCTAssertTrue(element("StoryBody").waitForExistence(timeout: 8))
         XCTAssertEqual(element("StorySubtitle").value as? String, "Synthetic story acceptance subtitle")
         XCTAssertEqual(element("StoryBody").value as? String,
                        "• Synthetic bullet\n1. Synthetic list item\n> Synthetic quotation.",
                        "Compact Story cards must retain the full saved writing")
+        app.buttons["Save"].firstMatch.tap()
+        dragCard(in: app, card: row, distance: 146)
+        let posted = app.buttons["swipePosted"].firstMatch
+        XCTAssertTrue(posted.waitForExistence(timeout: 5))
+        posted.tap()
+        XCTAssertTrue(posted.waitForNonExistence(timeout: 5))
+        assertCardSwipeBehavior(in: app, card: row, actions: ["Delete"], name: "Posted Story")
+        dragCard(in: app, card: row, distance: 82)
+        app.buttons["swipeDelete"].firstMatch.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 5))
     }
 
     func testNumberedPostCardsShowFiftyGoalAndKeepReferences() {

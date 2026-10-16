@@ -90,6 +90,12 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     }
 
     private func openSchedule() {
+        let keyboardDone = app.buttons["KeyboardRowDone"].firstMatch
+        if keyboardDone.exists && keyboardDone.isHittable {
+            keyboardDone.tap()
+            XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5),
+                          "Dismiss the keyboard before scrolling to Schedule")
+        }
         let button = app.buttons["openSchedule"].firstMatch
         revealEntryElement(button)
         XCTAssertTrue(button.isHittable, "The shared Schedule entry point is missing")
@@ -773,16 +779,22 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
                        "Hiding the carousel schedule changed the saved date or time")
     }
 
+    @MainActor
     func testActionCreateReopenSwipePinDoneDelete() {
         let title = "UI Test Action \(Int(Date().timeIntervalSince1970))"
         createItem(.action, title: title)
         openTab("Actions")
         reopenItem(title)
+        let card = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'reminderReorderGesture-'" )).firstMatch
+        assertCardSwipeBehavior(in: app, card: card,
+                                actions: ["Done", "Pin", "Delete"], name: "Action")
         gentlySwipeRightThenLeft(title)
         pinAndUnpin(title, cardIdentifier: "topActionCard")
         completeAndDelete(title, completedSectionId: "completedActionsSection")
     }
 
+    @MainActor
     func testCalendarEventCreateReopenAndCalendarShowsImportanceMarker() {
         let title = "UI Test Event \(Int(Date().timeIntervalSince1970))"
         createItem(.calendar, title: title)
@@ -796,6 +808,10 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         app.buttons["Save"].tap()
         let savedEvent = elementLabeled(title)
         XCTAssertTrue(savedEvent.waitForExistence(timeout: 10), "Calendar event missing after reopen/save")
+        let card = app.otherElements
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'calendarSwipe-'" )).firstMatch
+        assertCardSwipeBehavior(in: app, card: card,
+                                actions: ["Done", "Pin", "Delete"], name: "Calendar")
         gentlySwipeRightThenLeftCalendarEvent(savedEvent, title: title)
         revealCalendarActions(title)
         tapVisibleButton("swipePin")

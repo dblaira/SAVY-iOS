@@ -374,6 +374,7 @@ struct SavyUpNextCardRow<Content: View>: View {
     var onMoveUp: () -> Void
     var onMoveDown: () -> Void
     var gestureAccessibilityIdentifier: String? = nil
+    var allowsReordering: Bool = true
     @ViewBuilder var content: Content
 
     @State private var swipeOffset: CGFloat = 0
@@ -394,7 +395,8 @@ struct SavyUpNextCardRow<Content: View>: View {
                     onTap: onTap,
                     onMoveUp: onMoveUp,
                     onMoveDown: onMoveDown,
-                    gestureAccessibilityIdentifier: gestureAccessibilityIdentifier
+                    gestureAccessibilityIdentifier: gestureAccessibilityIdentifier,
+                    allowsReordering: allowsReordering
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
@@ -445,9 +447,11 @@ struct SavyUpNextCardRow<Content: View>: View {
         ForEach(actions) { action in
             Button(action.title, systemImage: action.icon) { withAnimation(.snappy) { action.run() } }
         }
-        Divider()
-        Button("Move Up", systemImage: "chevron.up") { withAnimation(.snappy) { onMoveUp() } }
-        Button("Move Down", systemImage: "chevron.down") { withAnimation(.snappy) { onMoveDown() } }
+        if allowsReordering {
+            Divider()
+            Button("Move Up", systemImage: "chevron.up") { withAnimation(.snappy) { onMoveUp() } }
+            Button("Move Down", systemImage: "chevron.down") { withAnimation(.snappy) { onMoveDown() } }
+        }
     }
     #endif
 
@@ -492,6 +496,7 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
     var onMoveUp: () -> Void
     var onMoveDown: () -> Void
     var gestureAccessibilityIdentifier: String? = nil
+    var allowsReordering: Bool = true
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -501,6 +506,7 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
         context.coordinator.view = view
         view.pan.delegate = context.coordinator
         view.longPress.delegate = context.coordinator
+        view.longPress.isEnabled = allowsReordering
         view.tap.delegate = context.coordinator
         view.isAccessibilityElement = gestureAccessibilityIdentifier != nil
         view.accessibilityIdentifier = gestureAccessibilityIdentifier
@@ -509,6 +515,7 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
 
     func updateUIView(_ uiView: SavyUpNextGestureView, context: Context) {
         context.coordinator.parent = self
+        uiView.longPress.isEnabled = allowsReordering
         uiView.isAccessibilityElement = gestureAccessibilityIdentifier != nil
         uiView.accessibilityIdentifier = gestureAccessibilityIdentifier
     }
@@ -1010,181 +1017,26 @@ struct SavyCompletedReminderRow: View {
     }
 }
 
+/// Cards without reordering use the same tray, tracking, and settling as Reminders.
 struct SavySwipeRow<Content: View>: View {
     let actions: [SavySwipeAction]
     var gestureAccessibilityIdentifier: String?
     var onTap: () -> Void
     @ViewBuilder var content: Content
 
-    @State private var offset: CGFloat = 0
-    private var actionsWidth: CGFloat { CGFloat(actions.count) * 64 }
-
     var body: some View {
-        ZStack(alignment: .leading) {
-            HStack(spacing: 0) {
-                ForEach(actions) { action in
-                    Button {
-                        withAnimation(.snappy) { offset = 0 }
-                        action.run()
-                    } label: {
-                        VStack(spacing: 3) {
-                            Image(systemName: action.icon)
-                                .font(.system(size: 16, weight: .bold))
-                            Text(action.title)
-                                .font(.system(size: 10, weight: .heavy))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(width: 64)
-                        .frame(maxHeight: .infinity)
-                        .background(action.bg)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("swipe\(action.title)")
-                }
-            }
-            .frame(width: actionsWidth)
-            .opacity(offset > 0 ? 1 : 0)
-            .allowsHitTesting(offset > 0)
-            .accessibilityHidden(offset <= 0)
-            .zIndex(offset > 0 ? 3 : 0)
-
-            ZStack {
-                content
-                    .allowsHitTesting(false)
-
-                SavySwipeGestureHost(
-                    accessibilityIdentifier: gestureAccessibilityIdentifier,
-                    actionsWidth: actionsWidth,
-                    swipeOffset: $offset,
-                    onTap: onTap
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-            }
-            .offset(x: offset)
-            .zIndex(1)
+        SavyUpNextCardRow(
+            reminderId: gestureAccessibilityIdentifier ?? "swipe-row",
+            armedId: .constant(nil),
+            actions: actions,
+            onTap: onTap,
+            onMoveUp: {},
+            onMoveDown: {},
+            gestureAccessibilityIdentifier: gestureAccessibilityIdentifier,
+            allowsReordering: false
+        ) {
+            content
         }
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        #if targetEnvironment(macCatalyst)
-        .contextMenu {
-            ForEach(actions) { action in
-                Button(action.title, systemImage: action.icon) { withAnimation(.snappy) { action.run() } }
-            }
-        }
-        #endif
-    }
-}
-
-private struct SavySwipeGestureHost: UIViewRepresentable {
-    var accessibilityIdentifier: String?
-    let actionsWidth: CGFloat
-    @Binding var swipeOffset: CGFloat
-    var onTap: () -> Void
-
-    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
-
-    func makeUIView(context: Context) -> SavySwipeGestureView {
-        let view = SavySwipeGestureView()
-        view.coordinator = context.coordinator
-        context.coordinator.view = view
-        view.pan.delegate = context.coordinator
-        view.tap.delegate = context.coordinator
-        view.accessibilityIdentifier = accessibilityIdentifier
-        view.isAccessibilityElement = accessibilityIdentifier != nil
-        return view
-    }
-
-    func updateUIView(_ uiView: SavySwipeGestureView, context: Context) {
-        context.coordinator.parent = self
-        uiView.accessibilityIdentifier = accessibilityIdentifier
-        uiView.isAccessibilityElement = accessibilityIdentifier != nil
-    }
-
-    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        var parent: SavySwipeGestureHost
-        weak var view: SavySwipeGestureView?
-
-        init(parent: SavySwipeGestureHost) { self.parent = parent }
-
-        func setSwipeOffset(_ x: CGFloat) {
-            DispatchQueue.main.async { self.parent.swipeOffset = x }
-        }
-
-        func settleSwipe(open: Bool) {
-            DispatchQueue.main.async {
-                withAnimation(.snappy) {
-                    self.parent.swipeOffset = open ? self.parent.actionsWidth : 0
-                }
-            }
-        }
-
-        func tap() {
-            DispatchQueue.main.async {
-                if self.parent.swipeOffset != 0 {
-                    withAnimation(.snappy) { self.parent.swipeOffset = 0 }
-                } else {
-                    self.parent.onTap()
-                }
-            }
-        }
-
-        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-            guard let view else { return true }
-            if gestureRecognizer === view.pan {
-                return true
-            }
-            return true
-        }
-
-        func gestureRecognizer(
-            _ gestureRecognizer: UIGestureRecognizer,
-            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
-        ) -> Bool {
-            true
-        }
-    }
-}
-
-private final class SavySwipeGestureView: UIView {
-    weak var coordinator: SavySwipeGestureHost.Coordinator?
-
-    fileprivate let pan = UIPanGestureRecognizer()
-    fileprivate let tap = UITapGestureRecognizer()
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        backgroundColor = .clear
-        isUserInteractionEnabled = true
-
-        pan.cancelsTouchesInView = false
-        pan.addTarget(self, action: #selector(handlePan))
-        addGestureRecognizer(pan)
-
-        tap.cancelsTouchesInView = false
-        tap.addTarget(self, action: #selector(handleTap))
-        addGestureRecognizer(tap)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { nil }
-
-    @objc private func handleTap() {
-        coordinator?.tap()
-    }
-
-    @objc private func handlePan() {
-        guard let coordinator else { return }
-        switch pan.state {
-        case .changed:
-            let translation = pan.translation(in: self)
-            guard abs(translation.x) > abs(translation.y) else { return }
-            coordinator.setSwipeOffset(min(max(translation.x, 0), coordinator.parent.actionsWidth))
-        case .ended, .cancelled, .failed:
-            let translation = pan.translation(in: self)
-            pan.setTranslation(.zero, in: self)
-            coordinator.settleSwipe(open: translation.x > coordinator.parent.actionsWidth / 2)
-        default:
-            break
-        }
     }
 }

@@ -14,6 +14,7 @@ final class SAVYCardReorderUITests: XCTestCase {
                 "SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS", "SAVY_UI_TEST_COWBOY_STUB",
             ]
             if name.contains("testPostsReorderBothPinGroupsAndKeepTheirNumbersAfterRelaunch")
+                || name.contains("testSocialCardsUseTheReminderSwipeBehavior")
                 || name.contains("testHomeCardsReorderBelowPinnedCardAndOpenAfterRelaunch")
                 || name.contains("testHomeCardsCanAllRemainPinnedAndKeepTheirOrderAfterRelaunch") {
                 app.launchEnvironment["SAVY_UI_TEST_SEED_POST_COUNT"] = "4"
@@ -74,6 +75,22 @@ final class SAVYCardReorderUITests: XCTestCase {
         let header = element("sectionPageHeader")
         XCTAssertTrue(header.waitForExistence(timeout: 10), "The moved Home card did not open its page")
         XCTAssertEqual(header.label, "Adam's Ontology", "The moved Home card opened a different page")
+    }
+
+    func testAllHomeCardsUseTheReminderSwipeBehavior() {
+        for section in ["news-channel", "beliefs", "ontology", "field-essays"] {
+            let action = homeRow(section).value as? String == "Pinned" ? "Unpin" : "Pin"
+            assertCardSwipeBehavior(in: app, card: element("homeReorder-\(section)"),
+                                    actions: [action], name: "Home \(section)")
+        }
+    }
+
+    func testSocialCardsUseTheReminderSwipeBehavior() {
+        openPostsPage()
+        assertCardSwipeBehavior(in: app, card: postRow(2),
+                                actions: ["Posted", "Unpin", "Delete"], name: "Pinned Social")
+        assertCardSwipeBehavior(in: app, card: postRow(3),
+                                actions: ["Posted", "Pin", "Delete"], name: "Compact Social")
     }
 
     func testHomeCardsCanAllRemainPinnedAndKeepTheirOrderAfterRelaunch() {
@@ -429,5 +446,78 @@ final class SAVYCardReorderUITests: XCTestCase {
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)
+    }
+}
+
+/// Runs the same physical gestures against each real screen, including one-, two-,
+/// and three-action trays. No fixture data is written outside the isolated UI-test store.
+@MainActor
+extension XCTestCase {
+    func assertCardSwipeBehavior(in app: XCUIApplication, card: XCUIElement,
+                                 actions: [String], name: String,
+                                 file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "\(name) is missing", file: file, line: line)
+        for _ in 0..<8 {
+            let y = card.frame.midY
+            if card.isHittable && y > 160 && y < app.frame.maxY - 210 { break }
+            if y > app.frame.midY { app.swipeUp() } else { app.swipeDown() }
+        }
+        XCTAssertTrue(card.isHittable, "\(name) is not reachable", file: file, line: line)
+        let original = card.frame
+        let width = CGFloat(actions.count) * 64
+
+        func settled(_ offset: CGFloat) {
+            let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                abs(card.frame.minX - original.minX - offset) < 2
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed,
+                           "\(name) did not settle at \(offset)", file: file, line: line)
+            XCTAssertEqual(card.frame.minY, original.minY, accuracy: 1,
+                           "\(name) jumped vertically", file: file, line: line)
+            XCTAssertEqual(card.frame.height, original.height, accuracy: 1,
+                           "\(name) changed height during a swipe", file: file, line: line)
+        }
+
+        for action in actions {
+            XCTAssertFalse(app.buttons["swipe\(action)"].exists,
+                           "\(name) exposes a closed action", file: file, line: line)
+        }
+        dragCard(in: app, card: card, distance: width / 4)
+        settled(0)
+        dragCard(in: app, card: card, distance: width + 18)
+        settled(width)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "\(name) swipe open"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        for action in actions {
+            XCTAssertTrue(app.buttons["swipe\(action)"].firstMatch.isHittable,
+                          "\(name) covers \(action)", file: file, line: line)
+        }
+        dragCard(in: app, card: card, distance: width / 4)
+        settled(width)
+        dragCard(in: app, card: card, distance: -width / 4)
+        settled(width)
+        dragCard(in: app, card: card, distance: -width * 0.8)
+        settled(0)
+        dragCard(in: app, card: card, distance: width + 18)
+        settled(width)
+        app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: card.frame.minX + 20, dy: card.frame.midY)).tap()
+        settled(0)
+        XCTAssertTrue(card.isHittable, "\(name) opened instead of closing its tray", file: file, line: line)
+        for action in actions {
+            XCTAssertFalse(app.buttons["swipe\(action)"].exists,
+                           "\(name) left a closed action accessible", file: file, line: line)
+        }
+    }
+
+    func dragCard(in app: XCUIApplication, card: XCUIElement, distance: CGFloat) {
+        let x = min(card.frame.minX + 24, app.frame.maxX - 44)
+        let start = app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: x, dy: card.frame.midY))
+        start.press(forDuration: 0.05,
+                    thenDragTo: start.withOffset(CGVector(dx: distance, dy: 0)),
+                    withVelocity: .slow, thenHoldForDuration: 0.15)
     }
 }
