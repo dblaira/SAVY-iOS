@@ -500,12 +500,23 @@ final class SAVYConnectionEntryUITests: XCTestCase {
     }
 
     private func reveal(_ target: XCUIElement, towardBottom: Bool = true) {
+        dismissKeyboard()
         for _ in 0..<14 where !target.isHittable {
             let upward = target.exists && !target.frame.isEmpty
                 ? target.frame.midY > app.frame.midY
                 : towardBottom
             if upward { app.swipeUp() } else { app.swipeDown() }
         }
+    }
+
+    /// A box behind the keyboard row and keys still reports itself hittable, so a tap aimed at
+    /// it lands on the keyboard. The row's Done puts the keyboard away first, as Adam would.
+    private func dismissKeyboard() {
+        let done = element("KeyboardRowDone")
+        guard done.exists, done.isHittable else { return }
+        done.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5),
+                      "The keyboard row's Done did not put the keyboard away")
     }
 
     private func dismissSystemPrompt() {

@@ -338,32 +338,33 @@ struct SavyUpNextCardRow<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            HStack(spacing: 0) {
-                ForEach(actions) { action in
-                    Button {
-                        withAnimation(.snappy) { swipeOffset = 0 }
-                        action.run()
-                    } label: {
-                        VStack(spacing: 3) {
-                            Image(systemName: action.icon)
-                                .font(.system(size: 16, weight: .bold))
-                            Text(action.title)
-                                .font(.system(size: 10, weight: .heavy))
+            // The tray exists only while the card is swiped open. Hidden at zero opacity, the
+            // iOS 27 accessibility tree still listed Posted, Pin and Delete on a closed card.
+            if swipeOffset > 0 {
+                HStack(spacing: 0) {
+                    ForEach(actions) { action in
+                        Button {
+                            withAnimation(.snappy) { swipeOffset = 0 }
+                            action.run()
+                        } label: {
+                            VStack(spacing: 3) {
+                                Image(systemName: action.icon)
+                                    .font(.system(size: 16, weight: .bold))
+                                Text(action.title)
+                                    .font(.system(size: 10, weight: .heavy))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(width: 64)
+                            .frame(maxHeight: .infinity)
+                            .background(action.bg)
                         }
-                        .foregroundStyle(.white)
-                        .frame(width: 64)
-                        .frame(maxHeight: .infinity)
-                        .background(action.bg)
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("swipe\(action.title)")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("swipe\(action.title)")
                 }
+                .frame(width: actionsWidth)
+                .zIndex(3)
             }
-            .frame(width: actionsWidth)
-            .opacity(swipeOffset > 0 ? 1 : 0)
-            .allowsHitTesting(swipeOffset > 0)
-            .accessibilityHidden(swipeOffset <= 0)
-            .zIndex(swipeOffset > 0 ? 3 : 0)
 
             ZStack(alignment: .topTrailing) {
                 content
