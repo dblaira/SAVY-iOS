@@ -792,6 +792,7 @@ struct SavyReminderBandCard: View {
     let bg: Color
     let fg: Color
     let accent: Color
+    var title: String? = nil
     var detail: SavyCardDetail = .minimal
     var showsSchedule: Bool = true
     var showsCompleteMetadata: Bool = false
@@ -805,7 +806,7 @@ struct SavyReminderBandCard: View {
             bg: bg,
             fg: fg,
             accent: accent,
-            title: reminder.title.isEmpty ? "Untitled" : reminder.title,
+            title: title ?? (reminder.title.isEmpty ? "Untitled" : reminder.title),
             signalText: signalText,
             secondaryText: secondaryText,
             detailLine: detailLine,

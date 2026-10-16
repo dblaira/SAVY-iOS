@@ -159,6 +159,24 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         XCTAssertEqual(ConnectionEntry.theme.name, "Personal Lessons")
     }
 
+    /// Adam, 2026-10-15: "Make sure the Theme entry is the first text seen on the main page
+    /// cards, not the delegation entry." and "'Make it Obvious' should not the first text."
+    func testMainPageCardsLeadWithTheThemeAnswerNotTheQuestion() {
+        var entry = Reminder(kind: .action, title: "My delegation entry")
+        var draft = PostEntryDraft(entry: entry)
+        draft.apply(to: &entry)
+        XCTAssertNil(entry.firstThemeAnswer, "A question with no answer is never the card's first text")
+
+        draft.setAnswer("Make it Easy\nLay out my shoes the night before.", at: 1)
+        draft.apply(to: &entry)
+        XCTAssertEqual(entry.firstThemeAnswer, "Lay out my shoes the night before.")
+
+        draft.setAnswer("Make it Obvious\nPut the shoes by the door.", at: 0)
+        draft.apply(to: &entry)
+        XCTAssertEqual(entry.firstThemeAnswer, "Put the shoes by the door.")
+        XCTAssertEqual(entry.title, "My delegation entry", "The delegation entry stays saved as written")
+    }
+
     func testThemeLookupByIDAndUnknownIDFallsThrough() {
         XCTAssertEqual(PostThemeCatalog.theme(id: "five-ws")?.name, "The 5 Ws")
         XCTAssertNil(PostThemeCatalog.theme(id: "not-a-theme"))

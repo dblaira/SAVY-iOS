@@ -697,7 +697,9 @@ struct HomeFeedRow: Identifiable {
             rows.append(
                 HomeFeedRow(
                     id: reminder.id.uuidString,
-                    title: reminder.title.isEmpty ? reminder.kind.label : reminder.title,
+                    // Adam, 2026-10-15: the Theme entry reads first on the main page cards,
+                    // never the delegation entry or the question itself.
+                    title: reminder.firstThemeAnswer ?? (reminder.title.isEmpty ? reminder.kind.label : reminder.title),
                     source: .reminder(reminder)
                 )
             )
@@ -735,6 +737,7 @@ private struct HomeFeedRowView: View {
                     bg: Brand.card,
                     fg: SavyTheme.deepNavy,
                     accent: Brand.crimson,
+                    title: entry.title,
                     detail: isPinned ? .full : .minimal,
                     showsSchedule: false,
                     showsCompleteMetadata: false,

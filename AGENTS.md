@@ -6,6 +6,8 @@ Adam: "Add a habit form to the SAVY app. The four directives are these. (Atomic 
 
 The Theme menu opens with Habit, A Strong Yes, Pattern Recognition, Inductive Reasoning, Mental Model, Personal Lessons; the other themes follow in their earlier order. Habit's four Decide prompts are his directives verbatim. Adam: "Use a bullseye icon for the habit form" — its first prompt carries the `target` symbol, so the menu and Theme row show the bullseye. Personal Lessons keeps its saved id `your-personal-take-lessons-learned`; the Connection form's fixed theme carries the same new name. Older entries keep their saved theme name in the record and show the current name on cards. A fresh entry opens on Habit, so the native menu opens with Habit at the top; a menu opened on a theme lower in the list scrolls Habit out of sight. Older answers saved without a theme still read as The 5 Ws.
 
+Adam: "Make sure the Theme entry is the first text seen on the main page cards, not the delegation entry." and "The question, or statement should not read first. For example, \"Make it Obvious\" should not the first text." Home carousel cards lead with the first written Theme answer, without its question; an entry with no Theme answer still shows What do I want?. Other pages keep their current card titles.
+
 ## Entry draft recovery — October 12, 2026
 
 Adam: "Fix the autosave too. I don't want to lose another entry."

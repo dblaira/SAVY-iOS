@@ -307,6 +307,9 @@ extension Reminder {
 
     var postAnsweredCount: Int { postAnswerTexts.filter { !$0.isEmpty }.count }
 
+    /// The first written Theme answer, without its question. Nil until an answer is written.
+    var firstThemeAnswer: String? { postAnswerTexts.first { !$0.isEmpty } }
+
     /// Independent success markers. The legacy single Pattern value still counts so existing
     /// entries keep their meaning, while a new entry can now carry both markers at once.
     var isClearSignOfSuccess: Bool {
