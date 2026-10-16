@@ -1,61 +1,71 @@
 import XCTest
 
+@MainActor
 final class SAVYReminderActionCalendarUITests: XCTestCase {
     private var app: XCUIApplication!
 
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments = ["SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_COWBOY_STUB"]
-        let preservesExistingData = name.contains("testEntryFormHasNoManualCowboyAIAction")
-            || name.contains("testHomepageRemovesHistoricalCowboyCard")
-            || name.contains("testHomepageUsesGreatestLeverageCarouselAndVerticalContentOrder")
-            || name.contains("testBottomNavigationHasLargeRaisedEdgeToEdgeTargets")
-        if name.contains("testLiveAccountSync") {
-            app.launchArguments = []
-            return
+    override func setUp() async throws {
+        await MainActor.run {
+            continueAfterFailure = false
+            app = XCUIApplication()
+            app.launchArguments = ["SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_COWBOY_STUB"]
+            let preservesExistingData = name.contains("testEntryFormHasNoManualCowboyAIAction")
+                || name.contains("testHomepageRemovesHistoricalCowboyCard")
+                || name.contains("testHomepageUsesGreatestLeverageCarouselAndVerticalContentOrder")
+                || name.contains("testBottomNavigationHasLargeRaisedEdgeToEdgeTargets")
+            if name.contains("testLiveAccountSync") {
+                app.launchArguments = []
+                return
+            }
+            if !preservesExistingData {
+                app.launchArguments.append("SAVY_UI_TEST_RESET_REMINDERS")
+            }
+            if name.contains("testReminderSwipeKeepsItsPositionAcrossGestures") {
+                app.launchArguments += ["SAVY_UI_TEST_DEMO_REMINDERS", "SAVY_UI_TEST_OPEN_REMINDERS"]
+            }
+            app.launch()
+            dismissNotificationPrompt()
         }
-        if !preservesExistingData {
-            app.launchArguments.append("SAVY_UI_TEST_RESET_REMINDERS")
-        }
-        if name.contains("testReminderSwipeKeepsItsPositionAcrossGestures") {
-            app.launchArguments += ["SAVY_UI_TEST_DEMO_REMINDERS", "SAVY_UI_TEST_OPEN_REMINDERS"]
-        }
-        app.launch()
-        dismissNotificationPrompt()
     }
 
     private func dismissNotificationPrompt() {
+        #if !targetEnvironment(macCatalyst)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let allow = springboard.buttons["Allow"]
         if allow.waitForExistence(timeout: 5) { allow.tap() }
+        #endif
     }
 
     private func dismissLocalNetworkPrompt() {
+        #if !targetEnvironment(macCatalyst)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let allow = springboard.buttons["Allow"]
         if allow.waitForExistence(timeout: 5) { allow.tap() }
+        #endif
     }
 
     private func openComposer(_ kind: ComposerKind) {
         let fab = app.descendants(matching: .any)["chargeFab"].firstMatch
         XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
         let center = fab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        #if targetEnvironment(macCatalyst)
+        center.click(forDuration: 0.2, thenDragTo: center.withOffset(kind.dragOffset))
+        #else
         center.press(forDuration: 0.2, thenDragTo: center.withOffset(kind.dragOffset))
+        #endif
     }
 
     private func titleField() -> XCUIElement {
-        // Vertical TextFields surface as text views; keep textFields as a fallback.
-        let byId = app.descendants(matching: .any)["Title"].firstMatch
-        if byId.exists { return byId }
-        return app.textFields["Title"].firstMatch
+        // Keep the query valid while the sheet is appearing: vertical TextFields
+        // become TextViews, including on Mac Catalyst.
+        app.descendants(matching: .any)["Title"].firstMatch
     }
 
     private func createItem(_ kind: ComposerKind, title: String) {
         openComposer(kind)
         let field = titleField()
         XCTAssertTrue(field.waitForExistence(timeout: 10), "Entry form did not open")
-        field.tap()
+        field.tapOrClick()
         field.typeText(title)
 
         if kind == .calendar {
@@ -63,14 +73,18 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
             finishSchedule()
         }
 
-        app.buttons["Save"].tap()
+        app.buttons["Save"].tapOrClick()
+        #if targetEnvironment(macCatalyst)
+        XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 5),
+                      "The Mac entry sheet must close before returning to its page")
+        #endif
         if kind == .calendar {
             openTab("Calendar")
             let today = Calendar.current.component(.day, from: Date())
             let todayCell = app.buttons["calendarDay-\(today)"]
             XCTAssertTrue(todayCell.waitForExistence(timeout: 10), "Today marker missing after save")
             XCTAssertTrue(todayCell.label.contains("scheduled items"), "Today marker did not show the saved event")
-            todayCell.tap()
+            todayCell.tapOrClick()
             scrollUntilVisible(elementLabeled(title), direction: .downThenUp)
         }
         let savedElement = kind == .calendar ? elementLabeled(title) : app.staticTexts[title]
@@ -84,22 +98,22 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     private func revealEntryElement(_ element: XCUIElement, towardBottom: Bool = true) {
         for _ in 0..<12 where !element.isHittable {
             let scrollDown = element.exists && !element.frame.isEmpty
-                ? element.frame.midY > app.frame.midY : towardBottom
-            if scrollDown { app.swipeUp() } else { app.swipeDown() }
+                ? element.frame.midY > app.interactionFrame.midY : towardBottom
+            app.scrollPage(up: scrollDown)
         }
     }
 
     private func openSchedule() {
         let keyboardDone = app.buttons["KeyboardRowDone"].firstMatch
         if keyboardDone.exists && keyboardDone.isHittable {
-            keyboardDone.tap()
+            keyboardDone.tapOrClick()
             XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5),
                           "Dismiss the keyboard before scrolling to Schedule")
         }
         let button = app.buttons["openSchedule"].firstMatch
         revealEntryElement(button)
         XCTAssertTrue(button.isHittable, "The shared Schedule entry point is missing")
-        button.tap()
+        button.tapOrClick()
         XCTAssertTrue(entryElement("scheduleForm").waitForExistence(timeout: 5),
                       "Schedule did not open its separate form")
     }
@@ -107,7 +121,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     private func finishSchedule() {
         let done = app.buttons["scheduleDone"].firstMatch
         XCTAssertTrue(done.waitForExistence(timeout: 5))
-        done.tap()
+        done.tapOrClick()
         XCTAssertTrue(done.waitForNonExistence(timeout: 5), "Schedule Done did not return to the entry")
     }
 
@@ -149,9 +163,9 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     private func reopenItem(_ title: String) {
         let item = app.staticTexts[title].firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 10), "\(title) missing before reopen")
-        item.tap()
+        item.tapOrClick()
         XCTAssertTrue(titleField().waitForExistence(timeout: 10), "Form did not reopen for \(title)")
-        app.buttons["Save"].tap()
+        app.buttons["Save"].tapOrClick()
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) missing after reopen/save")
     }
 
@@ -162,15 +176,21 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     }
 
     private func gentlySwipeRightThenLeft(_ item: XCUIElement, title: String) {
+        #if targetEnvironment(macCatalyst)
+        let center = item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        center.trackpadSwipe(right: false)
+        center.trackpadSwipe(right: true)
+        #else
         item.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
             .press(forDuration: 0.05, thenDragTo: item.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)))
 
         let start = item.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
         start.press(forDuration: 0.05, thenDragTo: item.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)))
+        #endif
         XCTAssertTrue(app.buttons["swipeDone"].waitForExistence(timeout: 5), "Done action did not reveal")
         XCTAssertTrue(app.buttons["swipePin"].exists || app.buttons["swipeUnpin"].exists, "Pin action did not reveal")
         XCTAssertTrue(app.buttons["swipeDelete"].exists, "Delete action did not reveal")
-        item.tap()
+        item.tapOrClick()
     }
 
     private func pinAndUnpin(_ title: String, cardIdentifier: String) {
@@ -221,15 +241,22 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let toggle = app.buttons[toggleId].firstMatch
         scrollUntilVisible(toggle, direction: .downThenUp)
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "Completed toggle missing")
-        toggle.tap()
+        toggle.tapOrClick()
 
         let completedItem = app.descendants(matching: .any)["completedReminderRow"].firstMatch
         scrollUntilVisible(completedItem, direction: .downThenUp)
         XCTAssertTrue(completedItem.waitForExistence(timeout: 5), "Completed row missing")
         XCTAssertTrue(completedItem.label.contains(title), "\(title) missing after Done")
+        #if targetEnvironment(macCatalyst)
+        completedItem.rightClick()
+        let delete = app.menuItems["Delete"].firstMatch
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), "Delete action missing for completed item")
+        delete.click()
+        #else
         completedItem.press(forDuration: 1.2)
         XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5), "Delete action missing for completed item")
-        app.buttons["Delete"].tap()
+        app.buttons["Delete"].tapOrClick()
+        #endif
         XCTAssertFalse(app.staticTexts[title].waitForExistence(timeout: 3), "\(title) still visible after delete")
     }
 
@@ -285,11 +312,11 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
             XCTFail("No visible \(identifier) button")
             return
         }
-        button.tap()
+        button.tapOrClick()
     }
 
     private func openTab(_ title: String) {
-        app.buttons[title].tap()
+        app.buttons[title].tapOrClick()
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) tab did not open")
     }
 
@@ -316,6 +343,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         completeAndDelete(title, completedSectionId: "completedRemindersSection")
     }
 
+    @MainActor
     func testReminderSwipeKeepsItsPositionAcrossGestures() {
         let card = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "reminderReorderGesture-")).firstMatch
@@ -323,6 +351,9 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         var original = card.frame
 
         func drag(_ distance: CGFloat) {
+            #if targetEnvironment(macCatalyst)
+            dragCard(in: app, card: card, distance: distance)
+            #else
             // Start on the visible card, including when the 192-point tray is open.
             let startX = min(card.frame.minX + 28, app.frame.maxX - 60)
             let start = app.coordinate(withNormalizedOffset: .zero)
@@ -330,6 +361,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
             start.press(forDuration: 0.05,
                         thenDragTo: start.withOffset(CGVector(dx: distance, dy: 0)),
                         withVelocity: .slow, thenHoldForDuration: 0.15)
+            #endif
         }
 
         func assertOffset(_ offset: CGFloat, _ message: String, line: UInt = #line) {
@@ -342,6 +374,12 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         }
 
         XCTAssertFalse(app.buttons["swipeDelete"].exists, "Closed actions must stay out of accessibility")
+        #if targetEnvironment(macCatalyst)
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).trackpadSwipe(right: true)
+        assertOffset(192, "A Mac trackpad swipe should reveal the same action tray")
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).trackpadSwipe(right: false)
+        assertOffset(0, "A Mac trackpad swipe should close the action tray")
+        #endif
         drag(48)
         assertOffset(0, "A short opening swipe should return smoothly to closed")
         drag(210)
@@ -358,13 +396,13 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertFalse(app.buttons["swipeDelete"].exists)
         drag(210)
         assertOffset(192, "The card should reopen after closing")
-        card.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).tap()
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).tapOrClick()
         assertOffset(0, "Tapping an open card should close its tray")
         XCTAssertFalse(titleField().exists, "Dismissing actions must not open the editor")
 
         // Pinned cards are taller. Revealing their tray must never resize the row.
         drag(210)
-        app.buttons["swipePin"].tap()
+        app.buttons["swipePin"].tapOrClick()
         let pinnedAndClosed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             card.frame.height >= 186 && abs(card.frame.minX - original.minX) < 1
         }, object: nil)
@@ -803,9 +841,9 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(event.waitForExistence(timeout: 10), "Calendar event not visible")
         let today = Calendar.current.component(.day, from: Date())
         XCTAssertTrue(app.buttons["calendarDay-\(today)"].label.contains("scheduled items"))
-        event.tap()
+        event.tapOrClick()
         XCTAssertTrue(titleField().waitForExistence(timeout: 10), "Calendar event did not reopen")
-        app.buttons["Save"].tap()
+        app.buttons["Save"].tapOrClick()
         let savedEvent = elementLabeled(title)
         XCTAssertTrue(savedEvent.waitForExistence(timeout: 10), "Calendar event missing after reopen/save")
         let card = app.otherElements
@@ -849,13 +887,17 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(actionButton("swipeDone").waitForExistence(timeout: 5), "Done action did not reveal")
         XCTAssertTrue(actionButton("swipePin").exists || actionButton("swipeUnpin").exists, "Pin action did not reveal")
         XCTAssertTrue(actionButton("swipeDelete").exists, "Delete action did not reveal")
-        item.tap()
+        item.tapOrClick()
     }
 
     private func dragOpenActions(from item: XCUIElement) {
         let start = item.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        #if targetEnvironment(macCatalyst)
+        start.trackpadSwipe(right: true)
+        #else
         start.withOffset(CGVector(dx: -12, dy: 0))
             .press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 230, dy: 0)))
+        #endif
     }
 
     private func revealCalendarActions(_ title: String) {

@@ -1,6 +1,56 @@
 import XCTest
 
-/// Exercises the real card gestures and saved order on the connected iPhone. Every launch
+@MainActor
+extension XCUIElement {
+    func tapOrClick() {
+        #if targetEnvironment(macCatalyst)
+        click()
+        #else
+        tap()
+        #endif
+    }
+}
+
+@MainActor
+extension XCUICoordinate {
+    func tapOrClick() {
+        #if targetEnvironment(macCatalyst)
+        click()
+        #else
+        tap()
+        #endif
+    }
+
+    #if targetEnvironment(macCatalyst)
+    func trackpadSwipe(right: Bool) {
+        hover()
+        if right { swipeRight(velocity: .slow) } else { swipeLeft(velocity: .slow) }
+    }
+    #endif
+}
+
+@MainActor
+extension XCUIApplication {
+    var interactionFrame: CGRect {
+        #if targetEnvironment(macCatalyst)
+        windows.firstMatch.frame
+        #else
+        frame
+        #endif
+    }
+
+    func scrollPage(up: Bool) {
+        #if targetEnvironment(macCatalyst)
+        // Catalyst's application frame is infinite; target the actual window.
+        let center = windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        if up { center.swipeUp() } else { center.swipeDown() }
+        #else
+        if up { swipeUp() } else { swipeDown() }
+        #endif
+    }
+}
+
+/// Exercises real card gestures on iPhone and Mac Catalyst. Every launch
 /// uses the isolated SAVYUITests repositories; fixture creation never reaches live data.
 @MainActor
 final class SAVYCardReorderUITests: XCTestCase {
@@ -21,6 +71,9 @@ final class SAVYCardReorderUITests: XCTestCase {
             }
             if name.contains("testActionsMovePastVisibleNeighborAndKeepPinGroupsAfterRelaunch") {
                 app.launchArguments.append("SAVY_UI_TEST_SEED_REORDER_ACTIONS")
+            }
+            if name.contains("testMacTrackpadVerticalScrollKeepsSwipeActionsClosed") {
+                app.launchEnvironment["SAVY_UI_TEST_SEED_POST_COUNT"] = "40"
             }
             app.launch()
             dismissSystemPrompt()
@@ -84,6 +137,25 @@ final class SAVYCardReorderUITests: XCTestCase {
                                     actions: [action], name: "Home \(section)")
         }
     }
+
+    #if targetEnvironment(macCatalyst)
+    func testMacTrackpadVerticalScrollKeepsSwipeActionsClosed() {
+        openPostsPage()
+        let card = postRow(2)
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        let original = card.frame
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).swipeUp(velocity: .slow)
+        XCTAssertLessThan(card.frame.minY, original.minY - 20,
+                          "A vertical trackpad swipe over a card must scroll the page")
+        XCTAssertEqual(card.frame.minX, original.minX, accuracy: 2)
+        for action in ["Posted", "Unpin", "Pin", "Delete"] {
+            XCTAssertFalse(app.buttons["swipe\(action)"].exists,
+                           "Vertical scrolling must not reveal card actions")
+        }
+        XCTAssertFalse(app.buttons["reorderUp"].exists)
+        attach("Mac vertical trackpad scroll preserves closed card actions")
+    }
+    #endif
 
     func testSocialCardsUseTheReminderSwipeBehavior() {
         openPostsPage()
@@ -413,7 +485,7 @@ final class SAVYCardReorderUITests: XCTestCase {
     private func openPostsPage() {
         let card = homeRow("news-channel")
         reveal(card)
-        card.tap()
+        card.tapOrClick()
         XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12),
                       "The Home card did not open Social Media Posts")
     }
@@ -436,9 +508,11 @@ final class SAVYCardReorderUITests: XCTestCase {
     }
 
     private func dismissSystemPrompt() {
+        #if !targetEnvironment(macCatalyst)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let allow = springboard.buttons["Allow"].firstMatch
         if allow.waitForExistence(timeout: 3) { allow.tap() }
+        #endif
     }
 
     private func attach(_ name: String) {
@@ -456,11 +530,15 @@ extension XCTestCase {
     func assertCardSwipeBehavior(in app: XCUIApplication, card: XCUIElement,
                                  actions: [String], name: String,
                                  file: StaticString = #filePath, line: UInt = #line) {
+        #if targetEnvironment(macCatalyst)
+        XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 5),
+                      "The editor must finish closing before swiping \(name)", file: file, line: line)
+        #endif
         XCTAssertTrue(card.waitForExistence(timeout: 10), "\(name) is missing", file: file, line: line)
         for _ in 0..<8 {
             let y = card.frame.midY
-            if card.isHittable && y > 160 && y < app.frame.maxY - 210 { break }
-            if y > app.frame.midY { app.swipeUp() } else { app.swipeDown() }
+            if card.isHittable && y > 160 && y < app.interactionFrame.maxY - 210 { break }
+            app.scrollPage(up: y > app.interactionFrame.midY)
         }
         XCTAssertTrue(card.isHittable, "\(name) is not reachable", file: file, line: line)
         let original = card.frame
@@ -471,7 +549,8 @@ extension XCTestCase {
                 abs(card.frame.minX - original.minX - offset) < 2
             }, object: nil)
             XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed,
-                           "\(name) did not settle at \(offset)", file: file, line: line)
+                           "\(name) did not settle at \(offset); actual offset \(card.frame.minX - original.minX)",
+                           file: file, line: line)
             XCTAssertEqual(card.frame.minY, original.minY, accuracy: 1,
                            "\(name) jumped vertically", file: file, line: line)
             XCTAssertEqual(card.frame.height, original.height, accuracy: 1,
@@ -482,6 +561,16 @@ extension XCTestCase {
             XCTAssertFalse(app.buttons["swipe\(action)"].exists,
                            "\(name) exposes a closed action", file: file, line: line)
         }
+        #if targetEnvironment(macCatalyst)
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).trackpadSwipe(right: true)
+        settled(width)
+        for action in actions {
+            XCTAssertTrue(app.buttons["swipe\(action)"].firstMatch.isHittable,
+                          "\(name) trackpad swipe covers \(action)", file: file, line: line)
+        }
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).trackpadSwipe(right: false)
+        settled(0)
+        #endif
         dragCard(in: app, card: card, distance: width / 4)
         settled(0)
         dragCard(in: app, card: card, distance: width + 18)
@@ -502,8 +591,13 @@ extension XCTestCase {
         settled(0)
         dragCard(in: app, card: card, distance: width + 18)
         settled(width)
+        #if targetEnvironment(macCatalyst)
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+            .withOffset(CGVector(dx: 20, dy: 0)).click()
+        #else
         app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: card.frame.minX + 20, dy: card.frame.midY)).tap()
+        #endif
         settled(0)
         XCTAssertTrue(card.isHittable, "\(name) opened instead of closing its tray", file: file, line: line)
         for action in actions {
@@ -513,11 +607,23 @@ extension XCTestCase {
     }
 
     func dragCard(in app: XCUIApplication, card: XCUIElement, distance: CGFloat) {
+        #if targetEnvironment(macCatalyst)
+        XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 5),
+                      "The editor must finish closing before dragging a card")
+        // Precise partial distances use a native mouse drag. The shared assertion
+        // separately opens and closes every card with native trackpad swipe events.
+        let start = card.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+            .withOffset(CGVector(dx: 24, dy: 0))
+        start.click(forDuration: 0.05,
+                    thenDragTo: start.withOffset(CGVector(dx: distance, dy: 0)),
+                    withVelocity: .slow, thenHoldForDuration: 0.15)
+        #else
         let x = min(card.frame.minX + 24, app.frame.maxX - 44)
         let start = app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: x, dy: card.frame.midY))
         start.press(forDuration: 0.05,
                     thenDragTo: start.withOffset(CGVector(dx: distance, dy: 0)),
                     withVelocity: .slow, thenHoldForDuration: 0.15)
+        #endif
     }
 }

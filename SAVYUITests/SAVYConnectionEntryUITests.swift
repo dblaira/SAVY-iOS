@@ -335,7 +335,7 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         openNewConnection()
         let field = element("DecideAnswer2")
         reveal(field)
-        field.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.9)).tap()
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.12, dy: 0.9)).tapOrClick()
         field.typeText(answer)
         saveConnection()
         let row = authoredRows.matching(NSPredicate(format: "NOT (identifier IN %@)", Array(previous))).firstMatch
@@ -421,7 +421,7 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 20), "Connection card is missing from Home")
         reveal(card)
         let button = element("homeReorder-beliefs")
-        (button.exists ? button : card).tap()
+        (button.exists ? button : card).tapOrClick()
         XCTAssertTrue(element("connectionScreen").waitForExistence(timeout: 10), "Connection did not open")
     }
 
@@ -429,12 +429,12 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         let plus = element("newConnection")
         reveal(plus, towardBottom: false)
         XCTAssertTrue(plus.waitForExistence(timeout: 10), "Connection's + button is missing")
-        plus.tap()
+        plus.tapOrClick()
         XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 10))
     }
 
     private func saveConnection() {
-        app.buttons["Save"].firstMatch.tap()
+        app.buttons["Save"].firstMatch.tapOrClick()
         waitForFormToClose()
     }
 
@@ -446,6 +446,10 @@ final class SAVYConnectionEntryUITests: XCTestCase {
     private func waitForFormToClose() {
         XCTAssertTrue(app.buttons["Save"].firstMatch.waitForNonExistence(timeout: 10),
                       "Connection form did not close")
+        #if targetEnvironment(macCatalyst)
+        XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 5),
+                      "The Mac Connection sheet is still closing")
+        #endif
         XCTAssertTrue(element("connectionScreen").exists)
     }
 
@@ -512,11 +516,17 @@ final class SAVYConnectionEntryUITests: XCTestCase {
 
     private func reveal(_ target: XCUIElement, towardBottom: Bool = true) {
         dismissKeyboard()
+        #if targetEnvironment(macCatalyst)
+        if target.exists && app.interactionFrame.contains(CGPoint(x: target.frame.midX, y: target.frame.midY)) {
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: target)
+            _ = XCTWaiter.wait(for: [ready], timeout: 3)
+        }
+        #endif
         for _ in 0..<14 where !target.isHittable {
             let upward = target.exists && !target.frame.isEmpty
-                ? target.frame.midY > app.frame.midY
+                ? target.frame.midY > app.interactionFrame.midY
                 : towardBottom
-            if upward { app.swipeUp() } else { app.swipeDown() }
+            app.scrollPage(up: upward)
         }
     }
 
@@ -531,9 +541,11 @@ final class SAVYConnectionEntryUITests: XCTestCase {
     }
 
     private func dismissSystemPrompt() {
+        #if !targetEnvironment(macCatalyst)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let allow = springboard.buttons["Allow"].firstMatch
         if allow.waitForExistence(timeout: 3) { allow.tap() }
+        #endif
     }
 
     private func assertWhiteFormMargin(_ identifier: String) {

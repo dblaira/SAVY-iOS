@@ -12,7 +12,8 @@ savy_artifacts="$savy_root/artifacts/mac-build"
 mkdir -p "$savy_artifacts"
 cd "$savy_root"
 
-pkill -x SAVY >/dev/null 2>&1 || true
+# Stop Mac copies only; a separate iOS Simulator session can also be named SAVY.
+pkill -f '/SAVY[.]app/Contents/MacOS/SAVY([[:space:]]|$)' >/dev/null 2>&1 || true
 savy_build_args=(-project SAVY.xcodeproj -scheme SAVY -configuration Release
   -destination 'platform=macOS,variant=Mac Catalyst' -disableAutomaticPackageResolution -allowProvisioningUpdates)
 xcodebuild "${savy_build_args[@]}" build > "$savy_artifacts/build.log" 2>&1 || {

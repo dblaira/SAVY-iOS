@@ -3,6 +3,7 @@ import XCTest
 /// Adam, 2026-09-21: questions stay in the entry with the answers, Social Media Posts + opens
 /// that same form, and any number of posts can be pinned. These tests use the app's isolated
 /// UI-test repositories so physical-iPhone verification does not change Adam's saved entries.
+@MainActor
 final class SAVYPostFormUITests: XCTestCase {
     private var app: XCUIApplication!
     private let firstPrompt = "Make it Obvious"
@@ -25,18 +26,20 @@ final class SAVYPostFormUITests: XCTestCase {
         "Checklist for Beginners", "Advanced Strategies", "Frequently Misunderstood Concepts",
     ]
 
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments = [
-            "SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS", "SAVY_UI_TEST_COWBOY_STUB",
-        ]
-        if name.contains("testNumberedPostCardsShowFiftyGoalAndKeepReferences") {
-            app.launchArguments.append("SAVY_UI_TEST_DEMO_REMINDERS")
-            app.launchEnvironment["SAVY_UI_TEST_SEED_POST_COUNT"] = "50"
+    override func setUp() async throws {
+        await MainActor.run {
+            continueAfterFailure = false
+            app = XCUIApplication()
+            app.launchArguments = [
+                "SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS", "SAVY_UI_TEST_COWBOY_STUB",
+            ]
+            if name.contains("testNumberedPostCardsShowFiftyGoalAndKeepReferences") {
+                app.launchArguments.append("SAVY_UI_TEST_DEMO_REMINDERS")
+                app.launchEnvironment["SAVY_UI_TEST_SEED_POST_COUNT"] = "50"
+            }
+            app.launch()
+            dismissSystemPrompt()
         }
-        app.launch()
-        dismissSystemPrompt()
     }
 
     func testBoltOpensPostFormWithThemeDecideAndFullReminderBody() {
@@ -256,21 +259,21 @@ final class SAVYPostFormUITests: XCTestCase {
         let plus = element("newStory")
         XCTAssertTrue(plus.waitForExistence(timeout: 12), "Stories plus button missing")
         scrollTo(plus)
-        plus.tap()
+        plus.tapOrClick()
 
         let title = element("StoryTitle")
         XCTAssertTrue(title.waitForExistence(timeout: 10), "Story form did not open")
-        title.tap()
+        title.tapOrClick()
         title.typeText("Synthetic story acceptance title")
         let subtitle = element("StorySubtitle")
-        subtitle.tap()
+        subtitle.tapOrClick()
         subtitle.typeText("Synthetic story acceptance subtitle")
         let body = element("StoryBody")
         XCTAssertTrue(body.waitForExistence(timeout: 5), "Story body missing")
-        body.tap()
+        body.tapOrClick()
         body.typeText("• Synthetic bullet\n1. Synthetic list item\n> Synthetic quotation.")
         attach("30 story form retains formatted writing")
-        app.buttons["Save"].firstMatch.tap()
+        app.buttons["Save"].firstMatch.tapOrClick()
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'storyRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 12), "Saved story did not appear")
@@ -279,21 +282,21 @@ final class SAVYPostFormUITests: XCTestCase {
                        "An unpinned Story card should show only its title")
         assertCardSwipeBehavior(in: app, card: row,
                                 actions: ["Posted", "Delete"], name: "Draft Story")
-        row.tap()
+        row.tapOrClick()
         XCTAssertTrue(element("StoryBody").waitForExistence(timeout: 8))
         XCTAssertEqual(element("StorySubtitle").value as? String, "Synthetic story acceptance subtitle")
         XCTAssertEqual(element("StoryBody").value as? String,
                        "• Synthetic bullet\n1. Synthetic list item\n> Synthetic quotation.",
                        "Compact Story cards must retain the full saved writing")
-        app.buttons["Save"].firstMatch.tap()
+        app.buttons["Save"].firstMatch.tapOrClick()
         dragCard(in: app, card: row, distance: 146)
         let posted = app.buttons["swipePosted"].firstMatch
         XCTAssertTrue(posted.waitForExistence(timeout: 5))
-        posted.tap()
+        posted.tapOrClick()
         XCTAssertTrue(posted.waitForNonExistence(timeout: 5))
         assertCardSwipeBehavior(in: app, card: row, actions: ["Delete"], name: "Posted Story")
         dragCard(in: app, card: row, distance: 82)
-        app.buttons["swipeDelete"].firstMatch.tap()
+        app.buttons["swipeDelete"].firstMatch.tapOrClick()
         XCTAssertTrue(row.waitForNonExistence(timeout: 5))
     }
 
@@ -414,7 +417,11 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 15), "Unfinished editor was not restored automatically")
         XCTAssertEqual(element("DecideAnswer0").value as? String, firstPrompt + "\n" + answer)
         attach("Autosaved writing restored after termination without Save")
+        #if targetEnvironment(macCatalyst)
+        XCUIApplication(bundleIdentifier: "com.apple.finder").activate()
+        #else
         XCUIDevice.shared.press(.home)
+        #endif
         app.terminate()
         app.launch()
         XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 15))
@@ -454,7 +461,7 @@ final class SAVYPostFormUITests: XCTestCase {
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
         for _ in 0..<8 where !card.isHittable { homeScroll.swipeUp() }
         XCTAssertTrue(card.isHittable, "Social Media Posts card did not scroll into view")
-        card.tap()
+        card.tapOrClick()
         XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Social Media Posts did not open")
     }
 
@@ -622,9 +629,11 @@ final class SAVYPostFormUITests: XCTestCase {
     }
 
     private func dismissSystemPrompt() {
+        #if !targetEnvironment(macCatalyst)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let allow = springboard.buttons["Allow"].firstMatch
         if allow.waitForExistence(timeout: 3) { allow.tap() }
+        #endif
     }
 
     private func attach(_ name: String) {

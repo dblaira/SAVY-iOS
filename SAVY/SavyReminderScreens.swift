@@ -584,6 +584,11 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
             if gestureRecognizer === view.pan {
                 if parent.actionsWidth == 0 || view.reorderArmed || isArmed() { return false }
                 let velocity = view.pan.velocity(in: view.window)
+                #if targetEnvironment(macCatalyst)
+                // Trackpad pans can begin before UIKit supplies a velocity. Resolve
+                // their direction from the first translation instead of rejecting them.
+                if velocity == .zero { return true }
+                #endif
                 let isHorizontal = abs(velocity.x) > abs(velocity.y) * 1.15
                 return isHorizontal && (velocity.x > 0 || parent.swipeOffset > 0)
             }
@@ -608,6 +613,10 @@ private final class SavyUpNextGestureView: UIView {
     fileprivate var reorderArmed = false
     private var longPressStartY: CGFloat = 0
     private var panStartOffset: CGFloat = 0
+    #if targetEnvironment(macCatalyst)
+    private var waitingForPanDirection = false
+    private var acceptsPanMovement = false
+    #endif
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -668,10 +677,18 @@ private final class SavyUpNextGestureView: UIView {
         switch pan.state {
         case .began:
             panStartOffset = coordinator.parent.swipeOffset
+            #if targetEnvironment(macCatalyst)
+            waitingForPanDirection = true
+            acceptsPanMovement = false
+            #endif
             updateSwipe()
         case .changed:
             updateSwipe()
         case .ended:
+            #if targetEnvironment(macCatalyst)
+            updateSwipe()
+            guard acceptsPanMovement else { return }
+            #endif
             let offset = panStartOffset + pan.translation(in: window).x
             coordinator.settleSwipe(open: offset > coordinator.parent.actionsWidth / 2)
         case .cancelled, .failed:
@@ -684,7 +701,17 @@ private final class SavyUpNextGestureView: UIView {
     private func updateSwipe() {
         guard let coordinator else { return }
         // Measure in the stationary window, not the card that this gesture translates.
-        let offset = panStartOffset + pan.translation(in: window).x
+        let translation = pan.translation(in: window)
+        #if targetEnvironment(macCatalyst)
+        if waitingForPanDirection {
+            guard translation != .zero else { return }
+            waitingForPanDirection = false
+            acceptsPanMovement = abs(translation.x) > abs(translation.y) * 1.15
+                && (translation.x > 0 || panStartOffset > 0)
+        }
+        guard acceptsPanMovement else { return }
+        #endif
+        let offset = panStartOffset + translation.x
         coordinator.setSwipeOffset(min(max(offset, 0), coordinator.parent.actionsWidth))
     }
 }
