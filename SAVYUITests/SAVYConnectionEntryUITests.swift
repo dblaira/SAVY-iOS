@@ -49,7 +49,7 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         openNewConnection()
         assertConnectionForm()
         assertWhiteFormMargin("connectionEntryForm")
-        attach("01 Connection form with its fixed Personal Take theme")
+        attach("01 Connection form with its fixed Personal Lessons theme")
 
         for index in prompts.indices {
             let field = element("DecideAnswer\(index)")
@@ -242,7 +242,7 @@ final class SAVYConnectionEntryUITests: XCTestCase {
         XCTAssertTrue(element("connectionEntryForm").waitForExistence(timeout: 10),
                       "Connection + did not open its entry form")
         XCTAssertTrue(element("connectionTheme").exists, "The fixed Connection theme is missing")
-        XCTAssertTrue(app.staticTexts["Your Personal Take & Lessons Learned"].firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Personal Lessons"].firstMatch.exists)
         XCTAssertFalse(app.segmentedControls.firstMatch.exists,
                        "A connection must remain in Connection rather than offer a Reminder/Post destination")
         XCTAssertFalse(element("PostTheme").exists, "Connection's fixed theme must not expose the Post theme picker")

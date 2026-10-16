@@ -5,7 +5,7 @@ import XCTest
 /// UI-test repositories so physical-iPhone verification does not change Adam's saved entries.
 final class SAVYPostFormUITests: XCTestCase {
     private var app: XCUIApplication!
-    private let firstPrompt = "What happened?"
+    private let firstPrompt = "Make it Obvious"
     private let advancedPrompts = [
         "What result requires going beyond the basics?",
         "What must already be mastered?",
@@ -14,16 +14,15 @@ final class SAVYPostFormUITests: XCTestCase {
     ]
     // The names locate the native menu's visible bounds when its later options need scrolling.
     private let themeNames = [
-        "The 5 Ws", "Problem → Solution", "Before / After", "Lesson Learned", "How-To",
-        "Story Arc", "Myth vs. Fact", "The Decision", "Frequently Asked Questions",
+        "Habit", "A Strong Yes", "Pattern Recognition", "Inductive Reasoning", "Mental Model",
+        "Personal Lessons", "The 5 Ws", "Problem → Solution", "Before / After", "Lesson Learned",
+        "How-To", "Story Arc", "Myth vs. Fact", "The Decision", "Frequently Asked Questions",
         "Customer Success Story", "Key Challenges & Solutions", "Myths vs. Facts",
         "The Ultimate Checklist", "Quick Hack or Shortcut", "Recommended Tools & Resources",
         "Essential Terminology", "Before & After Scenarios", "Audience Poll or Survey Results",
         "Core Principles Explained", "Debunking Popular Industry Beliefs", "History of the Topic",
         "Alternative Approaches", "Step-by-Step Breakdown", "Checklist for Breakdown",
         "Checklist for Beginners", "Advanced Strategies", "Frequently Misunderstood Concepts",
-        "Your Personal Take & Lessons Learned", "Mental Model", "Inductive Reasoning",
-        "Pattern Recognition", "A Strong Yes",
     ]
 
     override func setUpWithError() throws {
@@ -92,7 +91,7 @@ final class SAVYPostFormUITests: XCTestCase {
         // The cursor lands on the line right under the question, not a line lower.
         second.typeText("Answer")
         // A gray continuation may trail the typed word, so check what was typed and where.
-        XCTAssertTrue((second.value as? String ?? "").hasPrefix("Who was involved?\nAnswer"),
+        XCTAssertTrue((second.value as? String ?? "").hasPrefix("Make it Easy\nAnswer"),
                       "The jump did not land right under the question")
         attach("02 cursor right under the question, row on the keys")
 
@@ -103,12 +102,12 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer1")), "Up did not step back")
 
         // Across the border between the Decide boxes and the Delegate boxes, both ways.
-        element("KeyboardRowDecide4").tap()
-        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer4")), "The last Decide icon did not move the cursor")
+        element("KeyboardRowDecide3").tap()
+        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer3")), "The last Decide icon did not move the cursor")
         element("KeyboardRowDown").tap()
         XCTAssertTrue(hasKeyboardFocus(element("Title")), "Down did not step from the last question to What do I want?")
         element("KeyboardRowUp").tap()
-        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer4")), "Up did not step back into the last question")
+        XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer3")), "Up did not step back into the last question")
 
         // Done drops the keyboard and the row goes with it.
         let done = element("KeyboardRowDone")
@@ -138,6 +137,15 @@ final class SAVYPostFormUITests: XCTestCase {
         }
         XCTAssertFalse(element("DecideAnswer3").exists, "Mental Model asks exactly three questions")
         attach("04 mental model prefilled questions")
+
+        // Adam, 2026-10-15: the Habit form leads the list with his four directives.
+        selectTheme("Habit")
+        let habitDirectives = ["Make it Obvious", "Make it Easy", "Make it Attractive", "Make it Satisfying"]
+        for (index, directive) in habitDirectives.enumerated() {
+            assertPrefilledQuestion(directive, at: index)
+        }
+        XCTAssertFalse(element("DecideAnswer4").exists, "Habit asks exactly four directives")
+        attach("05 habit prefilled directives")
     }
 
     func testStrongYesThemePreservesLabelsQuestionsAndAnswersAfterRelaunch() {
@@ -446,7 +454,7 @@ final class SAVYPostFormUITests: XCTestCase {
 
     private func assertSharedPostForm() {
         XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10), "Theme picker missing")
-        XCTAssertTrue(app.staticTexts["The 5 Ws"].firstMatch.exists, "The 5 Ws is not the starting theme")
+        XCTAssertTrue(app.staticTexts["Habit"].firstMatch.exists, "Habit is not the starting theme")
         XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 5), "Decide questions missing")
         let title = element("Title")
         scrollTo(title)

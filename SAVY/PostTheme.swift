@@ -69,7 +69,8 @@ struct PostEntryDraft: Codable, Equatable {
 
     init(entry: Reminder, fixedTheme: PostTheme? = nil) {
         self.fixedTheme = fixedTheme
-        let theme = fixedTheme ?? PostThemeCatalog.theme(id: entry.postThemeID) ?? PostThemeCatalog.defaultTheme
+        let theme = fixedTheme ?? PostThemeCatalog.theme(id: entry.postThemeID)
+            ?? (entry.postAnswers == nil ? PostThemeCatalog.defaultTheme : PostThemeCatalog.legacyTheme)
         themeID = theme.id
         answersByTheme = [theme.id: theme.questionAndAnswers(
             from: entry.postAnswers,
@@ -122,6 +123,80 @@ struct PostEntryDraft: Codable, Equatable {
 /// and Mental Model and Pattern Recognition ask three.
 enum PostThemeCatalog {
     static let themes: [PostTheme] = [
+        // Adam, 2026-10-15: "Add a habit form to the SAVY app. The four directives are these.
+        // (Atomic Habits 4 Step Formula)" — his four directives, verbatim and in his order.
+        // His order for the top of the list: Habit, A Strong Yes, Pattern Recognition,
+        // Inductive Reasoning, Mental Model, Personal Lessons.
+        PostTheme(
+            id: "habit",
+            name: "Habit",
+            questions: [
+                PostThemeQuestion(prompt: "Make it Obvious", symbol: "target"),
+                PostThemeQuestion(prompt: "Make it Easy", symbol: "hand.thumbsup"),
+                PostThemeQuestion(prompt: "Make it Attractive", symbol: "heart"),
+                PostThemeQuestion(prompt: "Make it Satisfying", symbol: "face.smiling"),
+            ]
+        ),
+        PostTheme(
+            id: "a-strong-yes",
+            name: "A Strong Yes",
+            questions: [
+                PostThemeQuestion(
+                    prompt: "Problem\nWhat part of the process creates the most cognitive load?",
+                    symbol: "exclamationmark.triangle"
+                ),
+                PostThemeQuestion(
+                    prompt: "Pattern Interrupt\nWhat new data interrupts the pattern, by offering a new possibility?",
+                    symbol: "lightbulb"
+                ),
+                PostThemeQuestion(
+                    prompt: "Opportunity\nIs this an A+ opportunity. While trying to implement the new process does my energy rise, fall, or remain undisturbed?",
+                    symbol: "arrow.up.right"
+                ),
+                PostThemeQuestion(
+                    prompt: "Pay off\nDoes thinking, and working on this new process create a sense of FLOW that pulls me and yet also leaves me more capable and ambitious? I just can't get enough?",
+                    symbol: "sparkles"
+                ),
+            ]
+        ),
+        PostTheme(
+            id: "pattern-recognition",
+            name: "Pattern Recognition",
+            questions: [
+                PostThemeQuestion(prompt: "What new pattern has emerged?", symbol: "lightbulb"),
+                PostThemeQuestion(prompt: "How has the pattern changed?", symbol: "arrow.left.arrow.right"),
+                PostThemeQuestion(prompt: "When does the value of the new pattern exceed the old?", symbol: "arrow.up.right"),
+            ]
+        ),
+        PostTheme(
+            id: "inductive-reasoning",
+            name: "Inductive Reasoning",
+            questions: [
+                PostThemeQuestion(prompt: "Why does this feel special?", symbol: "sparkles"),
+                PostThemeQuestion(prompt: "What difference does it make?", symbol: "arrow.left.arrow.right"),
+                PostThemeQuestion(prompt: "What can I do now?", symbol: "figure.walk"),
+                PostThemeQuestion(prompt: "How much value can I keep from what I build?", symbol: "diamond"),
+            ]
+        ),
+        PostTheme(
+            id: "mental-model",
+            name: "Mental Model",
+            questions: [
+                PostThemeQuestion(prompt: "What situation do I want to approach differently?", symbol: "mappin.and.ellipse"),
+                PostThemeQuestion(prompt: "Which mental model have I chosen to adopt?", symbol: "lightbulb"),
+                PostThemeQuestion(prompt: "How do I intend this new perspective to help?", symbol: "arrow.up.right"),
+            ]
+        ),
+        PostTheme(
+            id: "your-personal-take-lessons-learned",
+            name: "Personal Lessons",
+            questions: [
+                PostThemeQuestion(prompt: "What did you believe before?", symbol: "clock.arrow.circlepath"),
+                PostThemeQuestion(prompt: "What experience changed or confirmed your view?", symbol: "figure.walk"),
+                PostThemeQuestion(prompt: "What do you believe now?", symbol: "lightbulb"),
+                PostThemeQuestion(prompt: "What do you do differently because of it?", symbol: "arrow.uturn.forward"),
+            ]
+        ),
         PostTheme(
             id: "five-ws",
             name: "The 5 Ws",
@@ -395,73 +470,22 @@ enum PostThemeCatalog {
                 PostThemeQuestion(prompt: "What example makes the difference clear?", symbol: "text.quote"),
             ]
         ),
-        PostTheme(
-            id: "your-personal-take-lessons-learned",
-            name: "Your Personal Take & Lessons Learned",
-            questions: [
-                PostThemeQuestion(prompt: "What did you believe before?", symbol: "clock.arrow.circlepath"),
-                PostThemeQuestion(prompt: "What experience changed or confirmed your view?", symbol: "figure.walk"),
-                PostThemeQuestion(prompt: "What do you believe now?", symbol: "lightbulb"),
-                PostThemeQuestion(prompt: "What do you do differently because of it?", symbol: "arrow.uturn.forward"),
-            ]
-        ),
-        PostTheme(
-            id: "mental-model",
-            name: "Mental Model",
-            questions: [
-                PostThemeQuestion(prompt: "What situation do I want to approach differently?", symbol: "mappin.and.ellipse"),
-                PostThemeQuestion(prompt: "Which mental model have I chosen to adopt?", symbol: "lightbulb"),
-                PostThemeQuestion(prompt: "How do I intend this new perspective to help?", symbol: "arrow.up.right"),
-            ]
-        ),
-        PostTheme(
-            id: "inductive-reasoning",
-            name: "Inductive Reasoning",
-            questions: [
-                PostThemeQuestion(prompt: "Why does this feel special?", symbol: "sparkles"),
-                PostThemeQuestion(prompt: "What difference does it make?", symbol: "arrow.left.arrow.right"),
-                PostThemeQuestion(prompt: "What can I do now?", symbol: "figure.walk"),
-                PostThemeQuestion(prompt: "How much value can I keep from what I build?", symbol: "diamond"),
-            ]
-        ),
-        PostTheme(
-            id: "pattern-recognition",
-            name: "Pattern Recognition",
-            questions: [
-                PostThemeQuestion(prompt: "What new pattern has emerged?", symbol: "lightbulb"),
-                PostThemeQuestion(prompt: "How has the pattern changed?", symbol: "arrow.left.arrow.right"),
-                PostThemeQuestion(prompt: "When does the value of the new pattern exceed the old?", symbol: "arrow.up.right"),
-            ]
-        ),
-        PostTheme(
-            id: "a-strong-yes",
-            name: "A Strong Yes",
-            questions: [
-                PostThemeQuestion(
-                    prompt: "Problem\nWhat part of the process creates the most cognitive load?",
-                    symbol: "exclamationmark.triangle"
-                ),
-                PostThemeQuestion(
-                    prompt: "Pattern Interrupt\nWhat new data interrupts the pattern, by offering a new possibility?",
-                    symbol: "lightbulb"
-                ),
-                PostThemeQuestion(
-                    prompt: "Opportunity\nIs this an A+ opportunity. While trying to implement the new process does my energy rise, fall, or remain undisturbed?",
-                    symbol: "arrow.up.right"
-                ),
-                PostThemeQuestion(
-                    prompt: "Pay off\nDoes thinking, and working on this new process create a sense of FLOW that pulls me and yet also leaves me more capable and ambitious? I just can't get enough?",
-                    symbol: "sparkles"
-                ),
-            ]
-        ),
     ]
 
-    /// The theme a fresh Post starts on — the mockup's default.
+    /// The theme a fresh entry starts on: the first in the list, so the menu opens on it.
     static var defaultTheme: PostTheme { themes[0] }
+
+    /// Answers saved without a theme were written under The 5 Ws, the earlier first theme.
+    static var legacyTheme: PostTheme { theme(id: "five-ws") ?? themes[0] }
 
     static func theme(id: String?) -> PostTheme? {
         guard let id else { return nil }
         return themes.first { $0.id == id }
+    }
+
+    /// The name shown for a saved entry. A renamed theme shows its current name on older
+    /// entries; the saved name stays in the record untouched.
+    static func displayName(id: String?, saved: String?) -> String? {
+        theme(id: id)?.name ?? saved
     }
 }

@@ -401,7 +401,8 @@ struct NewsChannelPostEntryRow: View {
 
     private var signalText: String {
         var parts: [String] = []
-        if let theme = entry.postThemeName, !theme.isEmpty { parts.append(theme) }
+        if let theme = PostThemeCatalog.displayName(id: entry.postThemeID, saved: entry.postThemeName),
+           !theme.isEmpty { parts.append(theme) }
         if entry.priority != .none { parts.append(entry.priority.marks) }
         if entry.context != .none { parts.append(entry.context.label) }
         parts.append(contentsOf: entry.tags.map { "#\($0)" })

@@ -10,7 +10,7 @@ struct ConnectionEntry: Identifiable, Codable, Equatable {
 
     static let theme = PostTheme(
         id: "connection-personal-take-lessons-learned",
-        name: "Your Personal Take & Lessons Learned",
+        name: "Personal Lessons",
         questions: [
             PostThemeQuestion(prompt: "What did you believe before?", symbol: "clock.arrow.circlepath"),
             PostThemeQuestion(prompt: "What experience changed or confirmed your connection?", symbol: "figure.walk"),

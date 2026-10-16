@@ -39,8 +39,15 @@ final class SAVYPostEntryThemeTests: XCTestCase {
 
     // MARK: - Theme catalog
 
-    func testCatalogLeadsWithTheFiveWsAndItsFiveQuestions() {
-        let fiveWs = PostThemeCatalog.defaultTheme
+    func testFreshEntryStartsOnHabitAndOlderUnthemedAnswersReadAsTheFiveWs() {
+        XCTAssertEqual(PostThemeCatalog.defaultTheme.id, "habit")
+        XCTAssertEqual(PostEntryDraft(entry: Reminder()).theme.id, "habit")
+        var unthemed = Reminder()
+        unthemed.postAnswers = ["An older answer."]
+        XCTAssertEqual(PostEntryDraft(entry: unthemed).theme.id, "five-ws")
+        XCTAssertEqual(PostEntryDraft(entry: unthemed).answers[0], "What happened?\n\nAn older answer.")
+
+        let fiveWs = PostThemeCatalog.legacyTheme
         XCTAssertEqual(fiveWs.id, "five-ws")
         XCTAssertEqual(fiveWs.name, "The 5 Ws")
         XCTAssertEqual(fiveWs.questions.count, 5, "The 5 Ws asks five questions")
@@ -86,10 +93,10 @@ final class SAVYPostEntryThemeTests: XCTestCase {
             "Checklist for Beginners",
             "Advanced Strategies",
             "Frequently Misunderstood Concepts",
-            "Your Personal Take & Lessons Learned",
         ]
-        XCTAssertEqual(PostThemeCatalog.themes.count, 32, "8 original themes + Adam's 20 + Mental Model + October additions")
-        let septemberThemes = PostThemeCatalog.themes.dropFirst(8).prefix(20)
+        XCTAssertEqual(PostThemeCatalog.themes.count, 33, "8 original themes + Adam's 20 + Mental Model + October additions")
+        // The 20th, now Personal Lessons, moved to the top of the list on 2026-10-15.
+        let septemberThemes = PostThemeCatalog.themes.dropFirst(14).prefix(19)
         XCTAssertEqual(Array(septemberThemes.map(\.name)), expectedNewNames)
         for theme in septemberThemes {
             XCTAssertEqual(theme.questions.count, 4, "\(theme.name) asks exactly four questions")
@@ -125,6 +132,31 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         XCTAssertEqual(stepByStep?.questions.first?.prompt, "What stages make up the process?")
         XCTAssertEqual(checklistBreakdown?.questions.first?.prompt, "Which parts of the process must be accounted for?")
         XCTAssertNotEqual(stepByStep?.questions, checklistBreakdown?.questions)
+    }
+
+    /// Adam, 2026-10-15: "This new form should be the first form available on the list, with
+    /// "A Strong Yes" 2nd on the list, followed by Pattern Recognition, and then Inductive
+    /// Reasoning. Next should be Mental Model and then "Personal Take & Lessons Learned." The
+    /// naming should be changed for this one."
+    func testHabitLeadsTheListInAdamsOrderAndTheRestFollowUnchanged() {
+        XCTAssertEqual(Array(PostThemeCatalog.themes.prefix(6).map(\.name)), [
+            "Habit", "A Strong Yes", "Pattern Recognition", "Inductive Reasoning", "Mental Model", "Personal Lessons",
+        ])
+        XCTAssertEqual(PostThemeCatalog.theme(id: "habit")?.questions.map(\.prompt), [
+            "Make it Obvious", "Make it Easy", "Make it Attractive", "Make it Satisfying",
+        ])
+        XCTAssertEqual(Array(PostThemeCatalog.themes.dropFirst(6).prefix(8).map(\.id)), [
+            "five-ws", "problem-solution", "before-after", "lesson-learned",
+            "how-to", "story-arc", "myth-fact", "the-decision",
+        ])
+        // The renamed theme keeps its saved id, so older entries reopen on it under the new name.
+        XCTAssertEqual(PostThemeCatalog.theme(id: "your-personal-take-lessons-learned")?.name, "Personal Lessons")
+        XCTAssertEqual(
+            PostThemeCatalog.displayName(id: "your-personal-take-lessons-learned",
+                                         saved: "Your Personal Take & Lessons Learned"),
+            "Personal Lessons"
+        )
+        XCTAssertEqual(ConnectionEntry.theme.name, "Personal Lessons")
     }
 
     func testThemeLookupByIDAndUnknownIDFallsThrough() {

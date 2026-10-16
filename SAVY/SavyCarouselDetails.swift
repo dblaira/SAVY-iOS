@@ -20,7 +20,7 @@ struct SavyCarouselDetail: Identifiable, Equatable {
         }
         let theme = PostThemeCatalog.theme(id: reminder.postThemeID)
             ?? PostThemeCatalog.themes.first { $0.name == savedName }
-        if let name = savedName ?? theme?.name {
+        if let name = theme?.name ?? savedName {
             values.append(SavyCarouselDetail(
                 kind: .theme,
                 text: name,

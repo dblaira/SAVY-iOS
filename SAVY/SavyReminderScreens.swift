@@ -827,7 +827,8 @@ struct SavyReminderBandCard: View {
             if !reminder.notes.isEmpty { parts.append(reminder.notes) }
             if !reminder.url.isEmpty { parts.append(reminder.url) }
             if !reminder.waitingOn.isEmpty { parts.append("Waiting on / delegate to: \(reminder.waitingOn)") }
-            if let theme = reminder.postThemeName, !theme.isEmpty { parts.append(theme) }
+            if let theme = PostThemeCatalog.displayName(id: reminder.postThemeID, saved: reminder.postThemeName),
+               !theme.isEmpty { parts.append(theme) }
             parts.append(contentsOf: reminder.postQuestionAndAnswers.filter { !$0.isEmpty })
             parts.append(contentsOf: reminder.subtasks.map { "\($0.done ? "☑" : "☐") \($0.title)" })
             if let image = reminder.imageLocalPath, !image.isEmpty { parts.append("Image attached") }

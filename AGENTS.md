@@ -1,5 +1,11 @@
 # SAVY iOS Agent Instructions
 
+## Habit form and theme order — October 15, 2026
+
+Adam: "Add a habit form to the SAVY app. The four directives are these. (Atomic Habits 4 Step Formula) 1. Make it Obvious 2. Make it Easy 3. Make it Attractive 4. Make it Satisfying. This new form should be the first form available on the list, with "A Strong Yes" 2nd on the list, followed by Pattern Recognition, and then Inductive Reasoning. Next should be Mental Model and then "Personal Take & Lessons Learned." The naming should be changed for this one. "Personal Take & Lessons Learned" should be changed to read, "Personal Lessons"."
+
+The Theme menu opens with Habit, A Strong Yes, Pattern Recognition, Inductive Reasoning, Mental Model, Personal Lessons; the other themes follow in their earlier order. Habit's four Decide prompts are his directives verbatim. Adam: "Use a bullseye icon for the habit form" — its first prompt carries the `target` symbol, so the menu and Theme row show the bullseye. Personal Lessons keeps its saved id `your-personal-take-lessons-learned`; the Connection form's fixed theme carries the same new name. Older entries keep their saved theme name in the record and show the current name on cards. A fresh entry opens on Habit, so the native menu opens with Habit at the top; a menu opened on a theme lower in the list scrolls Habit out of sight. Older answers saved without a theme still read as The 5 Ws.
+
 ## Entry draft recovery — October 12, 2026
 
 Adam: "Fix the autosave too. I don't want to lose another entry."

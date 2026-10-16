@@ -324,7 +324,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         reminder.postThemeID = "five-ws"
         reminder.postAnswers = ["My existing answer."]
         let capture = TechnicalCapture.from(reminder: reminder)
-        let question = PostThemeCatalog.defaultTheme.questions[0].prompt
+        let question = PostThemeCatalog.legacyTheme.questions[0].prompt
         XCTAssertTrue(capture.metadata.postAnswers?.first?.contains(question) == true)
         XCTAssertTrue(capture.metadata.postAnswers?.first?.contains("My existing answer.") == true)
         XCTAssertTrue(capture.promptText.contains(question))
