@@ -18,6 +18,9 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         if !preservesExistingData {
             app.launchArguments.append("SAVY_UI_TEST_RESET_REMINDERS")
         }
+        if name.contains("testReminderSwipeKeepsItsPositionAcrossGestures") {
+            app.launchArguments += ["SAVY_UI_TEST_DEMO_REMINDERS", "SAVY_UI_TEST_OPEN_REMINDERS"]
+        }
         app.launch()
         dismissNotificationPrompt()
     }
@@ -165,10 +168,22 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
     }
 
     private func pinAndUnpin(_ title: String, cardIdentifier: String) {
-        let card = app.descendants(matching: .any)[cardIdentifier].firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)[cardIdentifier].firstMatch.waitForExistence(timeout: 5))
+        // SwiftUI also applies the content identifier to its text descendants. Measure
+        // the full gesture surface, not the first label carrying that identifier.
+        let titleFrame = app.staticTexts[title].firstMatch.frame
+        let titleCenter = CGPoint(x: titleFrame.midX, y: titleFrame.midY)
+        guard let card = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "reminderReorderGesture-"))
+            .allElementsBoundByIndex.first(where: { $0.frame.contains(titleCenter) }) else {
+            XCTFail("The card's gesture surface is missing")
+            return
+        }
         let compactHeight = card.frame.height
-        XCTAssertLessThanOrEqual(compactHeight, 64, "An unpinned first card must stay thin")
+        // Compact cards now include the restored type label above their one-line title.
+        XCTAssertLessThanOrEqual(compactHeight, 80, "An unpinned first card must stay thin")
+        XCTAssertLessThanOrEqual(app.staticTexts[title].firstMatch.frame.height, 40,
+                                 "An unpinned title must remain one line")
         revealActions(title)
         tapVisibleButton("swipePin")
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "\(title) missing after pin")
@@ -293,6 +308,69 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         gentlySwipeRightThenLeft(title)
         pinAndUnpin(title, cardIdentifier: "upNextCard0")
         completeAndDelete(title, completedSectionId: "completedRemindersSection")
+    }
+
+    func testReminderSwipeKeepsItsPositionAcrossGestures() {
+        let card = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "reminderReorderGesture-")).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        var original = card.frame
+
+        func drag(_ distance: CGFloat) {
+            // Start on the visible card, including when the 192-point tray is open.
+            let startX = min(card.frame.minX + 28, app.frame.maxX - 60)
+            let start = app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: startX, dy: card.frame.midY))
+            start.press(forDuration: 0.05,
+                        thenDragTo: start.withOffset(CGVector(dx: distance, dy: 0)),
+                        withVelocity: .slow, thenHoldForDuration: 0.15)
+        }
+
+        func assertOffset(_ offset: CGFloat, _ message: String, line: UInt = #line) {
+            let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                abs(card.frame.minX - original.minX - offset) < 2
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 5), .completed, message, line: line)
+            XCTAssertEqual(card.frame.minY, original.minY, accuracy: 1, "Swiping moved the row vertically", line: line)
+            XCTAssertEqual(card.frame.height, original.height, accuracy: 1, "Revealing actions changed the row height", line: line)
+        }
+
+        XCTAssertFalse(app.buttons["swipeDelete"].exists, "Closed actions must stay out of accessibility")
+        drag(48)
+        assertOffset(0, "A short opening swipe should return smoothly to closed")
+        drag(210)
+        assertOffset(192, "A full swipe should reveal the action tray")
+        XCTAssertTrue(app.buttons["swipeDone"].isHittable)
+        XCTAssertTrue(app.buttons["swipePin"].isHittable)
+        XCTAssertTrue(app.buttons["swipeDelete"].isHittable)
+        drag(36)
+        assertOffset(192, "Swiping an open card again must not restart it from zero")
+        drag(-36)
+        assertOffset(192, "A short closing swipe must continue from the open position")
+        drag(-140)
+        assertOffset(0, "A closing swipe should settle the tray closed")
+        XCTAssertFalse(app.buttons["swipeDelete"].exists)
+        drag(210)
+        assertOffset(192, "The card should reopen after closing")
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).tap()
+        assertOffset(0, "Tapping an open card should close its tray")
+        XCTAssertFalse(titleField().exists, "Dismissing actions must not open the editor")
+
+        // Pinned cards are taller. Revealing their tray must never resize the row.
+        drag(210)
+        app.buttons["swipePin"].tap()
+        let pinnedAndClosed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            card.frame.height >= 186 && abs(card.frame.minX - original.minX) < 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [pinnedAndClosed], timeout: 5), .completed,
+                       "Pinning should expand the card and finish closing its tray")
+        original = card.frame
+        drag(210)
+        assertOffset(192, "The expanded card should reveal the same tray")
+        drag(-36)
+        assertOffset(192, "An expanded card must retain its open offset too")
+        drag(-140)
+        assertOffset(0, "The expanded card should close without changing its height")
     }
 
     func testHomepageRemovesHistoricalCowboyCard() {

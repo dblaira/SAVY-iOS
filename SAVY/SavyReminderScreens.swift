@@ -321,6 +321,50 @@ struct SavySwipeAction: Identifiable {
     let run: () -> Void
 }
 
+/// The tray follows the card's presentation offset, including the closing animation.
+/// A background cannot change the row's height, and a closed tray has no buttons in AX.
+private struct SavySwipeActionTray: View, Animatable {
+    let actions: [SavySwipeAction]
+    nonisolated var revealedWidth: CGFloat
+    var onSelect: (SavySwipeAction) -> Void
+
+    nonisolated var animatableData: CGFloat {
+        get { revealedWidth }
+        set { revealedWidth = newValue }
+    }
+
+    var body: some View {
+        Color.clear
+            .overlay(alignment: .leading) {
+                if revealedWidth > 0 {
+                    HStack(spacing: 0) {
+                        ForEach(actions) { action in
+                            Button { onSelect(action) } label: {
+                                VStack(spacing: 3) {
+                                    Image(systemName: action.icon)
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text(action.title)
+                                        .font(.system(size: 10, weight: .heavy))
+                                }
+                                .foregroundStyle(.white)
+                                .frame(width: 64)
+                                .frame(maxHeight: .infinity)
+                                .background(action.bg)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("swipe\(action.title)")
+                        }
+                    }
+                    .frame(width: CGFloat(actions.count) * 64)
+                    .transition(.identity)
+                }
+            }
+            .mask(alignment: .leading) {
+                Rectangle().frame(width: max(0, revealedWidth))
+            }
+    }
+}
+
 /// UIKit-backed swipe/reorder row so vertical scrolling remains responsive inside SwiftUI ScrollViews.
 struct SavyUpNextCardRow<Content: View>: View {
     let reminderId: String
@@ -338,34 +382,6 @@ struct SavyUpNextCardRow<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            // The tray exists only while the card is swiped open. Hidden at zero opacity, the
-            // iOS 27 accessibility tree still listed Posted, Pin and Delete on a closed card.
-            if swipeOffset > 0 {
-                HStack(spacing: 0) {
-                    ForEach(actions) { action in
-                        Button {
-                            withAnimation(.snappy) { swipeOffset = 0 }
-                            action.run()
-                        } label: {
-                            VStack(spacing: 3) {
-                                Image(systemName: action.icon)
-                                    .font(.system(size: 16, weight: .bold))
-                                Text(action.title)
-                                    .font(.system(size: 10, weight: .heavy))
-                            }
-                            .foregroundStyle(.white)
-                            .frame(width: 64)
-                            .frame(maxHeight: .infinity)
-                            .background(action.bg)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("swipe\(action.title)")
-                    }
-                }
-                .frame(width: actionsWidth)
-                .zIndex(3)
-            }
-
             ZStack(alignment: .topTrailing) {
                 content
                     .allowsHitTesting(false)
@@ -409,6 +425,12 @@ struct SavyUpNextCardRow<Content: View>: View {
             .animation(.snappy, value: isArmed)
         }
         .fixedSize(horizontal: false, vertical: true)
+        .background(alignment: .leading) {
+            SavySwipeActionTray(actions: actions, revealedWidth: swipeOffset) { action in
+                withAnimation(.snappy) { swipeOffset = 0 }
+                action.run()
+            }
+        }
         .onDisappear {
             if isArmed { armedId = nil }
         }
@@ -518,14 +540,16 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
         }
 
         func setSwipeOffset(_ x: CGFloat) {
-            DispatchQueue.main.async { self.parent.swipeOffset = x }
+            // UIKit calls this on the main thread. Apply each sample immediately, without
+            // inheriting a spring or queuing stale positions behind the release animation.
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { parent.swipeOffset = x }
         }
 
         func settleSwipe(open: Bool) {
-            DispatchQueue.main.async {
-                withAnimation(.snappy) {
-                    self.parent.swipeOffset = open ? self.parent.actionsWidth : 0
-                }
+            withAnimation(.snappy) {
+                parent.swipeOffset = open ? parent.actionsWidth : 0
             }
         }
 
@@ -552,7 +576,7 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
             guard let view else { return true }
             if gestureRecognizer === view.pan {
                 if parent.actionsWidth == 0 || view.reorderArmed || isArmed() { return false }
-                let velocity = view.pan.velocity(in: view)
+                let velocity = view.pan.velocity(in: view.window)
                 let isHorizontal = abs(velocity.x) > abs(velocity.y) * 1.15
                 return isHorizontal && (velocity.x > 0 || parent.swipeOffset > 0)
             }
@@ -576,6 +600,7 @@ private final class SavyUpNextGestureView: UIView {
     fileprivate let tap = UITapGestureRecognizer()
     fileprivate var reorderArmed = false
     private var longPressStartY: CGFloat = 0
+    private var panStartOffset: CGFloat = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -596,6 +621,7 @@ private final class SavyUpNextGestureView: UIView {
         tap.cancelsTouchesInView = false
         tap.addTarget(self, action: #selector(handleTap))
         tap.require(toFail: longPress)
+        tap.require(toFail: pan)
         addGestureRecognizer(tap)
     }
 
@@ -633,17 +659,26 @@ private final class SavyUpNextGestureView: UIView {
         guard let coordinator else { return }
         guard !reorderArmed, !coordinator.isArmed() else { return }
         switch pan.state {
+        case .began:
+            panStartOffset = coordinator.parent.swipeOffset
+            updateSwipe()
         case .changed:
-            let translation = pan.translation(in: self)
-            guard abs(translation.x) > abs(translation.y) else { return }
-            coordinator.setSwipeOffset(min(max(translation.x, 0), coordinator.parent.actionsWidth))
-        case .ended, .cancelled, .failed:
-            let translation = pan.translation(in: self)
-            pan.setTranslation(.zero, in: self)
-            coordinator.settleSwipe(open: translation.x > coordinator.parent.actionsWidth / 2)
+            updateSwipe()
+        case .ended:
+            let offset = panStartOffset + pan.translation(in: window).x
+            coordinator.settleSwipe(open: offset > coordinator.parent.actionsWidth / 2)
+        case .cancelled, .failed:
+            coordinator.settleSwipe(open: panStartOffset > coordinator.parent.actionsWidth / 2)
         default:
             break
         }
+    }
+
+    private func updateSwipe() {
+        guard let coordinator else { return }
+        // Measure in the stationary window, not the card that this gesture translates.
+        let offset = panStartOffset + pan.translation(in: window).x
+        coordinator.setSwipeOffset(min(max(offset, 0), coordinator.parent.actionsWidth))
     }
 }
 
