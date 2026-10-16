@@ -17,8 +17,8 @@ enum RootHomeLayout {
     static let carouselTopPadding: CGFloat = 24
     static let carouselBottomPadding: CGFloat = 24
     static let carouselCardWidth: CGFloat = 282
-    /// Fits a two-line title and up to three rows of readable 24-point detail pills.
-    static let carouselCardHeight: CGFloat = 182
+    /// Fits the type label, a two-line title and up to three rows of readable 24-point detail pills.
+    static let carouselCardHeight: CGFloat = 201
     static let carouselCardTitleFontSize: CGFloat = 24
     static let latestSectionBandHeight: CGFloat = 80
     static let pinnedEntryRowHeight: CGFloat = 96
@@ -1284,7 +1284,8 @@ private struct LeverageItemRow: View {
             title: item.title,
             signalText: "",
             secondaryText: "",
-            isCompact: true
+            isCompact: true,
+            typeLabel: isBeliefs || item.kicker.isEmpty ? nil : SavyCardTypeLabel(text: item.kicker.uppercased())
         )
         .shadow(color: .black.opacity(isBeliefs ? 0 : 0.04), radius: 10, y: 4)
     }

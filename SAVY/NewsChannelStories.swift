@@ -86,7 +86,8 @@ struct NewsChannelStoryRow: View {
             signalText: "",
             secondaryText: "",
             isCompact: true,
-            titleAccessibilityIdentifier: "storyHeadline-\(story.id.uuidString)"
+            titleAccessibilityIdentifier: "storyHeadline-\(story.id.uuidString)",
+            typeLabel: SavyCardTypeLabel(text: "STORY · \(story.status.label.uppercased())")
         )
     }
 }

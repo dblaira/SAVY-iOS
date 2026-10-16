@@ -43,7 +43,7 @@ final class SAVYPostFormUITests: XCTestCase {
         let fab = element("chargeFab")
         XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
         fab.tap()
-        let postDoor = app.buttons["Post"].firstMatch
+        let postDoor = app.buttons["Social"].firstMatch
         XCTAssertTrue(postDoor.waitForExistence(timeout: 5), "Post door missing from the fan")
         attach("01 fan with Post")
         postDoor.tap()
@@ -71,7 +71,7 @@ final class SAVYPostFormUITests: XCTestCase {
         let fab = element("chargeFab")
         XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
         fab.tap()
-        let postDoor = app.buttons["Post"].firstMatch
+        let postDoor = app.buttons["Social"].firstMatch
         XCTAssertTrue(postDoor.waitForExistence(timeout: 5), "Post door missing from the fan")
         postDoor.tap()
         assertSharedPostForm()
@@ -273,7 +273,7 @@ final class SAVYPostFormUITests: XCTestCase {
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'storyRow-'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 12), "Saved story did not appear")
-        XCTAssertLessThanOrEqual(row.frame.height, 64, "Story list cards should use the normal thin card height")
+        XCTAssertLessThanOrEqual(row.frame.height, 84, "Story list cards stay thin: a type label and one title line")
         XCTAssertFalse(app.staticTexts["Synthetic story acceptance subtitle"].exists,
                        "An unpinned Story card should show only its title")
         row.tap()
@@ -303,7 +303,7 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertEqual(postContainer(rowID: rowID(1)).value as? String, "Pinned")
         XCTAssertTrue(app.staticTexts["Synthetic post 2 starts with a clear observation."].exists,
                       "The card must show the authored first sentence, without a template question")
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "#2")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "SOCIAL #2")).firstMatch.exists)
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "#Synthetic")).firstMatch.exists)
         let pinnedHeight = firstPinned.frame.height
         XCTAssertGreaterThanOrEqual(pinnedHeight, 186)
@@ -315,13 +315,14 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(ordinary.isHittable)
         XCTAssertLessThan(ordinary.frame.height, pinnedHeight,
                           "Equal-length first sentences should have more room when pinned")
-        XCTAssertLessThanOrEqual(ordinary.frame.height, 64, "Unpinned Post cards should use the normal thin card height")
+        XCTAssertLessThanOrEqual(ordinary.frame.height, 84, "Unpinned Post cards stay thin: a type label and one title line")
         let ordinaryCard = postContainer(rowID: rowID(50))
         XCTAssertEqual(ordinaryCard.value as? String, "Unpinned")
         XCTAssertEqual(ordinaryCard.label, "#50", "The saved reference remains available to accessibility")
+        // Adam, 2026-10-15: "I want the labels back in the SAVY app."
         XCTAssertEqual(ordinaryCard.staticTexts.allElementsBoundByIndex.map { $0.label },
-                       ["Synthetic post 50 starts with a clear observation."],
-                       "Unpinned Post cards must show only their title, without metadata or reference rows")
+                       ["SOCIAL #50", "Synthetic post 50 starts with a clear observation."],
+                       "Unpinned Post cards show their type label and title, without metadata rows")
         scrollTo(element(rowID(49)))
         app.swipeUp()
         attach("51 numbered sand and navy regular Post cards")
@@ -329,7 +330,7 @@ final class SAVYPostFormUITests: XCTestCase {
         // Moving a post into the pinned group must preserve its reference and saved content.
         setPinned(true, rowID: rowID(50))
         scrollTo(element(rowID(50)), upward: false)
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "#50")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "SOCIAL #50")).firstMatch.exists)
         element(rowID(50)).tap()
         let question = element("DecideAnswer0")
         XCTAssertTrue(question.waitForExistence(timeout: 8))
@@ -347,14 +348,14 @@ final class SAVYPostFormUITests: XCTestCase {
         openPostsPage()
         XCTAssertEqual(element("postSavedCount").label, "50 / 50")
         XCTAssertEqual(postContainer(rowID: rowID(50)).value as? String, "Pinned")
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "#50")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "SOCIAL #50")).firstMatch.exists)
         attach("53 numbered pinned Post survives relaunch")
 
         // Position never enlarges an unpinned post, including the first card in the list.
         for number in [50, 2, 1] { setPinned(false, rowID: rowID(number)) }
         scrollTo(element("postSavedCount"), upward: false)
         let firstUnpinned = element(rowID(50))
-        XCTAssertLessThanOrEqual(firstUnpinned.frame.height, 64)
+        XCTAssertLessThanOrEqual(firstUnpinned.frame.height, 84)
         XCTAssertEqual(postContainer(rowID: rowID(50)).label, "#50",
                        "Unpinning must retain the saved reference without a visible metadata row")
         let firstHeadline = element("postEntryHeadline-00000000-0000-0000-0000-000000000050")
@@ -386,7 +387,7 @@ final class SAVYPostFormUITests: XCTestCase {
         let fab = element("chargeFab")
         XCTAssertTrue(fab.waitForExistence(timeout: 15))
         fab.tap()
-        let postDoor = app.buttons["Post"].firstMatch
+        let postDoor = app.buttons["Social"].firstMatch
         XCTAssertTrue(postDoor.waitForExistence(timeout: 5))
         postDoor.tap()
         assertSharedPostForm()
@@ -557,6 +558,12 @@ final class SAVYPostFormUITests: XCTestCase {
         let container = postContainer(rowID: rowID)
         XCTAssertEqual(container.value as? String, pinned ? "Unpinned" : "Pinned")
         scrollTo(row)
+        // A taller labeled card can rest under the navigation bar while still reporting as reachable.
+        for _ in 0..<6 where row.frame.minY < 200 || row.frame.maxY > app.frame.height - 160 {
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let offset: CGFloat = row.frame.minY < 200 ? 150 : -150
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: offset)))
+        }
         XCTAssertTrue(row.isHittable, "The selected Post card is not reachable")
         let actionID = pinned ? "swipePin" : "swipeUnpin"
         XCTAssertFalse(container.buttons[actionID].firstMatch.isHittable,

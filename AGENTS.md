@@ -14,6 +14,12 @@ Adam: "Fix the autosave too. I don't want to lose another entry."
 
 The shared entry form, legacy Post form and Story form write private local recovery drafts synchronously and atomically as their editable values change, and flush when leaving the foreground. Relaunch restores the latest unfinished form automatically, including exact writing, all explored Post themes, pending tags and selected image data. Recovery drafts stay in `SAVY/entry-drafts.json`; they do not enter CloudKit, Calendar, Harness or candidate capture. Only confirmed Save or explicit Cancel removes a draft. Do not bypass the existing no-open-editor gate before installing or restarting either live app. UI recovery tests use the isolated `SAVYUITests` store only.
 
+## Card labels back, matched with Understood — October 15, 2026
+
+Adam: "Damn!  I want the labels back in the SAVY app. I did not notice they were removed." and "Add the meta data labels to the cards in the Understood app too. Wow. Now I see the inconsistencies.  I want them consistent."
+
+This supersedes the September 25 rule of no label above a card title. SAVY cards again show the small type label (icon plus REMINDER, ACTION, EVENT, SOCIAL #n, CONNECTION, STORY · status, or a Leverage item's kicker) above the title, in the earlier 11-point heavy style. Pin markers, Cowboy hats and the Home destination eyebrows stay off. Home carousel cards grow from 182 to 201 points to fit the label without shrinking text. Adam: "\"post\" is a poor label for \"social media posts\"  The short label should be \"Social\", or \"social\".  Please change that in the FAB and upper left labelling on the cards." The bolt menu door and the card labels read Social; the entry form keeps its Post segment. Understood (Re_Call) cards keep their type label and now carry SAVY's Theme, Pattern, Priority and Energy pills, shaded from each card's color; its Pattern and priority text line became those pills, and tags stay as text.
+
 ## Native iCloud sync — October 12, 2026
 
 Adam: "icloud activation approved"

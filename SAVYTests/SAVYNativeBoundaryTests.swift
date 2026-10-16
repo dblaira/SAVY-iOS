@@ -932,7 +932,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         XCTAssertEqual(MetadataEntryKind.allCases.map(\.menuTitle), [
             "Reminder",
             "Action",
-            "Post",
+            "Social",
             "Calendar"
         ])
     }

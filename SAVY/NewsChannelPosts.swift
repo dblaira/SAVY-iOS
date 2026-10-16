@@ -349,8 +349,11 @@ struct NewsChannelPostRow: View {
             border: palette.border,
             secondaryLineLimit: 2,
             titleAccessibilityIdentifier: "postHeadline-\(post.id.uuidString)",
-            referenceText: post.postNumber.map { "#\($0)" },
-            referenceAccessibilityIdentifier: "postNumber-\(post.id.uuidString)"
+            typeLabel: SavyCardTypeLabel(
+                systemImage: "text.bubble",
+                text: post.postNumber.map { "SOCIAL #\($0)" } ?? "SOCIAL",
+                accessibilityIdentifier: "postNumber-\(post.id.uuidString)"
+            )
         )
     }
 
@@ -394,8 +397,11 @@ struct NewsChannelPostEntryRow: View {
             border: palette.border,
             secondaryLineLimit: 2,
             titleAccessibilityIdentifier: "postEntryHeadline-\(entry.id.uuidString)",
-            referenceText: entry.postNumber.map { "#\($0)" },
-            referenceAccessibilityIdentifier: "postEntryNumber-\(entry.id.uuidString)"
+            typeLabel: SavyCardTypeLabel(
+                systemImage: "text.bubble",
+                text: entry.postNumber.map { "SOCIAL #\($0)" } ?? "SOCIAL",
+                accessibilityIdentifier: "postEntryNumber-\(entry.id.uuidString)"
+            )
         )
     }
 

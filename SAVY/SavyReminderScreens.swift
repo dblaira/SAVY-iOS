@@ -661,8 +661,16 @@ enum SavyReminderCardAppearance {
 
 }
 
-/// Cards begin with their title. Reference numbers and saved metadata sit below it;
-/// type labels, pin markers, and delegation badges do not occupy the card face.
+/// The small label above a card title that says what kind of card it is.
+/// Adam, 2026-10-15: "I want the labels back in the SAVY app."
+struct SavyCardTypeLabel {
+    var systemImage: String? = nil
+    let text: String
+    var accessibilityIdentifier: String? = nil
+}
+
+/// Cards begin with their type label, then their title. Saved metadata sits below it;
+/// pin markers and delegation badges do not occupy the card face.
 struct SavyBandCard: View {
     let bg: Color
     let fg: Color
@@ -687,12 +695,14 @@ struct SavyBandCard: View {
     var carouselDetails: [SavyCarouselDetail]? = nil
     /// Lower Home destinations retain their plain preview and place counts in a tonal footer.
     var homeDetails: SavyHomeCardDetails? = nil
+    var typeLabel: SavyCardTypeLabel? = nil
 
     var body: some View {
         Group {
             if let carouselDetails, !isCompact {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 6) {
+                        typeLabelView
                         titleText
                         Rectangle().fill(accent).frame(width: 36, height: 2)
                     }
@@ -731,6 +741,7 @@ struct SavyBandCard: View {
 
     private var standardContent: some View {
         VStack(alignment: .leading, spacing: isCompact ? 4 : 6) {
+            typeLabelView
             titleText
 
             Rectangle().fill(accent).frame(width: 36, height: 2)
@@ -768,6 +779,24 @@ struct SavyBandCard: View {
                     .lineLimit(expandsContent && previewHeight == nil ? nil : (detail == .full ? 3 : 1))
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var typeLabelView: some View {
+        if let typeLabel {
+            HStack(spacing: 6) {
+                if let systemImage = typeLabel.systemImage {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 11, weight: .bold))
+                }
+                Text(typeLabel.text)
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(1.5)
+                    .lineLimit(1)
+                    .accessibilityIdentifier(typeLabel.accessibilityIdentifier ?? "cardTypeLabel")
+            }
+            .foregroundStyle(fg.opacity(0.7))
         }
     }
 
@@ -817,8 +846,23 @@ struct SavyReminderBandCard: View {
             previewHeight: reminder.pinned ? previewHeight : nil,
             metadataColor: metadataColor,
             metadataWeight: metadataWeight,
-            carouselDetails: carouselDetails
+            carouselDetails: carouselDetails,
+            typeLabel: SavyCardTypeLabel(systemImage: kindIcon, text: kindLabel)
         )
+    }
+
+    /// Adam, 2026-10-15: "post" is a poor label for social media posts; the short label is Social.
+    private var kindLabel: String {
+        reminder.kind == .post ? "SOCIAL" : reminder.kind.label.uppercased()
+    }
+
+    private var kindIcon: String {
+        switch reminder.kind {
+        case .reminder: return "bell"
+        case .action: return "bolt"
+        case .event: return "calendar"
+        case .post: return "text.bubble"
+        }
     }
 
     private var detailLine: String? {

@@ -15,7 +15,8 @@ enum MetadataEntryKind: String, CaseIterable, Codable, Equatable, Identifiable {
         case .action:
             "Action"
         case .post:
-            "Post"
+            // Adam, 2026-10-15: "The short label should be "Social", or "social"."
+            "Social"
         case .calendar:
             "Calendar"
         }

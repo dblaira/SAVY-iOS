@@ -255,7 +255,8 @@ struct ConnectionView: View {
             minimumHeight: pinned ? ConnectionLayout.fullCardHeight : nil,
             border: palette.border,
             secondaryLineLimit: 2,
-            titleAccessibilityIdentifier: titleIdentifier
+            titleAccessibilityIdentifier: titleIdentifier,
+            typeLabel: SavyCardTypeLabel(systemImage: "link", text: "CONNECTION")
         )
     }
 
