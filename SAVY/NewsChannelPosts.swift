@@ -171,7 +171,8 @@ struct NewsChannelPostsGroup: View {
                 onTap: { editing = post },
                 onMoveUp: { move(savedPost, direction: -1) },
                 onMoveDown: { move(savedPost, direction: 1) },
-                gestureAccessibilityIdentifier: "postRow-\(post.id.uuidString)"
+                gestureAccessibilityIdentifier: "postRow-\(post.id.uuidString)",
+                cardTitle: .post(post)
             ) {
                 NewsChannelPostRow(post: post, palette: palette)
             }
@@ -188,7 +189,8 @@ struct NewsChannelPostsGroup: View {
                 onTap: { editingEntry = entry },
                 onMoveUp: { move(savedPost, direction: -1) },
                 onMoveDown: { move(savedPost, direction: 1) },
-                gestureAccessibilityIdentifier: "postEntryRow-\(entry.id.uuidString)"
+                gestureAccessibilityIdentifier: "postEntryRow-\(entry.id.uuidString)",
+                cardTitle: .reminder(entry, title: savedPost.preview.title)
             ) {
                 NewsChannelPostEntryRow(entry: entry, palette: palette)
             }
@@ -353,7 +355,8 @@ struct NewsChannelPostRow: View {
                 systemImage: "text.bubble",
                 text: post.postNumber.map { "SOCIAL #\($0)" } ?? "SOCIAL",
                 accessibilityIdentifier: "postNumber-\(post.id.uuidString)"
-            )
+            ),
+            cardTitle: .post(post)
         )
     }
 
@@ -401,7 +404,8 @@ struct NewsChannelPostEntryRow: View {
                 systemImage: "text.bubble",
                 text: entry.postNumber.map { "SOCIAL #\($0)" } ?? "SOCIAL",
                 accessibilityIdentifier: "postEntryNumber-\(entry.id.uuidString)"
-            )
+            ),
+            cardTitle: .reminder(entry, title: preview.title)
         )
     }
 

@@ -273,7 +273,7 @@ struct CalendarView: View {
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 8) {
-                    Text(r.title.isEmpty ? "Untitled" : r.title)
+                    SavyCardTitleText(card: .reminder(r))
                         .font(.system(size: 15, weight: .bold)).foregroundStyle(.black)
                         .strikethrough(r.status == .completed).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -291,7 +291,7 @@ struct CalendarView: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 6).padding(.horizontal, 8)
-        .frame(height: r.pinned ? 48 : 34, alignment: r.pinned ? .top : .center)
+        .modifier(SavyCalendarCardHeight(height: r.pinned ? 48 : 34))
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             (hot ? Brand.crimson : Color.black)
@@ -306,13 +306,11 @@ struct CalendarView: View {
         SavySwipeRow(
             actions: calendarActions(reminder),
             gestureAccessibilityIdentifier: "calendarSwipe-\(reminder.id.uuidString)",
-            onTap: { onOpen(reminder) }
+            onTap: { onOpen(reminder) },
+            cardTitle: .reminder(reminder)
         ) {
             eventBlock(reminder, isAllDay: isAllDay)
         }
-        // The hidden swipe tray must not expand to the full timeline height and
-        // vertically center the card twelve hours below its scheduled position.
-        .frame(height: reminder.pinned ? 48 : 34)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendarEvent-\(reminder.id.uuidString)")
     }
@@ -459,5 +457,13 @@ struct CalendarView: View {
         guard let start = cal.date(byAdding: .day, value: -(weekdayOfFirst - 1), to: monthStart) else { return [] }
         let days = (0..<42).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
         return stride(from: 0, to: days.count, by: 7).map { Array(days[$0..<min($0 + 7, days.count)]) }
+    }
+}
+
+private struct SavyCalendarCardHeight: ViewModifier {
+    let height: CGFloat
+    @Environment(\.isEditingSavyCardTitle) private var isEditing
+    func body(content: Content) -> some View {
+        content.frame(height: isEditing ? nil : height, alignment: .top)
     }
 }

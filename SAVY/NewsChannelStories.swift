@@ -36,7 +36,8 @@ struct NewsChannelStoriesGroup: View {
                         SavySwipeRow(
                             actions: actions(for: story),
                             gestureAccessibilityIdentifier: "storyRow-\(story.id.uuidString)",
-                            onTap: { editing = story }
+                            onTap: { editing = story },
+                            cardTitle: .story(story)
                         ) {
                             NewsChannelStoryRow(story: story)
                         }
@@ -87,7 +88,8 @@ struct NewsChannelStoryRow: View {
             secondaryText: "",
             isCompact: true,
             titleAccessibilityIdentifier: "storyHeadline-\(story.id.uuidString)",
-            typeLabel: SavyCardTypeLabel(text: "STORY · \(story.status.label.uppercased())")
+            typeLabel: SavyCardTypeLabel(text: "STORY · \(story.status.label.uppercased())"),
+            cardTitle: .story(story)
         )
     }
 }

@@ -93,6 +93,8 @@
 		F9D017595E45F66066BFCD86 /* SAVYDocumentSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BDE47B1F7BF625C3C94F3E /* SAVYDocumentSyncTests.swift */; };
 		FB92695DBC94ACEDB02DFB81 /* CloudKitDocumentSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64DD65A7BF63DCFABFA2E66 /* CloudKitDocumentSync.swift */; };
 		FF94BAD45782F70A66588AAB /* BiometricUnlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */; };
+		E31D7D151C3053D0D64DDC90 /* SavyCardTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC834D505965AE097560577 /* SavyCardTitle.swift */; };
+		88337AF99E5BF9ADF975C3C2 /* SAVYCardTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ECEB3307AC869648A92922B /* SAVYCardTitleTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -203,6 +205,8 @@
 		EA7934A9D7A6F4BDAF6F17B3 /* SAVYConnectionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYConnectionStoreTests.swift; sourceTree = "<group>"; };
 		F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBrandTheme.swift; sourceTree = "<group>"; };
 		"TEMP_A87B41FA-6F91-41F3-9D8C-AF11CA113711" /* SAVY.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SAVY.xcconfig; sourceTree = "<group>"; };
+		DFC834D505965AE097560577 /* SavyCardTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCardTitle.swift; sourceTree = "<group>"; };
+		8ECEB3307AC869648A92922B /* SAVYCardTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYCardTitleTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -242,6 +246,7 @@
 		54384D66314DE9A7C58CAF7D /* SAVYTests */ = {
 			isa = PBXGroup;
 			children = (
+				8ECEB3307AC869648A92922B /* SAVYCardTitleTests.swift */,
 				550EE4C3FC208125CEB115D5 /* SAVYCloudImageTests.swift */,
 				D20265989F50668FC1DB741D /* SAVYCloudSyncTests.swift */,
 				EA7934A9D7A6F4BDAF6F17B3 /* SAVYConnectionStoreTests.swift */,
@@ -317,6 +322,7 @@
 				0664053D22FAA613F02569D1 /* SAVY.entitlements */,
 				BE63B27DF6EFB1D75DC8FB0A /* SAVYApp.swift */,
 				6B58977B66F839B5E2B7D72B /* SavyCardPreferences.swift */,
+				DFC834D505965AE097560577 /* SavyCardTitle.swift */,
 				850DE84FECED715402B5470F /* SavyCarouselDetails.swift */,
 				78DE32BC9D928446E63C4A09 /* SavyCloudKitAssets.swift */,
 				3CBD1D6487DFB82AC66E7F27 /* SavyCloudSyncState.swift */,
@@ -512,6 +518,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88337AF99E5BF9ADF975C3C2 /* SAVYCardTitleTests.swift in Sources */,
 				E0B2389A35640A13329FB075 /* SAVYCloudImageTests.swift in Sources */,
 				4C4426B0C60F6FBF20F096F1 /* SAVYCloudSyncTests.swift in Sources */,
 				2E9214851181012F07D15697 /* SAVYConnectionStoreTests.swift in Sources */,
@@ -573,6 +580,7 @@
 				91BDC3FB046133C9C67A83DA /* RootView.swift in Sources */,
 				1B367673938BEF897C285682 /* SAVYApp.swift in Sources */,
 				3F7B3160739570FC3FC121F6 /* SavyCardPreferences.swift in Sources */,
+				E31D7D151C3053D0D64DDC90 /* SavyCardTitle.swift in Sources */,
 				4D611E848549718E80BD84B9 /* SavyCarouselDetails.swift in Sources */,
 				4ACED3E6F128E56BCF58089B /* SavyCloudKitAssets.swift in Sources */,
 				894DD5FEC0ECEAB5B11B26A3 /* SavyCloudSyncState.swift in Sources */,

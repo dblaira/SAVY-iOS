@@ -20,6 +20,13 @@ private enum SavedConnectionCard: Identifiable {
         case .source(let item): "source-\(item.id)"
         }
     }
+
+    var cardTitle: SavyCardTitle {
+        switch self {
+        case .entry(let entry): .connection(entry)
+        case .source(let item): .source(item, title: NewsChannelPostPreview(text: item.title).title)
+        }
+    }
 }
 
 struct ConnectionView: View {
@@ -216,7 +223,8 @@ struct ConnectionView: View {
             onTap: { open(card) },
             onMoveUp: { move(card, direction: -1) },
             onMoveDown: { move(card, direction: 1) },
-            gestureAccessibilityIdentifier: rowIdentifier(card)
+            gestureAccessibilityIdentifier: rowIdentifier(card),
+            cardTitle: card.cardTitle
         ) {
             connectionCard(card, palette: palette)
         }
@@ -256,7 +264,8 @@ struct ConnectionView: View {
             border: palette.border,
             secondaryLineLimit: 2,
             titleAccessibilityIdentifier: titleIdentifier,
-            typeLabel: SavyCardTypeLabel(systemImage: "link", text: "CONNECTION")
+            typeLabel: SavyCardTypeLabel(systemImage: "link", text: "CONNECTION"),
+            cardTitle: card.cardTitle
         )
     }
 

@@ -39,13 +39,43 @@ extension XCUIApplication {
         #endif
     }
 
+    var cardPageScrollView: XCUIElement {
+        // iOS exposes the keyboard's prediction strip as the first scroll view.
+        // Choose the page by visible area instead of scrolling that strip.
+        scrollViews.allElementsBoundByIndex.max {
+            let first = $0.frame.intersection(interactionFrame)
+            let second = $1.frame.intersection(interactionFrame)
+            return first.width * first.height < second.width * second.height
+        } ?? self
+    }
+
+    var cardPageViewport: CGRect {
+        var viewport = cardPageScrollView.frame.intersection(interactionFrame)
+        #if !targetEnvironment(macCatalyst)
+        let keyboard = keyboards.firstMatch
+        if keyboard.exists {
+            // Keyboard's frame covers its keys; its prediction/accessory strip
+            // is a separate accessibility element immediately above them.
+            for surface in [keyboard, otherElements["inputView"].firstMatch,
+                            otherElements["SystemInputAssistantView"].firstMatch]
+                where surface.exists && surface.frame.intersects(viewport) {
+                viewport.size.height = max(0, surface.frame.minY - viewport.minY)
+            }
+        }
+        #endif
+        return viewport
+    }
+
     func scrollPage(up: Bool) {
         #if targetEnvironment(macCatalyst)
         // Catalyst's application frame is infinite; target the actual window.
         let center = windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         if up { center.swipeUp() } else { center.swipeDown() }
         #else
-        if up { swipeUp() } else { swipeDown() }
+        // The application midpoint can land on the keyboard or the bottom bar
+        // during inline editing. Start the gesture inside the actual scroll view.
+        let target = cardPageScrollView
+        if up { target.swipeUp() } else { target.swipeDown() }
         #endif
     }
 }
@@ -93,7 +123,7 @@ final class SAVYCardReorderUITests: XCTestCase {
         assertOrder(initial.map(homeRow))
 
         arm(element("homeReorder-ontology"))
-        attach("01 Home card armed with glow and chevrons")
+        attach("01 Home card held with inline title and move arrows")
         moveUp()
         assertOrder(moved.map(homeRow))
 
@@ -102,8 +132,9 @@ final class SAVYCardReorderUITests: XCTestCase {
         assertOrder(moved.map(homeRow))
         attach("02 Home card moved below the pinned card")
 
-        // Scrolling an armed Home list must release selection and move the viewport,
-        // not consume the vertical gesture as another reorder or open the card.
+        // Holding now edits the title directly. Finish that edit before navigating
+        // the list, then verify moving a card has not changed normal scrolling.
+        disarm(element("homeReorder-ontology"))
         let ontologyRow = homeRow("ontology")
         let ontologyBeforeScroll = ontologyRow.frame.minY
         app.scrollViews["editorialHomeScroll"].firstMatch.swipeUp()
@@ -111,9 +142,9 @@ final class SAVYCardReorderUITests: XCTestCase {
             abs(ontologyRow.frame.minY - ontologyBeforeScroll) > 20
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [scrolled], timeout: 5), .completed,
-                       "An armed card prevented normal vertical Home scrolling")
+                       "A reordered card prevented normal vertical Home scrolling")
         XCTAssertTrue(app.buttons["reorderUp"].firstMatch.waitForNonExistence(timeout: 5),
-                      "Normal Home scrolling did not dismiss reorder controls")
+                      "Finishing the inline edit did not dismiss its move controls")
         reveal(homeRow("field-essays"))
         assertOrder(moved.map(homeRow))
         attach("02b Home scroll reaches Field Essays without changing card order")
@@ -136,6 +167,39 @@ final class SAVYCardReorderUITests: XCTestCase {
             assertCardSwipeBehavior(in: app, card: element("homeReorder-\(section)"),
                                     actions: [action], name: "Home \(section)")
         }
+    }
+
+    func testCardTitlesPersistAcrossRelaunchAndSourcePages() {
+        let home = element("homeReorder-beliefs")
+        reveal(home)
+        openCardTitleEditor(in: app, card: home)
+        let title = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ AND (elementType == %d OR elementType == %d)", "Card title", XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue)).firstMatch
+        title.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (title.value as? String ?? "").count))
+        title.typeText("My connections")
+        app.buttons["Save"].tapOrClick()
+        relaunchKeepingIsolatedData()
+        reveal(home)
+        XCTAssertEqual(element("homeCardTitle-beliefs").label, "My connections")
+        home.tapOrClick()
+        XCTAssertTrue(element("connectionScreen").waitForExistence(timeout: 10),
+                      "Renaming a destination must preserve its navigation")
+
+        for section in ["ontology", "field-essays", "news-channel"] {
+            relaunchKeepingIsolatedData()
+            let row = element("homeReorder-\(section)")
+            reveal(row)
+            row.tapOrClick()
+            let source = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH 'sourceCard-'")).firstMatch
+            XCTAssertTrue(source.waitForExistence(timeout: 10))
+            for _ in 0..<8 where !source.isHittable { app.scrollPage(up: true) }
+            assertCardTitleEditing(in: app, card: source, name: "Source \(section)")
+        }
+
+        relaunchKeepingIsolatedData()
+        let carousel = element("greatestLeverageEntry")
+        XCTAssertTrue(carousel.waitForExistence(timeout: 10))
+        assertCardTitleEditing(in: app, card: carousel, name: "Home carousel")
     }
 
     #if targetEnvironment(macCatalyst)
@@ -251,14 +315,14 @@ final class SAVYCardReorderUITests: XCTestCase {
         }
 
         arm(postRow(1))
-        attach("10 Pinned Post armed with glow and chevrons")
+        attach("10 Pinned Post held with inline title and move arrows")
         moveUp()
         assertOrder([1, 2, 4, 3].map(postRow))
         attach("11 Pinned Post moved within pinned cards")
         disarm(postRow(1))
 
         arm(postRow(3))
-        attach("12 Unpinned Post armed with glow and chevrons")
+        attach("12 Unpinned Post held with inline title and move arrows")
         moveUp()
         assertOrder([1, 2, 3, 4].map(postRow))
         // A second upward move is blocked at the boundary rather than pinning the post.
@@ -267,6 +331,7 @@ final class SAVYCardReorderUITests: XCTestCase {
         XCTAssertEqual(postContainer(3).value as? String, "Unpinned")
         attach("13 Unpinned Post moved below pinned cards")
 
+        disarm(postRow(3))
         let movedPost = postRow(3)
         let postBeforeScroll = movedPost.frame.minY
         app.swipeUp()
@@ -274,9 +339,9 @@ final class SAVYCardReorderUITests: XCTestCase {
             abs(movedPost.frame.minY - postBeforeScroll) > 20
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [scrolled], timeout: 5), .completed,
-                       "An armed Post prevented normal vertical scrolling")
+                       "A reordered Post prevented normal vertical scrolling")
         XCTAssertTrue(app.buttons["reorderUp"].firstMatch.waitForNonExistence(timeout: 5),
-                      "Normal Post scrolling did not dismiss reorder controls")
+                      "Finishing the inline edit did not dismiss its move controls")
         assertOrder([1, 2, 3, 4].map(postRow))
         attach("13b Posts scroll normally and retain their order")
 
@@ -311,14 +376,14 @@ final class SAVYCardReorderUITests: XCTestCase {
         // The isolated fixture contains a hidden Reminder/Event between the Actions in
         // each pin group's stored ranks. One move must still pass the visible neighbor.
         arm(actionGesture(2))
-        attach("20 Pinned Action armed with glow and chevrons")
+        attach("20 Pinned Action held with inline title and move arrows")
         moveUp()
         assertOrder([2, 1, 3, 4].map(actionTitle))
         attach("21 Pinned Action moved past its visible neighbor")
         disarm(actionGesture(2))
 
         arm(actionGesture(4))
-        attach("22 Unpinned Action armed with glow and chevrons")
+        attach("22 Unpinned Action held with inline title and move arrows")
         moveUp()
         assertOrder([2, 1, 4, 3].map(actionTitle))
         moveUp()
@@ -425,9 +490,9 @@ final class SAVYCardReorderUITests: XCTestCase {
     }
 
     private func actionTitle(_ number: Int) -> XCUIElement {
-        let group = number <= 2 ? "pinned" : "unpinned"
-        let index = number <= 2 ? number : number - 2
-        return app.staticTexts["Synthetic \(group) action \(index)"].firstMatch
+        // The title becomes a text field while held; card identity and position
+        // remain stable throughout editing and moving.
+        actionGesture(number)
     }
 
     private func arm(_ target: XCUIElement) {
@@ -440,19 +505,28 @@ final class SAVYCardReorderUITests: XCTestCase {
     }
 
     private func disarm(_ target: XCUIElement) {
-        reveal(target)
-        target.tap()
+        app.buttons["saveCardTitle"].tapOrClick()
         XCTAssertTrue(app.buttons["reorderUp"].firstMatch.waitForNonExistence(timeout: 5),
-                      "Tapping the armed card should dismiss its reorder controls")
+                      "Finishing title editing should dismiss its reorder controls")
     }
 
     private func moveUp() {
         let up = app.buttons["reorderUp"].firstMatch
         XCTAssertTrue(up.waitForExistence(timeout: 5), "Reorder controls disappeared before the move")
-        reveal(up)
+        // SwiftUI can report an inline button as not hittable even when its
+        // pixels are visible inside the card. Send a real tap to the visible
+        // arrow; the callers verify that the saved card order actually changes.
+        for _ in 0..<8 {
+            let viewport = app.cardPageViewport
+            let center = CGPoint(x: up.frame.midX, y: up.frame.midY)
+            if viewport.contains(center) { break }
+            app.scrollPage(up: center.y > viewport.midY)
+        }
+        XCTAssertTrue(app.cardPageViewport
+            .contains(CGPoint(x: up.frame.midX, y: up.frame.midY)), "The move arrow is outside the visible card list")
         // A disabled boundary chevron and an enabled chevron with a no-op boundary are
         // both valid; either must leave the card in its existing pin group.
-        if up.isEnabled { up.tap() }
+        if up.isEnabled { up.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tapOrClick() }
     }
 
     private func assertOrder(_ rows: [XCUIElement], file: StaticString = #filePath, line: UInt = #line) {
@@ -472,12 +546,13 @@ final class SAVYCardReorderUITests: XCTestCase {
             XCTFail("Expected card or control is missing", file: file, line: line)
             return
         }
-        for _ in 0..<8 where !target.isHittable {
-            if target.frame.isEmpty || target.frame.midY > app.frame.midY {
-                app.swipeUp()
-            } else {
-                app.swipeDown()
-            }
+        for _ in 0..<8 {
+            // Inline editing can bring up the software keyboard. Use the real
+            // scrolling viewport rather than the full screen behind the keyboard.
+            let viewport = app.cardPageViewport
+            let y = target.frame.midY
+            if target.isHittable && y > viewport.minY + 120 && y < viewport.maxY - 20 { break }
+            app.scrollPage(up: target.frame.isEmpty || y > viewport.midY)
         }
         XCTAssertTrue(target.isHittable, "Card or control could not be reached", file: file, line: line)
     }
@@ -604,6 +679,62 @@ extension XCTestCase {
             XCTAssertFalse(app.buttons["swipe\(action)"].exists,
                            "\(name) left a closed action accessible", file: file, line: line)
         }
+        assertCardTitleEditing(in: app, card: card, name: name, file: file, line: line)
+    }
+
+    func openCardTitleEditor(in app: XCUIApplication, card: XCUIElement,
+                             file: StaticString = #filePath, line: UInt = #line) {
+        #if targetEnvironment(macCatalyst)
+        XCTAssertTrue(app.sheets.firstMatch.waitForNonExistence(timeout: 5), file: file, line: line)
+        let point = card.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.5))
+        point.click(forDuration: 0.7, thenDragTo: point)
+        #else
+        card.press(forDuration: 0.7)
+        #endif
+        let field = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ AND (elementType == %d OR elementType == %d)", "Card title", XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue)).firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "Holding the card did not place a cursor in its title", file: file, line: line)
+        XCTAssertFalse(app.alerts["Change Title"].exists, "Title editing must stay inside the card", file: file, line: line)
+
+    }
+
+    func assertCardTitleEditing(in app: XCUIApplication, card: XCUIElement, name: String,
+                               file: StaticString = #filePath, line: UInt = #line) {
+        openCardTitleEditor(in: app, card: card, file: file, line: line)
+        let field = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ AND (elementType == %d OR elementType == %d)", "Card title", XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue)).firstMatch
+        let original = field.value as? String
+        XCTAssertFalse((original ?? "").isEmpty, "The inline editor must begin with the existing title", file: file, line: line)
+        field.typeText(XCUIKeyboardKey.delete.rawValue)
+        XCTAssertEqual(field.value as? String, original.map { String($0.dropLast()) },
+                       "The cursor must start at the end, so Backspace removes only the last character", file: file, line: line)
+        let editingProof = XCTAttachment(screenshot: app.screenshot())
+        editingProof.name = "\(name) inline title and cursor"
+        editingProof.lifetime = .keepAlways
+        add(editingProof)
+        let renamed = "Renamed \(name)"
+        func titleIsVisible() -> Bool {
+            card.label.contains(renamed) || app.staticTexts[renamed].exists
+        }
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (field.value as? String ?? "").count))
+        field.typeText("Renamed \(name)")
+        app.buttons["Cancel"].tapOrClick()
+        XCTAssertFalse(titleIsVisible(), "Cancel changed the card", file: file, line: line)
+        openCardTitleEditor(in: app, card: card, file: file, line: line)
+        XCTAssertEqual(field.value as? String, original, "Cancel did not retain the original title", file: file, line: line)
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (field.value as? String ?? "").count))
+        field.typeText("Renamed \(name)")
+        app.buttons["Save"].tapOrClick()
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in titleIsVisible() }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed,
+                       "The new title did not appear on the card", file: file, line: line)
+        let proof = XCTAttachment(screenshot: app.screenshot())
+        proof.name = "\(name) renamed card"
+        proof.lifetime = .keepAlways
+        add(proof)
+        openCardTitleEditor(in: app, card: card, file: file, line: line)
+        XCTAssertEqual(field.value as? String, "Renamed \(name)", file: file, line: line)
+        app.buttons["Use Original Title"].tapOrClick()
+        let restored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !titleIsVisible() }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [restored], timeout: 5), .completed, file: file, line: line)
     }
 
     func dragCard(in app: XCUIApplication, card: XCUIElement, distance: CGFloat) {

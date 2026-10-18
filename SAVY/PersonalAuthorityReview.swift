@@ -909,7 +909,9 @@ private enum PersonalAuthorityConferenceFilter: String, CaseIterable, Identifiab
 
 struct PersonalAuthorityReviewView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var store = PersonalAuthorityReviewStore()
+    @StateObject private var store = PersonalAuthorityReviewStore(
+        defaults: SavyRuntime.isTesting ? SavyCardPreferences.defaults : .standard
+    )
     @State private var filter: PersonalAuthorityConferenceFilter = .toDecide
     @State private var searchText = ""
     @State private var selectedCandidate: PersonalAuthorityCandidate?
@@ -1218,13 +1220,14 @@ struct PersonalAuthorityReviewView: View {
     private func conferenceRow(_ candidate: PersonalAuthorityCandidate) -> some View {
         let needsCheck = candidate.conferenceStatus == .sourceCheck
         let decision = store.decision(for: candidate)
+        let cardTitle = SavyCardTitle(id: "authority:\(candidate.id)", original: candidate.authoredText)
 
         return VStack(alignment: .leading, spacing: 13) {
-            Button {
+            SavyEditableCardButton(cardTitle: cardTitle, action: {
                 selectedCandidate = candidate
-            } label: {
+            }) {
                 VStack(alignment: .leading, spacing: 12) {
-                Text(candidate.authoredText)
+                SavyCardTitleText(card: cardTitle)
                     .font(SavyTypography.displaySerif(21, weight: .bold))
                     .foregroundStyle(SavyTheme.ink)
                     .multilineTextAlignment(.leading)

@@ -83,7 +83,16 @@ struct RootView: View {
     @State private var isPostsPresented = false
     @State private var opensPostsAfterComposer = false
     @State private var recoveringDraft: EntryRecoveryDraft?
+    @ObservedObject private var cardTitleEditing = SavyCardTitleEditingState.shared
     private let syncsWithCloud: Bool
+
+    private var showsBottomNavigation: Bool {
+        #if targetEnvironment(macCatalyst)
+        true
+        #else
+        !cardTitleEditing.isEditing
+        #endif
+    }
 
     init(
         session: AuthSession? = nil,
@@ -147,6 +156,7 @@ struct RootView: View {
                 SocialPostsSyncAdapter(store: loadedPostStore),
                 StoriesSyncAdapter(store: loadedStoryStore),
                 CardPreferencesSyncAdapter(defaults: SavyCardPreferences.defaults),
+                CardTitlesSyncAdapter(store: SavyCardTitleStore.shared),
                 PersonalAuthoritySyncAdapter(),
             ]
             if let numberAllocator { adapters.append(PostNumbersSyncAdapter(allocator: numberAllocator)) }
@@ -216,7 +226,7 @@ struct RootView: View {
                             .environmentObject(reminderStore)
                     }
                 }
-                .padding(.bottom, RootHomeLayout.bottomNavigationHeight)
+                .padding(.bottom, showsBottomNavigation ? RootHomeLayout.bottomNavigationHeight : 0)
 
                 if navigationState.isRadialMenuPresented {
                     Color.black.opacity(0.45)
@@ -230,17 +240,19 @@ struct RootView: View {
                         .transition(.opacity)
                 }
 
-                VStack(spacing: 0) {
-                    Spacer()
+                if showsBottomNavigation {
+                    VStack(spacing: 0) {
+                        Spacer()
 
-                    SavyBottomNavigationBar(
-                        navigationState: navigationState,
-                        onSelectCaptureKind: { kind in
-                            navigationState.openComposer(for: kind)
-                        }
-                    )
+                        SavyBottomNavigationBar(
+                            navigationState: navigationState,
+                            onSelectCaptureKind: { kind in
+                                navigationState.openComposer(for: kind)
+                            }
+                        )
+                    }
+                    .ignoresSafeArea(edges: .bottom)
                 }
-                .ignoresSafeArea(edges: .bottom)
 
                 if navigationState.activeSection != .now {
                     accountMenuButton
@@ -582,9 +594,9 @@ struct EditorialHomeView: View {
                 ForEach(feedRows) { entry in
                     switch entry.source {
                     case let .reminder(reminder):
-                        Button {
+                        SavyEditableCardButton(cardTitle: .reminder(reminder, title: entry.title), action: {
                             editingReminder = reminder
-                        } label: {
+                        }) {
                             HomeFeedRowView(entry: entry, isPinned: reminder.pinned)
                         }
                         .buttonStyle(.plain)
@@ -595,13 +607,14 @@ struct EditorialHomeView: View {
                             id: item.id,
                             defaultValue: section.items.prefix(2).contains { $0.id == item.id }
                         )
-                        NavigationLink {
+                        SavyEditableCardLink(cardTitle: .source(item)) {
                             LeverageDetailView(section: section, item: item)
                         } label: {
                             HomeFeedRowView(entry: entry, isPinned: isPinned)
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("greatestLeverageEntry")
+
                     }
                 }
             }
@@ -629,7 +642,8 @@ struct EditorialHomeView: View {
                     onTap: { selectedHomeCard = card },
                     onMoveUp: { withAnimation(.snappy) { sectionPinStore.move(card.sectionID, direction: .up) } },
                     onMoveDown: { withAnimation(.snappy) { sectionPinStore.move(card.sectionID, direction: .down) } },
-                    gestureAccessibilityIdentifier: "homeReorder-\(card.sectionID)"
+                    gestureAccessibilityIdentifier: "homeReorder-\(card.sectionID)",
+                    cardTitle: .home(card)
                 ) {
                     HomeContentSectionView(
                         card: card,
@@ -725,6 +739,7 @@ struct HomeFeedRow: Identifiable {
 }
 
 private struct HomeFeedRowView: View {
+    @Environment(\.isEditingSavyCardTitle) private var isEditingTitle
     let entry: HomeFeedRow
     let isPinned: Bool
 
@@ -756,12 +771,13 @@ private struct HomeFeedRowView: View {
                     isCompact: !isPinned,
                     expandsContent: isPinned,
                     previewHeight: isPinned ? RootHomeLayout.carouselCardHeight : nil,
-                    carouselDetails: []
+                    carouselDetails: [],
+                    cardTitle: .source(item)
                 )
             }
         }
         .frame(width: RootHomeLayout.carouselCardWidth, alignment: .topLeading)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: isEditingTitle ? .contain : .combine)
         .accessibilityIdentifier("homeCarouselCard-\(entry.id)")
     }
 }
@@ -954,7 +970,8 @@ private struct HomeContentSectionView: View {
                 postReferences: postReferences,
                 background: pillBackground,
                 foreground: pillText
-            ) : nil
+            ) : nil,
+            cardTitle: .home(card)
         )
     }
 
@@ -1019,12 +1036,13 @@ private struct NewsChannelView: View {
                     .padding(.top, 34)
 
                 if let pinnedItem {
-                    NavigationLink {
+                    SavyEditableCardLink(cardTitle: .source(pinnedItem)) {
                         LeverageDetailView(section: section, item: pinnedItem)
                     } label: {
                         NewsPinnedStoryCard(item: pinnedItem)
                     }
                     .buttonStyle(.plain)
+
                 }
 
                 if !carouselItems.isEmpty {
@@ -1033,12 +1051,13 @@ private struct NewsChannelView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 14) {
                             ForEach(carouselItems) { item in
-                                NavigationLink {
+                                SavyEditableCardLink(cardTitle: .source(item)) {
                                     LeverageDetailView(section: section, item: item)
                                 } label: {
                                     NewsCarouselCard(item: item)
                                 }
                                 .buttonStyle(.plain)
+
                             }
                         }
                         .padding(.horizontal, NewsChannelLayout.horizontalPadding)
@@ -1051,12 +1070,13 @@ private struct NewsChannelView: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         ForEach(moreStories) { item in
-                            NavigationLink {
+                            SavyEditableCardLink(cardTitle: .source(item)) {
                                 LeverageDetailView(section: section, item: item)
                             } label: {
                                 NewsMoreStoryRow(item: item)
                             }
                             .buttonStyle(.plain)
+
                         }
                     }
                 }
@@ -1080,7 +1100,7 @@ private struct NewsPinnedStoryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(item.title)
+            SavyCardTitleText(card: .source(item))
                 .font(SavyTheme.beliefSerif(25))
                 .foregroundStyle(SavyTheme.ink)
 
@@ -1104,7 +1124,7 @@ private struct NewsCarouselCard: View {
         VStack(alignment: .leading, spacing: 10) {
             newsImage
 
-            Text(item.title)
+            SavyCardTitleText(card: .source(item))
                 .font(SavyTheme.beliefSerif(20))
                 .foregroundStyle(SavyTheme.ink)
                 .lineLimit(3)
@@ -1156,7 +1176,7 @@ private struct NewsMoreStoryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(item.title)
+            SavyCardTitleText(card: .source(item))
                 .font(SavyTheme.beliefSerif(22))
                 .foregroundStyle(SavyTheme.ink)
                 .lineLimit(3)
@@ -1220,12 +1240,14 @@ private struct LeverageSectionView: View {
 
                     SavyCardFlow(spacing: isBeliefs ? 10 : 14) {
                         ForEach(section.items) { item in
-                            NavigationLink {
+                            SavyEditableCardLink(cardTitle: .source(item)) {
                                 LeverageDetailView(section: section, item: item)
                             } label: {
                                 LeverageItemRow(item: item, isBeliefs: isBeliefs)
                             }
                             .buttonStyle(.plain)
+
+                            .accessibilityIdentifier("sourceCard-\(item.id)")
                         }
                     }
                 }
@@ -1285,7 +1307,8 @@ private struct LeverageItemRow: View {
             signalText: "",
             secondaryText: "",
             isCompact: true,
-            typeLabel: isBeliefs || item.kicker.isEmpty ? nil : SavyCardTypeLabel(text: item.kicker.uppercased())
+            typeLabel: isBeliefs || item.kicker.isEmpty ? nil : SavyCardTypeLabel(text: item.kicker.uppercased()),
+            cardTitle: .source(item)
         )
         .shadow(color: .black.opacity(isBeliefs ? 0 : 0.04), radius: 10, y: 4)
     }

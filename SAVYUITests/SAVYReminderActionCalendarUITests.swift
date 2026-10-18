@@ -190,7 +190,10 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertTrue(app.buttons["swipeDone"].waitForExistence(timeout: 5), "Done action did not reveal")
         XCTAssertTrue(app.buttons["swipePin"].exists || app.buttons["swipeUnpin"].exists, "Pin action did not reveal")
         XCTAssertTrue(app.buttons["swipeDelete"].exists, "Delete action did not reveal")
-        item.tapOrClick()
+        // The shifted title can extend past the screen. Tap the visible portion
+        // of the card rather than asking XCTest to expose the entire text element.
+        item.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+            .withOffset(CGVector(dx: 12, dy: 0)).tapOrClick()
     }
 
     private func pinAndUnpin(_ title: String, cardIdentifier: String) {
@@ -247,6 +250,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         scrollUntilVisible(completedItem, direction: .downThenUp)
         XCTAssertTrue(completedItem.waitForExistence(timeout: 5), "Completed row missing")
         XCTAssertTrue(completedItem.label.contains(title), "\(title) missing after Done")
+        assertCardTitleEditing(in: app, card: completedItem, name: "Completed \(title)")
         #if targetEnvironment(macCatalyst)
         completedItem.rightClick()
         let delete = app.menuItems["Delete"].firstMatch
@@ -415,6 +419,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         assertOffset(192, "An expanded card must retain its open offset too")
         drag(-140)
         assertOffset(0, "The expanded card should close without changing its height")
+        assertCardTitleEditing(in: app, card: card, name: "Reminder")
     }
 
     func testHomepageRemovesHistoricalCowboyCard() {
@@ -878,6 +883,8 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let up = app.buttons["reorderUp"].firstMatch
         XCTAssertTrue(up.waitForExistence(timeout: 5), "Long press did not arm reorder controls")
         up.tap()
+        app.buttons["saveCardTitle"].tapOrClick()
+        XCTAssertTrue(secondText.waitForExistence(timeout: 5), "Finishing inline editing changed the reminder title")
 
         XCTAssertLessThan(secondText.frame.minY, firstText.frame.minY, "Second reminder did not move above first")
     }

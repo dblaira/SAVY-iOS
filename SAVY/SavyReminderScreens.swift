@@ -182,7 +182,8 @@ struct SavyReminderKindTabScreen: View {
                             onTap: { editing = reminder },
                             onMoveUp: { store.moveUpNext(reminder, direction: .up) },
                             onMoveDown: { store.moveUpNext(reminder, direction: .down) },
-                            gestureAccessibilityIdentifier: "reminderReorderGesture-\(reminder.id.uuidString)"
+                            gestureAccessibilityIdentifier: "reminderReorderGesture-\(reminder.id.uuidString)",
+                            cardTitle: .reminder(reminder)
                         ) {
                             SavyReminderBandCard(
                                 reminder: reminder,
@@ -191,6 +192,7 @@ struct SavyReminderKindTabScreen: View {
                                 accent: cardColors(for: index).accent,
                                 detail: reminder.pinned ? .full : .minimal
                             )
+                            .accessibilityElement(children: .contain)
                             .accessibilityIdentifier(cardIdentifier(for: index))
                         }
                         .zIndex(armedReorderId == reminder.id.uuidString ? 1 : 0)
@@ -340,18 +342,15 @@ private struct SavySwipeActionTray: View, Animatable {
                     HStack(spacing: 0) {
                         ForEach(actions) { action in
                             Button { onSelect(action) } label: {
-                                VStack(spacing: 3) {
-                                    Image(systemName: action.icon)
-                                        .font(.system(size: 16, weight: .bold))
-                                    Text(action.title)
-                                        .font(.system(size: 10, weight: .heavy))
-                                }
-                                .foregroundStyle(.white)
-                                .frame(width: 64)
-                                .frame(maxHeight: .infinity)
-                                .background(action.bg)
+                                Image(systemName: action.icon)
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 64)
+                                    .frame(maxHeight: .infinity)
+                                    .background(action.bg)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(action.title)
                             .accessibilityIdentifier("swipe\(action.title)")
                         }
                     }
@@ -375,9 +374,11 @@ struct SavyUpNextCardRow<Content: View>: View {
     var onMoveDown: () -> Void
     var gestureAccessibilityIdentifier: String? = nil
     var allowsReordering: Bool = true
+    var cardTitle: SavyCardTitle? = nil
     @ViewBuilder var content: Content
 
     @State private var swipeOffset: CGFloat = 0
+    @StateObject private var titleSession = SavyCardTitleSession()
     private var actionsWidth: CGFloat { CGFloat(actions.count) * 64 }
     private var isArmed: Bool { armedId == reminderId }
 
@@ -385,7 +386,7 @@ struct SavyUpNextCardRow<Content: View>: View {
         ZStack(alignment: .leading) {
             ZStack(alignment: .topTrailing) {
                 content
-                    .allowsHitTesting(false)
+                    .allowsHitTesting(titleSession.isEditing)
 
                 SavyUpNextGestureHost(
                     armedId: $armedId,
@@ -396,12 +397,14 @@ struct SavyUpNextCardRow<Content: View>: View {
                     onMoveUp: onMoveUp,
                     onMoveDown: onMoveDown,
                     gestureAccessibilityIdentifier: gestureAccessibilityIdentifier,
-                    allowsReordering: allowsReordering
+                    allowsReordering: allowsReordering,
+                    onRename: cardTitle == nil ? nil : { beginTitleEdit() }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
+                .allowsHitTesting(!titleSession.isEditing)
 
-                if isArmed {
+                if isArmed && !titleSession.isEditing {
                     reorderControls
                         .padding(8)
                         .transition(.scale(scale: 0.6).combined(with: .opacity))
@@ -436,14 +439,20 @@ struct SavyUpNextCardRow<Content: View>: View {
         .onDisappear {
             if isArmed { armedId = nil }
         }
+        .savyCardTitleContext(titleSession)
+        .accessibilityAction(named: "Change Title") { beginTitleEdit() }
         #if targetEnvironment(macCatalyst)
-        .contextMenu { macContextMenu }
+        .contextMenu { if !titleSession.isEditing { macContextMenu } }
         #endif
     }
 
     #if targetEnvironment(macCatalyst)
     /// A right click offers the same actions the swipe and long press reveal on iPhone.
     @ViewBuilder private var macContextMenu: some View {
+        if cardTitle != nil {
+            Button("Change Title", systemImage: "pencil") { beginTitleEdit() }
+            Divider()
+        }
         ForEach(actions) { action in
             Button(action.title, systemImage: action.icon) { withAnimation(.snappy) { action.run() } }
         }
@@ -468,6 +477,15 @@ struct SavyUpNextCardRow<Content: View>: View {
                 .strokeBorder(SavyTheme.crimson.opacity(0.55))
                 .allowsHitTesting(false)
         }
+    }
+
+    private func beginTitleEdit() {
+        guard let cardTitle else { return }
+        armedId = nil
+        withAnimation(.snappy) { swipeOffset = 0 }
+        titleSession.onMoveUp = allowsReordering ? onMoveUp : nil
+        titleSession.onMoveDown = allowsReordering ? onMoveDown : nil
+        titleSession.begin(cardTitle)
     }
 
     private func reorderButton(_ icon: String, action: @escaping () -> Void) -> some View {
@@ -497,6 +515,7 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
     var onMoveDown: () -> Void
     var gestureAccessibilityIdentifier: String? = nil
     var allowsReordering: Bool = true
+    var onRename: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -506,7 +525,7 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
         context.coordinator.view = view
         view.pan.delegate = context.coordinator
         view.longPress.delegate = context.coordinator
-        view.longPress.isEnabled = allowsReordering
+        view.longPress.isEnabled = allowsReordering || onRename != nil
         view.tap.delegate = context.coordinator
         view.isAccessibilityElement = gestureAccessibilityIdentifier != nil
         view.accessibilityIdentifier = gestureAccessibilityIdentifier
@@ -515,7 +534,7 @@ private struct SavyUpNextGestureHost: UIViewRepresentable {
 
     func updateUIView(_ uiView: SavyUpNextGestureView, context: Context) {
         context.coordinator.parent = self
-        uiView.longPress.isEnabled = allowsReordering
+        uiView.longPress.isEnabled = allowsReordering || onRename != nil
         uiView.isAccessibilityElement = gestureAccessibilityIdentifier != nil
         uiView.accessibilityIdentifier = gestureAccessibilityIdentifier
     }
@@ -649,6 +668,10 @@ private final class SavyUpNextGestureView: UIView {
     }
 
     @objc private func handleLongPress() {
+        if let rename = coordinator?.parent.onRename {
+            if longPress.state == .began { rename() }
+            return
+        }
         switch longPress.state {
         case .began:
             reorderArmed = true
@@ -741,6 +764,7 @@ struct SavyCardTypeLabel {
 /// Cards begin with their type label, then their title. Saved metadata sits below it;
 /// pin markers and delegation badges do not occupy the card face.
 struct SavyBandCard: View {
+    @Environment(\.isEditingSavyCardTitle) private var isEditingTitle
     let bg: Color
     let fg: Color
     let accent: Color
@@ -765,6 +789,7 @@ struct SavyBandCard: View {
     /// Lower Home destinations retain their plain preview and place counts in a tonal footer.
     var homeDetails: SavyHomeCardDetails? = nil
     var typeLabel: SavyCardTypeLabel? = nil
+    var cardTitle: SavyCardTitle? = nil
 
     var body: some View {
         Group {
@@ -802,7 +827,7 @@ struct SavyBandCard: View {
         .padding(.vertical, isCompact ? 8 : 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: minimumHeight, alignment: .topLeading)
-        .frame(height: previewHeight, alignment: .topLeading)
+        .frame(height: isEditingTitle ? nil : previewHeight, alignment: .topLeading)
         .background(bg)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(border))
@@ -869,19 +894,21 @@ struct SavyBandCard: View {
         }
     }
 
-    @ViewBuilder
     private var titleText: some View {
-        let text = Text(title)
-            .font(SavyTypography.displaySerif(26, weight: .regular))
-            .foregroundStyle(fg)
-            .lineLimit(isCompact ? 1 : (previewHeight != nil ? 2 : nil))
-            .truncationMode(.tail)
-            .fixedSize(horizontal: false, vertical: true)
-        if let titleAccessibilityIdentifier {
-            text.accessibilityIdentifier(titleAccessibilityIdentifier)
-        } else {
-            text
+        Group {
+            if let cardTitle {
+                SavyCardTitleText(card: cardTitle, fallback: title,
+                                  accessibilityIdentifier: titleAccessibilityIdentifier)
+            } else {
+                Text(title).accessibilityIdentifier(titleAccessibilityIdentifier ?? "cardTitleText")
+            }
         }
+        .font(SavyTypography.displaySerif(26, weight: .regular))
+        .foregroundStyle(fg)
+        .tint(fg)
+        .lineLimit(isCompact ? 1 : (previewHeight != nil ? 2 : nil))
+        .truncationMode(.tail)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -916,7 +943,8 @@ struct SavyReminderBandCard: View {
             metadataColor: metadataColor,
             metadataWeight: metadataWeight,
             carouselDetails: carouselDetails,
-            typeLabel: SavyCardTypeLabel(systemImage: kindIcon, text: kindLabel)
+            typeLabel: SavyCardTypeLabel(systemImage: kindIcon, text: kindLabel),
+            cardTitle: .reminder(reminder, title: title)
         )
     }
 
@@ -997,6 +1025,8 @@ struct SavyReminderBandCard: View {
 }
 
 struct SavyCompletedReminderRow: View {
+    @ObservedObject private var titles = SavyCardTitleStore.shared
+    @StateObject private var titleSession = SavyCardTitleSession()
     let reminder: Reminder
     var onToggle: () -> Void
     var onTap: () -> Void
@@ -1012,9 +1042,9 @@ struct SavyCompletedReminderRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Reopen")
 
-            Button(action: onTap) {
+            SavyEditableCardButton(cardTitle: .reminder(reminder), session: titleSession, action: onTap) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(reminder.title.isEmpty ? "Untitled" : reminder.title)
+                    SavyCardTitleText(card: .reminder(reminder))
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(SavyTheme.secondaryText)
                         .strikethrough()
@@ -1036,11 +1066,21 @@ struct SavyCompletedReminderRow: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(SavyTheme.deepNavy.opacity(0.08)))
         .contextMenu {
-            Button("Reopen") { onToggle() }
-            Button("Delete", role: .destructive) { onDelete() }
+            if !titleSession.isEditing {
+                Button("Change Title", systemImage: "pencil") { titleSession.begin(.reminder(reminder)) }
+                Button("Reopen") { onToggle() }
+                Button("Delete", role: .destructive) { onDelete() }
+            }
         }
+        .highPriorityGesture(LongPressGesture(minimumDuration: 0.35).onEnded { _ in
+            titleSession.begin(.reminder(reminder))
+        }, including: titleSession.isEditing ? .none : .all)
+        .accessibilityAction(named: "Change Title") { titleSession.begin(.reminder(reminder)) }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("completedReminderRow")
-        .accessibilityLabel(reminder.title.isEmpty ? "Untitled" : reminder.title)
+        .accessibilityLabel(titles.title(for: .reminder(reminder)))
+        .savyCardTitleContext(titleSession)
+        .onAppear { titleSession.onDelete = onDelete }
     }
 }
 
@@ -1049,6 +1089,7 @@ struct SavySwipeRow<Content: View>: View {
     let actions: [SavySwipeAction]
     var gestureAccessibilityIdentifier: String?
     var onTap: () -> Void
+    var cardTitle: SavyCardTitle? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -1060,7 +1101,8 @@ struct SavySwipeRow<Content: View>: View {
             onMoveUp: {},
             onMoveDown: {},
             gestureAccessibilityIdentifier: gestureAccessibilityIdentifier,
-            allowsReordering: false
+            allowsReordering: false,
+            cardTitle: cardTitle
         ) {
             content
         }
