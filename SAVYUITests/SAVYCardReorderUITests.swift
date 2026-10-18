@@ -169,6 +169,43 @@ final class SAVYCardReorderUITests: XCTestCase {
         }
     }
 
+    func testTappingOutsideCardSavesAndClosesKeyboard() {
+        let card = element("homeReorder-beliefs")
+        reveal(card)
+        openCardTitleEditor(in: app, card: card)
+        let field = app.textFields["cardTitleField"].firstMatch
+        let original = field.value as? String ?? ""
+        #if targetEnvironment(macCatalyst)
+        field.typeText("s")
+        #else
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        app.keyboards.keys["s"].tap()
+        #endif
+        XCTAssertEqual(field.value as? String, original + "s", "Keyboard input must not finish editing")
+        field.tapOrClick()
+        XCTAssertTrue(field.exists, "A tap inside the card must keep editing")
+        XCTAssertEqual(field.value as? String, original + "s")
+        attach("Title remains editable with the software keyboard")
+        tapOutsideCardTitle(in: app)
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5))
+        #if !targetEnvironment(macCatalyst)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), "The outside tap must close the keyboard")
+        #endif
+        XCTAssertTrue(card.exists, "Tapping the page header must keep the current page open")
+        XCTAssertEqual(element("homeCardTitle-beliefs").label, original + "s")
+        attach("Outside tap saves the title and closes the keyboard")
+
+        relaunchKeepingIsolatedData()
+        reveal(card)
+        XCTAssertEqual(element("homeCardTitle-beliefs").label, original + "s", "The outside tap must persist the title")
+        openCardTitleEditor(in: app, card: card)
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: original.count + 1))
+        tapOutsideCardTitle(in: app)
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(card.exists, "Finishing an empty title must keep the current page open")
+        XCTAssertEqual(element("homeCardTitle-beliefs").label, original + "s", "An empty draft must retain the saved title")
+    }
+
     func testCardTitlesPersistAcrossRelaunchAndSourcePages() {
         let home = element("homeReorder-beliefs")
         reveal(home)
@@ -722,7 +759,11 @@ extension XCTestCase {
         XCTAssertEqual(field.value as? String, original, "Cancel did not retain the original title", file: file, line: line)
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (field.value as? String ?? "").count))
         field.typeText("Renamed \(name)")
-        app.buttons["Save"].tapOrClick()
+        tapOutsideCardTitle(in: app)
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "An outside tap must finish title editing", file: file, line: line)
+        #if !targetEnvironment(macCatalyst)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5), file: file, line: line)
+        #endif
         let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in titleIsVisible() }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed,
                        "The new title did not appear on the card", file: file, line: line)
@@ -735,6 +776,18 @@ extension XCTestCase {
         app.buttons["Use Original Title"].tapOrClick()
         let restored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !titleIsVisible() }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [restored], timeout: 5), .completed, file: file, line: line)
+    }
+
+    func tapOutsideCardTitle(in app: XCUIApplication) {
+        let frame = app.interactionFrame
+        #if targetEnvironment(macCatalyst)
+        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+        #else
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        #endif
+        // The header's middle is outside the cards and keyboard. The narrow
+        // page margins can fall inside iOS's expanded button hit targets.
+        origin.withOffset(CGVector(dx: frame.width / 2, dy: 100)).tapOrClick()
     }
 
     func dragCard(in app: XCUIApplication, card: XCUIElement, distance: CGFloat) {

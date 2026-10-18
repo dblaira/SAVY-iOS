@@ -6,4 +6,5 @@ alwaysApply: false
 
 - Give card containers `.accessibilityElement(children: .contain)` before assigning their identifier. On iOS, an identifier on an ungrouped parent can replace every inline field/button identifier. Inspect the rendered accessibility tree when a control seems missing.
 - While the keyboard is visible, scroll the actual `ScrollView`, not the application midpoint, which can be over the keyboard or bottom navigation. iOS exposes the keyboard prediction strip as a scroll view too: select the page by identifier or visible area, not `firstMatch`. Judge reachability against the page above the keyboard.
-- Holding a card now edits its title directly. Finish with the inline Save/Cancel control before asserting ordinary static-title navigation; retain the reorder, pin, saved-content, and swipe assertions.
+- Holding a card now edits its title directly. Tap outside the card to save and close the keyboard, or Cancel, before asserting ordinary static-title navigation; retain the reorder, pin, saved-content, and swipe assertions.
+- Outside-tap tests should use an unoccupied area of the page header. A narrow margin beside a card or disclosure button can fall inside iOS's expanded touch target and navigate or collapse that section.

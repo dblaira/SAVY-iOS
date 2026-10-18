@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 
 /// Display titles belong to the card's stable identity, never to its position or
 /// original writing. The same entry uses the same identity on every page.
@@ -123,6 +124,7 @@ final class SavyCardTitleEditingState: ObservableObject {
 @MainActor
 final class SavyCardTitleSession: ObservableObject {
     private static weak var active: SavyCardTitleSession?
+    fileprivate let cardRegions = NSHashTable<UIView>.weakObjects()
     @Published private(set) var card: SavyCardTitle?
     @Published var draft = ""
     var onMoveUp: (() -> Void)?
@@ -144,6 +146,12 @@ final class SavyCardTitleSession: ObservableObject {
 
     func save() {
         guard let card, SavyCardTitleStore.shared.rename(card, to: draft) else { return }
+        cancel()
+    }
+
+    func finish() {
+        save()
+        // An empty draft retains the saved title, but still finishes editing.
         cancel()
     }
 
@@ -258,15 +266,83 @@ private struct SavyCardTitleContext: ViewModifier {
         content
             .environment(\.savyCardTitleSession, session)
             .environment(\.isEditingSavyCardTitle, session.isEditing)
-            .onDisappear {
-                session.save()
-                // An empty draft keeps its saved title and must not leave the
-                // iPhone navigation hidden after this card leaves the screen.
-                session.cancel()
+            .background {
+                if session.isEditing {
+                    SavyCardTitleOutsideTapRegion(session: session)
+                }
             }
+            .onDisappear { session.finish() }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { session.save() }
             }
+    }
+}
+
+/// Observes taps in the card's own window without covering the page or taking
+/// touches away from its controls. Keyboard touches belong to another window.
+private struct SavyCardTitleOutsideTapRegion: UIViewRepresentable {
+    let session: SavyCardTitleSession
+
+    func makeUIView(context: Context) -> SavyCardTitleOutsideTapView {
+        SavyCardTitleOutsideTapView(session: session)
+    }
+
+    func updateUIView(_ uiView: SavyCardTitleOutsideTapView, context: Context) {}
+
+    static func dismantleUIView(_ uiView: SavyCardTitleOutsideTapView, coordinator: ()) {
+        uiView.stopObserving()
+    }
+}
+
+private final class SavyCardTitleOutsideTapView: UIView, UIGestureRecognizerDelegate {
+    private weak var session: SavyCardTitleSession?
+    private weak var observedWindow: UIWindow?
+    private lazy var outsideTap = UITapGestureRecognizer(target: self, action: #selector(finishEditing))
+
+    init(session: SavyCardTitleSession) {
+        self.session = session
+        super.init(frame: .zero)
+        isUserInteractionEnabled = false
+        accessibilityElementsHidden = true
+        outsideTap.cancelsTouchesInView = false
+        outsideTap.delegate = self
+        session.cardRegions.add(self)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        observedWindow?.removeGestureRecognizer(outsideTap)
+        observedWindow = window
+        window?.addGestureRecognizer(outsideTap)
+    }
+
+    func stopObserving() {
+        observedWindow?.removeGestureRecognizer(outsideTap)
+        observedWindow = nil
+        session?.cardRegions.remove(self)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard let session, session.isEditing, let window, touch.window === window else { return false }
+        let point = touch.location(in: window)
+        // Completed cards share one session with their title button. Treat all
+        // of that card's regions as inside, including padding and other controls.
+        return !session.cardRegions.allObjects.contains { region in
+            region.window === window && region.convert(region.bounds, to: window).contains(point)
+        }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        true
+    }
+
+    @objc private func finishEditing() {
+        guard outsideTap.state == .ended else { return }
+        session?.finish()
     }
 }
 
