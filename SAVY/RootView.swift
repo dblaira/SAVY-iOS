@@ -142,7 +142,7 @@ struct RootView: View {
         var adapters: [any SavySyncAdapter] = []
         if syncsWithCloud {
             adapters = [
-                RemindersSyncAdapter(store: loadedReminderStore),
+                RemindersSyncAdapter(store: loadedReminderStore, cardTitles: SavyCardTitleStore.shared),
                 ConnectionsSyncAdapter(store: loadedConnectionStore),
                 SocialPostsSyncAdapter(store: loadedPostStore),
                 StoriesSyncAdapter(store: loadedStoryStore),
@@ -403,6 +403,7 @@ struct EditorialHomeView: View {
     let onSignOut: (() -> Void)?
     let onOpenPersonalAuthorityReview: () -> Void
     @State private var editingReminder: Reminder?
+    @State private var renaming: SavyCardTitleEdit?
     @StateObject private var sectionPinStore = HomeSectionPinStore()
     @State private var armedHomeCardID: String?
     @State private var selectedHomeCard: HomeLeverageCard?
@@ -493,6 +494,7 @@ struct EditorialHomeView: View {
         .sheet(item: $editingReminder) { reminder in
             ReminderFormView(existing: reminder, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in }
         }
+        .savyCardTitleEditor($renaming)
         #if DEBUG
         .onReceive(NotificationCenter.default.publisher(for: SavyScreenCapture.openHomeSection)) { note in
             guard let sectionID = note.object as? String else { return }
@@ -588,6 +590,9 @@ struct EditorialHomeView: View {
                             HomeFeedRowView(entry: entry, isPinned: reminder.pinned)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            renameButton { .custom(key: SavyCardTitleKey.entry(reminder.id), prefilled: entry.title) }
+                        }
                         .accessibilityIdentifier("greatestLeverageReminder")
 
                     case let .leverage(section, item):
@@ -601,6 +606,9 @@ struct EditorialHomeView: View {
                             HomeFeedRowView(entry: entry, isPinned: isPinned)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            renameButton { .custom(key: SavyCardTitleKey.item(section: section.id, id: item.id), prefilled: entry.title) }
+                        }
                         .accessibilityIdentifier("greatestLeverageEntry")
                     }
                 }
@@ -610,6 +618,12 @@ struct EditorialHomeView: View {
             .padding(.bottom, RootHomeLayout.carouselBottomPadding)
         }
         .accessibilityIdentifier("greatestLeverageCarousel")
+    }
+
+    /// A long press on a carousel card (a right click on the Mac) offers Rename.
+    /// The prompt reads the card's title when tapped, not when the menu was built.
+    private func renameButton(_ edit: @escaping () -> SavyCardTitleEdit) -> some View {
+        Button("Rename", systemImage: "pencil") { renaming = edit() }
     }
 
     private var homeContentSections: some View {
@@ -624,6 +638,9 @@ struct EditorialHomeView: View {
                     actions: [
                         SavySwipeAction(title: isPinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) {
                             withAnimation(.snappy) { sectionPinStore.toggle(card.sectionID) }
+                        },
+                        .rename {
+                            renaming = .custom(key: SavyCardTitleKey.home(card.sectionID), prefilled: card.title)
                         },
                     ],
                     onTap: { selectedHomeCard = card },
@@ -727,6 +744,7 @@ struct HomeFeedRow: Identifiable {
 private struct HomeFeedRowView: View {
     let entry: HomeFeedRow
     let isPinned: Bool
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
 
     var body: some View {
         Group {
@@ -744,12 +762,12 @@ private struct HomeFeedRowView: View {
                     previewHeight: isPinned ? RootHomeLayout.carouselCardHeight : nil,
                     carouselDetails: SavyCarouselDetail.values(for: reminder)
                 )
-            case let .leverage(_, item):
+            case let .leverage(section, item):
                 SavyBandCard(
                     bg: Brand.card,
                     fg: SavyTheme.deepNavy,
                     accent: Brand.crimson,
-                    title: item.title,
+                    title: cardTitles.title(for: SavyCardTitleKey.item(section: section.id, id: item.id)) ?? item.title,
                     signalText: "",
                     secondaryText: "",
                     detail: isPinned ? .full : .minimal,
@@ -934,12 +952,14 @@ private struct HomeContentSectionView: View {
     let accent: Color
     let pillBackground: Color
     let pillText: Color
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
+
     var body: some View {
         SavyBandCard(
             bg: bg,
             fg: fg,
             accent: accent,
-            title: card.title,
+            title: cardTitles.title(for: SavyCardTitleKey.home(card.sectionID)) ?? card.title,
             signalText: "",
             secondaryText: "",
             detailLine: previewText,
@@ -971,11 +991,15 @@ private struct HomeContentSectionView: View {
     }
 
     private var previewText: String? {
-        if card.sectionID == "news-channel" { return posts.first?.preview.title }
+        if card.sectionID == "news-channel" { return posts.first?.displayTitle(cardTitles) }
         if card.sectionID == "beliefs", !connections.isEmpty {
-            return connections.prefix(3).map { $0.preview.title }.joined(separator: "\n")
+            return connections.prefix(3)
+                .map { cardTitles.title(for: SavyCardTitleKey.entry($0.id)) ?? $0.preview.title }
+                .joined(separator: "\n")
         }
-        return visibleItems.prefix(3).map(\.title).joined(separator: "\n")
+        return visibleItems.prefix(3)
+            .map { cardTitles.title(for: SavyCardTitleKey.item(section: card.sectionID, id: $0.id)) ?? $0.title }
+            .joined(separator: "\n")
     }
 
     private var visibleItems: [LeverageItem] {
@@ -1178,6 +1202,7 @@ private struct NewsMoreStoryRow: View {
 private struct LeverageSectionView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var postScrollRevision = 0
+    @State private var renaming: SavyCardTitleEdit?
     let section: LeverageSection
     var postStore: SocialPostStore? = nil
     var storyStore: StoryStore? = nil
@@ -1223,9 +1248,14 @@ private struct LeverageSectionView: View {
                             NavigationLink {
                                 LeverageDetailView(section: section, item: item)
                             } label: {
-                                LeverageItemRow(item: item, isBeliefs: isBeliefs)
+                                LeverageItemRow(sectionID: section.id, item: item, isBeliefs: isBeliefs)
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("Rename", systemImage: "pencil") {
+                                    renaming = .custom(key: SavyCardTitleKey.item(section: section.id, id: item.id), prefilled: item.title)
+                                }
+                            }
                         }
                     }
                 }
@@ -1239,6 +1269,7 @@ private struct LeverageSectionView: View {
             }
         }
         .background(SavyTheme.pageBackground.ignoresSafeArea())
+        .savyCardTitleEditor($renaming)
         .toolbarBackground(SavyTheme.pageBackground, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -1273,15 +1304,17 @@ private struct LeverageSectionView: View {
 }
 
 private struct LeverageItemRow: View {
+    let sectionID: String
     let item: LeverageItem
     var isBeliefs = false
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
 
     var body: some View {
         SavyBandCard(
             bg: isBeliefs ? SavyTheme.beliefCard : .white,
             fg: isBeliefs ? SavyTheme.crimson : SavyTheme.ink,
             accent: SavyTheme.crimson,
-            title: item.title,
+            title: cardTitles.title(for: SavyCardTitleKey.item(section: sectionID, id: item.id)) ?? item.title,
             signalText: "",
             secondaryText: "",
             isCompact: true,

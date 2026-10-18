@@ -5,6 +5,7 @@ import SwiftUI
 struct NewsChannelStoriesGroup: View {
     @ObservedObject var store: StoryStore
     @State private var editing: Story?
+    @State private var renaming: SavyCardTitleEdit?
     @State private var isComposing = false
 
     var body: some View {
@@ -54,6 +55,7 @@ struct NewsChannelStoriesGroup: View {
                 store.save(story)
             }
         }
+        .savyCardTitleEditor($renaming)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("newsChannelStories")
     }
@@ -65,10 +67,22 @@ struct NewsChannelStoriesGroup: View {
                 store.markPosted(story)
             })
         }
+        list.append(.rename { renaming = titleEdit(for: story) })
         list.append(SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
             store.delete(story)
         })
         return list
+    }
+
+    /// A story's title is its own field, so Rename edits the story itself.
+    private func titleEdit(for story: Story) -> SavyCardTitleEdit {
+        SavyCardTitleEdit(id: "story:\(story.id.uuidString)", current: story.trimmedTitle) { typed in
+            guard var updated = store.stories.first(where: { $0.id == story.id }) else { return }
+            let title = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard title != updated.trimmedTitle else { return }
+            updated.title = title
+            store.save(updated)
+        }
     }
 }
 

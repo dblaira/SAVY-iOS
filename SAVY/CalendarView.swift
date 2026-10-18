@@ -9,6 +9,8 @@ struct CalendarView: View {
 
     @State private var month: Date = Date()      // any date inside the displayed month
     @State private var selected: Date = Date()
+    @State private var renaming: SavyCardTitleEdit?
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
 
     private let cal = Calendar.current
     private let hourHeight: CGFloat = 56
@@ -45,6 +47,7 @@ struct CalendarView: View {
                 }
             }
         }
+        .savyCardTitleEditor($renaming)
     }
 
     // MARK: Hero
@@ -273,7 +276,7 @@ struct CalendarView: View {
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 8) {
-                    Text(r.title.isEmpty ? "Untitled" : r.title)
+                    Text(cardTitles.title(for: SavyCardTitleKey.entry(r.id)) ?? SavyReminderBandCard.prefilledTitle(r))
                         .font(.system(size: 15, weight: .bold)).foregroundStyle(.black)
                         .strikethrough(r.status == .completed).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -336,6 +339,12 @@ struct CalendarView: View {
                 bg: Brand.tileBlue
             ) {
                 store.togglePin(reminder)
+            },
+            .rename {
+                renaming = .custom(
+                    key: SavyCardTitleKey.entry(reminder.id),
+                    prefilled: SavyReminderBandCard.prefilledTitle(reminder)
+                )
             },
             SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
                 store.delete(reminder)

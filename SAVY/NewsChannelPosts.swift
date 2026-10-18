@@ -48,6 +48,19 @@ enum SavedPost: Identifiable {
         postNumber.map { "#\($0) \(preview.title)" } ?? preview.title
     }
 
+    var titleKey: String {
+        switch self {
+        case .entry(let entry): return SavyCardTitleKey.entry(entry.id)
+        case .legacy(let post): return SavyCardTitleKey.socialPost(post.id)
+        }
+    }
+
+    /// The custom title from Rename, or the first authored sentence.
+    @MainActor
+    func displayTitle(_ titles: SavyCardTitleStore) -> String {
+        titles.title(for: titleKey) ?? preview.title
+    }
+
     /// Keep the page's existing pinned/status/date order until the user rearranges it.
     @MainActor
     static func defaultOrder(store: SocialPostStore, reminderStore: ReminderStore) -> [SavedPost] {
@@ -85,9 +98,11 @@ struct NewsChannelPostsGroup: View {
     @ObservedObject var reminderStore: ReminderStore
     @ObservedObject var cardOrder: PostCardOrderStore
     var scrollRevision = 0
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
     @State private var armedPostID: String?
     @State private var editing: SocialPost?
     @State private var editingEntry: Reminder?
+    @State private var renaming: SavyCardTitleEdit?
     @State private var isComposing = false
 
     private var defaultPosts: [SavedPost] {
@@ -124,6 +139,7 @@ struct NewsChannelPostsGroup: View {
         .sheet(isPresented: $isComposing) {
             ReminderFormView(initialKind: .post, existing: nil, existingTags: reminderStore.recentTags, onSaveAttempt: { reminderStore.save($0) }) { _ in }
         }
+        .savyCardTitleEditor($renaming)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("newsChannelPosts")
         .onChange(of: scrollRevision) {
@@ -177,7 +193,7 @@ struct NewsChannelPostsGroup: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("postCard-\(savedPost.id)")
-            .accessibilityLabel(post.postNumber.map { "#\($0)" } ?? savedPost.preview.title)
+            .accessibilityLabel(post.postNumber.map { "#\($0)" } ?? savedPost.displayTitle(cardTitles))
             .accessibilityValue(post.pinned ? "Pinned" : "Unpinned")
             .zIndex(armedPostID == savedPost.id ? 10 : 0)
         case .entry(let entry):
@@ -194,7 +210,7 @@ struct NewsChannelPostsGroup: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("postCard-\(savedPost.id)")
-            .accessibilityLabel(entry.postNumber.map { "#\($0)" } ?? savedPost.preview.title)
+            .accessibilityLabel(entry.postNumber.map { "#\($0)" } ?? savedPost.displayTitle(cardTitles))
             .accessibilityValue(entry.pinned ? "Pinned" : "Unpinned")
             .zIndex(armedPostID == savedPost.id ? 10 : 0)
         }
@@ -224,10 +240,15 @@ struct NewsChannelPostsGroup: View {
             updated.pinned.toggle()
             reminderStore.save(updated)
         })
+        list.append(.rename { renaming = titleEdit(for: .entry(entry)) })
         list.append(SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
             reminderStore.delete(entry)
         })
         return list
+    }
+
+    private func titleEdit(for post: SavedPost) -> SavyCardTitleEdit {
+        .custom(key: post.titleKey, prefilled: post.preview.title)
     }
 
     private var emptyRow: some View {
@@ -255,6 +276,7 @@ struct NewsChannelPostsGroup: View {
         list.append(SavySwipeAction(title: post.pinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) {
             store.togglePin(post)
         })
+        list.append(.rename { renaming = titleEdit(for: .legacy(post)) })
         list.append(SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
             store.delete(post)
         })
@@ -332,6 +354,7 @@ struct NewsChannelPostPreview {
 struct NewsChannelPostRow: View {
     let post: SocialPost
     let palette: NewsChannelPostPalette
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
 
     var body: some View {
         let preview = SavedPost.legacy(post).preview
@@ -339,7 +362,7 @@ struct NewsChannelPostRow: View {
             bg: palette.bg,
             fg: palette.fg,
             accent: palette.accent,
-            title: preview.title,
+            title: SavedPost.legacy(post).displayTitle(cardTitles),
             signalText: signalText,
             secondaryText: secondaryText,
             detailLine: preview.detail,
@@ -380,6 +403,7 @@ struct NewsChannelPostRow: View {
 struct NewsChannelPostEntryRow: View {
     let entry: Reminder
     let palette: NewsChannelPostPalette
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
 
     var body: some View {
         let preview = SavedPost.entry(entry).preview
@@ -387,7 +411,7 @@ struct NewsChannelPostEntryRow: View {
             bg: palette.bg,
             fg: palette.fg,
             accent: palette.accent,
-            title: preview.title,
+            title: SavedPost.entry(entry).displayTitle(cardTitles),
             signalText: signalText,
             secondaryText: secondaryText,
             detailLine: preview.detail,

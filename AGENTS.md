@@ -1,5 +1,13 @@
 # SAVY iOS Agent Instructions
 
+## Rename any card — October 18, 2026
+
+Adam: "I would like the ability to change the title of all cards" and "At this time, the titles or labels on the cards are prefilled according to what I've written first, and that's fine, but I also want the ability to be able to change the titles"
+
+Cards keep their prefilled titles. Rename sets a custom title that replaces the prefilled one on the card face only; the saved writing, "What do I want?", Decide answers, notifications and Calendar events stay exactly as written. Saving an empty title, the prefilled title itself, or Use Original brings the prefilled title back. Rename sits in the swipe tray before Delete on Reminders, Actions, Calendar, both Social Media Posts formats, Connection (authored and source), Stories and the lower Home destination cards; the Mac right-click menu shows the same action. Completed rows, Home carousel cards, and Ontology, Field Essays and seeded Social items offer Rename on a long press (right click on the Mac). One custom title follows an entry onto every page it appears. Stories already have a Title field, so their Rename edits that field. Personal Authority statements have no title and are unchanged.
+
+`SavyCardTitleStore` keeps custom titles in `SAVY/card-titles.json` (the isolated `SAVYUITests` file under test). They sync inside the existing `reminders` CloudKit document as `reminder:card-title:<card key>` string entries. Builds without Rename already preserve unreadable `reminder:` entries, so an iPhone or Mac on an older build passes titles through instead of deleting them. Do not move titles into a new document: an older build rejects a whole fetch batch that names an unregistered document, which would stop its sync. An unreadable title file is kept as evidence and its titles pass through the same way. Adding Rename widened the Reminders, Actions and Calendar trays from three actions (192 points) to four (256); the UI tests expect the new widths.
+
 ## Habit form and theme order — October 15, 2026
 
 Adam: "Add a habit form to the SAVY app. The four directives are these. (Atomic Habits 4 Step Formula) 1. Make it Obvious 2. Make it Easy 3. Make it Attractive 4. Make it Satisfying. This new form should be the first form available on the list, with "A Strong Yes" 2nd on the list, followed by Pattern Recognition, and then Inductive Reasoning. Next should be Mental Model and then "Personal Take & Lessons Learned." The naming should be changed for this one. "Personal Take & Lessons Learned" should be changed to read, "Personal Lessons"."

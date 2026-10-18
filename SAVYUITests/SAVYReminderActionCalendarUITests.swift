@@ -343,6 +343,42 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         completeAndDelete(title, completedSectionId: "completedRemindersSection")
     }
 
+    /// Adam, 2026-10-18: "I also want the ability to be able to change the titles"
+    func testRenameChangesOnlyTheCardTitleUntilItIsCleared() {
+        let stamp = Int(Date().timeIntervalSince1970)
+        let title = "UI Test Rename \(stamp)"
+        let renamed = "Renamed card \(stamp)"
+        createItem(.reminder, title: title)
+        openTab("Reminders")
+
+        renameCard(title, to: renamed)
+        XCTAssertTrue(app.staticTexts[renamed].waitForExistence(timeout: 10), "The custom title did not replace the card title")
+        XCTAssertFalse(app.staticTexts[title].exists, "The prefilled title still shows after Rename")
+
+        app.staticTexts[renamed].firstMatch.tapOrClick()
+        let field = titleField()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "The renamed card did not open its entry")
+        XCTAssertEqual(field.value as? String, title, "Rename must leave the saved writing exactly as written")
+        app.buttons["Save"].tapOrClick()
+        XCTAssertTrue(app.staticTexts[renamed].waitForExistence(timeout: 10), "Saving the entry dropped the custom title")
+
+        renameCard(renamed, to: "")
+        XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 10), "Clearing the custom title must restore the prefilled title")
+    }
+
+    private func renameCard(_ current: String, to newTitle: String) {
+        revealActions(current)
+        tapVisibleButton("swipeRename")
+        let alert = app.alerts["Rename Card"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "The Rename prompt did not open")
+        let field = alert.textFields.firstMatch
+        XCTAssertEqual(field.value as? String, current, "The Rename prompt must open on the card's current title")
+        field.tapOrClick()
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count) + newTitle)
+        alert.buttons["Save"].tapOrClick()
+        XCTAssertTrue(alert.waitForNonExistence(timeout: 5), "The Rename prompt did not close")
+    }
+
     @MainActor
     func testReminderSwipeKeepsItsPositionAcrossGestures() {
         let card = app.descendants(matching: .any)
@@ -354,7 +390,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
             #if targetEnvironment(macCatalyst)
             dragCard(in: app, card: card, distance: distance)
             #else
-            // Start on the visible card, including when the 192-point tray is open.
+            // Start on the visible card, including when the 256-point tray is open.
             let startX = min(card.frame.minX + 28, app.frame.maxX - 60)
             let start = app.coordinate(withNormalizedOffset: .zero)
                 .withOffset(CGVector(dx: startX, dy: card.frame.midY))
@@ -376,26 +412,27 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         XCTAssertFalse(app.buttons["swipeDelete"].exists, "Closed actions must stay out of accessibility")
         #if targetEnvironment(macCatalyst)
         card.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).trackpadSwipe(right: true)
-        assertOffset(192, "A Mac trackpad swipe should reveal the same action tray")
+        assertOffset(256, "A Mac trackpad swipe should reveal the same action tray")
         card.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).trackpadSwipe(right: false)
         assertOffset(0, "A Mac trackpad swipe should close the action tray")
         #endif
         drag(48)
         assertOffset(0, "A short opening swipe should return smoothly to closed")
         drag(210)
-        assertOffset(192, "A full swipe should reveal the action tray")
+        assertOffset(256, "A full swipe should reveal the action tray")
         XCTAssertTrue(app.buttons["swipeDone"].isHittable)
         XCTAssertTrue(app.buttons["swipePin"].isHittable)
+        XCTAssertTrue(app.buttons["swipeRename"].isHittable)
         XCTAssertTrue(app.buttons["swipeDelete"].isHittable)
         drag(36)
-        assertOffset(192, "Swiping an open card again must not restart it from zero")
+        assertOffset(256, "Swiping an open card again must not restart it from zero")
         drag(-36)
-        assertOffset(192, "A short closing swipe must continue from the open position")
+        assertOffset(256, "A short closing swipe must continue from the open position")
         drag(-140)
         assertOffset(0, "A closing swipe should settle the tray closed")
         XCTAssertFalse(app.buttons["swipeDelete"].exists)
         drag(210)
-        assertOffset(192, "The card should reopen after closing")
+        assertOffset(256, "The card should reopen after closing")
         card.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).tapOrClick()
         assertOffset(0, "Tapping an open card should close its tray")
         XCTAssertFalse(titleField().exists, "Dismissing actions must not open the editor")
@@ -410,9 +447,9 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
                        "Pinning should expand the card and finish closing its tray")
         original = card.frame
         drag(210)
-        assertOffset(192, "The expanded card should reveal the same tray")
+        assertOffset(256, "The expanded card should reveal the same tray")
         drag(-36)
-        assertOffset(192, "An expanded card must retain its open offset too")
+        assertOffset(256, "An expanded card must retain its open offset too")
         drag(-140)
         assertOffset(0, "The expanded card should close without changing its height")
     }
@@ -826,7 +863,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let card = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'reminderReorderGesture-'" )).firstMatch
         assertCardSwipeBehavior(in: app, card: card,
-                                actions: ["Done", "Pin", "Delete"], name: "Action")
+                                actions: ["Done", "Pin", "Rename", "Delete"], name: "Action")
         gentlySwipeRightThenLeft(title)
         pinAndUnpin(title, cardIdentifier: "topActionCard")
         completeAndDelete(title, completedSectionId: "completedActionsSection")
@@ -849,7 +886,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let card = app.otherElements
             .matching(NSPredicate(format: "identifier BEGINSWITH 'calendarSwipe-'" )).firstMatch
         assertCardSwipeBehavior(in: app, card: card,
-                                actions: ["Done", "Pin", "Delete"], name: "Calendar")
+                                actions: ["Done", "Pin", "Rename", "Delete"], name: "Calendar")
         gentlySwipeRightThenLeftCalendarEvent(savedEvent, title: title)
         revealCalendarActions(title)
         tapVisibleButton("swipePin")
@@ -1032,6 +1069,7 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         case "swipePin": return "Pin"
         case "swipeUnpin": return "Unpin"
         case "swipeDelete": return "Delete"
+        case "swipeRename": return "Rename"
         case "swipeReopen": return "Reopen"
         default: return identifier
         }
