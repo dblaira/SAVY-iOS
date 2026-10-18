@@ -31,6 +31,7 @@ struct SavyReminderKindTabScreen: View {
 
     @EnvironmentObject private var store: ReminderStore
     @State private var editing: Reminder?
+    @State private var renaming: SavyCardTitleEdit?
     @State private var armedReorderId: String?
     @State private var isCompletedExpanded = false
 
@@ -74,6 +75,7 @@ struct SavyReminderKindTabScreen: View {
         .sheet(item: $editing) { reminder in
             ReminderFormView(existing: reminder, existingTags: store.recentTags, onSaveAttempt: { store.save($0) }) { _ in }
         }
+        .savyCardTitleEditor($renaming)
     }
 
     @ViewBuilder private func pageContent(viewportHeight: CGFloat) -> some View {
@@ -240,7 +242,8 @@ struct SavyReminderKindTabScreen: View {
                             reminder: reminder,
                             onToggle: { store.uncomplete(reminder) },
                             onTap: { editing = reminder },
-                            onDelete: { store.delete(reminder) }
+                            onDelete: { store.delete(reminder) },
+                            onRename: { renaming = titleEdit(for: reminder) }
                         )
                     }
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -277,8 +280,13 @@ struct SavyReminderKindTabScreen: View {
         [
             SavySwipeAction(title: "Done", icon: "checkmark", bg: SavyTheme.crimson) { store.complete(reminder) },
             SavySwipeAction(title: reminder.pinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) { store.togglePin(reminder) },
+            .rename { renaming = titleEdit(for: reminder) },
             SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) { store.delete(reminder) },
         ]
+    }
+
+    private func titleEdit(for reminder: Reminder) -> SavyCardTitleEdit {
+        .custom(key: SavyCardTitleKey.entry(reminder.id), prefilled: SavyReminderBandCard.prefilledTitle(reminder))
     }
 
     private func cardColors(for index: Int) -> (bg: Color, fg: Color, accent: Color) {
@@ -890,6 +898,7 @@ struct SavyReminderBandCard: View {
     let bg: Color
     let fg: Color
     let accent: Color
+    /// The page's prefilled title. A custom title from Rename replaces it.
     var title: String? = nil
     var detail: SavyCardDetail = .minimal
     var showsSchedule: Bool = true
@@ -898,13 +907,18 @@ struct SavyReminderBandCard: View {
     var metadataColor: Color? = nil
     var metadataWeight: Font.Weight? = nil
     var carouselDetails: [SavyCarouselDetail]? = nil
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
+
+    static func prefilledTitle(_ reminder: Reminder) -> String {
+        reminder.title.isEmpty ? "Untitled" : reminder.title
+    }
 
     var body: some View {
         SavyBandCard(
             bg: bg,
             fg: fg,
             accent: accent,
-            title: title ?? (reminder.title.isEmpty ? "Untitled" : reminder.title),
+            title: cardTitles.title(for: SavyCardTitleKey.entry(reminder.id)) ?? title ?? Self.prefilledTitle(reminder),
             signalText: signalText,
             secondaryText: secondaryText,
             detailLine: detailLine,
@@ -1001,6 +1015,12 @@ struct SavyCompletedReminderRow: View {
     var onToggle: () -> Void
     var onTap: () -> Void
     var onDelete: () -> Void
+    var onRename: (() -> Void)? = nil
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
+
+    private var displayTitle: String {
+        cardTitles.title(for: SavyCardTitleKey.entry(reminder.id)) ?? SavyReminderBandCard.prefilledTitle(reminder)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -1014,7 +1034,7 @@ struct SavyCompletedReminderRow: View {
 
             Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(reminder.title.isEmpty ? "Untitled" : reminder.title)
+                    Text(displayTitle)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(SavyTheme.secondaryText)
                         .strikethrough()
@@ -1037,10 +1057,13 @@ struct SavyCompletedReminderRow: View {
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(SavyTheme.deepNavy.opacity(0.08)))
         .contextMenu {
             Button("Reopen") { onToggle() }
+            if let onRename {
+                Button("Rename", systemImage: "pencil") { onRename() }
+            }
             Button("Delete", role: .destructive) { onDelete() }
         }
         .accessibilityIdentifier("completedReminderRow")
-        .accessibilityLabel(reminder.title.isEmpty ? "Untitled" : reminder.title)
+        .accessibilityLabel(displayTitle)
     }
 }
 

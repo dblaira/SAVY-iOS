@@ -134,7 +134,7 @@ final class SAVYCardReorderUITests: XCTestCase {
         for section in ["news-channel", "beliefs", "ontology", "field-essays"] {
             let action = homeRow(section).value as? String == "Pinned" ? "Unpin" : "Pin"
             assertCardSwipeBehavior(in: app, card: element("homeReorder-\(section)"),
-                                    actions: [action], name: "Home \(section)")
+                                    actions: [action, "Rename"], name: "Home \(section)")
         }
     }
 
@@ -160,9 +160,9 @@ final class SAVYCardReorderUITests: XCTestCase {
     func testSocialCardsUseTheReminderSwipeBehavior() {
         openPostsPage()
         assertCardSwipeBehavior(in: app, card: postRow(2),
-                                actions: ["Posted", "Unpin", "Delete"], name: "Pinned Social")
+                                actions: ["Posted", "Unpin", "Rename", "Delete"], name: "Pinned Social")
         assertCardSwipeBehavior(in: app, card: postRow(3),
-                                actions: ["Posted", "Pin", "Delete"], name: "Compact Social")
+                                actions: ["Posted", "Pin", "Rename", "Delete"], name: "Compact Social")
     }
 
     func testHomeCardsCanAllRemainPinnedAndKeepTheirOrderAfterRelaunch() {
@@ -523,8 +523,8 @@ final class SAVYCardReorderUITests: XCTestCase {
     }
 }
 
-/// Runs the same physical gestures against each real screen, including one-, two-,
-/// and three-action trays. No fixture data is written outside the isolated UI-test store.
+/// Runs the same physical gestures against each real screen, including two-, three-,
+/// and four-action trays. No fixture data is written outside the isolated UI-test store.
 @MainActor
 extension XCTestCase {
     func assertCardSwipeBehavior(in app: XCUIApplication, card: XCUIElement,

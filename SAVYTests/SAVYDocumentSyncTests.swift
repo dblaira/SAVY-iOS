@@ -337,3 +337,114 @@ final class SAVYGatewayTimestampTests: XCTestCase {
         XCTAssertNotNil(GatewayReminderDates.parseTimeOnly("14:30:00.331407"))
     }
 }
+
+/// Adam, 2026-10-18: "I also want the ability to be able to change the titles"
+final class SAVYCardTitleTests: XCTestCase {
+    private struct OfflineCandidateClient: CowboyCandidateSubmitting {
+        struct Offline: Error {}
+        func submit(_ payload: CowboyCandidateIntakePayload) async throws -> CowboyCandidateReceipt {
+            throw Offline()
+        }
+    }
+
+    @MainActor
+    func testACustomTitleReplacesThePrefilledTitleUntilItIsCleared() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appendingPathComponent("card-titles.json")
+        let key = SavyCardTitleKey.entry(UUID())
+        let prefilled = "I have not considered making money from views and subscriptions on YouTube."
+        let titles = SavyCardTitleStore(fileURL: fileURL)
+
+        XCTAssertNil(titles.title(for: key))
+        XCTAssertTrue(titles.setTitle("  Habits and Speed  ", for: key, prefilled: prefilled))
+        XCTAssertEqual(titles.title(for: key), "Habits and Speed")
+        XCTAssertEqual(SavyCardTitleStore(fileURL: fileURL).title(for: key), "Habits and Speed", "A relaunch keeps the custom title")
+
+        XCTAssertTrue(titles.setTitle(prefilled, for: key, prefilled: prefilled))
+        XCTAssertNil(titles.title(for: key), "Typing the prefilled title back removes the custom title")
+
+        XCTAssertTrue(titles.setTitle("Habits", for: key, prefilled: prefilled))
+        XCTAssertTrue(titles.setTitle("   ", for: key, prefilled: prefilled))
+        XCTAssertNil(titles.title(for: key), "An empty title brings the prefilled title back")
+        XCTAssertNil(SavyCardTitleStore(fileURL: fileURL).title(for: key))
+    }
+
+    @MainActor
+    func testTitlesTravelInTheRemindersDocumentToTheOtherDevice() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let phoneTitles = SavyCardTitleStore(fileURL: directory.appendingPathComponent("phone-card-titles.json"))
+        let macTitles = SavyCardTitleStore(fileURL: directory.appendingPathComponent("mac-card-titles.json"))
+        let phone = RemindersSyncAdapter(store: try reminderStore(in: directory, named: "phone"), cardTitles: phoneTitles)
+        let mac = RemindersSyncAdapter(store: try reminderStore(in: directory, named: "mac"), cardTitles: macTitles)
+        let key = SavyCardTitleKey.item(section: "ontology", id: "lift")
+        let syncKey = SavyCardTitleStore.syncKeyPrefix + key
+
+        XCTAssertTrue(phoneTitles.setTitle("Lift", for: key))
+        let shared = phone.snapshot()
+        XCTAssertEqual(shared[syncKey], .string("Lift"))
+        XCTAssertTrue(mac.applyAndConfirm(shared))
+        XCTAssertEqual(macTitles.title(for: key), "Lift")
+        XCTAssertEqual(mac.snapshot(), shared)
+
+        XCTAssertTrue(phoneTitles.setTitle("", for: key))
+        XCTAssertNil(phone.snapshot()[syncKey])
+        XCTAssertTrue(mac.applyAndConfirm(phone.snapshot()))
+        XCTAssertNil(macTitles.title(for: key))
+        XCTAssertNil(mac.snapshot()[syncKey], "A cleared title does not come back from the passthrough")
+    }
+
+    /// Without a title store the adapter reads the document exactly as builds before Rename did.
+    @MainActor
+    func testABuildWithoutRenamePassesTitlesThroughUntouched() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let olderBuild = RemindersSyncAdapter(store: try reminderStore(in: directory, named: "older"))
+        let values: [String: SyncJSON] = [
+            SavyCardTitleStore.syncKeyPrefix + SavyCardTitleKey.entry(UUID()): .string("Habits and Speed"),
+        ]
+
+        XCTAssertTrue(olderBuild.applyAndConfirm(values))
+        XCTAssertEqual(olderBuild.snapshot(), values, "The title is kept, so it is never synced as a deletion")
+        olderBuild.restoreUndecodable(values)
+        XCTAssertEqual(olderBuild.snapshot(), values)
+    }
+
+    @MainActor
+    func testAnUnreadableTitleFileIsKeptAndItsTitlesPassThrough() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appendingPathComponent("card-titles.json")
+        let original = Data("not a title list".utf8)
+        try original.write(to: fileURL)
+        let titles = SavyCardTitleStore(fileURL: fileURL)
+        XCTAssertTrue(titles.loadFailed)
+        XCTAssertFalse(titles.setTitle("Lift", for: SavyCardTitleKey.home("ontology")))
+
+        let adapter = RemindersSyncAdapter(store: try reminderStore(in: directory, named: "phone"), cardTitles: titles)
+        let values: [String: SyncJSON] = [
+            SavyCardTitleStore.syncKeyPrefix + SavyCardTitleKey.home("ontology"): .string("Lift"),
+        ]
+        XCTAssertTrue(adapter.applyAndConfirm(values))
+        XCTAssertEqual(adapter.snapshot(), values)
+        XCTAssertEqual(try Data(contentsOf: fileURL), original)
+    }
+
+    @MainActor
+    private func reminderStore(in directory: URL, named name: String) throws -> ReminderStore {
+        ReminderStore(
+            repo: LocalReminderRepository(),
+            cacheURL: directory.appendingPathComponent("\(name)-reminders.json"),
+            technicalCaptureStore: try TechnicalCaptureStore(fileURL: directory.appendingPathComponent("\(name)-captures.json")),
+            candidateOutbox: try CowboyCandidateOutbox(fileURL: directory.appendingPathComponent("\(name)-outbox.json")),
+            candidateClient: OfflineCandidateClient()
+        )
+    }
+
+    private func makeDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("savy-card-titles-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+}

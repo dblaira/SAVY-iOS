@@ -20,6 +20,13 @@ private enum SavedConnectionCard: Identifiable {
         case .source(let item): "source-\(item.id)"
         }
     }
+
+    var titleKey: String {
+        switch self {
+        case .entry(let entry): SavyCardTitleKey.entry(entry.id)
+        case .source(let item): SavyCardTitleKey.item(section: "beliefs", id: item.id)
+        }
+    }
 }
 
 struct ConnectionView: View {
@@ -32,6 +39,8 @@ struct ConnectionView: View {
     @State private var selectedSource: LeverageItem?
     @State private var showsSourceDetail = false
     @State private var showsStoreError = false
+    @State private var renaming: SavyCardTitleEdit?
+    @ObservedObject private var cardTitles = SavyCardTitleStore.shared
 
     let section: LeverageSection
     var onSignOut: (() -> Void)?
@@ -117,6 +126,7 @@ struct ConnectionView: View {
                 onSave: { _ in }
             )
         }
+        .savyCardTitleEditor($renaming)
         .alert("Couldn't save connection", isPresented: $showsStoreError) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -246,7 +256,7 @@ struct ConnectionView: View {
             bg: palette.bg,
             fg: palette.fg,
             accent: palette.accent,
-            title: preview.title,
+            title: cardTitles.title(for: card.titleKey) ?? preview.title,
             signalText: signal,
             secondaryText: secondary,
             detailLine: preview.detail,
@@ -258,6 +268,13 @@ struct ConnectionView: View {
             titleAccessibilityIdentifier: titleIdentifier,
             typeLabel: SavyCardTypeLabel(systemImage: "link", text: "CONNECTION")
         )
+    }
+
+    private static func prefilledTitle(_ card: SavedConnectionCard) -> String {
+        switch card {
+        case .entry(let entry): entry.preview.title
+        case .source(let item): NewsChannelPostPreview(text: item.title).title
+        }
     }
 
     private func isPinned(_ card: SavedConnectionCard) -> Bool {
@@ -309,6 +326,9 @@ struct ConnectionView: View {
         [
             SavySwipeAction(title: isPinned(card) ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) {
                 togglePin(card)
+            },
+            .rename {
+                renaming = .custom(key: card.titleKey, prefilled: Self.prefilledTitle(card))
             },
             SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
                 let saved: Bool

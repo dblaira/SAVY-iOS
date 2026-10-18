@@ -270,16 +270,30 @@ final class StoriesSyncAdapter: SavyPassthroughSyncAdapter {
 }
 
 /// Reminder-based Reminders, Actions, Calendar entries, and Posts share one portable store.
+/// Custom card titles ride in the same document; see `SavyCardTitleStore.syncKeyPrefix`.
 @MainActor
 final class RemindersSyncAdapter: SavyTombstoneSyncAdapter, SavyPassthroughSyncAdapter {
     let documentKey = "reminders"
     private let store: ReminderStore
+    private let cardTitles: SavyCardTitleStore?
     private let passthrough = Passthrough()
 
-    init(store: ReminderStore) { self.store = store }
+    init(store: ReminderStore, cardTitles: SavyCardTitleStore? = nil) {
+        self.store = store
+        self.cardTitles = cardTitles
+    }
+
+    /// An unreadable title file behaves like an older build: its titles pass through untouched.
+    private var titles: SavyCardTitleStore? {
+        guard let cardTitles, !cardTitles.loadFailed else { return nil }
+        return cardTitles
+    }
+
     var isReady: Bool { store.canSync }
     var localChanges: AnyPublisher<Void, Never> {
-        store.objectWillChange.map { _ in () }.eraseToAnyPublisher()
+        let reminders = store.objectWillChange.map { _ in () }
+        guard let cardTitles else { return reminders.eraseToAnyPublisher() }
+        return reminders.merge(with: cardTitles.objectWillChange.map { _ in () }).eraseToAnyPublisher()
     }
 
     var localTombstones: [String: Double] {
@@ -295,11 +309,14 @@ final class RemindersSyncAdapter: SavyTombstoneSyncAdapter, SavyPassthroughSyncA
                 values["reminder:\(reminder.id.uuidString.lowercased())"] = portableReminderValue(value)
             }
         }
+        if let titles { values.merge(titles.syncValues) { current, _ in current } }
         return passthrough.merged(into: values).mapValues(portableReminderValue)
     }
 
     func stamp(key: String, value: SyncJSON, context: SyncChangeContext) -> SyncStamp {
         switch context {
+        case .firstRun where SavyCardTitleStore.isSyncKey(key):
+            return firstRunContentStamp(titles?.updatedAt(syncKey: key))
         case .firstRun:
             let stored = store.reminders.first { "reminder:\($0.id.uuidString.lowercased())" == key }
             return firstRunContentStamp(stored?.updatedAt ?? (try? value.decode(Reminder.self))?.updatedAt)
@@ -311,6 +328,7 @@ final class RemindersSyncAdapter: SavyTombstoneSyncAdapter, SavyPassthroughSyncA
     func restoreUndecodable(_ values: [String: SyncJSON]) {
         passthrough.restore(values.filter { key, value in
             guard key.hasPrefix("reminder:") else { return false }
+            if titles != nil, SavyCardTitleStore.isSyncKey(key) { return false }
             guard let reminder = try? value.decode(Reminder.self) else { return true }
             return reminder.status == .deleted || key != "reminder:\(reminder.id.uuidString.lowercased())"
         }
@@ -321,8 +339,13 @@ final class RemindersSyncAdapter: SavyTombstoneSyncAdapter, SavyPassthroughSyncA
 
     func applyAndConfirm(_ values: [String: SyncJSON]) -> Bool {
         var reminders: [Reminder] = []
+        var titleValues: [String: SyncJSON] = [:]
         var undecodable: [String: SyncJSON] = [:]
         for (key, value) in values where key.hasPrefix("reminder:") {
+            if titles != nil, SavyCardTitleStore.isSyncKey(key) {
+                titleValues[key] = value
+                continue
+            }
             let portable = portableReminderValue(value)
             if let reminder = try? portable.decode(Reminder.self), reminder.status != .deleted,
                key == "reminder:\(reminder.id.uuidString.lowercased())" { reminders.append(reminder) }
@@ -330,6 +353,7 @@ final class RemindersSyncAdapter: SavyTombstoneSyncAdapter, SavyPassthroughSyncA
         }
         reminders.sort { $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt }
         guard store.applySynced(reminders) else { return false }
+        if let titles, !titles.applySynced(titleValues) { return false }
         passthrough.keep(undecodable)
         return true
     }

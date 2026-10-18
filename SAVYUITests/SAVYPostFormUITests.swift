@@ -281,7 +281,7 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Synthetic story acceptance subtitle"].exists,
                        "An unpinned Story card should show only its title")
         assertCardSwipeBehavior(in: app, card: row,
-                                actions: ["Posted", "Delete"], name: "Draft Story")
+                                actions: ["Posted", "Rename", "Delete"], name: "Draft Story")
         row.tapOrClick()
         XCTAssertTrue(element("StoryBody").waitForExistence(timeout: 8))
         XCTAssertEqual(element("StorySubtitle").value as? String, "Synthetic story acceptance subtitle")
@@ -294,7 +294,7 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertTrue(posted.waitForExistence(timeout: 5))
         posted.tapOrClick()
         XCTAssertTrue(posted.waitForNonExistence(timeout: 5))
-        assertCardSwipeBehavior(in: app, card: row, actions: ["Delete"], name: "Posted Story")
+        assertCardSwipeBehavior(in: app, card: row, actions: ["Rename", "Delete"], name: "Posted Story")
         dragCard(in: app, card: row, distance: 82)
         app.buttons["swipeDelete"].firstMatch.tapOrClick()
         XCTAssertTrue(row.waitForNonExistence(timeout: 5))
