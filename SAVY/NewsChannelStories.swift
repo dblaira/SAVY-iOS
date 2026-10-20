@@ -62,7 +62,7 @@ struct NewsChannelStoriesGroup: View {
     private func actions(for story: Story) -> [SavySwipeAction] {
         var list: [SavySwipeAction] = []
         if story.status != .posted {
-            list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.crimson) {
+            list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.bottomNavTan, fg: SavyTheme.deepNavy) {
                 store.markPosted(story)
             })
         }

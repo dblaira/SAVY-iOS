@@ -217,7 +217,7 @@ struct NewsChannelPostsGroup: View {
     private func actions(for entry: Reminder) -> [SavySwipeAction] {
         var list: [SavySwipeAction] = []
         if entry.status != .completed {
-            list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.crimson) {
+            list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.bottomNavTan, fg: SavyTheme.deepNavy) {
                 reminderStore.complete(entry)
             })
         }
@@ -250,7 +250,7 @@ struct NewsChannelPostsGroup: View {
     private func actions(for post: SocialPost) -> [SavySwipeAction] {
         var list: [SavySwipeAction] = []
         if post.status != .posted {
-            list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.crimson) {
+            list.append(SavySwipeAction(title: "Posted", icon: "checkmark", bg: SavyTheme.bottomNavTan, fg: SavyTheme.deepNavy) {
                 store.markPosted(post)
             })
         }

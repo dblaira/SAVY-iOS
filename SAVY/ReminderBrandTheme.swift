@@ -14,7 +14,7 @@ enum Brand {
     static let darkRed     = Color(hex: 0xB00124)   // story / tile red
     static let recallBlue  = Color(hex: 0x021784)   // "RECALL" label
     static let cyan        = Color(hex: 0x0C8A92)   // deep aqua — white text pops
-    static let tileBlue    = Color(hex: 0x0F288E)   // deep blue (cyan-card text)
+    static let tileBlue    = SavyTheme.deepNavy    // pin/unpin controls match the page headers
     // Primary palette — "truest" colors, vivid against the navy.
     static let primaryBlue   = Color(hex: 0x1D4ED8)
     static let primaryYellow = Color(hex: 0xF4C400)

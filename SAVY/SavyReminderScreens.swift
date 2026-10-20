@@ -277,7 +277,7 @@ struct SavyReminderKindTabScreen: View {
 
     private func cardActions(_ reminder: Reminder) -> [SavySwipeAction] {
         [
-            SavySwipeAction(title: "Done", icon: "checkmark", bg: SavyTheme.crimson) { store.complete(reminder) },
+            SavySwipeAction(title: "Done", icon: "checkmark", bg: SavyTheme.bottomNavTan, fg: SavyTheme.deepNavy) { store.complete(reminder) },
             SavySwipeAction(title: reminder.pinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) { store.togglePin(reminder) },
             SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) { store.delete(reminder) },
         ]
@@ -320,6 +320,7 @@ struct SavySwipeAction: Identifiable {
     let title: String
     let icon: String
     let bg: Color
+    var fg: Color = .white
     let run: () -> Void
 }
 
@@ -344,7 +345,7 @@ private struct SavySwipeActionTray: View, Animatable {
                             Button { onSelect(action) } label: {
                                 Image(systemName: action.icon)
                                     .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(action.fg)
                                     .frame(width: 64)
                                     .frame(maxHeight: .infinity)
                                     .background(action.bg)

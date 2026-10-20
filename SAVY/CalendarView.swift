@@ -320,7 +320,8 @@ struct CalendarView: View {
             SavySwipeAction(
                 title: reminder.status == .completed ? "Reopen" : "Done",
                 icon: reminder.status == .completed ? "arrow.uturn.left" : "checkmark",
-                bg: Brand.crimson
+                bg: SavyTheme.bottomNavTan,
+                fg: SavyTheme.deepNavy
             ) {
                 if reminder.status == .completed {
                     store.uncomplete(reminder)
