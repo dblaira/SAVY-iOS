@@ -155,7 +155,7 @@ extension SocialPost {
             .components(separatedBy: .newlines)
             .first?
             .trimmingCharacters(in: .whitespaces) ?? ""
-        return first.isEmpty ? "Post" : first
+        return first.isEmpty ? "Social" : first
     }
 
     var hasContent: Bool {

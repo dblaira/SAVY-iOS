@@ -122,7 +122,7 @@ enum ReminderKind: String, Codable, CaseIterable, Identifiable {
         case .reminder: return "Reminder"
         case .action: return "Action"
         case .event: return "Event"
-        case .post: return "Post"
+        case .post: return "Social"
         }
     }
 

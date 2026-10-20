@@ -88,7 +88,7 @@ struct SocialPostFormView: View {
             .onChange(of: recoveryContents) { _, _ in saveRecoveryDraft() }
             .onChange(of: scenePhase) { _, phase in if phase != .active { saveRecoveryDraft() } }
             .onDisappear { autosaveIfNeeded() }
-            .alert("Couldn't save Post", isPresented: $saveFailed) {
+            .alert("Couldn't save Social", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text("Keep this form open. Your latest changes could not be saved to this device.")
@@ -391,7 +391,7 @@ struct SocialPostFormView: View {
 }
 
 private enum PostFormCopy {
-    static let postHeader = "Post"
+    static let postHeader = "Social"
     static let postPrompt = "My point of view, word for word"
     static let sourceHeader = "Source"
     static let linePrompt = "The line, the number, the name — exactly as it was"

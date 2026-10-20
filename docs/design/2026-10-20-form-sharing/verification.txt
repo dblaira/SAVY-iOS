@@ -1,0 +1,35 @@
+SAVY form sharing verification — 2026-10-20
+
+Final behavior: tap Share -> native destination picker -> entire current form.
+No Entire form / Delegate only scope choice. Metadata included; images excluded.
+Approved control preserved: icon only, 64-point circle, 30-point glyph, centered,
+22-point overlap above a solid 1-point divider, white footer through safe area.
+
+All functional checks used isolated iPhone 17 Pro Max simulator storage on iOS 27.
+/tmp/form-sharing-20261020/SAVY-entire-only-final.xcresult
+/tmp/form-sharing-20261020/savy-entire-only-final.log
+5 export unit tests and 1 sharing UI test passed. TEST SUCCEEDED.
+The UI test checks FAB geometry, Social wording, keyboard reachability, direct native
+Copy, exact complete content, editing and sharing again, return to the unchanged
+editor, and Cancel without creating an entry. Current screenshots were inspected.
+
+The initial repeated-share test assumed that tapping a populated field placed the
+cursor at the end. Copy correctly reflected the sentence inserted at the beginning.
+The test now places the cursor explicitly and asserts the field before sharing.
+No app change was made for that test correction.
+
+Physical iPhone installation requested by Adam:
+Signed Debug build: BUILD SUCCEEDED.
+/tmp/form-sharing-20261020/savy-entire-only-device-build.log
+Install: /tmp/form-sharing-20261020/entire-only-phone-install.json
+Launch: /tmp/form-sharing-20261020/entire-only-phone-launch.json
+Observed Home: /tmp/form-sharing-20261020/entire-only-phone-launched.png
+Before install: app in background; fresh recovery file contained zero entries.
+Saved reminders were byte-for-byte unchanged after installation (47 entries).
+Sharing interactions were tested in the simulator, not on the live phone.
+
+Earlier validation before the scope choice was removed:
+/tmp/form-sharing-20261020/SAVY-final-share.xcresult
+152 unit tests and 3 UI tests passed; all 10 existing form regressions passed
+before the placement revisions. The approved divider layout separately passed
+the existing keyboard cursor regression.

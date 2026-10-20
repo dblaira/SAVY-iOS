@@ -299,11 +299,12 @@ final class SAVYPostEntryThemeTests: XCTestCase {
 
     func testReminderKindHasPostWithCalendarSegmentLabel() {
         XCTAssertEqual(ReminderKind.allCases, [.reminder, .action, .event, .post], "No fifth type")
-        XCTAssertEqual(ReminderKind.post.label, "Post")
+        XCTAssertEqual(ReminderKind.post.label, "Social")
         // The control shows Calendar (Adam's mockup); the model keeps `event` underneath.
         XCTAssertEqual(ReminderKind.event.segmentLabel, "Calendar")
         XCTAssertEqual(ReminderKind.event.rawValue, "event")
-        XCTAssertEqual(ReminderKind.post.segmentLabel, "Post")
+        XCTAssertEqual(ReminderKind.post.segmentLabel, "Social")
+        XCTAssertEqual(ReminderKind.post.rawValue, "post", "Existing saved entries keep their type")
     }
 
     // MARK: - Persistence: theme id/name + ordered answers + every Reminder field

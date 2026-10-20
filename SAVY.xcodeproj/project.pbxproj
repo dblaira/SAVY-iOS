@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A3A0D3406A228E428734A901 /* EntryDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3A0D3406A228E428734A902 /* EntryDraftStore.swift */; };
 		09B7E4626804496E1984EDFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 78F623BD250D3308A5C58730 /* Assets.xcassets */; };
 		0D0A57207DA072F43E1862AC /* AppRuntimeBoundary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */; };
 		0DEC481DE44FA8A87924CE5F /* PersonalAuthorityReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A499383C68DF06FF84C7D0BE /* PersonalAuthorityReview.swift */; };
@@ -57,6 +56,7 @@
 		80068A3107B8C87C89E78ED5 /* NewsChannelStories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D2ECF2A7BA6E72BA230B401 /* NewsChannelStories.swift */; };
 		8066C740B4B0BDADEA45B999 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D831D78FD50C7055D086693B /* CalendarView.swift */; };
 		87D855FACC418AF0944607BD /* BeliefEntryDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B628940E009E8560B8D9EF50 /* BeliefEntryDisplay.swift */; };
+		88337AF99E5BF9ADF975C3C2 /* SAVYCardTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ECEB3307AC869648A92922B /* SAVYCardTitleTests.swift */; };
 		894DD5FEC0ECEAB5B11B26A3 /* SavyCloudSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CBD1D6487DFB82AC66E7F27 /* SavyCloudSyncState.swift */; };
 		8BC975E4F41657E0093670AB /* NativeNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 826F7F00C571ECDD018421A2 /* NativeNotificationScheduler.swift */; };
 		91BDC3FB046133C9C67A83DA /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA02A326CF8327C0B2833F07 /* RootView.swift */; };
@@ -64,7 +64,9 @@
 		958C686D7303C29C8B8407C9 /* ReminderNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBF301632E7B7DDBCB4E2E96 /* ReminderNotificationScheduler.swift */; };
 		9D7ECDC238F7365A18AE487F /* SocialPostFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8BD89A861F5D8F81C7AD8A6 /* SocialPostFormView.swift */; };
 		9F6BC503481DB377D87643B2 /* AmplifyAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B4F10E8CE7EE4541EAB90 /* AmplifyAuthService.swift */; };
+		A210C2B2E7DDE296FBD75513 /* EntrySharingUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682BB2C33370C6DD1DC30076 /* EntrySharingUITests.swift */; };
 		A50DD570C6AE44AD5BAF0B64 /* SAVYPostEntryThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D942B1ADBDE5E18D310F3A5D /* SAVYPostEntryThemeTests.swift */; };
+		A63C58C4BE53382650ED7A40 /* EntryDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6220F2DD7589DBAB4CACF3F4 /* EntryDraftStore.swift */; };
 		A89DAF0D5D6D98E9E78EE6FC /* ReminderBrandTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */; };
 		AAA2D77A09E280E865841C8C /* SavyShellComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A831A22DE6C20BC44B1AC8 /* SavyShellComponents.swift */; };
 		AAF320BAEFA2EBB57FE1B015 /* SAVYHomeCardOrderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 647CD1669EAB59E50E94B81D /* SAVYHomeCardOrderTests.swift */; };
@@ -78,9 +80,13 @@
 		C8EA3573BC9BF4B70B764A95 /* SavyDocumentSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46A5EA9584834E12D2294201 /* SavyDocumentSync.swift */; };
 		C9960738D9435B15A59E10C1 /* ReminderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50C26D6E893A7ED48A6BB03 /* ReminderModels.swift */; };
 		CA1D59D86BCA442507A85B23 /* LocalImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D2C98AAE037C6FD17F3D409 /* LocalImageStore.swift */; };
+		D4280D1DEF487B76D6E79B37 /* EntryShareMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1126744E8585BC921FBA0DF0 /* EntryShareMenu.swift */; };
 		D4978EC1F20F344B087862B3 /* SavyLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CD74063706864F16360321 /* SavyLocationProvider.swift */; };
 		DA958E6153EFC6478AD8DCDA /* SavyReminderScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA30048EC8E5615CFB651053 /* SavyReminderScreens.swift */; };
+		DC9762BF9A3DCDE0A66F80CF /* EntryShareContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFA21340B537B83D0689FE1 /* EntryShareContent.swift */; };
 		E0B2389A35640A13329FB075 /* SAVYCloudImageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550EE4C3FC208125CEB115D5 /* SAVYCloudImageTests.swift */; };
+		E15EDD5654E39EC535C91980 /* EntryShareContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD8EFEEC816A3A51D4B7412 /* EntryShareContentTests.swift */; };
+		E31D7D151C3053D0D64DDC90 /* SavyCardTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC834D505965AE097560577 /* SavyCardTitle.swift */; };
 		E7F5F0E200B631EE00F748F4 /* SAVYReminderActionCalendarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */; };
 		EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C471C0DAFF40B2987170667F /* ConnectionView.swift */; };
 		EF5F11DC0E410FB3E004478D /* HarnessDelegationCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */; };
@@ -93,8 +99,6 @@
 		F9D017595E45F66066BFCD86 /* SAVYDocumentSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BDE47B1F7BF625C3C94F3E /* SAVYDocumentSyncTests.swift */; };
 		FB92695DBC94ACEDB02DFB81 /* CloudKitDocumentSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64DD65A7BF63DCFABFA2E66 /* CloudKitDocumentSync.swift */; };
 		FF94BAD45782F70A66588AAB /* BiometricUnlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */; };
-		E31D7D151C3053D0D64DDC90 /* SavyCardTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC834D505965AE097560577 /* SavyCardTitle.swift */; };
-		88337AF99E5BF9ADF975C3C2 /* SAVYCardTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ECEB3307AC869648A92922B /* SAVYCardTitleTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -115,9 +119,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A3A0D3406A228E428734A902 /* EntryDraftStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDraftStore.swift; sourceTree = "<group>"; };
 		0664053D22FAA613F02569D1 /* SAVY.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAVY.entitlements; sourceTree = "<group>"; };
 		0DA56611B45F0D0FC844211C /* CaptureEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEntry.swift; sourceTree = "<group>"; };
+		1126744E8585BC921FBA0DF0 /* EntryShareMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryShareMenu.swift; sourceTree = "<group>"; };
 		13CD74063706864F16360321 /* SavyLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyLocationProvider.swift; sourceTree = "<group>"; };
 		17179B6886F43D8A8BB3911C /* AWSGraphClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AWSGraphClient.swift; sourceTree = "<group>"; };
 		1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricUnlocker.swift; sourceTree = "<group>"; };
@@ -129,6 +133,7 @@
 		36FDEF49FFD195622B48C4A1 /* SAVYPostFormUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYPostFormUITests.swift; sourceTree = "<group>"; };
 		3AECBF69B00E80D33E8615BC /* SAVYHeaderOverscrollUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYHeaderOverscrollUITests.swift; sourceTree = "<group>"; };
 		3CBD1D6487DFB82AC66E7F27 /* SavyCloudSyncState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCloudSyncState.swift; sourceTree = "<group>"; };
+		3CD8EFEEC816A3A51D4B7412 /* EntryShareContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryShareContentTests.swift; sourceTree = "<group>"; };
 		4102AF21CEECC9B183B07C38 /* ReminderRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderRepository.swift; sourceTree = "<group>"; };
 		44B158E4E3B37B90666E0541 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		451BB5DA28F4CB244411B091 /* LeverageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeverageModels.swift; sourceTree = "<group>"; };
@@ -142,9 +147,11 @@
 		5D2C98AAE037C6FD17F3D409 /* LocalImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalImageStore.swift; sourceTree = "<group>"; };
 		5D2ECF2A7BA6E72BA230B401 /* NewsChannelStories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsChannelStories.swift; sourceTree = "<group>"; };
 		60BDE47B1F7BF625C3C94F3E /* SAVYDocumentSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYDocumentSyncTests.swift; sourceTree = "<group>"; };
+		6220F2DD7589DBAB4CACF3F4 /* EntryDraftStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDraftStore.swift; sourceTree = "<group>"; };
 		638EB1315627EDB95D6A993D /* PostCardOrderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCardOrderStore.swift; sourceTree = "<group>"; };
 		647CD1669EAB59E50E94B81D /* SAVYHomeCardOrderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYHomeCardOrderTests.swift; sourceTree = "<group>"; };
 		664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYNativeBoundaryTests.swift; sourceTree = "<group>"; };
+		682BB2C33370C6DD1DC30076 /* EntrySharingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntrySharingUITests.swift; sourceTree = "<group>"; };
 		6B58977B66F839B5E2B7D72B /* SavyCardPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCardPreferences.swift; sourceTree = "<group>"; };
 		6C6C144C69E4ECE420740763 /* LeverageDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeverageDataStore.swift; sourceTree = "<group>"; };
 		6DC7E0E10C3DC45A574F62B0 /* PersonalAuthorityCandidates.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PersonalAuthorityCandidates.json; sourceTree = "<group>"; };
@@ -162,6 +169,7 @@
 		834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStore.swift; sourceTree = "<group>"; };
 		850DE84FECED715402B5470F /* SavyCarouselDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCarouselDetails.swift; sourceTree = "<group>"; };
 		871BD4E6C5423FBBB43C168D /* ReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderStore.swift; sourceTree = "<group>"; };
+		8ECEB3307AC869648A92922B /* SAVYCardTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYCardTitleTests.swift; sourceTree = "<group>"; };
 		901DD1227751F518D3265B4B /* AppRuntimeBoundary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeBoundary.swift; sourceTree = "<group>"; };
 		92B0991DF7D62B465801D80E /* SAVYCardReorderUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYCardReorderUITests.swift; sourceTree = "<group>"; };
 		9349759A323CFF455E48F26B /* NewsChannelPosts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsChannelPosts.swift; sourceTree = "<group>"; };
@@ -174,6 +182,7 @@
 		A8BD89A861F5D8F81C7AD8A6 /* SocialPostFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialPostFormView.swift; sourceTree = "<group>"; };
 		AA30048EC8E5615CFB651053 /* SavyReminderScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyReminderScreens.swift; sourceTree = "<group>"; };
 		ABE0950195FA99739FEAC0D6 /* AuthenticationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationStore.swift; sourceTree = "<group>"; };
+		ACFA21340B537B83D0689FE1 /* EntryShareContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryShareContent.swift; sourceTree = "<group>"; };
 		B54FEFBEF48D0376704923F0 /* BodoniModa-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BodoniModa-Regular.ttf"; sourceTree = "<group>"; };
 		B62835A3E93CCCE1E25CCDA2 /* MetadataEntryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataEntryStore.swift; sourceTree = "<group>"; };
 		B628940E009E8560B8D9EF50 /* BeliefEntryDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeliefEntryDisplay.swift; sourceTree = "<group>"; };
@@ -197,6 +206,7 @@
 		DA7BB7AA8C7BCE337E18D90E /* ReminderLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderLocationProvider.swift; sourceTree = "<group>"; };
 		DBF301632E7B7DDBCB4E2E96 /* ReminderNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderNotificationScheduler.swift; sourceTree = "<group>"; };
 		DDDD4D509835EB86FA442344 /* SAVYConnectionEntryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYConnectionEntryUITests.swift; sourceTree = "<group>"; };
+		DFC834D505965AE097560577 /* SavyCardTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCardTitle.swift; sourceTree = "<group>"; };
 		E1D0B59B31ED879E86FA80A2 /* SavyNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyNavigation.swift; sourceTree = "<group>"; };
 		E4E7E8BF9260C3CE66E04A7B /* AWSGraphDiagnostic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AWSGraphDiagnostic.swift; sourceTree = "<group>"; };
 		E4ED3C16D837153701CB8BF9 /* PostNumberAllocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostNumberAllocator.swift; sourceTree = "<group>"; };
@@ -204,9 +214,7 @@
 		EA0D30A16C055A01DD4AD0D7 /* ReminderCalendarIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderCalendarIntegration.swift; sourceTree = "<group>"; };
 		EA7934A9D7A6F4BDAF6F17B3 /* SAVYConnectionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYConnectionStoreTests.swift; sourceTree = "<group>"; };
 		F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBrandTheme.swift; sourceTree = "<group>"; };
-		"TEMP_A87B41FA-6F91-41F3-9D8C-AF11CA113711" /* SAVY.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SAVY.xcconfig; sourceTree = "<group>"; };
-		DFC834D505965AE097560577 /* SavyCardTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCardTitle.swift; sourceTree = "<group>"; };
-		8ECEB3307AC869648A92922B /* SAVYCardTitleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYCardTitleTests.swift; sourceTree = "<group>"; };
+		"TEMP_55691FD1-425F-4B9E-B6FC-7AD51FC774BD" /* SAVY.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SAVY.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -246,6 +254,7 @@
 		54384D66314DE9A7C58CAF7D /* SAVYTests */ = {
 			isa = PBXGroup;
 			children = (
+				3CD8EFEEC816A3A51D4B7412 /* EntryShareContentTests.swift */,
 				8ECEB3307AC869648A92922B /* SAVYCardTitleTests.swift */,
 				550EE4C3FC208125CEB115D5 /* SAVYCloudImageTests.swift */,
 				D20265989F50668FC1DB741D /* SAVYCloudSyncTests.swift */,
@@ -291,6 +300,9 @@
 				58498AC93E0D1130E068EFA1 /* ConnectionStore.swift */,
 				C471C0DAFF40B2987170667F /* ConnectionView.swift */,
 				C449FB84177A8881F7797CD6 /* CowboyAIReasoning.swift */,
+				6220F2DD7589DBAB4CACF3F4 /* EntryDraftStore.swift */,
+				ACFA21340B537B83D0689FE1 /* EntryShareContent.swift */,
+				1126744E8585BC921FBA0DF0 /* EntryShareMenu.swift */,
 				801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */,
 				44B158E4E3B37B90666E0541 /* Info.plist */,
 				834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */,
@@ -316,7 +328,6 @@
 				4102AF21CEECC9B183B07C38 /* ReminderRepository.swift */,
 				778D6D330400704956EDB2E6 /* ReminderScheduleView.swift */,
 				871BD4E6C5423FBBB43C168D /* ReminderStore.swift */,
-				A3A0D3406A228E428734A902 /* EntryDraftStore.swift */,
 				BA02A326CF8327C0B2833F07 /* RootView.swift */,
 				5921F17E5659B27B8A23DCCC /* SAVY-Mac.entitlements */,
 				0664053D22FAA613F02569D1 /* SAVY.entitlements */,
@@ -350,6 +361,7 @@
 		B04A7A0C7EE66517EEA3C9AB /* SAVYUITests */ = {
 			isa = PBXGroup;
 			children = (
+				682BB2C33370C6DD1DC30076 /* EntrySharingUITests.swift */,
 				92B0991DF7D62B465801D80E /* SAVYCardReorderUITests.swift */,
 				DDDD4D509835EB86FA442344 /* SAVYConnectionEntryUITests.swift */,
 				C9097749206EB8223EC12F04 /* SAVYDelegateTextExpansionUITests.swift */,
@@ -368,10 +380,10 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		"TEMP_270D2A50-F712-40D8-924E-CE99B25F844A" /* SAVY-iOS */ = {
+		"TEMP_2F344E79-4520-4296-AC03-421EEE1C2B70" /* SAVY-iOS */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_A87B41FA-6F91-41F3-9D8C-AF11CA113711" /* SAVY.xcconfig */,
+				"TEMP_55691FD1-425F-4B9E-B6FC-7AD51FC774BD" /* SAVY.xcconfig */,
 			);
 			path = "SAVY-iOS";
 			sourceTree = "<group>";
@@ -505,6 +517,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A210C2B2E7DDE296FBD75513 /* EntrySharingUITests.swift in Sources */,
 				B6AA7A79A5B642A3838436E1 /* SAVYCardReorderUITests.swift in Sources */,
 				37B4D42884193345DC5A38DF /* SAVYConnectionEntryUITests.swift in Sources */,
 				F245C75739A60D835FFAC8A5 /* SAVYDelegateTextExpansionUITests.swift in Sources */,
@@ -518,6 +531,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E15EDD5654E39EC535C91980 /* EntryShareContentTests.swift in Sources */,
 				88337AF99E5BF9ADF975C3C2 /* SAVYCardTitleTests.swift in Sources */,
 				E0B2389A35640A13329FB075 /* SAVYCloudImageTests.swift in Sources */,
 				4C4426B0C60F6FBF20F096F1 /* SAVYCloudSyncTests.swift in Sources */,
@@ -552,6 +566,9 @@
 				72528E9860FFA2A639DD4B46 /* ConnectionStore.swift in Sources */,
 				EEA7A83657C73B2AD5CC2374 /* ConnectionView.swift in Sources */,
 				14AA37145A324AFFEA888E6D /* CowboyAIReasoning.swift in Sources */,
+				A63C58C4BE53382650ED7A40 /* EntryDraftStore.swift in Sources */,
+				DC9762BF9A3DCDE0A66F80CF /* EntryShareContent.swift in Sources */,
+				D4280D1DEF487B76D6E79B37 /* EntryShareMenu.swift in Sources */,
 				EF5F11DC0E410FB3E004478D /* HarnessDelegationCapture.swift in Sources */,
 				B08901980D703317D3D7D0D7 /* KeychainSessionStore.swift in Sources */,
 				57E78791EDB9525E26984968 /* LeverageContent.swift in Sources */,
@@ -576,7 +593,6 @@
 				1BC480F076BA7FF0EE901491 /* ReminderRepository.swift in Sources */,
 				59806C1E6B49BDD2A2876D74 /* ReminderScheduleView.swift in Sources */,
 				112871D3E216094034CC342B /* ReminderStore.swift in Sources */,
-				A3A0D3406A228E428734A901 /* EntryDraftStore.swift in Sources */,
 				91BDC3FB046133C9C67A83DA /* RootView.swift in Sources */,
 				1B367673938BEF897C285682 /* SAVYApp.swift in Sources */,
 				3F7B3160739570FC3FC121F6 /* SavyCardPreferences.swift in Sources */,
@@ -620,7 +636,7 @@
 /* Begin XCBuildConfiguration section */
 		377CFB8BE2AD3D588F9A36E1 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_A87B41FA-6F91-41F3-9D8C-AF11CA113711" /* SAVY.xcconfig */;
+			baseConfigurationReference = "TEMP_55691FD1-425F-4B9E-B6FC-7AD51FC774BD" /* SAVY.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -779,7 +795,7 @@
 		};
 		EEF21691D2CC21239BA5B2DC /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_A87B41FA-6F91-41F3-9D8C-AF11CA113711" /* SAVY.xcconfig */;
+			baseConfigurationReference = "TEMP_55691FD1-425F-4B9E-B6FC-7AD51FC774BD" /* SAVY.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

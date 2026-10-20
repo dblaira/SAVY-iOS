@@ -91,7 +91,11 @@ struct ReminderFormView: View {
             .tint(Brand.crimson)
             // The keyboard row sits on top of the keyboard while any box has the cursor.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if Self.showsKeyboardRow, activeField != nil { keyboardRow }
+                VStack(spacing: 0) {
+                    EntryShareBar(content: shareContent, isEnabled: !isSaving,
+                                  bottomPadding: RootHomeLayout.bottomNavigationBottomPadding)
+                    if Self.showsKeyboardRow, activeField != nil { keyboardRow }
+                }
             }
             // Header mirrors the Title as you type — the type name until the first character, then
             // the live title at full size. Compact icon buttons leave it more room.
@@ -177,6 +181,41 @@ struct ReminderFormView: View {
 
     private var entryLabel: String { connectionMode ? "Connection" : r.kind.label }
     private var hasDecideQuestions: Bool { true }
+
+    private var shareContent: EntryShareContent {
+        var entry = r
+        postDraft.apply(to: &entry)
+        entry.subtasks = subtasks
+        entry.tags = EntryShareContent.tags(r.tags, pending: tagDraft)
+        var scheduleMetadata: [String]?
+        if let schedule = entry.schedule {
+            let zone = TimeZone(identifier: schedule.timeZoneIdentifier) ?? .current
+            scheduleMetadata = [
+                "Starts: \(EntryShareContent.dateText(schedule.startDate, includesTime: !schedule.isAllDay, timeZone: zone))",
+                "Ends: \(EntryShareContent.dateText(schedule.endDate, includesTime: !schedule.isAllDay, timeZone: zone))",
+                "All-day: \(schedule.isAllDay ? "Yes" : "No")",
+                "Time zone: \(schedule.timeZoneIdentifier)",
+                "Alert: \(schedule.alert.label)",
+                "Calendar: \(CalendarScheduleBridge.shared.calendarLabel(id: schedule.calendarIdentifier))",
+            ]
+            if schedule.travelTimeMinutes > 0 {
+                scheduleMetadata?.append("Travel time: \(schedule.travelTimeMinutes) minutes")
+            }
+            if let invitees = schedule.invitees, !invitees.isEmpty {
+                scheduleMetadata?.append("Invitees: \(invitees.joined(separator: ", "))")
+            }
+            if let organizer = schedule.organizerEmail, !organizer.isEmpty {
+                scheduleMetadata?.append("Organizer: \(organizer)")
+            }
+        }
+        var additionalMetadata: [String] = []
+        if let number = entry.postNumber { additionalMetadata.append("Social number: \(number)") }
+        if entry.marksClearSignOfSuccess == true { additionalMetadata.append("Clear Signs of Success: Yes") }
+        if entry.marksCompounding == true { additionalMetadata.append("Compounding: Yes") }
+        return EntryShareContent(entry: entry, sourceApp: "SAVY", entryLabel: entryLabel,
+                                 whenIAm: entry.whenIAm ?? "", scheduleMetadata: scheduleMetadata,
+                                 additionalMetadata: additionalMetadata)
+    }
 
     @ViewBuilder private var unifiedEntrySections: some View {
         // Every entry leads with its theme and Decide questions, followed by shared fields.
