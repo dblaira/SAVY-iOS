@@ -335,7 +335,7 @@ struct ReminderFormView: View {
                 let question = selectedPostTheme.questions.indices.contains(index) ? selectedPostTheme.questions[index] : nil
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Image(systemName: question?.symbol ?? "text.bubble")
-                        .font(.system(size: 16))
+                        .font(Self.decideIconFont)
                         .foregroundStyle(Brand.crimson)
                         .frame(width: 24)
                     PredictiveWritingField(
@@ -356,10 +356,24 @@ struct ReminderFormView: View {
                         UIFont.preferredFont(forTextStyle: .body).ascender
                     }
                 }
+                .padding(.top, Self.decideQuestionTopPadding)
             }
         } header: { sectionHeader(EntryFormCopy.decideHeader) }
         .listRowBackground(Brand.card)
     }
+
+    /// Adam, 2026-10-23: "The top prefilled questions and icons are too close to the top of each
+    /// section." The Mac's rows sit tighter than the iPhone's, so the Mac adds room above each question.
+    /// Adam, 2026-10-23: "It's like the icons are just a little too high." The Mac writes the
+    /// questions in 13-point text, so a 16-point icon stood taller than its question. On the Mac
+    /// the icon takes the question's own text size and sits on its line like a letter.
+    #if targetEnvironment(macCatalyst)
+    private static let decideQuestionTopPadding: CGFloat = 8
+    private static let decideIconFont: Font = .body
+    #else
+    private static let decideQuestionTopPadding: CGFloat = 0
+    private static let decideIconFont: Font = .system(size: 16)
+    #endif
 
     /// The field contains both question and answer; its question is editable saved content.
     private func postAnswerBinding(_ index: Int) -> Binding<String> {
@@ -904,7 +918,27 @@ private struct PredictiveWritingField: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             if !parent.isFocused { parent.onFocusChange(true) }
+            #if targetEnvironment(macCatalyst)
+            // A click places its cursor after this call returns, so the check waits one turn.
+            DispatchQueue.main.async { Self.moveCursorPastQuestion(in: textView) }
+            #endif
         }
+
+        #if targetEnvironment(macCatalyst)
+        /// Adam, 2026-10-23: "make sure that when navigating between each section of the theme the
+        /// cursor begins after the pre-filled question. Not before." and "I ask you to change the
+        /// Mac OS app". On the Mac, a cursor that arrives on the question's line moves to the end
+        /// of the writing. Once in the box, a click goes anywhere. The iPhone is unchanged.
+        static func moveCursorPastQuestion(in textView: UITextView) {
+            guard textView.isFirstResponder, textView.markedTextRange == nil else { return }
+            let storage = textView.text as NSString
+            let lineBreak = storage.range(of: "\n").location
+            let questionEnd = lineBreak == NSNotFound ? storage.length : lineBreak
+            let selection = textView.selectedRange
+            guard selection.length == 0, selection.location <= questionEnd else { return }
+            textView.selectedRange = NSRange(location: storage.length, length: 0)
+        }
+        #endif
 
         func textViewDidEndEditing(_ textView: UITextView) {
             let committed = Self.committedText(in: textView)
