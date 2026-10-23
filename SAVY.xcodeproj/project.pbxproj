@@ -164,7 +164,7 @@
 		7E869D9555384C4E876A5056 /* CaptureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureStore.swift; sourceTree = "<group>"; };
 		7F320F84432D5816D1B13F94 /* SAVYReorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYReorderTests.swift; sourceTree = "<group>"; };
 		801591E869C295CC6A349CAB /* HarnessDelegationCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarnessDelegationCapture.swift; sourceTree = "<group>"; };
-		81B8D9162176E51C28F60467 /* SAVY.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SAVY.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		81B8D9162176E51C28F60467 /* SAVY.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SAVY.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		826F7F00C571ECDD018421A2 /* NativeNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNotificationScheduler.swift; sourceTree = "<group>"; };
 		834D0CB07343F5BA04275170 /* KeychainSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStore.swift; sourceTree = "<group>"; };
 		850DE84FECED715402B5470F /* SavyCarouselDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCarouselDetails.swift; sourceTree = "<group>"; };
@@ -231,6 +231,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0F1BFC50308B2D390063EEF4 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				"TEMP_55691FD1-425F-4B9E-B6FC-7AD51FC774BD" /* SAVY.xcconfig */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		2B1FBB9014C427ADF4F73315 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -248,6 +256,7 @@
 				54384D66314DE9A7C58CAF7D /* SAVYTests */,
 				B04A7A0C7EE66517EEA3C9AB /* SAVYUITests */,
 				2B1FBB9014C427ADF4F73315 /* Products */,
+				0F1BFC50308B2D390063EEF4 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -380,14 +389,6 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		"TEMP_2F344E79-4520-4296-AC03-421EEE1C2B70" /* SAVY-iOS */ = {
-			isa = PBXGroup;
-			children = (
-				"TEMP_55691FD1-425F-4B9E-B6FC-7AD51FC774BD" /* SAVY.xcconfig */,
-			);
-			path = "SAVY-iOS";
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -484,6 +485,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				68776AC4B899A0D049FDE586 /* XCRemoteSwiftPackageReference "amplify-swift" */,
+				0F1BFC51308B2E7C0063EEF4 /* XCRemoteSwiftPackageReference "swift-algorithms" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2B1FBB9014C427ADF4F73315 /* Products */;
@@ -919,6 +921,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		0F1BFC51308B2E7C0063EEF4 /* XCRemoteSwiftPackageReference "swift-algorithms" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-algorithms.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.1;
+			};
+		};
 		68776AC4B899A0D049FDE586 /* XCRemoteSwiftPackageReference "amplify-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/aws-amplify/amplify-swift";
