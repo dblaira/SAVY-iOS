@@ -86,6 +86,9 @@ struct ReminderFormView: View {
 
                 unifiedEntrySections
             }
+            .font(.system(size: 17, weight: .regular))
+            .dynamicTypeSize(.large)
+            .environment(\.legibilityWeight, .regular)
             .scrollContentBackground(.hidden)
             .background(SavyTheme.contentBackground.ignoresSafeArea())
             .accessibilityIdentifier(connectionMode ? "connectionEntryForm" : "sharedEntryForm")
@@ -357,7 +360,7 @@ struct ReminderFormView: View {
                     )
                     .id("\(postDraft.themeID)-\(index)")
                     .alignmentGuide(.firstTextBaseline) { _ in
-                        UIFont.preferredFont(forTextStyle: .body).ascender
+                        UIFont.systemFont(ofSize: 17, weight: .regular).ascender
                     }
                 }
             }
@@ -419,11 +422,11 @@ struct ReminderFormView: View {
                     Image(systemName: visualSymbols[index])
                         .font(.system(size: 16))
                         .foregroundStyle(Brand.crimson)
-                        .frame(width: 24, height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
+                        .frame(width: 24, height: UIFont.systemFont(ofSize: 17, weight: .regular).lineHeight)
                         .onTapGesture { moveCursor(to: .visual(index)) }
                     VStack(alignment: .leading, spacing: 0) {
                         Text(prompt.isEmpty ? "?" : prompt)
-                            .font(.body.weight(.regular))
+                            .font(.system(size: 17, weight: .regular))
                             .foregroundStyle(.black)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -938,8 +941,8 @@ private struct PredictiveWritingField: UIViewRepresentable {
         view.backgroundColor = .clear
         view.textColor = .black
         view.tintColor = UIColor(Brand.crimson)
-        view.font = UIFont.preferredFont(forTextStyle: .body)
-        view.adjustsFontForContentSizeCategory = true
+        view.font = UIFont.systemFont(ofSize: 17, weight: .regular)
+        view.adjustsFontForContentSizeCategory = false
         view.textContainerInset = .zero
         view.textContainer.lineFragmentPadding = 0
         view.isScrollEnabled = false
@@ -979,7 +982,7 @@ private struct PredictiveWritingField: UIViewRepresentable {
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0 else { return nil }
         let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        let minimum = (uiView.font ?? UIFont.preferredFont(forTextStyle: .body)).lineHeight * minimumLines
+        let minimum = (uiView.font ?? UIFont.systemFont(ofSize: 17, weight: .regular)).lineHeight * minimumLines
         return CGSize(width: width, height: ceil(max(minimum, fitted.height)))
     }
 
