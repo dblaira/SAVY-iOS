@@ -35,6 +35,7 @@ struct ReminderFormView: View {
     // The Decide boxes are UIKit text views, which SwiftUI's focus cannot move. This holds
     // which Decide box has the cursor; the keyboard row reads both through `activeField`.
     @State private var decideFocus: Int?
+    @State private var visualFocus: Int?
     @State private var subtasks: [Subtask]
     // Editable questions and answers are shared by Post themes and the fixed Connection theme.
     @State private var postDraft: PostEntryDraft
@@ -184,6 +185,7 @@ struct ReminderFormView: View {
 
     private var shareContent: EntryShareContent {
         var entry = r
+        entry.visualTemplates = visualDraft
         postDraft.apply(to: &entry)
         entry.subtasks = subtasks
         entry.tags = EntryShareContent.tags(r.tags, pending: tagDraft)
@@ -223,6 +225,8 @@ struct ReminderFormView: View {
             postThemeSection
             postDecideSection
         }
+
+        visualTemplatesSection
 
         Section {
             // Grow with content so every character stays visible — no mid-word "..." cutoff.
@@ -373,6 +377,99 @@ struct ReminderFormView: View {
         )
     }
 
+    // MARK: - Visual templates
+
+    private var visualDraft: VisualTemplateDraft { r.visualTemplates ?? VisualTemplateDraft() }
+    private let visualSymbols = ["target", "doc.text", "lightbulb", "person.2"]
+
+    private var visualTemplatesSection: some View {
+        Section {
+            HStack(spacing: 16) {
+                Text("Format").foregroundStyle(.black)
+                Spacer(minLength: 12)
+                Menu {
+                    ForEach(VisualTemplateCatalog.formats) { format in
+                        Button(format.name) {
+                            moveCursor(to: nil)
+                            var draft = visualDraft
+                            draft.selectFormat(format.id)
+                            r.visualTemplates = draft
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(visualDraft.format.name)
+                        Spacer(minLength: 12)
+                        Image(systemName: "chevron.down").font(.system(size: 14))
+                    }
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(minWidth: 180)
+                    .background(.black.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+                    .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Format")
+                .accessibilityValue(visualDraft.format.name)
+                .accessibilityIdentifier("VisualFormat")
+            }
+            ForEach(0..<4, id: \.self) { index in
+                let prompt = visualDraft.questions[index]
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: visualSymbols[index])
+                        .font(.system(size: 16))
+                        .foregroundStyle(Brand.crimson)
+                        .frame(width: 24, height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
+                        .onTapGesture { moveCursor(to: .visual(index)) }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(prompt.isEmpty ? "?" : prompt)
+                            .font(.body.weight(.regular))
+                            .foregroundStyle(.black)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture { moveCursor(to: .visual(index)) }
+                            .accessibilityIdentifier("VisualQuestion\(index)")
+                        PredictiveWritingField(
+                            text: visualAnswerBinding(index),
+                            isFocused: visualFocus == index,
+                            label: prompt.isEmpty ? "Answer \(index + 1)" : prompt,
+                            identifier: "VisualAnswer\(index)",
+                            minimumLines: 2,
+                            onFocusChange: { editing in
+                                if editing {
+                                    decideFocus = nil
+                                    visualFocus = index
+                                } else if visualFocus == index {
+                                    visualFocus = nil
+                                }
+                            }
+                        )
+                        .id("visual-\(visualDraft.selectedFormatID)-\(index)")
+                    }
+                }
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded {
+                    if visualFocus != index { moveCursor(to: .visual(index)) }
+                })
+            }
+        } header: { sectionHeader("Visual templates") }
+        .listRowBackground(Brand.card)
+    }
+
+    private func visualAnswerBinding(_ index: Int) -> Binding<String> {
+        let formatID = visualDraft.selectedFormatID
+        return Binding(
+            get: { visualDraft.answers[index] },
+            set: { text in
+                guard visualDraft.selectedFormatID == formatID else { return }
+                var draft = visualDraft
+                draft.setAnswer(text, at: index)
+                r.visualTemplates = draft
+            }
+        )
+    }
+
     // MARK: - Keyboard row
 
     /// Adam, 2026-09-26: "why can't it replace the word prediction I never fucking use?" It can't.
@@ -388,6 +485,7 @@ struct ReminderFormView: View {
     /// Every box the cursor can sit in, in the order the keyboard row walks them.
     private enum EntryField: Hashable {
         case decide(Int)
+        case visual(Int)
         case title
         case whenIAm
         case doneLooksLike
@@ -452,12 +550,13 @@ struct ReminderFormView: View {
         .accessibilityIdentifier(id)
     }
 
-    /// The boxes in form order: Decide first on a Post, then Delegate, then the Steps, then the tag box.
+    /// The boxes in form order: Decide, Visual templates, Delegate, Steps, then the tag box.
     private var fieldOrder: [EntryField] {
         var order: [EntryField] = []
         if hasDecideQuestions {
             order += postDraft.answers.indices.map { EntryField.decide($0) }
         }
+        order += (0..<4).map { EntryField.visual($0) }
         order += [.title, .whenIAm, .doneLooksLike]
         order += subtasks.map { EntryField.step($0.id) }
         order.append(.tag)
@@ -478,6 +577,7 @@ struct ReminderFormView: View {
 
     /// The box that has the cursor, whether it is a SwiftUI box or a UIKit Decide box.
     private var activeField: EntryField? {
+        if let index = visualFocus { return .visual(index) }
         if let index = decideFocus { return .decide(index) }
         return focusedField
     }
@@ -488,11 +588,17 @@ struct ReminderFormView: View {
         case .decide(let index)?:
             // The UIKit box takes the cursor itself; clearing SwiftUI's focus here as well
             // would dismiss the keyboard out from under it.
+            visualFocus = nil
             decideFocus = index
+        case .visual(let index)?:
+            decideFocus = nil
+            visualFocus = index
         case let other?:
+            visualFocus = nil
             decideFocus = nil
             focusedField = other
         case nil:
+            visualFocus = nil
             decideFocus = nil
             focusedField = nil
         }
@@ -756,6 +862,7 @@ struct ReminderFormView: View {
         if !r.title.trimmingCharacters(in: .whitespaces).isEmpty { return true }
         if !r.notes.isEmpty || !r.outcome.isEmpty || !(r.whenIAm ?? "").isEmpty || !r.url.isEmpty { return true }
         if hasDecideQuestions, postDraft.hasUserContent { return true }
+        if visualDraft.hasUserContent { return true }
         if !r.locationName.isEmpty || !r.waitingOn.isEmpty { return true }
         if !r.tags.isEmpty { return true }
         if subtasks.contains(where: { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }) { return true }
@@ -777,6 +884,7 @@ struct ReminderFormView: View {
             r.dueTime = schedule.isAllDay ? nil : schedule.startDate
             r.endTime = schedule.isAllDay ? nil : schedule.endDate
         }
+        r.visualTemplates = visualDraft
         r.subtasks = subtasks.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
         if hasDecideQuestions {
             postDraft.apply(to: &r)
@@ -819,6 +927,7 @@ private struct PredictiveWritingField: UIViewRepresentable {
     let isFocused: Bool
     let label: String
     let identifier: String
+    var minimumLines: CGFloat = 3
     let onFocusChange: (Bool) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
@@ -870,7 +979,7 @@ private struct PredictiveWritingField: UIViewRepresentable {
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0 else { return nil }
         let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        let minimum = (uiView.font ?? UIFont.preferredFont(forTextStyle: .body)).lineHeight * 3
+        let minimum = (uiView.font ?? UIFont.preferredFont(forTextStyle: .body)).lineHeight * minimumLines
         return CGSize(width: width, height: ceil(max(minimum, fitted.height)))
     }
 

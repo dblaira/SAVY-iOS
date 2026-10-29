@@ -104,11 +104,21 @@ final class SAVYPostFormUITests: XCTestCase {
         element("KeyboardRowUp").tap()
         XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer1")), "Up did not step back")
 
-        // Across the border between the Decide boxes and the Delegate boxes, both ways.
+        // Step through Visual templates between Decide and Delegate, in both directions.
         element("KeyboardRowDecide3").tap()
         XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer3")), "The last Decide icon did not move the cursor")
+        for index in 0..<4 {
+            element("KeyboardRowDown").tap()
+            XCTAssertTrue(hasKeyboardFocus(element("VisualAnswer\(index)")),
+                          "Down did not step into Visual templates answer \(index + 1)")
+        }
         element("KeyboardRowDown").tap()
-        XCTAssertTrue(hasKeyboardFocus(element("Title")), "Down did not step from the last question to What do I want?")
+        XCTAssertTrue(hasKeyboardFocus(element("Title")), "Down did not step from Visual templates to What do I want?")
+        for index in (0..<4).reversed() {
+            element("KeyboardRowUp").tap()
+            XCTAssertTrue(hasKeyboardFocus(element("VisualAnswer\(index)")),
+                          "Up did not step back into Visual templates answer \(index + 1)")
+        }
         element("KeyboardRowUp").tap()
         XCTAssertTrue(hasKeyboardFocus(element("DecideAnswer3")), "Up did not step back into the last question")
 

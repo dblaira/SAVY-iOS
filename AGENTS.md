@@ -1,5 +1,11 @@
 # SAVY iOS Agent Instructions
 
+## Visual templates — October 29, 2026
+
+Adam approved the existing preview and requested: “Okay, now load this on my iOS SAVY app so I can test it while I'm out for a run. Keep the formatting exactly like this.” The shared entry form places Visual templates between Decide and Delegate. Keep one Format menu with the exact twelve choices and four questions from `VisualTemplateCatalog`; Matrices is the initial selection. The seven media Formats keep their existing blank prompts, displayed as `?`.
+
+Questions are static, normal body weight and the same black as Decide. Answers sit directly below with zero top gap, expand without internal scrolling, and use the shared cream row without inner boxes. Tapping the question or its icon focuses only its answer. Do not add the rejected bottom Visual templates disclosure. Retain every Format's answers across switching, Save, private draft recovery, and whole-form Share. Older incoming entries that omit the optional draft must not erase known local writing. Tests use isolated stores; preserve and compare actual phone data around installation.
+
 ## Habit form and theme order — October 15, 2026
 
 Adam: "Add a habit form to the SAVY app. The four directives are these. (Atomic Habits 4 Step Formula) 1. Make it Obvious 2. Make it Easy 3. Make it Attractive 4. Make it Satisfying. This new form should be the first form available on the list, with "A Strong Yes" 2nd on the list, followed by Pattern Recognition, and then Inductive Reasoning. Next should be Mental Model and then "Personal Take & Lessons Learned." The naming should be changed for this one. "Personal Take & Lessons Learned" should be changed to read, "Personal Lessons"."

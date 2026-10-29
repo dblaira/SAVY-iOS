@@ -234,6 +234,8 @@ struct Reminder: Identifiable, Codable, Equatable {
     var postAnswers: [String]? = nil
     // Missing/false means a legacy answer-only record. True preserves even edited questions.
     var postAnswersContainQuestions: Bool? = nil
+    // Optional for older entries; the whole draft retains every explored Format.
+    var visualTemplates: VisualTemplateDraft? = nil
     // Graph + lifecycle
     var seededFromTemplateID: String? = nil
     var pinned: Bool = false                    // sorts to the top of the list
@@ -252,6 +254,12 @@ struct Reminder: Identifiable, Codable, Equatable {
 enum ReminderScheduleSync {
     static func merging(remote: Reminder, local: Reminder?) -> Reminder {
         var result = remote
+        // Older apps omit Visual templates. An explicit clear keeps a nonnil draft
+        // with empty answers, so omission must never erase this device's writing.
+        if result.visualTemplates == nil, let visualTemplates = local?.visualTemplates {
+            result.visualTemplates = visualTemplates
+            result.needsSync = true
+        }
         result.schedule = remote.schedule?.portable
         if let shared = result.schedule {
             var schedule = shared

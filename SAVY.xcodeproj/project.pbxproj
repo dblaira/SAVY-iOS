@@ -99,6 +99,9 @@
 		F9D017595E45F66066BFCD86 /* SAVYDocumentSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BDE47B1F7BF625C3C94F3E /* SAVYDocumentSyncTests.swift */; };
 		FB92695DBC94ACEDB02DFB81 /* CloudKitDocumentSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64DD65A7BF63DCFABFA2E66 /* CloudKitDocumentSync.swift */; };
 		FF94BAD45782F70A66588AAB /* BiometricUnlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */; };
+		C12F94DBC3FC25E8EC5283A4 /* VisualTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39EB5114A22CB8788FD164D /* VisualTemplate.swift */; };
+		12B8D9AEF738514597E5ACE8 /* SAVYVisualTemplateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C38E55828F6FAC7D764BDB55 /* SAVYVisualTemplateTests.swift */; };
+		AF9A4013D7B1ABA7A8EB8D9D /* SAVYVisualTemplatesUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF5ED14E7F700FE3DB8A676 /* SAVYVisualTemplatesUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -215,6 +218,9 @@
 		EA7934A9D7A6F4BDAF6F17B3 /* SAVYConnectionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYConnectionStoreTests.swift; sourceTree = "<group>"; };
 		F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBrandTheme.swift; sourceTree = "<group>"; };
 		"TEMP_55691FD1-425F-4B9E-B6FC-7AD51FC774BD" /* SAVY.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SAVY.xcconfig; sourceTree = "<group>"; };
+		E39EB5114A22CB8788FD164D /* VisualTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualTemplate.swift; sourceTree = "<group>"; };
+		C38E55828F6FAC7D764BDB55 /* SAVYVisualTemplateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYVisualTemplateTests.swift; sourceTree = "<group>"; };
+		4EF5ED14E7F700FE3DB8A676 /* SAVYVisualTemplatesUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYVisualTemplatesUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -273,6 +279,7 @@
 				664A564B57E2C8B78C2C1661 /* SAVYNativeBoundaryTests.swift */,
 				C903B8D6CAA9A40126BE9AF9 /* SAVYPostCardOrderTests.swift */,
 				D942B1ADBDE5E18D310F3A5D /* SAVYPostEntryThemeTests.swift */,
+				C38E55828F6FAC7D764BDB55 /* SAVYVisualTemplateTests.swift */,
 				4E55E0360BA2CAEDA692F662 /* SAVYPostNumberingTests.swift */,
 				7F320F84432D5816D1B13F94 /* SAVYReorderTests.swift */,
 			);
@@ -328,6 +335,7 @@
 				638EB1315627EDB95D6A993D /* PostCardOrderStore.swift */,
 				E4ED3C16D837153701CB8BF9 /* PostNumberAllocator.swift */,
 				1D7380183A27076AE8251934 /* PostTheme.swift */,
+				E39EB5114A22CB8788FD164D /* VisualTemplate.swift */,
 				F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */,
 				EA0D30A16C055A01DD4AD0D7 /* ReminderCalendarIntegration.swift */,
 				9B3873F2C7A6AEBD1AFB0561 /* ReminderFormView.swift */,
@@ -376,6 +384,7 @@
 				C9097749206EB8223EC12F04 /* SAVYDelegateTextExpansionUITests.swift */,
 				3AECBF69B00E80D33E8615BC /* SAVYHeaderOverscrollUITests.swift */,
 				36FDEF49FFD195622B48C4A1 /* SAVYPostFormUITests.swift */,
+				4EF5ED14E7F700FE3DB8A676 /* SAVYVisualTemplatesUITests.swift */,
 				CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */,
 			);
 			path = SAVYUITests;
@@ -525,6 +534,7 @@
 				F245C75739A60D835FFAC8A5 /* SAVYDelegateTextExpansionUITests.swift in Sources */,
 				C65583F6CE815609DC971C67 /* SAVYHeaderOverscrollUITests.swift in Sources */,
 				7BCF23322BA64AB1E372378E /* SAVYPostFormUITests.swift in Sources */,
+				AF9A4013D7B1ABA7A8EB8D9D /* SAVYVisualTemplatesUITests.swift in Sources */,
 				E7F5F0E200B631EE00F748F4 /* SAVYReminderActionCalendarUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -543,6 +553,7 @@
 				75CFCED8B79BC2D6C61D4BDC /* SAVYNativeBoundaryTests.swift in Sources */,
 				2285392FD45FF4EF675A57F2 /* SAVYPostCardOrderTests.swift in Sources */,
 				A50DD570C6AE44AD5BAF0B64 /* SAVYPostEntryThemeTests.swift in Sources */,
+				12B8D9AEF738514597E5ACE8 /* SAVYVisualTemplateTests.swift in Sources */,
 				F63D3DBD638A72AE814EEBF5 /* SAVYPostNumberingTests.swift in Sources */,
 				3F90F38A62B830264198C47D /* SAVYReorderTests.swift in Sources */,
 			);
@@ -586,6 +597,7 @@
 				1490ACB9B5524D942364EDEE /* PostCardOrderStore.swift in Sources */,
 				F7DEFA588F491681FB4405BF /* PostNumberAllocator.swift in Sources */,
 				50423C0003F2C6D059CF99E4 /* PostTheme.swift in Sources */,
+				C12F94DBC3FC25E8EC5283A4 /* VisualTemplate.swift in Sources */,
 				A89DAF0D5D6D98E9E78EE6FC /* ReminderBrandTheme.swift in Sources */,
 				F3CF5FFA8B19816BF92E11C3 /* ReminderCalendarIntegration.swift in Sources */,
 				1BD0BEF6DD141ABC2A8412B5 /* ReminderFormView.swift in Sources */,

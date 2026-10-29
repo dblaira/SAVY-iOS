@@ -9,7 +9,7 @@ cd "$savy_sync_root"
 awk '/^\/\/ MARK: - Transport/ { exit } { print }' SAVY/SavyDocumentSync.swift > "$savy_sync_build/SyncValues.swift"
 awk '/^\/\/\/ The older News\/Advertising posts/ { exit } { print }' SAVY/SavySyncAdapters.swift > "$savy_sync_build/ConnectionsSyncAdapter.swift"
 swiftc -swift-version 6 -parse-as-library \
-  SAVY/PostTheme.swift SAVY/ReminderModels.swift SAVY/ConnectionStore.swift \
+  SAVY/PostTheme.swift SAVY/VisualTemplate.swift SAVY/ReminderModels.swift SAVY/ConnectionStore.swift \
   "$savy_sync_build/SyncValues.swift" "$savy_sync_build/ConnectionsSyncAdapter.swift" \
   scripts/schedule-tests/ConnectionSyncChecks.swift \
   -o "$savy_sync_build/connection-sync-checks"

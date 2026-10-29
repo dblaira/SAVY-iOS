@@ -71,6 +71,7 @@ struct EntryShareContent {
             !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
         if !decisions.isEmpty { whole.append("Decide\n\n" + decisions.joined(separator: "\n\n")) }
+        if let visualTemplates = entry.visualTemplates { whole.append(visualTemplates.shareText) }
         whole.append(delegation)
         let steps = entry.subtasks.filter { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         if !steps.isEmpty {

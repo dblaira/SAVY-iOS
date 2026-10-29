@@ -13,7 +13,7 @@ cat scripts/schedule-tests/ReminderSyncChecks.swift >> "$savy_sync_build/Checks.
 awk '/^\/\/\/ Cloud-backed reminder repository/ { exit } { print }' SAVY/ReminderRepository.swift \
   > "$savy_sync_build/ReminderRepository.swift"
 swiftc -swift-version 6 -parse-as-library \
-  SAVY/PostTheme.swift SAVY/ReminderModels.swift SAVY/ReminderStore.swift \
+  SAVY/PostTheme.swift SAVY/VisualTemplate.swift SAVY/ReminderModels.swift SAVY/ReminderStore.swift \
   "$savy_sync_build/ReminderRepository.swift" "$savy_sync_build/Checks.swift" \
   -o "$savy_sync_build/reminder-sync-checks"
 "$savy_sync_build/reminder-sync-checks"

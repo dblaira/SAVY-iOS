@@ -10,7 +10,7 @@ if [[ "${1:-}" == "--characterize" ]]; then
   printf 'import Combine\n' > "$savy_cloud_build/PostsAndStories.swift"
   cat SAVY/SocialPost.swift SAVY/Story.swift >> "$savy_cloud_build/PostsAndStories.swift"
   swiftc -swift-version 6 -parse-as-library \
-    SAVY/PostTheme.swift SAVY/ReminderModels.swift SAVY/PostNumberAllocator.swift \
+    SAVY/PostTheme.swift SAVY/VisualTemplate.swift SAVY/ReminderModels.swift SAVY/PostNumberAllocator.swift \
     "$savy_cloud_build/PostsAndStories.swift" scripts/cloudkit-tests/PersistenceCharacterization.swift \
     -o "$savy_cloud_build/persistence-checks"
   "$savy_cloud_build/persistence-checks"
@@ -23,7 +23,7 @@ awk '/^\/\/ MARK: - Transport/ { exit } { print }' SAVY/SavyDocumentSync.swift >
 awk '/^\/\/\/ Card order and pins/ { exit } { print }' SAVY/SavySyncAdapters.swift > "$savy_cloud_build/ContentAdapters.swift"
 awk '/^\/\/\/ Cloud-backed reminder repository/ { exit } { print }' SAVY/ReminderRepository.swift > "$savy_cloud_build/ReminderRepository.swift"
 swiftc -swift-version 6 -parse-as-library \
-  SAVY/PostTheme.swift SAVY/ReminderModels.swift SAVY/PostNumberAllocator.swift \
+  SAVY/PostTheme.swift SAVY/VisualTemplate.swift SAVY/ReminderModels.swift SAVY/PostNumberAllocator.swift \
   SAVY/ReminderStore.swift SAVY/ConnectionStore.swift SAVY/SocialPost.swift SAVY/Story.swift \
   SAVY/SavyCloudSyncState.swift "$savy_cloud_build/SyncValues.swift" \
   "$savy_cloud_build/ContentAdapters.swift" "$savy_cloud_build/ReminderRepository.swift" \
