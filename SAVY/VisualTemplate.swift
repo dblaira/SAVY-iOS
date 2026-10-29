@@ -5,6 +5,23 @@ struct VisualTemplate: Identifiable, Equatable {
     let id: String
     let name: String
     let questions: [String]
+
+    var symbol: String {
+        switch id {
+        case "Summarize": return "text.alignleft"
+        case "Tables": return "tablecells"
+        case "Matrices": return "square.grid.2x2"
+        case "Node Trees": return "point.3.connected.trianglepath.dotted"
+        case "Graphic Imagery": return "photo.on.rectangle.angled"
+        case "Slides": return "rectangle.on.rectangle"
+        case "Charts": return "chart.bar"
+        case "Images": return "photo"
+        case "Video": return "video"
+        case "Audio": return "waveform"
+        case "Music": return "music.note"
+        default: return "doc.text"
+        }
+    }
 }
 
 enum VisualTemplateCatalog {

@@ -1,0 +1,76 @@
+{
+  "nativeSelectorInteractions": {
+    "devicesAndConfigurations": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "468CF85C-327F-42ED-AF07-BF4D51AF909F",
+          "deviceName": "iPhone 17 Pro Max",
+          "modelName": "iPhone 17 Pro Max",
+          "osBuildNumber": "24A5408d",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 3,
+        "skippedTests": 0,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ],
+    "environmentDescription": "SAVY \u00b7 Built with macOS 27.2",
+    "expectedFailures": 0,
+    "failedTests": 0,
+    "finishTime": 1793311688.733,
+    "passedTests": 3,
+    "result": "Passed",
+    "runtimeWarnings": [],
+    "skippedTests": 0,
+    "startTime": 1793311526.547,
+    "statistics": [],
+    "testFailures": [],
+    "title": "Test - SAVY",
+    "topInsights": [],
+    "totalTestCount": 3
+  },
+  "finalSource": {
+    "devicesAndConfigurations": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "468CF85C-327F-42ED-AF07-BF4D51AF909F",
+          "deviceName": "iPhone 17 Pro Max",
+          "modelName": "iPhone 17 Pro Max",
+          "osBuildNumber": "24A5408d",
+          "osVersion": "27.0",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 0,
+        "passedTests": 9,
+        "skippedTests": 0,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ],
+    "environmentDescription": "SAVY \u00b7 Built with macOS 27.2",
+    "expectedFailures": 0,
+    "failedTests": 0,
+    "finishTime": 1793311775.891,
+    "passedTests": 9,
+    "result": "Passed",
+    "runtimeWarnings": [],
+    "skippedTests": 0,
+    "startTime": 1793311721.76,
+    "statistics": [],
+    "testFailures": [],
+    "title": "Test - SAVY",
+    "topInsights": [],
+    "totalTestCount": 9
+  }
+}

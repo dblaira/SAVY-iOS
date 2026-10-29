@@ -313,7 +313,7 @@ struct ReminderFormView: View {
                         Label {
                             Text(theme.name)
                         } icon: {
-                            Image(uiImage: postThemeIcon(theme))
+                            Image(uiImage: formPickerIcon(theme.questions.first?.symbol ?? "list.bullet"))
                         }
                         .tag(theme.id)
                     }
@@ -328,9 +328,8 @@ struct ReminderFormView: View {
         .listRowBackground(Brand.card)
     }
 
-    private func postThemeIcon(_ theme: PostTheme) -> UIImage {
+    private func formPickerIcon(_ symbol: String) -> UIImage {
         let configuration = UIImage.SymbolConfiguration(pointSize: 16, weight: .regular)
-        let symbol = theme.questions.first?.symbol ?? "list.bullet"
         // Native menus otherwise retint symbols; preserve the exact form icon color.
         return (UIImage(systemName: symbol, withConfiguration: configuration) ?? UIImage())
             .withTintColor(UIColor(Brand.crimson), renderingMode: .alwaysOriginal)
@@ -383,39 +382,39 @@ struct ReminderFormView: View {
     // MARK: - Visual templates
 
     private var visualDraft: VisualTemplateDraft { r.visualTemplates ?? VisualTemplateDraft() }
+    private var visualFormatChoices: [VisualTemplate] {
+        let selected = visualDraft.format
+        let formats = VisualTemplateCatalog.formats
+        return formats.contains { $0.id == selected.id } ? formats : [selected] + formats
+    }
     private let visualSymbols = ["target", "doc.text", "lightbulb", "person.2"]
 
     private var visualTemplatesSection: some View {
         Section {
-            HStack(spacing: 16) {
-                Text("Format").foregroundStyle(.black)
-                Spacer(minLength: 12)
-                Menu {
-                    ForEach(VisualTemplateCatalog.formats) { format in
-                        Button(format.name) {
-                            moveCursor(to: nil)
-                            var draft = visualDraft
-                            draft.selectFormat(format.id)
-                            r.visualTemplates = draft
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text(visualDraft.format.name)
-                        Spacer(minLength: 12)
-                        Image(systemName: "chevron.down").font(.system(size: 14))
-                    }
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .frame(minWidth: 180)
-                    .background(.black.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
-                    .contentShape(Rectangle())
+            Picker(selection: Binding(
+                get: { visualDraft.selectedFormatID },
+                set: { formatID in
+                    moveCursor(to: nil)
+                    var draft = visualDraft
+                    draft.selectFormat(formatID)
+                    r.visualTemplates = draft
                 }
-                .accessibilityLabel("Format")
-                .accessibilityValue(visualDraft.format.name)
-                .accessibilityIdentifier("VisualFormat")
+            )) {
+                ForEach(visualFormatChoices) { format in
+                    Label {
+                        Text(format.name)
+                    } icon: {
+                        Image(uiImage: formPickerIcon(format.symbol))
+                    }
+                    .tag(format.id)
+                }
+            } label: {
+                Label("Format", systemImage: "list.bullet")
             }
+            .pickerStyle(.menu)
+            .tint(Brand.crimson)
+            .accessibilityIdentifier("VisualFormat")
+            .accessibilityValue(visualDraft.format.name)
             ForEach(0..<4, id: \.self) { index in
                 let prompt = visualDraft.questions[index]
                 HStack(alignment: .top, spacing: 10) {

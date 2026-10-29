@@ -85,8 +85,15 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
         attach("Visual templates recovered draft")
 
         app.buttons["Save"].firstMatch.tap()
-        XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12))
         XCTAssertTrue(app.buttons["Save"].firstMatch.waitForNonExistence(timeout: 8))
+        XCTAssertTrue(element("sharedEntryForm").waitForNonExistence(timeout: 8),
+                      "Saving the recovered entry must close its editor")
+        // Recovery opens from Home; Save returns there rather than taking the quick-entry route.
+        openPostsPage()
+        XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12))
+        let savedRows = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'postEntryRow-'"))
+        XCTAssertEqual(savedRows.count, 1, "Saving the recovered draft must create exactly one post")
         app.terminate()
         app.launchArguments.removeAll { $0 == "SAVY_UI_TEST_RESET_REMINDERS" }
         app.launch()
@@ -169,9 +176,20 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
         for _ in 0..<10 {
             let frame = target.frame
             let visibleTop = visibleNavigationBottom + 10
-            if target.isHittable && frame.minY >= visibleTop && frame.maxY < app.frame.maxY - 155 { return }
-            if target.exists && frame.minY < visibleTop { form.swipeDown() }
-            else { form.swipeUp() }
+            let visibleBottom = app.frame.maxY - 155
+            if target.isHittable && frame.minY >= visibleTop && frame.maxY < visibleBottom { return }
+
+            // A full swipe can move a nearby control past the opposite viewport edge.
+            // Drag a bounded distance toward the middle and stop before lifting the finger.
+            let middleY = (visibleTop + visibleBottom) / 2
+            let maximumDrag = min(CGFloat(220), (visibleBottom - visibleTop) * 0.35)
+            let displacement = max(-maximumDrag, min(maximumDrag, middleY - frame.midY))
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(CGVector(dx: form.frame.midX - app.frame.minX,
+                                                   dy: middleY - app.frame.minY))
+            let end = start.withOffset(CGVector(dx: 0, dy: displacement))
+            start.press(forDuration: 0.05, thenDragTo: end,
+                        withVelocity: .slow, thenHoldForDuration: 0.15)
         }
         XCTAssertTrue(target.isHittable, "The requested Visual templates control is not reachable")
         XCTAssertGreaterThanOrEqual(target.frame.minY, visibleNavigationBottom + 10,
