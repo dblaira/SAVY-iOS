@@ -86,9 +86,11 @@ struct ReminderFormView: View {
 
                 unifiedEntrySections
             }
+            #if !targetEnvironment(macCatalyst)
             .font(.system(size: 17, weight: .regular))
             .dynamicTypeSize(.large)
             .environment(\.legibilityWeight, .regular)
+            #endif
             .scrollContentBackground(.hidden)
             .background(SavyTheme.contentBackground.ignoresSafeArea())
             .accessibilityIdentifier(connectionMode ? "connectionEntryForm" : "sharedEntryForm")
@@ -341,7 +343,7 @@ struct ReminderFormView: View {
                 let question = selectedPostTheme.questions.indices.contains(index) ? selectedPostTheme.questions[index] : nil
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Image(systemName: question?.symbol ?? "text.bubble")
-                        .font(.system(size: 16))
+                        .font(Self.decideIconFont)
                         .foregroundStyle(Brand.crimson)
                         .frame(width: 24)
                     PredictiveWritingField(
@@ -349,6 +351,7 @@ struct ReminderFormView: View {
                         isFocused: decideFocus == index,
                         label: question?.prompt ?? "Decide",
                         identifier: "DecideAnswer\(index)",
+                        movesCursorPastQuestion: true,
                         onFocusChange: { editing in
                             if editing {
                                 decideFocus = index
@@ -359,13 +362,25 @@ struct ReminderFormView: View {
                     )
                     .id("\(postDraft.themeID)-\(index)")
                     .alignmentGuide(.firstTextBaseline) { _ in
-                        UIFont.systemFont(ofSize: 17, weight: .regular).ascender
+                        PredictiveWritingField.writingFont.ascender
                     }
                 }
+                .padding(.top, Self.decideQuestionTopPadding)
             }
         } header: { sectionHeader(EntryFormCopy.decideHeader) }
         .listRowBackground(Brand.card)
     }
+
+    // Preserve the Mac form treatment approved on October 23.
+    #if targetEnvironment(macCatalyst)
+    private static let decideQuestionTopPadding: CGFloat = 8
+    private static let decideIconFont: Font = .body
+    private static let questionFont: Font = .body
+    #else
+    private static let decideQuestionTopPadding: CGFloat = 0
+    private static let decideIconFont: Font = .system(size: 16)
+    private static let questionFont: Font = .system(size: 17, weight: .regular)
+    #endif
 
     /// The field contains both question and answer; its question is editable saved content.
     private func postAnswerBinding(_ index: Int) -> Binding<String> {
@@ -419,13 +434,13 @@ struct ReminderFormView: View {
                 let prompt = visualDraft.questions[index]
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: visualSymbols[index])
-                        .font(.system(size: 16))
+                        .font(Self.decideIconFont)
                         .foregroundStyle(Brand.crimson)
-                        .frame(width: 24, height: UIFont.systemFont(ofSize: 17, weight: .regular).lineHeight)
+                        .frame(width: 24, height: PredictiveWritingField.writingFont.lineHeight)
                         .onTapGesture { moveCursor(to: .visual(index)) }
                     VStack(alignment: .leading, spacing: 0) {
                         Text(prompt.isEmpty ? "?" : prompt)
-                            .font(.system(size: 17, weight: .regular))
+                            .font(Self.questionFont)
                             .foregroundStyle(.black)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -454,6 +469,7 @@ struct ReminderFormView: View {
                 .simultaneousGesture(TapGesture().onEnded {
                     if visualFocus != index { moveCursor(to: .visual(index)) }
                 })
+                .padding(.top, Self.decideQuestionTopPadding)
             }
         } header: { sectionHeader("Visual templates") }
         .listRowBackground(Brand.card)
@@ -930,7 +946,16 @@ private struct PredictiveWritingField: UIViewRepresentable {
     let label: String
     let identifier: String
     var minimumLines: CGFloat = 3
+    var movesCursorPastQuestion = false
     let onFocusChange: (Bool) -> Void
+
+    static var writingFont: UIFont {
+        #if targetEnvironment(macCatalyst)
+        UIFont.preferredFont(forTextStyle: .body)
+        #else
+        UIFont.systemFont(ofSize: 17, weight: .regular)
+        #endif
+    }
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
@@ -940,8 +965,12 @@ private struct PredictiveWritingField: UIViewRepresentable {
         view.backgroundColor = .clear
         view.textColor = .black
         view.tintColor = UIColor(Brand.crimson)
-        view.font = UIFont.systemFont(ofSize: 17, weight: .regular)
+        view.font = Self.writingFont
+        #if targetEnvironment(macCatalyst)
+        view.adjustsFontForContentSizeCategory = true
+        #else
         view.adjustsFontForContentSizeCategory = false
+        #endif
         view.textContainerInset = .zero
         view.textContainer.lineFragmentPadding = 0
         view.isScrollEnabled = false
@@ -981,7 +1010,7 @@ private struct PredictiveWritingField: UIViewRepresentable {
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width > 0 else { return nil }
         let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-        let minimum = (uiView.font ?? UIFont.systemFont(ofSize: 17, weight: .regular)).lineHeight * minimumLines
+        let minimum = (uiView.font ?? Self.writingFont).lineHeight * minimumLines
         return CGSize(width: width, height: ceil(max(minimum, fitted.height)))
     }
 
@@ -1015,7 +1044,25 @@ private struct PredictiveWritingField: UIViewRepresentable {
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             if !parent.isFocused { parent.onFocusChange(true) }
+            #if targetEnvironment(macCatalyst)
+            // Mac finalizes click selection after this callback. Only Decide embeds a question.
+            if parent.movesCursorPastQuestion {
+                DispatchQueue.main.async { Self.moveCursorPastQuestion(in: textView) }
+            }
+            #endif
         }
+
+        #if targetEnvironment(macCatalyst)
+        static func moveCursorPastQuestion(in textView: UITextView) {
+            guard textView.isFirstResponder, textView.markedTextRange == nil else { return }
+            let storage = textView.text as NSString
+            let lineBreak = storage.range(of: "\n").location
+            let questionEnd = lineBreak == NSNotFound ? storage.length : lineBreak
+            let selection = textView.selectedRange
+            guard selection.length == 0, selection.location <= questionEnd else { return }
+            textView.selectedRange = NSRange(location: storage.length, length: 0)
+        }
+        #endif
 
         func textViewDidEndEditing(_ textView: UITextView) {
             let committed = Self.committedText(in: textView)

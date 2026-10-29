@@ -130,6 +130,51 @@ final class SAVYPostFormUITests: XCTestCase {
         attach("03 keyboard and row gone after Done")
     }
 
+    /// Adam, 2026-10-23: "make sure that when navigating between each section of the theme the
+    /// cursor begins after the pre-filled question. Not before." and "I ask you to change the Mac
+    /// OS app". The Mac has no keyboard row, so a click on the question itself moves between
+    /// boxes; the cursor still lands after it. The iPhone is unchanged, so this runs on the Mac.
+    func testClickingAQuestionPutsTheCursorAfterIt() throws {
+        #if !targetEnvironment(macCatalyst)
+        throw XCTSkip("Only the Mac app moves the cursor past the question.")
+        #else
+        let fab = element("chargeFab")
+        XCTAssertTrue(fab.waitForExistence(timeout: 20), "Charge FAB missing")
+        fab.tapOrClick()
+        let postDoor = app.buttons["Social"].firstMatch
+        XCTAssertTrue(postDoor.waitForExistence(timeout: 5), "Post door missing from the fan")
+        postDoor.tapOrClick()
+        XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 10), "Decide questions missing")
+
+        // The first letter of the question is where a click would put the cursor before it.
+        let second = element("DecideAnswer1")
+        second.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.1)).tapOrClick()
+        XCTAssertTrue(hasKeyboardFocus(second), "Clicking the question did not put the cursor in its box")
+        second.typeText("Answer")
+        // A gray continuation may trail the typed word, so check what was typed and where.
+        XCTAssertTrue((second.value as? String ?? "").hasPrefix("Make it Easy\nAnswer"),
+                      "The cursor began inside or before the question")
+        attach("01 writing starts on the line under the question")
+
+        // Moving to another box puts the cursor after that box's question too.
+        let first = element("DecideAnswer0")
+        first.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.1)).tapOrClick()
+        XCTAssertTrue(hasKeyboardFocus(first), "Clicking the first question did not move the cursor")
+        first.typeText("Start")
+        XCTAssertTrue((first.value as? String ?? "").hasPrefix(firstPrompt + "\nStart"),
+                      "The cursor began inside or before the first question")
+
+        // Coming back to a box with writing in it continues after that writing.
+        second.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.1)).tapOrClick()
+        XCTAssertTrue(hasKeyboardFocus(second), "Clicking back on the question did not move the cursor")
+        second.typeText(" more")
+        let returned = second.value as? String ?? ""
+        XCTAssertTrue(returned.hasPrefix("Make it Easy\nAnswer") && returned.contains(" more"),
+                      "Coming back put the cursor inside or before the question")
+        attach("02 cursor after the question when coming back")
+        #endif
+    }
+
     func testThemePickerOffersAdamsNewThemesAndLoadsTheirQuestions() {
         openPostsPage()
         openNewPost()

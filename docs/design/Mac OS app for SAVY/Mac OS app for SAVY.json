@@ -1,0 +1,41 @@
+{
+  "isolated_saved_records": 1,
+  "selected_format": "Matrices",
+  "matrices_answer_exact": true,
+  "summarize_answer_exact": true,
+  "live_saved_records": 54,
+  "live_records_unchanged": true,
+  "live_editor_drafts": 0,
+  "after_installation": {
+    "reminders.json": {
+      "byte_identical": true,
+      "sha256": "290809451fac29fb3179b08dc087c5fa6eae97b860ed23c0a17e5c76553ff0b2",
+      "top_level_count": 54
+    },
+    "SAVY/entry-drafts.json": {
+      "byte_identical": true,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "top_level_count": 0
+    },
+    "SAVY/connections.json": {
+      "byte_identical": true,
+      "sha256": "ebe689ea6b11e84b221e50cb75f9707f82de7e32b03e12b9a9756d90c54e36ab",
+      "top_level_count": 3
+    },
+    "SAVY/posts.json": {
+      "byte_identical": true,
+      "sha256": "513e147cb4b2cf55f93241e8b8d49718ece2824c8835a9c0e38f1b87768692d6",
+      "top_level_count": 1
+    }
+  },
+  "installed_release": {
+    "path": "/Applications/SAVY.app",
+    "build_and_run_verify_exit_code": 0,
+    "signature_verified": true,
+    "running_executable": "/Applications/SAVY.app/Contents/MacOS/SAVY",
+    "observed_pid": 52662,
+    "saved_posts_visible_in_production_ui": 20,
+    "visual_templates_form_visible": true,
+    "blank_editor_closed_without_saving": true
+  }
+}

@@ -35,7 +35,7 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
         let emptyHeight = answer.frame.height
         attach("Visual templates before writing")
 
-        question.tap()
+        question.tapOrClick()
         XCTAssertTrue(hasKeyboardFocus(answer), "Tapping the question must focus its answer")
         let firstLine = "Synthetic matrix answer."
         answer.typeText(firstLine)
@@ -46,7 +46,7 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
 
         let additionalLines = (2...9).map { "Line \($0) stays fully visible." }.joined(separator: "\n")
         reveal(question)
-        question.tap()
+        question.tapOrClick()
         XCTAssertTrue(hasKeyboardFocus(answer))
         answer.typeText("\n" + additionalLines)
         dismissKeyboard()
@@ -71,7 +71,7 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
 
         // Terminate while the answer has focus: no Save or editor dismissal first.
         reveal(app.staticTexts["VisualQuestion0"])
-        app.staticTexts["VisualQuestion0"].tap()
+        app.staticTexts["VisualQuestion0"].tapOrClick()
         XCTAssertTrue(hasKeyboardFocus(app.textViews["VisualAnswer0"]))
         app.terminate()
         app.launchArguments.append("SAVY_UI_TEST_KEEP_DRAFTS")
@@ -84,7 +84,7 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
         assertAnswer(summaryAnswer, question: summaryQuestion)
         attach("Visual templates recovered draft")
 
-        app.buttons["Save"].firstMatch.tap()
+        app.buttons["Save"].firstMatch.tapOrClick()
         XCTAssertTrue(app.buttons["Save"].firstMatch.waitForNonExistence(timeout: 8))
         XCTAssertTrue(element("sharedEntryForm").waitForNonExistence(timeout: 8),
                       "Saving the recovered entry must close its editor")
@@ -103,7 +103,7 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH 'postEntryRow-'"))
             .firstMatch
         XCTAssertTrue(savedPost.waitForExistence(timeout: 10), "The saved Visual templates entry is missing")
-        savedPost.tap()
+        savedPost.tapOrClick()
         XCTAssertTrue(element("VisualFormat").waitForExistence(timeout: 10))
         XCTAssertEqual(element("VisualFormat").value as? String, "Summarize",
                        "Save/reopen must retain the selected Format")
@@ -113,13 +113,60 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
         attach("Visual templates saved and reopened")
     }
 
+    #if targetEnvironment(macCatalyst)
+    func testMacFormatMenuShowsAllTwelveChoices() {
+        openPost()
+        let format = element("VisualFormat")
+        reveal(format)
+        attach("Mac Theme and Visual templates")
+        openFormatMenu(format)
+        let names = ["Summarize", "Tables", "Matrices", "Node Trees", "Graphic Imagery", "Slides",
+                     "Charts", "Images", "Video", "Audio", "Music", "Example"]
+        XCTAssertTrue(formatOption("Matrices").waitForExistence(timeout: 5))
+        for name in names {
+            XCTAssertTrue(formatOption(name).exists, "The Format menu is missing \(name)")
+            XCTAssertTrue(formatOption(name).isHittable, "The Format choice \(name) is not reachable")
+        }
+        attach("Mac Format menu all twelve choices")
+        formatOption("Matrices").tapOrClick()
+        XCTAssertEqual(format.value as? String, "Matrices")
+    }
+
+    func testMacClickingAnExistingVisualAnswerFirstLineDoesNotJumpToTheEnd() {
+        openPost()
+        let original = "First line stays editable.\nSecond line stays editable.\nLast line must stay last."
+        enterAnswer(original, question: matrixQuestion)
+        let otherQuestion = app.staticTexts["VisualQuestion1"]
+        reveal(otherQuestion)
+        otherQuestion.tapOrClick()
+        let otherAnswer = app.textViews["VisualAnswer1"]
+        XCTAssertTrue(hasKeyboardFocus(otherAnswer))
+        otherAnswer.typeText("Other field.")
+
+        let answer = app.textViews["VisualAnswer0"]
+        reveal(answer)
+        answer.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 2, dy: 2)).tapOrClick()
+        XCTAssertTrue(hasKeyboardFocus(answer))
+        answer.typeText("EDIT ")
+        XCTAssertEqual(answer.value as? String, "EDIT " + original,
+                       "Entering an existing Visual answer must preserve the clicked first-line insertion point")
+        XCTAssertEqual(app.staticTexts["VisualQuestion0"].label, matrixQuestion)
+
+        answer.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 2, dy: 2)).tapOrClick()
+        answer.typeText("MORE ")
+        XCTAssertEqual(answer.value as? String, "MORE EDIT " + original,
+                       "Clicking again within the same Visual answer must not jump to its end")
+        attach("Mac Visual first line stays editable")
+    }
+    #endif
+
     private func openPost() {
         let fab = element("chargeFab")
         XCTAssertTrue(fab.waitForExistence(timeout: 20))
-        fab.tap()
+        fab.tapOrClick()
         let social = app.buttons["Social"].firstMatch
         XCTAssertTrue(social.waitForExistence(timeout: 5))
-        social.tap()
+        social.tapOrClick()
         XCTAssertTrue(element("VisualFormat").waitForExistence(timeout: 10))
     }
 
@@ -127,7 +174,14 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
         let card = element("homeContentSection-news-channel")
         XCTAssertTrue(card.waitForExistence(timeout: 20))
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
-        for _ in 0..<8 where !card.isHittable { homeScroll.swipeUp() }
+        for _ in 0..<8 where !card.isHittable {
+            #if targetEnvironment(macCatalyst)
+            homeScroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .scroll(byDeltaX: 0, deltaY: -220)
+            #else
+            homeScroll.swipeUp()
+            #endif
+        }
         XCTAssertTrue(card.isHittable)
         card.tapOrClick()
         XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12))
@@ -137,7 +191,7 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
         let label = app.staticTexts["VisualQuestion0"]
         reveal(label)
         XCTAssertEqual(label.label, question)
-        label.tap()
+        label.tapOrClick()
         let answer = app.textViews["VisualAnswer0"]
         XCTAssertTrue(hasKeyboardFocus(answer))
         answer.typeText(text)
@@ -155,8 +209,8 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
     private func selectFormat(_ name: String) {
         let format = element("VisualFormat")
         reveal(format)
-        format.tap()
-        let option = app.buttons[name].firstMatch
+        openFormatMenu(format)
+        let option = formatOption(name)
         let optionExists = option.waitForExistence(timeout: 5)
         if !optionExists {
             attach("Visual templates Format menu")
@@ -166,13 +220,46 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
             add(hierarchy)
         }
         XCTAssertTrue(optionExists, "The Format menu is missing \(name)")
-        option.tap()
+        option.tapOrClick()
         XCTAssertEqual(format.value as? String, name)
+    }
+
+    private func openFormatMenu(_ format: XCUIElement) {
+        #if targetEnvironment(macCatalyst)
+        // Native Mac Picker accessibility spans its label and the popup value on the right.
+        format.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tapOrClick()
+        #else
+        format.tap()
+        #endif
+    }
+
+    private func formatOption(_ name: String) -> XCUIElement {
+        #if targetEnvironment(macCatalyst)
+        app.descendants(matching: .any).matching(NSPredicate(
+            format: "(elementType == %d OR elementType == %d) AND label == %@",
+            XCUIElement.ElementType.button.rawValue, XCUIElement.ElementType.menuItem.rawValue, name
+        )).firstMatch
+        #else
+        app.buttons[name].firstMatch
+        #endif
     }
 
     private func reveal(_ target: XCUIElement) {
         dismissKeyboard()
         let form = element("sharedEntryForm")
+        #if targetEnvironment(macCatalyst)
+        let viewport = form.frame.intersection(app.interactionFrame).insetBy(dx: 0, dy: 16)
+        for _ in 0..<10 {
+            let frame = target.frame
+            if target.isHittable && frame.minY >= viewport.minY && frame.maxY <= viewport.maxY { return }
+            let displacement = max(CGFloat(-220), min(CGFloat(220), viewport.midY - frame.midY))
+            form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .scroll(byDeltaX: 0, deltaY: displacement)
+        }
+        XCTAssertTrue(target.isHittable, "The requested Visual templates control is not reachable on Mac")
+        XCTAssertGreaterThanOrEqual(target.frame.minY, viewport.minY)
+        XCTAssertLessThanOrEqual(target.frame.maxY, viewport.maxY)
+        #else
         for _ in 0..<10 {
             let frame = target.frame
             let visibleTop = visibleNavigationBottom + 10
@@ -196,6 +283,7 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
                                     "The control remains behind the navigation bar")
         XCTAssertLessThan(target.frame.maxY, app.frame.maxY - 155,
                           "The control remains behind the bottom controls")
+        #endif
     }
 
     private var visibleNavigationBottom: CGFloat {
@@ -210,7 +298,7 @@ final class SAVYVisualTemplatesUITests: XCTestCase {
     private func dismissKeyboard() {
         let done = element("KeyboardRowDone")
         if done.exists {
-            done.tap()
+            done.tapOrClick()
             XCTAssertTrue(done.waitForNonExistence(timeout: 5))
         }
     }
