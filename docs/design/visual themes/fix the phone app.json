@@ -1,0 +1,37 @@
+{
+  "request": "fix the phone app",
+  "built_source_commit": "244b5a382a7bd7529658a7b6adb1b3061fc0ea73",
+  "built_product": "/tmp/savy-picker-correction-build/Build/Products/Debug-iphoneos/SAVY.app",
+  "build_log": "/tmp/savy-phone-visual-build.log",
+  "installation": "succeeded",
+  "normal_launch": "succeeded",
+  "phone": "iPhone 17 Pro Max",
+  "ui_source": "Visual uses the same native Picker and Label pattern as Theme/Habit; no stretched gray custom Menu background.",
+  "changes_this_turn": "No application source edits. Installed the already-committed native picker and label corrections.",
+  "physical_screen_observation": "Normal SAVY Home screen observed after launch.",
+  "physical_form_observation": "Pending. iPhone Mirroring reports iPhone in Use and requires the phone to be locked.",
+  "saved_stores": {
+    "reminders.json": {
+      "count": 54,
+      "sha256": "6f9ac34293fd99c37836721854d3cbd51035caf2ed610d013aba8af7cd2798f4",
+      "unchanged": true
+    },
+    "SAVY/entry-drafts.json": {
+      "count": 0,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "unchanged": true
+    },
+    "SAVY/connections.json": {
+      "count": 3,
+      "sha256": "796cde4572c992205e0cdd2b8dce860253ef199b6a4ad7c7cc13a13ce9d52899",
+      "unchanged": true
+    },
+    "SAVY/posts.json": {
+      "count": 1,
+      "sha256": "a62d03520d8dd562e4105f7f13e758ab7ba93c168918aebc4db3297ca455bd49",
+      "unchanged": true
+    }
+  },
+  "private_backup": "/tmp/savy-phone-visual-woi0w69a",
+  "mac_status": "Further Mac appearance work deferred; no Mac installation this turn."
+}

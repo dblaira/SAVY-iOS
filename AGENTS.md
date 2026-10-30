@@ -1,5 +1,17 @@
 # SAVY iOS Agent Instructions
 
+## fix the phone app — October 29, 2026
+
+Adam: “I never want to see an obvious drop down menu on my fucking app.”
+
+Adam's current “fix the phone app” request authorizes physical-iPhone installation and verification. It supersedes the temporary restriction while he was out. The existing active-editor and saved-data preservation requirements still apply.
+
+The signed shared source `244b5a3` is installed and normal SAVY launched. The last recorded phone installation was `6ce67b7`; the native Picker correction in `e799b08` and the later label changes had not reached it. No source change was needed in this installation turn. Fresh before/after hashes match for all four compared saved stores. The reminder archive still contains 54 records and recovery drafts remain empty. The physical Home screen is observed; final physical form appearance verification remains pending while iPhone Mirroring reports “iPhone in Use”. Do not equate installation or the Home screenshot with form appearance acceptance.
+
+Adam rejected the Mac appearance. Further Mac changes are deferred. Earlier successful Mac builds and installations do not establish visual acceptance.
+
+Evidence: [fix the phone app](<docs/design/visual themes/fix the phone app.md>).
+
 ## Visual — October 29, 2026
 
 Adam requested removing the standalone Theme heading above its selector and the standalone Visual templates heading. The selector row keeps Theme; the other selector row now says Visual instead of Format. These are shared-form presentation changes only. Preserve the existing fonts, icons, questions, answer behavior and saved data. Internal identifiers and share-export wording are unchanged.
@@ -10,9 +22,11 @@ Adam approved the existing preview and requested: “Okay, now load this on my i
 
 Questions are static and the same black as Decide. After Adam's font correction, the iOS form uses fixed 17-point regular text with local regular legibility. Its UIKit editors use the same fixed font without automatic size adjustment. Subsequent measurement matched all four prompts in the original iPhone IMG_3129.png to native 17-point semibold glyphs at over 99.3% pixel overlap. The first installation screenshot also measured 17-point semibold. The 17-point correction changed weight and font-setting behavior; it did not restore a measured smaller font. Answers sit directly below with zero top gap, expand without internal scrolling, and use the shared cream row without inner boxes. Tapping the question or its icon focuses only its answer. Do not add the rejected bottom Visual templates disclosure. Retain every Format's answers across switching, Save, private draft recovery, and whole-form Share. Older incoming entries that omit the optional draft must not erase known local writing. Tests use isolated stores; preserve and compare actual phone data around installation.
 
-Adam's later phone screenshot explicitly uses Theme/Habit as the selector reference: “Make sure the visual themes have the same goddamn fucking look as the other ones”. Format must use the same native menu Picker and Label pattern as Theme, with crimson selected text and a crimson format icon. Both use the same 16-point regular icon-rendering helper. Do not restore the stretched gray custom Menu background. Preserve an unknown saved selected Format as a tagged option. Keep the existing Decide typography and row spacing; a proposed compact-row experiment was stopped when Adam supplied this reference. The correction is prepared and tested off-phone while Adam is out; do not install or relaunch on his phone during that work.
+Adam's later phone screenshot explicitly uses Theme/Habit as the selector reference: “Make sure the visual themes have the same goddamn fucking look as the other ones”. Format must use the same native menu Picker and Label pattern as Theme, with crimson selected text and a crimson format icon. Both use the same 16-point regular icon-rendering helper. Do not restore the stretched gray custom Menu background. Preserve an unknown saved selected Format as a tagged option. Keep the existing Decide typography and row spacing; a proposed compact-row experiment was stopped when Adam supplied this reference. The correction was prepared off-phone during that research interval. Adam’s later “fix the phone app” request authorizes the current physical-iPhone installation and verification.
 
 ## Mac OS app for SAVY — October 29, 2026
+
+The October 29 Mac appearance is unaccepted and further Mac changes are deferred. Preserve the current Mac state until Adam explicitly reopens that work.
 
 Adam requested the same Visual templates addition for the Mac app. Mac Catalyst uses the shared catalog, picker, expanding answers, persistence, recovery and sharing. Preserve the installed Mac's approved October 23 behavior from commit 8a02f4e: native body typography, body-sized question icons, 8-point top padding, and delayed cursor placement after the embedded Decide question. The iPhone's fixed font/legibility overrides are iOS-only. Visual answers have separate static questions, so they must never use the Decide cursor helper: direct clicks anywhere in an existing Visual answer retain their intended position. The Mac's Visual question rows use its existing body typography and question spacing. Keep additional Mac changes conditional; do not change the iPhone's typography or interaction behavior. Before replacing the Mac app, verify no active editor, back up its live container, and compare the actual saved entries after installation. UI tests use isolated text-only stores.
 
