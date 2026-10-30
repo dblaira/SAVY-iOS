@@ -326,7 +326,7 @@ struct ReminderFormView: View {
                 .tint(Brand.crimson)
                 .accessibilityIdentifier("PostTheme")
             }
-        } header: { sectionHeader(EntryFormCopy.themeHeader) }
+        }
         .listRowBackground(Brand.card)
     }
 
@@ -424,7 +424,7 @@ struct ReminderFormView: View {
                     .tag(format.id)
                 }
             } label: {
-                Label("Format", systemImage: "list.bullet")
+                Label("Visual", systemImage: "list.bullet")
             }
             .pickerStyle(.menu)
             .tint(Brand.crimson)
@@ -471,7 +471,7 @@ struct ReminderFormView: View {
                 })
                 .padding(.top, Self.decideQuestionTopPadding)
             }
-        } header: { sectionHeader("Visual templates") }
+        }
         .listRowBackground(Brand.card)
     }
 

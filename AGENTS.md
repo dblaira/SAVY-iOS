@@ -1,5 +1,9 @@
 # SAVY iOS Agent Instructions
 
+## Visual — October 29, 2026
+
+Adam requested removing the standalone Theme heading above its selector and the standalone Visual templates heading. The selector row keeps Theme; the other selector row now says Visual instead of Format. These are shared-form presentation changes only. Preserve the existing fonts, icons, questions, answer behavior and saved data. Internal identifiers and share-export wording are unchanged.
+
 ## Visual templates — October 29, 2026
 
 Adam approved the existing preview and requested: “Okay, now load this on my iOS SAVY app so I can test it while I'm out for a run. Keep the formatting exactly like this.” The shared entry form places Visual templates between Decide and Delegate. Keep one Format menu with the exact twelve choices and four questions from `VisualTemplateCatalog`; Matrices is the initial selection. The seven media Formats keep their existing blank prompts, displayed as `?`.
