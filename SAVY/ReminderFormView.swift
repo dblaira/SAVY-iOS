@@ -258,25 +258,12 @@ struct ReminderFormView: View {
         visualTemplatesSection
 
         Section {
-            // Grow with content so every character stays visible — no mid-word "..." cutoff.
-            TextField(EntryFormCopy.wantPrompt, text: $r.title, axis: .vertical)
-                .lineLimit(1...)
-                .textFieldStyle(.plain)
-                .fixedSize(horizontal: false, vertical: true)
-                .focused($focusedField, equals: .title)
-                .accessibilityIdentifier("Title")
-            TextField(EntryFormCopy.whenPrompt, text: whenIAmBinding, axis: .vertical)
-                .lineLimit(1...)
-                .textFieldStyle(.plain)
-                .fixedSize(horizontal: false, vertical: true)
-                .focused($focusedField, equals: .whenIAm)
-                .accessibilityIdentifier("WhenIAm")
-            TextField(EntryFormCopy.donePrompt, text: $r.outcome, axis: .vertical)
-                .lineLimit(1...)
-                .textFieldStyle(.plain)
-                .fixedSize(horizontal: false, vertical: true)
-                .focused($focusedField, equals: .doneLooksLike)
-                .accessibilityIdentifier("DoneLooksLike")
+            delegateField(EntryFormCopy.wantPrompt, text: $r.title,
+                          identifier: "Title", field: .title, symbol: "target")
+            delegateField(EntryFormCopy.whenPrompt, text: whenIAmBinding,
+                          identifier: "WhenIAm", field: .whenIAm, symbol: "lightbulb")
+            delegateField(EntryFormCopy.donePrompt, text: $r.outcome,
+                          identifier: "DoneLooksLike", field: .doneLooksLike, symbol: "checkmark.circle")
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
         .listRowBackground(Brand.card)
 
@@ -897,6 +884,43 @@ struct ReminderFormView: View {
     }
 
     // MARK: - Reusable field groups
+
+    /// Delegate keeps its question visible while the answer grows directly underneath.
+    private func delegateField(_ prompt: String, text: Binding<String>, identifier: String,
+                               field: EntryField, symbol: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol)
+                .font(Self.decideIconFont)
+                .foregroundStyle(Brand.crimson)
+                .frame(width: 24, height: PredictiveWritingField.writingFont.lineHeight)
+                .onTapGesture { moveCursor(to: field) }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(prompt)
+                    .font(Self.questionFont)
+                    .foregroundStyle(.black)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { moveCursor(to: field) }
+                    .accessibilityIdentifier("DelegateQuestion\(identifier)")
+                TextField("", text: text, axis: .vertical)
+                    .lineLimit(1...)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(.black)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: PredictiveWritingField.writingFont.lineHeight * 2,
+                           alignment: .topLeading)
+                    .focused($focusedField, equals: field)
+                    .accessibilityLabel(prompt)
+                    .accessibilityIdentifier(identifier)
+            }
+        }
+        .contentShape(Rectangle())
+        .simultaneousGesture(TapGesture().onEnded {
+            if activeField != field { moveCursor(to: field) }
+        })
+        .padding(.top, Self.decideQuestionTopPadding)
+    }
 
     private func sectionHeader(_ title: String) -> some View {
         Text(title)

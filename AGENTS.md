@@ -1,5 +1,15 @@
 # SAVY iOS Agent Instructions
 
+## Delegate entry boxes — October 29, 2026
+
+Adam: “One other request.  Match the Delegate entry boxes to the other entry forms.  They should not be muted and disappear when text is entered. They should be the same as Decide, and Visual.”
+
+This current direction supersedes the temporary muted-placeholder styling in Delegate. Keep each Delegate question permanently visible in black regular text, matching Decide and Visual. Put the growing answer directly below it with no extra stack gap. Use the existing question font and crimson icon treatment in both apps. Preserve font sizes, field identifiers, writing bindings and data models. Question and icon taps focus the matching answer. The whole-row tap guard uses the active field so returning from a UIKit question editor works without moving the caret inside an already-focused Delegate answer.
+
+The correction is installed and directly inspected in SAVY’s actual Mac Social form and in both physical-iPhone apps. All three Delegate questions match Visual’s dark body styling. Tapping the first prompt placed the caret directly below it. Blank live forms were canceled without writing or saving. SAVY’s final focused UI tests passed 2/2 with zero failures. All four Mac archives are byte-identical after installation and cancellation. Understood’s 14 phone files are byte-identical; SAVY’s writing and media are unchanged, with only two CloudKit metadata files changed among 24 files. Understood full QC is still running after one existing ProArrangement file-picker case failed at an immediate Menu retap with invalid coordinates; an unchanged retry is pending. Commit, push and final-revision GitHub verification are pending. Preserve each app’s active-editor and saved-data requirements before future installations.
+
+Evidence: [Delegate entry boxes](<docs/design/Delegate entry boxes/Delegate entry boxes.md>).
+
 ## consistent styling — October 29, 2026
 
 Adam: “Is there a reason I have to compromise when using the Mac OS? Why can’t I have the same styling across iOS and OS? This is the only thing I’ve been asking for is consistent styling, and it’s the only thing you will not check for”

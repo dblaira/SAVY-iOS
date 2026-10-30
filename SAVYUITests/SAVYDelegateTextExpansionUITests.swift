@@ -1,25 +1,30 @@
 import XCTest
 
 /// Acceptance: Delegate entry fields expand so all entered text is visible — no "..." cutoff.
+@MainActor
 final class SAVYDelegateTextExpansionUITests: XCTestCase {
     private var app: XCUIApplication!
 
     private let longTitle =
-        "Answer the question: can Claude build a business from scratch that makes money?"
+        "Answer the question: can Claude build a business from scratch that makes money?\n"
+        + (2...9).map { "Title line \($0) stays fully visible." }.joined(separator: "\n")
     private let longWhen =
-        "When I am reviewing a long delegation prompt that must wrap across several lines without cutting words"
+        "When I am reviewing a long delegation prompt that must wrap across several lines without cutting words\n"
+        + (2...9).map { "Context line \($0) stays fully visible." }.joined(separator: "\n")
     private let longDone =
-        "A business idea was taken from inception to fruition by Claude Fable 5 that made $50. My only role was oversight, funding, and steering — every word of this outcome stays on screen."
+        "A business idea was taken from inception to fruition by Claude Fable 5 that made $50. My only role was oversight, funding, and steering — every word of this outcome stays on screen.\n"
+        + (2...9).map { "Outcome line \($0) stays fully visible." }.joined(separator: "\n")
 
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments = [
-            "SAVY_UI_TEST_UNLOCKED",
-            "SAVY_UI_TEST_RESET_REMINDERS",
-        ]
-        app.launch()
-        dismissNotificationPrompt()
+    override func setUp() async throws {
+        await MainActor.run {
+            continueAfterFailure = false
+            app = XCUIApplication()
+            app.launchArguments = [
+                "SAVY_UI_TEST_UNLOCKED", "SAVY_UI_TEST_RESET_REMINDERS", "SAVY_UI_TEST_COWBOY_STUB",
+            ]
+            app.launch()
+            dismissNotificationPrompt()
+        }
     }
 
     func testDelegateFieldsExpandInReminderActionAndCalendarForms() {
@@ -28,21 +33,59 @@ final class SAVYDelegateTextExpansionUITests: XCTestCase {
         }
     }
 
+    func testDelegatePromptsRemainVisibleWhenAnswersAreEntered() {
+        openComposer(.reminder)
+        for (identifier, prompt, answer) in [
+            ("Title", "What do I want?", "The first answer.\nIts next line."),
+            ("WhenIAm", "When I am...I like to", "The context answer.\nIts next line."),
+            ("DoneLooksLike", "Done looks like...", "The outcome answer.\nIts next line.")
+        ] {
+            let question = field("DelegateQuestion" + identifier)
+            reveal(question)
+            XCTAssertEqual(question.label, prompt)
+            let input = field(identifier)
+            XCTAssertTrue(input.exists)
+            XCTAssertGreaterThanOrEqual(input.frame.minY, question.frame.maxY - 1)
+            XCTAssertLessThanOrEqual(input.frame.minY - question.frame.maxY, 4,
+                                     "Delegate writing must start directly below its question")
+            question.tapOrClick()
+            let focused = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "hasKeyboardFocus == true"), object: input
+            )
+            XCTAssertEqual(XCTWaiter.wait(for: [focused], timeout: 5), .completed,
+                           "Tapping the question must focus its answer")
+            app.typeText(answer)
+            dismissKeyboard()
+            XCTAssertEqual(stringValue(input), answer)
+            XCTAssertTrue(question.exists, "The Delegate question must remain after typing")
+            XCTAssertEqual(question.label, prompt, "Typing must not replace the question")
+        }
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Delegate"
+        shot.lifetime = .keepAlways
+        add(shot)
+        app.buttons["Cancel"].tapOrClick()
+    }
+
     private func assertDelegateFieldsExpand(_ kind: ExpansionComposerKind) {
         openComposer(kind)
 
-        XCTAssertTrue(field("Title").waitForExistence(timeout: 10), "\(kind.rawValue) form missing Title")
-        XCTAssertTrue(field("WhenIAm").waitForExistence(timeout: 5), "\(kind.rawValue) form missing WhenIAm")
-        XCTAssertTrue(field("DoneLooksLike").waitForExistence(timeout: 5), "\(kind.rawValue) form missing DoneLooksLike")
+        for identifier in ["Title", "WhenIAm", "DoneLooksLike"] {
+            reveal(field(identifier))
+            XCTAssertTrue(field(identifier).waitForExistence(timeout: 10), "\(kind.rawValue) form missing \(identifier)")
+        }
 
+        reveal(field("Title"), towardTopWhenMissing: true)
         let titleBefore = field("Title").frame.height
         typeInto(field("Title"), longTitle)
         assertExpanded(field("Title"), expected: longTitle, minGrowthOver: titleBefore, kind: kind, name: "Title")
 
+        reveal(field("WhenIAm"))
         let whenBefore = field("WhenIAm").frame.height
         typeInto(field("WhenIAm"), longWhen)
         assertExpanded(field("WhenIAm"), expected: longWhen, minGrowthOver: whenBefore, kind: kind, name: "WhenIAm")
 
+        reveal(field("DoneLooksLike"))
         let doneBefore = field("DoneLooksLike").frame.height
         typeInto(field("DoneLooksLike"), longDone)
         assertExpanded(field("DoneLooksLike"), expected: longDone, minGrowthOver: doneBefore, kind: kind, name: "DoneLooksLike")
@@ -63,9 +106,12 @@ final class SAVYDelegateTextExpansionUITests: XCTestCase {
                 "Shell missing after save for \(kind.rawValue)"
             )
             openSaved(kind)
+            reveal(field("Title"))
             XCTAssertTrue(field("Title").waitForExistence(timeout: 10), "\(kind.rawValue) reopen missing Title")
             XCTAssertEqual(stringValue(field("Title")), longTitle)
+            reveal(field("WhenIAm"))
             XCTAssertEqual(stringValue(field("WhenIAm")), longWhen)
+            reveal(field("DoneLooksLike"))
             XCTAssertEqual(stringValue(field("DoneLooksLike")), longDone)
 
             let reopenShot = XCTAttachment(screenshot: app.screenshot())
@@ -137,8 +183,56 @@ final class SAVYDelegateTextExpansionUITests: XCTestCase {
     }
 
     private func typeInto(_ element: XCUIElement, _ text: String) {
-        element.tap()
+        reveal(element)
+        element.tapOrClick()
         element.typeText(text)
+        dismissKeyboard()
+    }
+
+    private func dismissKeyboard() {
+        let done = field("KeyboardRowDone")
+        if done.exists && done.isHittable {
+            done.tapOrClick()
+            XCTAssertTrue(done.waitForNonExistence(timeout: 5))
+        }
+    }
+
+    private func reveal(_ target: XCUIElement, towardTopWhenMissing: Bool = false) {
+        dismissKeyboard()
+        let form = field("sharedEntryForm")
+        for _ in 0..<24 {
+            let exists = target.exists
+            let frame = exists ? target.frame : .zero
+            #if targetEnvironment(macCatalyst)
+            let visible = form.frame.intersection(app.interactionFrame).insetBy(dx: 0, dy: 20)
+            #else
+            let top = app.navigationBars.allElementsBoundByIndex
+                .filter { $0.exists && $0.isHittable && !$0.frame.isEmpty }
+                .map { $0.frame.maxY }.max() ?? app.frame.minY + 100
+            let share = field("shareForm")
+            let bottom = share.exists && share.isHittable ? share.frame.minY - 12 : app.frame.maxY - 155
+            let visible = CGRect(x: app.frame.minX, y: top + 10,
+                                 width: app.frame.width, height: bottom - top - 10)
+            #endif
+            if exists && target.isHittable && frame.minY >= visible.minY
+                && (frame.maxY <= visible.maxY || frame.height > visible.height) { return }
+            let down = exists ? frame.minY < visible.minY : towardTopWhenMissing
+            #if targetEnvironment(macCatalyst)
+            form.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .scroll(byDeltaX: 0, deltaY: down ? 140 : -140)
+            #else
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(CGVector(dx: app.frame.width * 0.85,
+                                                   dy: visible.midY - app.frame.minY))
+            start.press(forDuration: 0.05,
+                        thenDragTo: start.withOffset(CGVector(dx: 0, dy: down ? 140 : -140)))
+            #endif
+        }
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = "Delegate entry fields"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
+        XCTFail("The Delegate field was not reachable")
     }
 
     private func stringValue(_ element: XCUIElement) -> String {
