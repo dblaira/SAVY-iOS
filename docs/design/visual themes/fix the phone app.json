@@ -9,7 +9,7 @@
   "ui_source": "Visual uses the same native Picker and Label pattern as Theme/Habit; no stretched gray custom Menu background.",
   "changes_this_turn": "No application source edits. Installed the already-committed native picker and label corrections.",
   "physical_screen_observation": "Normal SAVY Home screen observed after launch.",
-  "physical_form_observation": "Pending. iPhone Mirroring reports iPhone in Use and requires the phone to be locked.",
+  "physical_form_observation": "Verified on the direct physical Social-form screenshot: Visual/Matrices matches Theme/Habit’s compact crimson native selector with no gray rectangle. The standalone Theme and Visual templates headings are absent; the selector row reads Visual.",
   "saved_stores": {
     "reminders.json": {
       "count": 54,
@@ -33,5 +33,17 @@
     }
   },
   "private_backup": "/tmp/savy-phone-visual-woi0w69a",
-  "mac_status": "Further Mac appearance work deferred; no Mac installation this turn."
+  "mac_status": "Further Mac appearance work deferred; no Mac installation this turn.",
+  "physical_screenshot": {
+    "file": "fix the phone app.png",
+    "width": 1320,
+    "height": 2868,
+    "displayed_time": "7:19",
+    "sha256": "4dec061812498c6cbb3819c82608f74d0266b7cc872b731b8cbb673a4787a5aa"
+  },
+  "inspection_method": "After iPhone Mirroring coordinate controls failed with noWindowsAvailable, Mirroring was closed. Adam manually opened a blank Social form for direct devicectl screen capture.",
+  "verification_scope": "Physical selector and label appearance only. No physical long-answer or cursor test was performed in this inspection.",
+  "synthetic_writing_added": false,
+  "mirroring_status": "Closed; the normal phone remains where Adam placed it.",
+  "saved_store_verification": "All four saved-store SHA256 values still match their preinstallation backups after the physical form inspection."
 }
