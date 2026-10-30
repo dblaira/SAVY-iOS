@@ -20,7 +20,9 @@ SAVY’s signed Mac Release was installed through `script/build_and_run.sh --ver
 
 SAVY’s two final focused UI tests passed with zero failures. They verified answer expansion and complete values, including no ellipsis and Save/reopen behavior. They also checked prompt persistence and focus.
 
-Understood’s full QC is still running. An existing ProArrangement file-picker case failed when an immediate Menu retap used coordinates `{-1, -1}` after Photo Library Cancel. The unchanged case will be retried after the full run. The full gate is not reported as passed. Commit, push and final-revision GitHub verification are pending.
+Understood’s full UI run finished with 32/33 tests passing. Its 11/11 unit tests passed. All six VisualEntryForm tests and all seven Smoke tests passed, including Delegate. The existing ProArrangement file-picker case failed at an invalid immediate Menu retap after Photo Library Cancel. Its unchanged focused retry failed again at the next picker Cancel/retap. A test-helper correction now waits for Cancel to disappear, reveals and re-resolves the stable Menu identifier, and asserts all three choices. The minimal test-helper correction is applied. No Pro app code changed. A clean fresh full QC is now running at `/tmp/recall-delegate-clean-full-qc.log`; its result is pending and the gate is not green. The first full UI raw log is preserved at `/tmp/recall-delegate-first-ui.log`. Both older UI runners finished, but their xcodebuild processes lingered in diagnostics and were stopped after preserving that log. No finalized fresh xcresult is claimed.
+
+Both feature commits are pushed. SAVY’s feature revision is `18f84a0ead426fc89a65973f81865dfaa492265a`. Understood’s feature revision is `588e743ca018cc8a3a3f66cdcc7eca493b828b1f`; its exact-revision [GitHub iOS Build succeeded](https://github.com/dblaira/Re_Call/actions/runs/41010270631). Final-revision CI will be checked separately.
 
 # Actual screens and verification record (Supporting Evidence on Request)
 
@@ -38,7 +40,11 @@ Adam’s request, verbatim:
 | Existing caret editing | Whole-row focus guard uses the active field |
 | Data model and writing bindings | Unchanged |
 | Understood signed phone build and installation | Succeeded on the physical iPhone |
-| Understood full QC | Running; one file-picker case failed; unchanged retry pending |
+| Understood full QC | Clean fresh full gate running; result pending and not green |
+| Understood unit tests | 11/11 passed |
+| Understood full UI run | 32/33 passed; existing ProArrangement picker case failed |
+| Understood VisualEntryForm and Smoke cases | All six VisualEntryForm and all seven Smoke cases passed |
+| Pro picker focused retry | Failed unchanged; minimal helper correction applied for clean full QC |
 | SAVY phone and Mac builds | Succeeded |
 | SAVY final focused UI tests | 2/2 passed; zero failures |
 | SAVY Mac Release installation | Succeeded through the verified install script |
@@ -47,7 +53,9 @@ Adam’s request, verbatim:
 | Physical Understood Action inspection | All three dark questions match Visual; first-prompt caret checked directly |
 | Blank live forms | Canceled without writing or saving |
 | Isolated SAVY Mac Debug preview | All three prompts and exact sample answers visible; canceled without saving |
-| Final pushed revision’s GitHub build | Pending |
+| Understood feature revision GitHub build | Succeeded for `588e743ca018cc8a3a3f66cdcc7eca493b828b1f` |
+| Feature commits | Both pushed |
+| Final-revision GitHub verification | Pending separately |
 
 Understood source: [ReminderFormView.swift](/Users/adamblair/Developer/GitHub/Re_Call/ios/ReCall/App/ReminderFormView.swift).
 
@@ -55,7 +63,9 @@ SAVY source: [ReminderFormView.swift](/Users/adamblair/Developer/GitHub/SAVY-iOS
 
 | Verification log | Location |
 | --- | --- |
-| Understood full QC | `/tmp/recall-delegate-full-qc.log` |
+| Initial Understood full QC | `/tmp/recall-delegate-full-qc.log` |
+| Clean fresh Understood full QC, running | `/tmp/recall-delegate-clean-full-qc.log` |
+| Preserved first full UI raw log | `/tmp/recall-delegate-first-ui.log` |
 | Understood signed phone build | `/tmp/recall-delegate-device-final.log` |
 | SAVY final focused UI tests | `/tmp/savy-delegate-ui-final.log` |
 | SAVY Mac Release installation | `/tmp/delegate-mac-install.log` |
@@ -76,16 +86,18 @@ Phone postinstallation copy and comparison: `/var/folders/ll/k4r0q6fj5k18c1vh9vk
 
 | Physical-phone saved files | Result |
 | --- | --- |
-| Understood | 14/14 files byte-identical |
+| Understood | 14/14 files byte-identical; confirmed again after actual blank-form cancellation |
 | SAVY | 22/24 files byte-identical; same relative file paths |
 | SAVY writing and media | Unchanged |
 | Changed SAVY files | `SAVY/CloudKit/state.json` and `SAVY/CloudKit/status.json` |
+
+Final Understood comparison after blank-form cancellation: `/var/folders/ll/k4r0q6fj5k18c1vh9vk5t1c80000gn/T/delegate-understood-final-llczqad1`. All 14 files still match.
 
 The changed SAVY files contain synchronization metadata. The changed keys were `generation`, `engineState`, `lastForegroundFetch` and `lastFetch`.
 
 The previous Visual addition reports remain historical evidence of that earlier installation. The live evidence below verifies this Delegate correction separately.
 
-**Installed SAVY Mac Release.** The actual blank Social form shows Delegate matching Visual. The first prompt was tapped and the caret appears directly underneath. The form was canceled without saving.
+**Installed SAVY Mac Release.** The actual blank Social form shows Delegate matching Visual. Tapping the first prompt focused the answer directly below, verified through accessibility state. The form was canceled without saving.
 
 ![Mac app](</Users/adamblair/Developer/GitHub/SAVY-iOS/docs/design/Delegate entry boxes/Mac app.jpg>)
 
