@@ -1,5 +1,15 @@
 # SAVY iOS Agent Instructions
 
+## fix the Mac app — October 29, 2026
+
+Adam: “Now fix the Mac app so Visual matches Theme like it does on the phone. No obvious dropdown boxes, and don't change the font size.”
+
+This explicitly reopens the Mac appearance work that was previously deferred. Theme and Visual must use matching compact crimson controls without obvious dropdown boxes. Preserve the existing Mac body font size and the established question/answer behavior. Keep the change conditional to Mac Catalyst; the iPhone presentation and behavior remain unchanged, with no phone installation or control for this task.
+
+Theme and Visual now use the same Mac-only plain Menu presentation, with the existing selection bindings and explicit body typography. Isolated Debug checks verified Theme selection, including the long Theme label. The Visual menu displayed all twelve choices; selecting Summarize updated its four questions. The signed Release build and strict signature check passed. The app is installed at `/Applications/SAVY.app` and its actual Social form was inspected: both controls are compact crimson without gray boxes, and the redundant headings remain absent. The installed executable matches the Release product. Existing question/editor sizing is unchanged. All four saved archives match fresh preinstallation hashes; 54 reminders remain and recovery drafts are empty. The blank form was canceled without saving. No physical iPhone action occurred.
+
+Evidence: [fix the Mac app](<docs/design/Mac OS app for SAVY/fix the Mac app.md>).
+
 ## fix the phone app — October 29, 2026
 
 Adam: “I never want to see an obvious drop down menu on my fucking app.”
@@ -8,7 +18,7 @@ Adam's current “fix the phone app” request authorizes physical-iPhone instal
 
 The signed shared source `244b5a3` is installed and normal SAVY launched. The last recorded phone installation was `6ce67b7`; the native Picker correction in `e799b08` and the later label changes had not reached it. No source change was needed in this installation turn. After physical form inspection, hashes still match the preinstallation copies for all four compared saved stores. The reminder archive still contains 54 records and recovery drafts remain empty. The direct physical Social-form screenshot verifies Visual/Matrices matching Theme/Habit’s compact crimson native selector without a gray rectangle. The standalone Theme and Visual templates headings are absent and the selector row reads Visual. Adam manually opened the blank form after Mirroring coordinate controls failed; Mirroring is closed. No synthetic writing was added. This inspection verifies selector and label appearance only, not lower answers or cursor behavior.
 
-Adam rejected the Mac appearance. Further Mac changes are deferred. Earlier successful Mac builds and installations do not establish visual acceptance.
+At that checkpoint, Adam rejected the Mac appearance and deferred further Mac changes. His later “fix the Mac app” request above reopens that work. Earlier successful Mac builds and installations do not establish visual acceptance.
 
 Evidence: [fix the phone app](<docs/design/visual themes/fix the phone app.md>).
 
@@ -26,7 +36,7 @@ Adam's later phone screenshot explicitly uses Theme/Habit as the selector refere
 
 ## Mac OS app for SAVY — October 29, 2026
 
-The October 29 Mac appearance is unaccepted and further Mac changes are deferred. Preserve the current Mac state until Adam explicitly reopens that work.
+The earlier October 29 Mac appearance was unaccepted and further changes were deferred. Adam explicitly reopened the work with “fix the Mac app”; the current direction above supersedes that temporary deferral.
 
 Adam requested the same Visual templates addition for the Mac app. Mac Catalyst uses the shared catalog, picker, expanding answers, persistence, recovery and sharing. Preserve the installed Mac's approved October 23 behavior from commit 8a02f4e: native body typography, body-sized question icons, 8-point top padding, and delayed cursor placement after the embedded Decide question. The iPhone's fixed font/legibility overrides are iOS-only. Visual answers have separate static questions, so they must never use the Decide cursor helper: direct clicks anywhere in an existing Visual answer retain their intended position. The Mac's Visual question rows use its existing body typography and question spacing. Keep additional Mac changes conditional; do not change the iPhone's typography or interaction behavior. Before replacing the Mac app, verify no active editor, back up its live container, and compare the actual saved entries after installation. UI tests use isolated text-only stores.
 

@@ -310,6 +310,29 @@ struct ReminderFormView: View {
                     .foregroundStyle(Brand.crimson)
                     .accessibilityIdentifier("connectionTheme")
             } else {
+                #if targetEnvironment(macCatalyst)
+                macFormMenu(
+                    EntryFormCopy.themeTitle,
+                    selectedTitle: selectedPostTheme.name,
+                    selectedSymbol: selectedPostTheme.questions.first?.symbol ?? "list.bullet",
+                    identifier: "PostTheme"
+                ) {
+                    Picker(EntryFormCopy.themeTitle, selection: Binding(
+                        get: { postDraft.themeID },
+                        set: { postDraft.selectTheme($0) }
+                    )) {
+                        ForEach(PostThemeCatalog.themes) { theme in
+                            Label {
+                                Text(theme.name)
+                            } icon: {
+                                Image(uiImage: formPickerIcon(theme.questions.first?.symbol ?? "list.bullet"))
+                            }
+                            .tag(theme.id)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                }
+                #else
                 Picker(selection: Binding(get: { postDraft.themeID }, set: { postDraft.selectTheme($0) })) {
                     ForEach(PostThemeCatalog.themes) { theme in
                         Label {
@@ -325,6 +348,7 @@ struct ReminderFormView: View {
                 .pickerStyle(.menu)
                 .tint(Brand.crimson)
                 .accessibilityIdentifier("PostTheme")
+                #endif
             }
         }
         .listRowBackground(Brand.card)
@@ -336,6 +360,49 @@ struct ReminderFormView: View {
         return (UIImage(systemName: symbol, withConfiguration: configuration) ?? UIImage())
             .withTintColor(UIColor(Brand.crimson), renderingMode: .alwaysOriginal)
     }
+
+    #if targetEnvironment(macCatalyst)
+    private func macFormMenu<Choices: View>(
+        _ title: String,
+        selectedTitle: String,
+        selectedSymbol: String,
+        identifier: String,
+        @ViewBuilder choices: () -> Choices
+    ) -> some View {
+        Menu {
+            choices()
+        } label: {
+            HStack {
+                Label {
+                    Text(title)
+                        .foregroundStyle(.black)
+                } icon: {
+                    Image(systemName: "list.bullet")
+                        .foregroundStyle(Brand.crimson)
+                }
+                Spacer(minLength: 12)
+                HStack(spacing: 4) {
+                    Image(systemName: selectedSymbol)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(Brand.crimson)
+                    Text(selectedTitle)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .imageScale(.small)
+                }
+                .foregroundStyle(Brand.crimson)
+            }
+            .font(.body)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .accessibilityLabel(title)
+        .accessibilityValue(selectedTitle)
+        .accessibilityIdentifier(identifier)
+    }
+    #endif
 
     private var postDecideSection: some View {
         Section {
@@ -406,6 +473,34 @@ struct ReminderFormView: View {
 
     private var visualTemplatesSection: some View {
         Section {
+            #if targetEnvironment(macCatalyst)
+            macFormMenu(
+                "Visual",
+                selectedTitle: visualDraft.format.name,
+                selectedSymbol: visualDraft.format.symbol,
+                identifier: "VisualFormat"
+            ) {
+                Picker("Visual", selection: Binding(
+                    get: { visualDraft.selectedFormatID },
+                    set: { formatID in
+                        moveCursor(to: nil)
+                        var draft = visualDraft
+                        draft.selectFormat(formatID)
+                        r.visualTemplates = draft
+                    }
+                )) {
+                    ForEach(visualFormatChoices) { format in
+                        Label {
+                            Text(format.name)
+                        } icon: {
+                            Image(uiImage: formPickerIcon(format.symbol))
+                        }
+                        .tag(format.id)
+                    }
+                }
+                .pickerStyle(.inline)
+            }
+            #else
             Picker(selection: Binding(
                 get: { visualDraft.selectedFormatID },
                 set: { formatID in
@@ -430,6 +525,7 @@ struct ReminderFormView: View {
             .tint(Brand.crimson)
             .accessibilityIdentifier("VisualFormat")
             .accessibilityValue(visualDraft.format.name)
+            #endif
             ForEach(0..<4, id: \.self) { index in
                 let prompt = visualDraft.questions[index]
                 HStack(alignment: .top, spacing: 10) {
