@@ -165,6 +165,30 @@ struct ReminderFormView: View {
         .interactiveDismissDisabled(isSaving || (!committed && (initialEntry.schedule != nil || (hasContent && (connectionMode || r.schedule != nil)))))
         .preferredColorScheme(.light)
         .savyMacFormSheet()
+        #if targetEnvironment(macCatalyst)
+        .overlayPreferenceValue(MacMenuAnchorKey.self) { menus in
+            GeometryReader { geometry in
+                if let menu = menus.last {
+                    let anchor = geometry[menu.anchor]
+                    let height = min(menu.size.height, geometry.size.height - 24)
+                    let x = max(12, min(anchor.maxX - menu.size.width,
+                                        geometry.size.width - menu.size.width - 12))
+                    let below = anchor.maxY + 8
+                    let above = anchor.minY - height - 8
+                    let y = max(12, min(below + height <= geometry.size.height - 12 ? below : above,
+                                        geometry.size.height - height - 12))
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { menu.dismiss() }
+                        .accessibilityHidden(true)
+                    menu.content
+                        .frame(width: menu.size.width, height: height)
+                        .shadow(color: .black.opacity(0.16), radius: 16, y: 6)
+                        .position(x: x + menu.size.width / 2, y: y + height / 2)
+                }
+            }
+        }
+        #endif
     }
 
     /// Brief confirmation shown when the Save button is tapped (not on swipe-to-save).
@@ -311,27 +335,18 @@ struct ReminderFormView: View {
                     .accessibilityIdentifier("connectionTheme")
             } else {
                 #if targetEnvironment(macCatalyst)
-                macFormMenu(
-                    EntryFormCopy.themeTitle,
-                    selectedTitle: selectedPostTheme.name,
-                    selectedSymbol: selectedPostTheme.questions.first?.symbol ?? "list.bullet",
-                    identifier: "PostTheme"
-                ) {
-                    Picker(EntryFormCopy.themeTitle, selection: Binding(
+                MacFormMenu(
+                    title: EntryFormCopy.themeTitle,
+                    selection: Binding(
                         get: { postDraft.themeID },
                         set: { postDraft.selectTheme($0) }
-                    )) {
-                        ForEach(PostThemeCatalog.themes) { theme in
-                            Label {
-                                Text(theme.name)
-                            } icon: {
-                                Image(uiImage: formPickerIcon(theme.questions.first?.symbol ?? "list.bullet"))
-                            }
-                            .tag(theme.id)
-                        }
-                    }
-                    .pickerStyle(.inline)
-                }
+                    ),
+                    options: PostThemeCatalog.themes.map {
+                        MacFormChoice(id: $0.id, title: $0.name,
+                                      symbol: $0.questions.first?.symbol ?? "list.bullet")
+                    },
+                    identifier: "PostTheme"
+                )
                 #else
                 Picker(selection: Binding(get: { postDraft.themeID }, set: { postDraft.selectTheme($0) })) {
                     ForEach(PostThemeCatalog.themes) { theme in
@@ -362,45 +377,218 @@ struct ReminderFormView: View {
     }
 
     #if targetEnvironment(macCatalyst)
-    private func macFormMenu<Choices: View>(
-        _ title: String,
-        selectedTitle: String,
-        selectedSymbol: String,
-        identifier: String,
-        @ViewBuilder choices: () -> Choices
-    ) -> some View {
-        Menu {
-            choices()
-        } label: {
-            HStack {
-                Label {
-                    Text(title)
-                        .foregroundStyle(.black)
-                } icon: {
-                    Image(systemName: "list.bullet")
-                        .foregroundStyle(Brand.crimson)
-                }
-                Spacer(minLength: 12)
-                HStack(spacing: 4) {
-                    Image(systemName: selectedSymbol)
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundStyle(Brand.crimson)
-                    Text(selectedTitle)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .imageScale(.small)
-                }
-                .foregroundStyle(Brand.crimson)
-            }
-            .font(.body)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
+    private struct MacFormChoice: Identifiable {
+        let id: String
+        let title: String
+        let symbol: String
+    }
+
+    private struct MacMenuAnchor {
+        let anchor: Anchor<CGRect>
+        let size: CGSize
+        let content: AnyView
+        let dismiss: () -> Void
+    }
+
+    private struct MacMenuAnchorKey: PreferenceKey {
+        static var defaultValue: [MacMenuAnchor] { [] }
+        static func reduce(value: inout [MacMenuAnchor], nextValue: () -> [MacMenuAnchor]) {
+            value.append(contentsOf: nextValue())
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .accessibilityLabel(title)
-        .accessibilityValue(selectedTitle)
-        .accessibilityIdentifier(identifier)
+    }
+
+    // Keep the panel inside the form's coordinate and typography environment.
+    // Native desktop menus/popovers replace the phone's layout and scaling.
+    private struct MacFormMenu: View {
+        let title: String
+        @Binding var selection: String
+        let options: [MacFormChoice]
+        let identifier: String
+        @State private var showsChoices = false
+        @State private var keyboardChoice: String?
+
+        private var menuPointSize: CGFloat { UIFont.preferredFont(forTextStyle: .body).pointSize }
+        // Match the phone menu's proportions using the Mac's existing body metric.
+        private var menuScale: CGFloat { menuPointSize / 17 }
+
+        private var selected: MacFormChoice? {
+            options.first { $0.id == selection }
+        }
+
+        private var panelWidth: CGFloat {
+            let font = UIFont.systemFont(ofSize: menuPointSize, weight: .semibold)
+            let longest = options.map {
+                ($0.title as NSString).size(withAttributes: [.font: font]).width
+            }.max() ?? 0
+            return min(320 * menuScale, max(224 * menuScale, ceil(longest) + 104 * menuScale))
+        }
+
+        var body: some View {
+            Button {
+                keyboardChoice = nil
+                showsChoices.toggle()
+            } label: {
+                HStack {
+                    Label {
+                        Text(title)
+                            .foregroundStyle(.black)
+                    } icon: {
+                        Image(systemName: "list.bullet")
+                            .foregroundStyle(Brand.crimson)
+                    }
+                    Spacer(minLength: 12)
+                    HStack(spacing: 4) {
+                        Image(systemName: selected?.symbol ?? "list.bullet")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundStyle(Brand.crimson)
+                        Text(selected?.title ?? "")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .imageScale(.small)
+                    }
+                    .foregroundStyle(Brand.crimson)
+                    .anchorPreference(key: MacMenuAnchorKey.self, value: .bounds) { anchor in
+                        showsChoices ? [MacMenuAnchor(
+                            anchor: anchor,
+                            size: CGSize(width: panelWidth, height: min(CGFloat(options.count) * 38 + 16, 540) * menuScale),
+                            content: AnyView(choicePanel),
+                            dismiss: { showsChoices = false }
+                        )] : []
+                    }
+                }
+                .font(.body)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            .accessibilityValue(selected?.title ?? "")
+            .accessibilityIdentifier(identifier)
+        }
+
+        private var choicePanel: some View {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(options) { option in
+                            Button {
+                                selection = option.id
+                                showsChoices = false
+                            } label: {
+                                HStack(spacing: 10 * menuScale) {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 13 * menuScale, weight: .semibold))
+                                        .opacity(selection == option.id ? 1 : 0)
+                                        .frame(width: 14 * menuScale)
+                                        .accessibilityHidden(true)
+                                    Image(systemName: option.symbol)
+                                        .font(.system(size: menuPointSize, weight: .regular))
+                                        .foregroundStyle(Brand.crimson)
+                                        .frame(width: 22 * menuScale)
+                                        .accessibilityHidden(true)
+                                    Text(option.title)
+                                        .font(.system(size: menuPointSize, weight: .semibold))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Spacer(minLength: 0)
+                                }
+                                .foregroundStyle(.black)
+                                .frame(maxWidth: .infinity, minHeight: 38 * menuScale, alignment: .leading)
+                                .padding(.horizontal, 16 * menuScale)
+                                .background(keyboardChoice == option.id ? Brand.crimson.opacity(0.09) : .clear)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(option.title)
+                            .accessibilityAddTraits(selection == option.id ? .isSelected : [])
+                            .accessibilityIdentifier("\(identifier)Choice-\(option.id)")
+                            .id(option.id)
+                        }
+                    }
+                    .padding(.vertical, 8 * menuScale)
+                }
+                .onAppear {
+                    proxy.scrollTo(selection, anchor: .center)
+                }
+                .onChange(of: keyboardChoice) { _, id in
+                    if let id { proxy.scrollTo(id, anchor: .center) }
+                }
+            }
+            .frame(width: panelWidth)
+            .background {
+                MacMenuPresentation(
+                    move: { moveKeyboardChoice($0) },
+                    select: {
+                        selection = keyboardChoice ?? selection
+                        showsChoices = false
+                    },
+                    dismiss: { showsChoices = false }
+                )
+                .allowsHitTesting(false)
+            }
+            .background { Brand.card.opacity(0.65).background(.white) }
+            .clipShape(RoundedRectangle(cornerRadius: 32 * menuScale))
+            .overlay {
+                RoundedRectangle(cornerRadius: 32 * menuScale)
+                    .strokeBorder(.black.opacity(0.12), lineWidth: 0.5)
+                    .allowsHitTesting(false)
+            }
+            .accessibilityIdentifier("\(identifier)Choices")
+        }
+
+        private func moveKeyboardChoice(_ offset: Int) {
+            guard !options.isEmpty else { return }
+            let index = options.firstIndex { $0.id == (keyboardChoice ?? selection) } ?? 0
+            keyboardChoice = options[min(max(index + offset, 0), options.count - 1)].id
+        }
+    }
+
+    /// Keep arrow/Return/Escape keys inside the open choices instead of the entry editor.
+    private struct MacMenuPresentation: UIViewControllerRepresentable {
+        let move: (Int) -> Void
+        let select: () -> Void
+        let dismiss: () -> Void
+
+        func makeUIViewController(context: Context) -> Controller { Controller() }
+
+        func updateUIViewController(_ controller: Controller, context: Context) {
+            controller.move = move
+            controller.select = select
+            controller.dismissMenu = dismiss
+        }
+
+        final class Controller: UIViewController {
+            var move: (Int) -> Void = { _ in }
+            var select: () -> Void = {}
+            var dismissMenu: () -> Void = {}
+
+            override func loadView() {
+                view = UIView()
+                view.backgroundColor = .clear
+                view.isUserInteractionEnabled = false
+            }
+
+            override var canBecomeFirstResponder: Bool { true }
+
+            override func viewDidAppear(_ animated: Bool) {
+                super.viewDidAppear(animated)
+                becomeFirstResponder()
+            }
+
+            override var keyCommands: [UIKeyCommand]? {
+                let commands = [
+                    UIKeyCommand(input: UIKeyCommand.inputUpArrow, modifierFlags: [], action: #selector(up)),
+                    UIKeyCommand(input: UIKeyCommand.inputDownArrow, modifierFlags: [], action: #selector(down)),
+                    UIKeyCommand(input: "\r", modifierFlags: [], action: #selector(choose)),
+                    UIKeyCommand(input: UIKeyCommand.inputEscape, modifierFlags: [], action: #selector(close))
+                ]
+                commands.forEach { $0.wantsPriorityOverSystemBehavior = true }
+                return commands
+            }
+
+            @objc private func up() { move(-1) }
+            @objc private func down() { move(1) }
+            @objc private func choose() { select() }
+            @objc private func close() { dismissMenu() }
+        }
     }
     #endif
 
@@ -474,13 +662,9 @@ struct ReminderFormView: View {
     private var visualTemplatesSection: some View {
         Section {
             #if targetEnvironment(macCatalyst)
-            macFormMenu(
-                "Visual",
-                selectedTitle: visualDraft.format.name,
-                selectedSymbol: visualDraft.format.symbol,
-                identifier: "VisualFormat"
-            ) {
-                Picker("Visual", selection: Binding(
+            MacFormMenu(
+                title: "Visual",
+                selection: Binding(
                     get: { visualDraft.selectedFormatID },
                     set: { formatID in
                         moveCursor(to: nil)
@@ -488,18 +672,12 @@ struct ReminderFormView: View {
                         draft.selectFormat(formatID)
                         r.visualTemplates = draft
                     }
-                )) {
-                    ForEach(visualFormatChoices) { format in
-                        Label {
-                            Text(format.name)
-                        } icon: {
-                            Image(uiImage: formPickerIcon(format.symbol))
-                        }
-                        .tag(format.id)
-                    }
-                }
-                .pickerStyle(.inline)
-            }
+                ),
+                options: visualFormatChoices.map {
+                    MacFormChoice(id: $0.id, title: $0.name, symbol: $0.symbol)
+                },
+                identifier: "VisualFormat"
+            )
             #else
             Picker(selection: Binding(
                 get: { visualDraft.selectedFormatID },

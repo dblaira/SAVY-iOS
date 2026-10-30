@@ -1,0 +1,175 @@
+{
+  "request": "Is there a reason I have to compromise when using the Mac OS? Why can’t I have the same styling across iOS and OS? This is the only thing I’ve been asking for is consistent styling, and it’s the only thing you will not check for",
+  "scope": "Mac Theme and Visual, open and closed. Other pickers unmodified.",
+  "source_starting_commit": "5b736a9ede65f3cef4e0828ba715bdfbdebd403c",
+  "previous_open_menu": "Rejected by Adam; historical fix the Mac app evidence is not acceptance of that opened menu.",
+  "implementation": "Shared Mac-only anchorPreference overlay at the root form. No native Menu or popover arrow. Public UIKeyCommand keyboard responder. Panel spacing scales from UIKit body pointSize / 17.",
+  "release_script_exit_code": 0,
+  "strict_codesign": "passed",
+  "installed_path": "/Applications/SAVY.app",
+  "normal_launch": "succeeded",
+  "observed_process": {
+    "pid": 87277,
+    "executable": "/Applications/SAVY.app/Contents/MacOS/SAVY"
+  },
+  "installed_binary_matches_release_product": true,
+  "installed_binary_sha256": "0f91c01e328e92099581a941f1f95b56d77a89960894207eef753733824568dd",
+  "installed_release_checks": {
+    "closed_theme_visual": "visually verified",
+    "open_theme_visual": "visually verified against phone reference",
+    "all_12_visual_choices_visible": true,
+    "summarize_selection_updates_four_questions": true,
+    "escape_dismisses_panel_keeps_form": true
+  },
+  "isolated_debug_checks": {
+    "up_arrow_return_selects_tables": true,
+    "theme_options_in_accessibility_tree": 33,
+    "wheel_to_last_long_theme_label_and_selection": "passed",
+    "outside_click_dismisses_without_selection_change": true
+  },
+  "font_behavior": "Native UIKit body metric and existing question/editor sizing preserved.",
+  "form_font_comparison": {
+    "baseline": "Installed 5b736a9 screenshot",
+    "candidate": "Final isolated Debug screenshot",
+    "dimensions": [
+      [
+        1408,
+        1520
+      ],
+      [
+        1408,
+        1520
+      ]
+    ],
+    "text": {
+      "Theme": {
+        "before": [
+          81,
+          19
+        ],
+        "after": [
+          81,
+          19
+        ],
+        "same_dimensions": true
+      },
+      "Visual": {
+        "before": [
+          69,
+          19
+        ],
+        "after": [
+          69,
+          20
+        ],
+        "same_dimensions": false
+      },
+      "Habit": {
+        "before": [
+          61,
+          19
+        ],
+        "after": [
+          61,
+          19
+        ],
+        "same_dimensions": true
+      },
+      "Matrices": {
+        "before": [
+          101,
+          19
+        ],
+        "after": [
+          101,
+          19
+        ],
+        "same_dimensions": true
+      },
+      "First Decide question": {
+        "before": [
+          190,
+          20
+        ],
+        "after": [
+          190,
+          20
+        ],
+        "same_dimensions": true
+      },
+      "First Visual question": {
+        "before": [
+          584,
+          24
+        ],
+        "after": [
+          584,
+          24
+        ],
+        "same_dimensions": true
+      }
+    }
+  },
+  "physical_phone_actions": false,
+  "blank_form_canceled_without_saving": true,
+  "synthetic_writing_added": false,
+  "saved_stores": {
+    "reminders.json": {
+      "count": 54,
+      "sha256": "290809451fac29fb3179b08dc087c5fa6eae97b860ed23c0a17e5c76553ff0b2",
+      "unchanged": true
+    },
+    "SAVY/entry-drafts.json": {
+      "count": 0,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "unchanged": true
+    },
+    "SAVY/connections.json": {
+      "count": 3,
+      "sha256": "ebe689ea6b11e84b221e50cb75f9707f82de7e32b03e12b9a9756d90c54e36ab",
+      "unchanged": true
+    },
+    "SAVY/posts.json": {
+      "count": 1,
+      "sha256": "513e147cb4b2cf55f93241e8b8d49718ece2824c8835a9c0e38f1b87768692d6",
+      "unchanged": true
+    }
+  },
+  "screenshots": [
+    {
+      "file": "consistent styling.jpg",
+      "state": "Visual open; Summarize selected",
+      "environment": "Installed Release",
+      "dimensions": [
+        1408,
+        1520
+      ],
+      "encoding": "JPEG",
+      "sha256": "d369c96f31f53a9f88d98de5c7d82538143cf6cf8ae1637559e501356fe49d5f"
+    },
+    {
+      "file": "Theme.jpg",
+      "state": "Theme open",
+      "environment": "Installed Release",
+      "dimensions": [
+        1408,
+        1520
+      ],
+      "encoding": "JPEG",
+      "sha256": "6fc32741d928b533dacc5a955387f10a1c0b8802f8d7c542941e0a7f394f28bf"
+    },
+    {
+      "file": "don't change the font size.jpg",
+      "state": "Both selectors closed",
+      "environment": "Installed Release",
+      "dimensions": [
+        1408,
+        1520
+      ],
+      "encoding": "JPEG",
+      "sha256": "fb84d67738419f9ff2d39de178385a43e21fe82a9e98ceeac578f9a7bc9c373a"
+    }
+  ],
+  "cowork_delivery": "Staged; cloud upload unconfirmed.",
+  "ios_source_projection_excluding_blank_lines_identical_to": "5b736a9ede65f3cef4e0828ba715bdfbdebd403c"
+}

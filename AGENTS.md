@@ -1,12 +1,26 @@
 # SAVY iOS Agent Instructions
 
+## consistent styling — October 29, 2026
+
+Adam: “Is there a reason I have to compromise when using the Mac OS? Why can’t I have the same styling across iOS and OS? This is the only thing I’ve been asking for is consistent styling, and it’s the only thing you will not check for”
+
+Adam rejected the opened Mac menu from `5b736a9` even though its closed controls matched. The phone screenshot is the visual reference for the opened choices. Current acceptance requires comparing both Theme and Visual while closed and while open; checking option presence or selection alone does not establish consistent styling.
+
+Closed controls stay compact and crimson directly on the cream row. Opened choices need the phone’s rounded cream presentation with a crimson symbol for each choice, readable body-sized labels, spacious rows, and a separate leading selection check. Use the same presentation for Theme and Visual. Preserve the existing Mac form font size and question/editor sizing. Keep this work conditional to Mac Catalyst; no physical phone action is part of this task.
+
+The final implementation uses one shared Mac-only anchorPreference overlay at the form root. Keep the panels inside the form without native Menu or popover arrows. Public UIKeyCommand handles keyboard selection and dismissal. Native UIKit body metrics are preserved and panel spacing scales from that metric; existing question/editor sizing is unchanged. Other pickers are unmodified, and the iOS source projection, excluding blank lines, is identical to `5b736a9`.
+
+The signed Release build and strict signature check passed. The app is installed at `/Applications/SAVY.app`, and its executable matches the Release product. Both closed controls and both opened panels were inspected against the phone reference in the installed app. All twelve Visual choices were visible. Installed Summarize selection updated four questions; Escape closed the panel while preserving the form. Isolated Debug checks passed Up/Return selection and outside-click dismissal. Theme scrolling reached its last long label and selection worked. All four saved archives remain byte-identical to the fresh backup; 54 reminders remain and recovery drafts are empty. The blank form was canceled without saving. No synthetic writing or physical phone action occurred. Earlier reports remain historical and do not establish acceptance of the rejected opened menu.
+
+Evidence: [consistent styling](<docs/design/Mac OS app for SAVY/consistent styling.md>).
+
 ## fix the Mac app — October 29, 2026
 
 Adam: “Now fix the Mac app so Visual matches Theme like it does on the phone. No obvious dropdown boxes, and don't change the font size.”
 
 This explicitly reopens the Mac appearance work that was previously deferred. Theme and Visual must use matching compact crimson controls without obvious dropdown boxes. Preserve the existing Mac body font size and the established question/answer behavior. Keep the change conditional to Mac Catalyst; the iPhone presentation and behavior remain unchanged, with no phone installation or control for this task.
 
-Theme and Visual now use the same Mac-only plain Menu presentation, with the existing selection bindings and explicit body typography. Isolated Debug checks verified Theme selection, including the long Theme label. The Visual menu displayed all twelve choices; selecting Summarize updated its four questions. The signed Release build and strict signature check passed. The app is installed at `/Applications/SAVY.app` and its actual Social form was inspected: both controls are compact crimson without gray boxes, and the redundant headings remain absent. The installed executable matches the Release product. Existing question/editor sizing is unchanged. All four saved archives match fresh preinstallation hashes; 54 reminders remain and recovery drafts are empty. The blank form was canceled without saving. No physical iPhone action occurred.
+At `5b736a9`, Theme and Visual used the same Mac-only plain Menu presentation, with the existing selection bindings and explicit body typography. Isolated Debug checks verified Theme selection, including the long Theme label. The Visual menu displayed all twelve choices; selecting Summarize updated its four questions. The signed Release build and strict signature check passed. The app is installed at `/Applications/SAVY.app` and its actual Social form was inspected: both controls are compact crimson without gray boxes, and the redundant headings remain absent. The installed executable matches the Release product. Existing question/editor sizing is unchanged. All four saved archives match fresh preinstallation hashes; 54 reminders remain and recovery drafts are empty. The blank form was canceled without saving. No physical iPhone action occurred.
 
 Evidence: [fix the Mac app](<docs/design/Mac OS app for SAVY/fix the Mac app.md>).
 
