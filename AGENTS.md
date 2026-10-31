@@ -2,6 +2,8 @@
 
 ## iOS styling — October 31, 2026
 
+Adam accepted the installed result: “perfect now, make sure everything is saved in both macOS and iOS”. This is the approved macOS and iOS checkpoint. The Mac executable matches the verified Release. A fresh iPhone app lookup matches the approved questions installation receipt. The effective iOS source and project configuration are unchanged by the Mac-only styling correction, so no additional installation was needed. Preserve this appearance and the existing font sizes.
+
 Adam supplied the Mac Pattern/Choose screenshot and the iPhone reference: “I want them both to look like the iOS styling”.
 
 Pattern, Lift, Priority, Energy and Add a recent tag now reuse the existing MacFormMenu behind Mac Catalyst conditionals. Closed controls are compact crimson values with chevrons directly on the cream row, with no gray native dropdown boxes. Recent tags uses the crimson history-label action row. Opened choices use the same rounded cream presentation as Theme and Visual. Keep the current native body font metrics. Preserve the iOS source and all option labels/order. Unknown saved Lift values remain visible. Recent-tag actions retain filtering and reject empty/stale choices.

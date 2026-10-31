@@ -2,6 +2,10 @@
 
 October 31, 2026.
 
+Adam accepted the result:
+
+> perfect now, make sure everything is saved in both macOS and iOS
+
 # Mac controls match the iPhone reference (Executive Conclusion)
 
 1. 🎨 Pattern and Choose now use compact crimson controls directly on the cream rows. The gray native dropdown boxes are removed.
@@ -14,7 +18,7 @@ October 31, 2026.
 
 1. 🔤 The current Mac body font metrics are unchanged. The existing Theme and Visual appearances are preserved.
 
-2. 📱 The effective iOS source is byte-identical to the previous revision apart from blank lines. No phone installation or interaction was performed.
+2. 📱 The effective iOS source is byte-identical to the previous revision apart from blank lines. No phone installation or interface control was performed.
 
 3. 💾 All 55 saved records remain unchanged. Authored archives and media match the fresh backup. Recovery drafts are empty.
 
@@ -45,3 +49,5 @@ The existing Mac Theme and Visual component now serves these controls. Their opt
 5. 🗂️ [Verification receipt](verification.json) records the source and installed executable hashes. The baseline is `10d50fb3547a17d563f33956947cf9030857529f`.
 
 6. ☁️ Repository and Mac report copies match. Cowork copies are staged under Social Media; cloud project upload is unconfirmed.
+
+7. ✅ The final checkpoint verifies the installed Mac executable against the approved Release. A fresh read-only iPhone app lookup matches the approved installation URL. All effective iOS source and project configuration match that deployed phone build. No app reinstall was needed.

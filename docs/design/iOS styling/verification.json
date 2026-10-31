@@ -48,5 +48,16 @@
   "verification_form_saved": false,
   "blank_form_left_open_at_pattern_choose": true,
   "physical_phone_touched": false,
-  "automated_ui_suite_run": false
+  "automated_ui_suite_run": false,
+  "adam_approval": "perfect now, make sure everything is saved in both macOS and iOS",
+  "approved_checkpoint": {
+    "code_revision": "ff0b775e3ed6c4a247b99846f7a20332d8f6987b",
+    "deployed_ios_revision": "10d50fb3547a17d563f33956947cf9030857529f",
+    "ios_source_matches_deployed": true,
+    "ios_project_configuration_matches_deployed": true,
+    "ios_cached_executable_matches_deployment_receipt": true,
+    "current_phone_installation_url_matches_receipt": true,
+    "current_mac_executable_matches_approved_release": true,
+    "reinstall_needed": false
+  }
 }
