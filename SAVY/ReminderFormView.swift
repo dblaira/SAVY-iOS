@@ -367,7 +367,7 @@ struct ReminderFormView: View {
     private struct MacFormChoice: Identifiable {
         let id: String
         let title: String
-        let symbol: String
+        let symbol: String?
     }
 
     private struct MacMenuAnchor {
@@ -391,6 +391,9 @@ struct ReminderFormView: View {
         @Binding var selection: String
         let options: [MacFormChoice]
         let identifier: String
+        var leadingSymbol = "list.bullet"
+        var showsSelectedSymbol = true
+        var isAction = false
         @State private var showsChoices = false
         @State private var keyboardChoice: String?
 
@@ -418,17 +421,21 @@ struct ReminderFormView: View {
                 HStack {
                     Label {
                         Text(title)
-                            .foregroundStyle(.black)
+                            .foregroundStyle(isAction ? Brand.crimson : .black)
                     } icon: {
-                        Image(systemName: "list.bullet")
+                        Image(systemName: leadingSymbol)
                             .foregroundStyle(Brand.crimson)
                     }
                     Spacer(minLength: 12)
                     HStack(spacing: 4) {
-                        Image(systemName: selected?.symbol ?? "list.bullet")
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundStyle(Brand.crimson)
-                        Text(selected?.title ?? "")
+                        if !isAction {
+                            if showsSelectedSymbol {
+                                Image(systemName: selected?.symbol ?? "list.bullet")
+                                    .font(.system(size: 16, weight: .regular))
+                                    .foregroundStyle(Brand.crimson)
+                            }
+                            Text(selected?.title ?? "")
+                        }
                         Image(systemName: "chevron.up.chevron.down")
                             .imageScale(.small)
                     }
@@ -448,7 +455,7 @@ struct ReminderFormView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(title)
-            .accessibilityValue(selected?.title ?? "")
+            .accessibilityValue(isAction ? "" : selected?.title ?? "")
             .accessibilityIdentifier(identifier)
         }
 
@@ -462,16 +469,20 @@ struct ReminderFormView: View {
                                 showsChoices = false
                             } label: {
                                 HStack(spacing: 10 * menuScale) {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 13 * menuScale, weight: .semibold))
-                                        .opacity(selection == option.id ? 1 : 0)
-                                        .frame(width: 14 * menuScale)
-                                        .accessibilityHidden(true)
-                                    Image(systemName: option.symbol)
-                                        .font(.system(size: menuPointSize, weight: .regular))
-                                        .foregroundStyle(Brand.crimson)
-                                        .frame(width: 22 * menuScale)
-                                        .accessibilityHidden(true)
+                                    if !isAction {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 13 * menuScale, weight: .semibold))
+                                            .opacity(selection == option.id ? 1 : 0)
+                                            .frame(width: 14 * menuScale)
+                                            .accessibilityHidden(true)
+                                    }
+                                    if let symbol = option.symbol {
+                                        Image(systemName: symbol)
+                                            .font(.system(size: menuPointSize, weight: .regular))
+                                            .foregroundStyle(Brand.crimson)
+                                            .frame(width: 22 * menuScale)
+                                            .accessibilityHidden(true)
+                                    }
                                     Text(option.title)
                                         .font(.system(size: menuPointSize, weight: .semibold))
                                         .fixedSize(horizontal: false, vertical: true)
@@ -485,7 +496,7 @@ struct ReminderFormView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(option.title)
-                            .accessibilityAddTraits(selection == option.id ? .isSelected : [])
+                            .accessibilityAddTraits(!isAction && selection == option.id ? .isSelected : [])
                             .accessibilityIdentifier("\(identifier)Choice-\(option.id)")
                             .id(option.id)
                         }
@@ -493,7 +504,7 @@ struct ReminderFormView: View {
                     .padding(.vertical, 8 * menuScale)
                 }
                 .onAppear {
-                    proxy.scrollTo(selection, anchor: .center)
+                    if !isAction { proxy.scrollTo(selection, anchor: .center) }
                 }
                 .onChange(of: keyboardChoice) { _, id in
                     if let id { proxy.scrollTo(id, anchor: .center) }
@@ -504,7 +515,14 @@ struct ReminderFormView: View {
                 MacMenuPresentation(
                     move: { moveKeyboardChoice($0) },
                     select: {
-                        selection = keyboardChoice ?? selection
+                        if isAction {
+                            if let id = keyboardChoice ?? options.first?.id,
+                               !id.isEmpty, options.contains(where: { $0.id == id }) {
+                                selection = id
+                            }
+                        } else {
+                            selection = keyboardChoice ?? selection
+                        }
                         showsChoices = false
                     },
                     dismiss: { showsChoices = false }
@@ -523,6 +541,10 @@ struct ReminderFormView: View {
 
         private func moveKeyboardChoice(_ offset: Int) {
             guard !options.isEmpty else { return }
+            if isAction, keyboardChoice == nil {
+                keyboardChoice = offset < 0 ? options.last?.id : options.first?.id
+                return
+            }
             let index = options.firstIndex { $0.id == (keyboardChoice ?? selection) } ?? 0
             keyboardChoice = options[min(max(index + offset, 0), options.count - 1)].id
         }
@@ -955,6 +977,25 @@ struct ReminderFormView: View {
     private func enumMenu<T: CaseIterable & Identifiable & Hashable>(
         _ title: String, icon: String, selection: Binding<T>, label: @escaping (T) -> String
     ) -> some View where T.AllCases: RandomAccessCollection {
+        #if targetEnvironment(macCatalyst)
+        MacFormMenu(
+            title: title,
+            selection: Binding(
+                get: { String(describing: selection.wrappedValue.id) },
+                set: { id in
+                    if let value = T.allCases.first(where: { String(describing: $0.id) == id }) {
+                        selection.wrappedValue = value
+                    }
+                }
+            ),
+            options: T.allCases.map {
+                MacFormChoice(id: String(describing: $0.id), title: label($0), symbol: nil)
+            },
+            identifier: title,
+            leadingSymbol: icon,
+            showsSelectedSymbol: false
+        )
+        #else
         Picker(selection: selection) {
             ForEach(T.allCases) { Text(label($0)).tag($0) }
         } label: {
@@ -962,6 +1003,7 @@ struct ReminderFormView: View {
         }
         .pickerStyle(.menu)
         .tint(Brand.crimson)
+        #endif
     }
 
     private var priorityGroup: some View {
@@ -980,7 +1022,28 @@ struct ReminderFormView: View {
         .listRowBackground(Brand.card)
     }
 
+    #if targetEnvironment(macCatalyst)
+    private var macLiftChoices: [MacFormChoice] {
+        var choices = [MacFormChoice(id: "", title: "None", symbol: nil)]
+        choices += listChoices.map { MacFormChoice(id: $0, title: $0, symbol: nil) }
+        if !r.listName.isEmpty, !listChoices.contains(r.listName) {
+            choices.append(MacFormChoice(id: r.listName, title: r.listName, symbol: nil))
+        }
+        return choices
+    }
+    #endif
+
     private var listGroup: some View {
+        #if targetEnvironment(macCatalyst)
+        MacFormMenu(
+            title: "Lift",
+            selection: $r.listName,
+            options: macLiftChoices,
+            identifier: "Lift",
+            leadingSymbol: "sparkles",
+            showsSelectedSymbol: false
+        )
+        #else
         Picker(selection: $r.listName) {
             Text("None").tag("")
             ForEach(listChoices, id: \.self) { Text($0).tag($0) }
@@ -989,6 +1052,7 @@ struct ReminderFormView: View {
         }
         .pickerStyle(.menu)
         .tint(Brand.crimson)
+        #endif
     }
 
     private var tagsEditor: some View {
@@ -1004,6 +1068,22 @@ struct ReminderFormView: View {
                     .disabled(tagDraft.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             if !suggestedTags.isEmpty {
+                #if targetEnvironment(macCatalyst)
+                MacFormMenu(
+                    title: "Add a recent tag",
+                    selection: Binding(
+                        get: { "" },
+                        set: { tag in
+                            if !tag.isEmpty, suggestedTags.contains(tag) { addExistingTag(tag) }
+                        }
+                    ),
+                    options: suggestedTags.map { MacFormChoice(id: $0, title: $0, symbol: nil) },
+                    identifier: "Add a recent tag",
+                    leadingSymbol: "clock.arrow.circlepath",
+                    showsSelectedSymbol: false,
+                    isAction: true
+                )
+                #else
                 Menu {
                     ForEach(suggestedTags, id: \.self) { tag in
                         Button(tag) { addExistingTag(tag) }
@@ -1017,6 +1097,7 @@ struct ReminderFormView: View {
                     }
                 }
                 .tint(Brand.crimson)
+                #endif
             }
             if !r.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {

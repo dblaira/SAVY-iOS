@@ -1,5 +1,15 @@
 # SAVY iOS Agent Instructions
 
+## iOS styling — October 31, 2026
+
+Adam supplied the Mac Pattern/Choose screenshot and the iPhone reference: “I want them both to look like the iOS styling”.
+
+Pattern, Lift, Priority, Energy and Add a recent tag now reuse the existing MacFormMenu behind Mac Catalyst conditionals. Closed controls are compact crimson values with chevrons directly on the cream row, with no gray native dropdown boxes. Recent tags uses the crimson history-label action row. Opened choices use the same rounded cream presentation as Theme and Visual. Keep the current native body font metrics. Preserve the iOS source and all option labels/order. Unknown saved Lift values remain visible. Recent-tag actions retain filtering and reject empty/stale choices.
+
+The signed Mac Release is installed and visually checked. All five new controls were exercised in the actual Social form. Keyboard selection, Escape, outside dismissal and recent-tag filtering passed. Theme and Visual retain their approved appearance. Temporary selections were canceled without saving; a fresh untouched blank form is open at Pattern/Choose for Adam's review. All 55 records and authored/media files match the backup. Only two CloudKit metadata files changed; recovery drafts remain empty. No phone installation or control occurred. All 87 other app files remain unchanged, and the effective iOS source is identical apart from blank lines.
+
+Evidence: [iOS styling](<docs/design/iOS styling/iOS styling.md>).
+
 ## questions under each Visual — October 31, 2026
 
 Adam approved all 48 questions and their installation:

@@ -1,0 +1,52 @@
+{
+  "baseline": "10d50fb3547a17d563f33956947cf9030857529f",
+  "scope": "Mac Pattern and Choose selectors plus Add a recent tag",
+  "source": "SAVY/ReminderFormView.swift",
+  "source_sha256": "13a0442e83b59e81f71fcf7fdc0f373f0a4998ce88f0834ba5a7432d6485c013",
+  "unchanged_other_app_files": 87,
+  "ios_projection_unchanged_excluding_blank_lines": true,
+  "ios_projection_sha256": "7f2f38d8e64d7a4b9a7eb5f0dd062574f415687e2cf23d387cce27f1cc9c645b",
+  "build_log": "/tmp/savy-mac-pattern-styling-build.log",
+  "build_exit": 0,
+  "install": {
+    "installed": "/Applications/SAVY.app",
+    "previous": "/Users/adamblair/Developer/GitHub/SAVY-iOS/artifacts/mac-build/previous.7hvwaojx/SAVY.app",
+    "sha256": "1fd9639924a9e181e5e36e6e4387e3023e7cf2d371f6bcc7e498f8aca9ae9951",
+    "matches_release_product": true,
+    "signed_release_build": true
+  },
+  "data": {
+    "backup_before": "/var/folders/ll/k4r0q6fj5k18c1vh9vk5t1c80000gn/T/savy-mac-styling-before-0y1wl0yk",
+    "backup_after": "/var/folders/ll/k4r0q6fj5k18c1vh9vk5t1c80000gn/T/savy-mac-styling-after-oe1ilkps",
+    "compared": 20,
+    "identical": 18,
+    "changed": [
+      "SAVY/CloudKit/state.json",
+      "SAVY/CloudKit/status.json"
+    ],
+    "missing": [],
+    "new": [],
+    "records": 55,
+    "drafts": {}
+  },
+  "observed_controls": [
+    "Pattern",
+    "Lift",
+    "Priority",
+    "Energy",
+    "Add a recent tag"
+  ],
+  "observed_keyboard": [
+    "Pattern Down/Return",
+    "Recent tag Down/Return",
+    "Energy Escape"
+  ],
+  "outside_dismissal_observed": true,
+  "tag_filtering_observed": true,
+  "theme_visual_opened_appearance_observed": true,
+  "new_text_typed": false,
+  "verification_form_saved": false,
+  "blank_form_left_open_at_pattern_choose": true,
+  "physical_phone_touched": false,
+  "automated_ui_suite_run": false
+}
