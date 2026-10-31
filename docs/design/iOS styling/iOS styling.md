@@ -6,7 +6,7 @@ October 31, 2026.
 
 1. 🎨 Pattern and Choose now use compact crimson controls directly on the cream rows. The gray native dropdown boxes are removed.
 
-2. 🏷️ Add a recent tag uses a crimson history label with right-aligned chevrons. Its choices use the same rounded cream panel.
+2. 🏷️ The “Add a recent tag” row uses a crimson history label with right-aligned chevrons. Its choices use the same rounded cream panel.
 
 3. 🖥️ The signed Release is installed at `/Applications/SAVY.app`. A fresh blank Social form is open at the updated controls for review.
 
