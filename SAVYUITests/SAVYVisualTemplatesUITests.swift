@@ -4,7 +4,7 @@ import XCTest
 @MainActor
 final class SAVYVisualTemplatesUITests: XCTestCase {
     private var app: XCUIApplication!
-    private let matrixQuestion = "What relationship should this matrix make clear?"
+    private let matrixQuestion = "What goes across the top?"
     private let summaryQuestion = "Why does this need to be summarized?"
 
     override func setUp() async throws {

@@ -8,11 +8,10 @@ final class SAVYVisualTemplateTests: XCTestCase {
             "Slides", "Charts", "Images", "Video", "Audio", "Music", "Example"
         ])
         XCTAssertTrue(VisualTemplateCatalog.formats.allSatisfy { $0.questions.count == 4 })
-        XCTAssertTrue(VisualTemplateCatalog.formats.prefix(5).allSatisfy { $0.questions.allSatisfy { !$0.isEmpty } })
-        XCTAssertTrue(VisualTemplateCatalog.formats.dropFirst(5).allSatisfy { $0.questions.allSatisfy(\.isEmpty) })
+        XCTAssertTrue(VisualTemplateCatalog.formats.allSatisfy { $0.questions.allSatisfy { !$0.isEmpty } })
         let draft = VisualTemplateDraft()
         XCTAssertEqual(draft.selectedFormatID, "Matrices")
-        XCTAssertEqual(draft.questions[0], "What relationship should this matrix make clear?")
+        XCTAssertEqual(draft.questions[0], "What goes across the top?")
         XCTAssertEqual(draft.answers, ["", "", "", ""])
         XCTAssertFalse(draft.hasUserContent, "The question labels are not user writing")
     }
@@ -73,10 +72,12 @@ final class SAVYVisualTemplateTests: XCTestCase {
         """.utf8)
         var draft = try JSONDecoder().decode(VisualTemplateDraft.self, from: data)
         XCTAssertEqual(draft.format.name, "Future Format")
+        XCTAssertEqual(draft.questions, ["Saved question?", "", "", ""])
         draft.selectFormat("Matrices")
         draft.setAnswer("Known Format writing", at: 0)
         var restored = try JSONDecoder().decode(VisualTemplateDraft.self, from: JSONEncoder().encode(draft))
         restored.selectFormat("Future Format")
+        XCTAssertEqual(restored.questions, ["Saved question?", "", "", ""])
         XCTAssertEqual(restored.answers[0], "  Exact future writing.\nSecond line.  ")
         XCTAssertTrue(restored.shareText.contains("Additional question?\nAdditional writing must survive."))
         XCTAssertTrue(restored.shareText.contains("Known Format writing"))
@@ -116,8 +117,8 @@ final class SAVYVisualTemplateTests: XCTestCase {
         let delegate = try XCTUnwrap(text.range(of: "Delegate\n\n"))
         XCTAssertLessThan(decide.lowerBound, visual.lowerBound)
         XCTAssertLessThan(visual.lowerBound, delegate.lowerBound)
-        XCTAssertTrue(text.contains("What relationship should this matrix make clear?\n" + answer("Matrices", 0)))
-        XCTAssertTrue(text.contains("Why would a table help explain this?\n" + answer("Tables", 0)))
+        XCTAssertTrue(text.contains("What goes across the top?\n" + answer("Matrices", 0)))
+        XCTAssertTrue(text.contains("What am I comparing?\n" + answer("Tables", 0)))
         XCTAssertEqual(entry, before)
         entry.visualTemplates = nil
         XCTAssertFalse(EntryShareContent(entry: entry, sourceApp: "SAVY", entryLabel: "Action", whenIAm: "").entireForm.contains("Visual templates"))
@@ -134,6 +135,104 @@ final class SAVYVisualTemplateTests: XCTestCase {
     private func answer(_ format: String, _ index: Int) -> String {
         "  \(format) answer \(index) — “exact words” 🧠\n\n" + String(repeating: "Long writing stays visible.\n", count: 40) + "  Last line.  "
     }
+}
+
+final class SAVYVisualTemplateBackfillTests: XCTestCase {
+    func testLegacyEmptyMediaPromptsBackfillWithoutMutatingSavedDrafts() throws {
+        for id in ["Slides", "Charts", "Images", "Video", "Audio", "Music", "Example"] {
+            let fields = Array(repeating: ["question": "", "answer": ""], count: 4)
+            let draft = try legacyDraft(id: id, fields: fields)
+            let before = draft
+            let approved = try XCTUnwrap(VisualTemplateCatalog.format(id: id))
+
+            XCTAssertEqual(draft.selectedFormatID, id)
+            XCTAssertEqual(draft.questions, approved.questions)
+            XCTAssertEqual(draft.answers, ["", "", "", ""])
+            XCTAssertFalse(draft.hasUserContent)
+            for question in approved.questions {
+                XCTAssertTrue(draft.shareText.contains(question))
+            }
+            XCTAssertEqual(draft, before, "Reading or sharing must not rewrite the saved draft")
+            XCTAssertEqual(try storedFields(in: draft, id: id), fields)
+
+            let restored = try JSONDecoder().decode(VisualTemplateDraft.self, from: JSONEncoder().encode(draft))
+            XCTAssertEqual(restored.questions, approved.questions)
+            XCTAssertEqual(try storedFields(in: restored, id: id), fields)
+        }
+    }
+
+    func testBackfillPreservesEveryExistingQuestionAndAnswerExactly() throws {
+        let fields = [
+            ["question": "", "answer": "  Writing without a prompt.\nSecond line. 🧠  "],
+            ["question": "My saved question?", "answer": ""],
+            ["question": "", "answer": ""],
+            ["question": " \n ", "answer": "\t  "]
+        ]
+        var draft = try legacyDraft(id: "Slides", fields: fields)
+        let approved = try XCTUnwrap(VisualTemplateCatalog.format(id: "Slides"))
+        XCTAssertEqual(draft.questions, ["", "My saved question?", approved.questions[2], " \n "])
+        XCTAssertEqual(draft.answers, fields.map { $0["answer"]! })
+
+        draft.setAnswer("New writing below the new question.", at: 2)
+        let restored = try JSONDecoder().decode(VisualTemplateDraft.self, from: JSONEncoder().encode(draft))
+        let stored = try storedFields(in: restored, id: "Slides")
+        for index in [0, 1, 3] {
+            XCTAssertEqual(stored[index], fields[index], "Backfill replaced saved text at index \(index)")
+        }
+        XCTAssertEqual(stored[2], ["question": approved.questions[2], "answer": "New writing below the new question."])
+        XCTAssertTrue(restored.shareText.contains(fields[0]["answer"]!))
+    }
+
+    func testWhitespaceOnlyQuestionsAndAnswersRemainSavedText() throws {
+        let fields = [
+            ["question": " \n ", "answer": ""],
+            ["question": "", "answer": "\t \n"],
+            ["question": "\t", "answer": " \n "],
+            ["question": "", "answer": ""]
+        ]
+        var draft = try legacyDraft(id: "Charts", fields: fields)
+        let approved = try XCTUnwrap(VisualTemplateCatalog.format(id: "Charts"))
+        XCTAssertEqual(draft.questions, [" \n ", "", "\t", approved.questions[3]])
+        XCTAssertEqual(draft.answers, fields.map { $0["answer"]! })
+
+        draft.setAnswer("New context.", at: 3)
+        let stored = try storedFields(in: draft, id: "Charts")
+        XCTAssertEqual(Array(stored.prefix(3)), Array(fields.prefix(3)))
+        XCTAssertEqual(stored[3], ["question": approved.questions[3], "answer": "New context."])
+    }
+
+    func testBackfillPadsKnownShortDraftsAndPreservesAdditionalFields() throws {
+        let approved = try XCTUnwrap(VisualTemplateCatalog.format(id: "Video"))
+        var short = try legacyDraft(id: "Video", fields: [["question": "", "answer": ""]])
+        XCTAssertEqual(short.questions, approved.questions)
+        XCTAssertEqual(short.answers, ["", "", "", ""])
+        short.setAnswer("Writing in the fourth slot.", at: 3)
+        let restoredShort = try JSONDecoder().decode(VisualTemplateDraft.self, from: JSONEncoder().encode(short))
+        XCTAssertEqual(restoredShort.questions, approved.questions)
+        XCTAssertEqual(restoredShort.answers, ["", "", "", "Writing in the fourth slot."])
+
+        let extras = [
+            ["question": "Additional question?", "answer": "  Additional writing.\n  "],
+            ["question": "", "answer": ""]
+        ]
+        var extended = try legacyDraft(id: "Video", fields: Array(repeating: ["question": "", "answer": ""], count: 4) + extras)
+        extended.setAnswer("New first answer.", at: 0)
+        let restoredExtended = try JSONDecoder().decode(VisualTemplateDraft.self, from: JSONEncoder().encode(extended))
+        XCTAssertEqual(Array(try storedFields(in: restoredExtended, id: "Video").dropFirst(4)), extras)
+        XCTAssertTrue(restoredExtended.shareText.contains("Additional question?\n  Additional writing.\n  "))
+    }
+
+    private func legacyDraft(id: String, fields: [[String: String]]) throws -> VisualTemplateDraft {
+        let payload: [String: Any] = ["selectedFormatID": id, "fieldsByFormat": [id: fields]]
+        return try JSONDecoder().decode(VisualTemplateDraft.self, from: JSONSerialization.data(withJSONObject: payload))
+    }
+
+    private func storedFields(in draft: VisualTemplateDraft, id: String) throws -> [[String: String]] {
+        let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(draft)) as? [String: Any])
+        let formats = try XCTUnwrap(payload["fieldsByFormat"] as? [String: [[String: String]]])
+        return try XCTUnwrap(formats[id])
+    }
+
 }
 
 @MainActor

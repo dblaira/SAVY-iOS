@@ -1,0 +1,77 @@
+{
+  "status": "Approved by Adam on October 31, 2026 for SAVY on Mac and iPhone. Summarize preserves his original dictation; the other 44 questions are approved adaptations, not verbatim quotations.",
+  "questions": {
+    "Summarize": [
+      "Why does this need to be summarized?",
+      "What is being summarized?",
+      "Why is summarization helpful compared to more visual outputs?",
+      "How should this summary be fully taken advantage of by the audience?"
+    ],
+    "Tables": [
+      "What am I comparing?",
+      "What goes in the rows?",
+      "What goes in the columns?",
+      "What difference should people see?"
+    ],
+    "Matrices": [
+      "What goes across the top?",
+      "What goes down the side?",
+      "What goes where they meet?",
+      "What connection should people see?"
+    ],
+    "Node Trees": [
+      "What goes first?",
+      "What comes under it?",
+      "How are they connected?",
+      "What order should people follow?"
+    ],
+    "Graphic Imagery": [
+      "What idea am I showing?",
+      "What needs to be in the image?",
+      "What should people notice first?",
+      "What should this make clear while I talk?"
+    ],
+    "Slides": [
+      "What are the steps or elements?",
+      "What goes on each slide?",
+      "What should be shown together?",
+      "What text keeps people on topic?"
+    ],
+    "Charts": [
+      "What's X?",
+      "What's Y?",
+      "Is there a trend or an outlier?",
+      "What context do people need?"
+    ],
+    "Images": [
+      "What still image do I want?",
+      "What should people notice in it?",
+      "What does it help people understand?",
+      "Is there a feeling I want the image to create?"
+    ],
+    "Video": [
+      "What do I want people to see happening?",
+      "What part of the story does it show?",
+      "What am I saying while it plays?",
+      "Where does the clip start and end?"
+    ],
+    "Audio": [
+      "What do I want people to hear?",
+      "What does the sound help explain?",
+      "What should be on screen while it plays?",
+      "Where does it belong in the story?"
+    ],
+    "Music": [
+      "Is music going to be an important part of it?",
+      "What feeling should it create?",
+      "Where should it come in?",
+      "Where should it stop?"
+    ],
+    "Example": [
+      "What am I showing an example of?",
+      "What happens from beginning to end?",
+      "What will people see and hear?",
+      "How could they use it in their own circumstances?"
+    ]
+  }
+}

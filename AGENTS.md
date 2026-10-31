@@ -1,5 +1,23 @@
 # SAVY iOS Agent Instructions
 
+## questions under each Visual — October 31, 2026
+
+Adam approved all 48 questions and their installation:
+
+> These look great. Let's add these to both the Mac OS and the iOS app for SAVY. I have my phone connected
+
+1. ✅ Both signed SAVY builds are installed and launched. Each of the twelve Visual choices has four approved questions. Visual remains Adam's choice; Theme selection must not select or replace it.
+
+2. 🎨 Styling and font sizes remain frozen. All 87 other app source files are unchanged. Existing nonblank question snapshots and answers remain exact. Only a known format's slot with both question and answer exactly empty receives the new prompt; whitespace counts as saved text. Unknown formats and additional fields remain intact.
+
+3. 🖥️ All twelve formats were inspected through accessibility in the actual installed Mac form. Matrices and Example were visually inspected, along with the opened Visual menu.
+
+4. 📱 The physical iPhone showed all four Matrices questions. Slides and Charts passed the same check. Its opened Visual menu was inspected. The crimson caret appeared directly below Slides' first question.
+
+5. 🧪 Seven pure model tests passed. Both blank forms were canceled without typing or saving. Final saved-data comparisons passed. Both apps retain all 55 records with empty recovery drafts. Authored archives and media match fresh backups; only two CloudKit metadata files changed on each device.
+
+Evidence: [questions under each Visual](<docs/design/questions under each Visual/questions under each Visual.md>).
+
 ## Delegate entry boxes — October 29, 2026
 
 Adam: “One other request.  Match the Delegate entry boxes to the other entry forms.  They should not be muted and disappear when text is entered. They should be the same as Decide, and Visual.”

@@ -33,32 +33,72 @@ enum VisualTemplateCatalog {
             "How should this summary be fully taken advantage of by the audience?"
         ]),
         VisualTemplate(id: "Tables", name: "Tables", questions: [
-            "Why would a table help explain this?",
-            "What should go in the rows and columns?",
-            "Which exact values or differences should be easy to find?",
-            "What should the audience be able to do with this table?"
+            "What am I comparing?",
+            "What goes in the rows?",
+            "What goes in the columns?",
+            "What difference should people see?"
         ]),
         VisualTemplate(id: "Matrices", name: "Matrices", questions: [
-            "What relationship should this matrix make clear?",
-            "Which two sets of things belong across the top and down the side?",
-            "What should each intersection show?",
-            "How should the audience use what the matrix reveals?"
+            "What goes across the top?",
+            "What goes down the side?",
+            "What goes where they meet?",
+            "What connection should people see?"
         ]),
         VisualTemplate(id: "Node Trees", name: "Node Trees", questions: [
-            "What should this tree help the audience understand?",
-            "Where should it start, and what belongs under each branch?",
-            "What determines how the branches connect or where they split?",
-            "What should the audience be able to follow or choose using this tree?"
+            "What goes first?",
+            "What comes under it?",
+            "How are they connected?",
+            "What order should people follow?"
         ]),
         VisualTemplate(id: "Graphic Imagery", name: "Graphic Imagery", questions: [
-            "What should this image make clear at a glance?",
-            "What needs to be shown in the image?",
-            "How should the arrangement make the important pattern or relationship visible?",
-            "What should the audience understand or do after seeing it?"
+            "What idea am I showing?",
+            "What needs to be in the image?",
+            "What should people notice first?",
+            "What should this make clear while I talk?"
+        ]),
+        VisualTemplate(id: "Slides", name: "Slides", questions: [
+            "What are the steps or elements?",
+            "What goes on each slide?",
+            "What should be shown together?",
+            "What text keeps people on topic?"
+        ]),
+        VisualTemplate(id: "Charts", name: "Charts", questions: [
+            "What's X?",
+            "What's Y?",
+            "Is there a trend or an outlier?",
+            "What context do people need?"
+        ]),
+        VisualTemplate(id: "Images", name: "Images", questions: [
+            "What still image do I want?",
+            "What should people notice in it?",
+            "What does it help people understand?",
+            "Is there a feeling I want the image to create?"
+        ]),
+        VisualTemplate(id: "Video", name: "Video", questions: [
+            "What do I want people to see happening?",
+            "What part of the story does it show?",
+            "What am I saying while it plays?",
+            "Where does the clip start and end?"
+        ]),
+        VisualTemplate(id: "Audio", name: "Audio", questions: [
+            "What do I want people to hear?",
+            "What does the sound help explain?",
+            "What should be on screen while it plays?",
+            "Where does it belong in the story?"
+        ]),
+        VisualTemplate(id: "Music", name: "Music", questions: [
+            "Is music going to be an important part of it?",
+            "What feeling should it create?",
+            "Where should it come in?",
+            "Where should it stop?"
+        ]),
+        VisualTemplate(id: "Example", name: "Example", questions: [
+            "What am I showing an example of?",
+            "What happens from beginning to end?",
+            "What will people see and hear?",
+            "How could they use it in their own circumstances?"
         ])
-    ] + ["Slides", "Charts", "Images", "Video", "Audio", "Music", "Example"].map {
-        VisualTemplate(id: $0, name: $0, questions: Array(repeating: "", count: 4))
-    }
+    ]
 
     static let defaultFormat = formats[2]
 
@@ -138,6 +178,14 @@ struct VisualTemplateDraft: Codable, Equatable {
         // Keep any additional fields from a future version; only the four current
         // entry rows are editable here, while sharing and Codable retain them all.
         while fields.count < 4 { fields.append(Field(question: "", answer: "")) }
+        // Older media formats saved empty prompt slots. Supply the current prompt
+        // only when both strings are empty, preserving all writing and snapshots.
+        if let format = VisualTemplateCatalog.format(id: id) {
+            for (index, question) in format.questions.prefix(4).enumerated()
+                where fields[index].question.isEmpty && fields[index].answer.isEmpty {
+                fields[index] = Field(question: question, answer: "")
+            }
+        }
         return fields
     }
 }
