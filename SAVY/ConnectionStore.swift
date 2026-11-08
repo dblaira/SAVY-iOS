@@ -38,8 +38,11 @@ struct ConnectionEntry: Identifiable, Codable, Equatable {
         let values = answers
         let current = values.indices.contains(2) ? values[2] : ""
         let title = metadata.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let authoredTitle = ["New Connection", "New Reminder"].contains(title) ? "" : title
-        let text = [current, authoredTitle] + values + [metadata.notes, "Connection"]
+        let generic = ["New Connection", "New Reminder"].contains(title)
+        // A name taken from the boxes follows the full answers, so it never shortens them.
+        let boxName = !generic && title == metadata.autoTitle(decideTheme: Self.theme) ? title : ""
+        let authoredTitle = generic || !boxName.isEmpty ? "" : title
+        let text = [current, authoredTitle] + values + [boxName, metadata.notes, "Connection"]
         let headline = text.first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? "Connection"
         return NewsChannelPostPreview(
             text: headline,

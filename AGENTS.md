@@ -1,5 +1,15 @@
 # SAVY iOS Agent Instructions
 
+## Delegate naming — November 8, 2026
+
+Adam: “In the SAVY app, if I don’t enter anything into delegation, it automatically just adds new reminder and I want that change to adjust to the naming of whatever I’ve added above it, so if I don’t fill anything in for delegation, it should go to the entry boxes that have been filled in. I don’t mind if it chooses the first word of that, but I don’t want a generic name added”
+
+When Delegate’s “What do I want?” box is empty on Save, the entry is named from the first written box in form order: Decide answers without their questions, Visual answers (visible Format first, then other explored Formats), When I am…, Done looks like…, Steps, then notes and tags. The name is the first sentence of that box’s first written line, up to eight words, with a leading list marker and trailing commas or periods dropped; the words are otherwise exactly as written. Untouched template questions, including Connection’s fixed questions, are never a name. “New Reminder” and the other generic names remain only when nothing at all is written.
+
+A supplied name is not Adam’s writing. When an existing entry is reopened and its generic or box-derived name is left untouched, Save renames it from the current boxes; anything he types in “What do I want?” is kept. Connection cards keep reading their full answers ahead of a box-derived name. `EntryAutoTitle` and `Reminder.autoTitle(decideTheme:)` hold the rule; the form applies it in `ReminderFormView.persist()`. Styling, font sizes, field identifiers, and the data model are unchanged; existing saved titles change only when that entry is saved again.
+
+Status: written in a cloud session without Xcode or access to Adam’s Macs. Unit tests (`SAVYEntryAutoTitleTests`) are added but have not run, and nothing is built, installed, or verified on the Mac or iPhone yet.
+
 ## iOS styling — October 31, 2026
 
 Adam accepted the installed result: “perfect now, make sure everything is saved in both macOS and iOS”. This is the approved macOS and iOS checkpoint. The Mac executable matches the verified Release. A fresh iPhone app lookup matches the approved questions installation receipt. The effective iOS source and project configuration are unchanged by the Mac-only styling correction, so no additional installation was needed. Preserve this appearance and the existing font sizes.
