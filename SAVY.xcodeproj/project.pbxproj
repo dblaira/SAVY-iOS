@@ -53,6 +53,7 @@
 		767584B8B60F76528EFEA089 /* SavyTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD27DC0149E185D0D3F20D07 /* SavyTypography.swift */; };
 		7B85CB7B937BD41199D6A024 /* MetadataEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 777974A93BA9AD820FAE420F /* MetadataEntry.swift */; };
 		7BCF23322BA64AB1E372378E /* SAVYPostFormUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36FDEF49FFD195622B48C4A1 /* SAVYPostFormUITests.swift */; };
+		7BCF23322BA64AB1E372379F /* SAVYSendToAIUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36FDEF49FFD195622B48C4B2 /* SAVYSendToAIUITests.swift */; };
 		80068A3107B8C87C89E78ED5 /* NewsChannelStories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D2ECF2A7BA6E72BA230B401 /* NewsChannelStories.swift */; };
 		8066C740B4B0BDADEA45B999 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D831D78FD50C7055D086693B /* CalendarView.swift */; };
 		87D855FACC418AF0944607BD /* BeliefEntryDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B628940E009E8560B8D9EF50 /* BeliefEntryDisplay.swift */; };
@@ -100,6 +101,8 @@
 		FB92695DBC94ACEDB02DFB81 /* CloudKitDocumentSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64DD65A7BF63DCFABFA2E66 /* CloudKitDocumentSync.swift */; };
 		FF94BAD45782F70A66588AAB /* BiometricUnlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1980712932DAA83D9DFD66AB /* BiometricUnlocker.swift */; };
 		C12F94DBC3FC25E8EC5283A4 /* VisualTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39EB5114A22CB8788FD164D /* VisualTemplate.swift */; };
+		C12F94DBC3FC25E8EC5283B1 /* SendToAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39EB5114A22CB8788FD165A /* SendToAI.swift */; };
+		C12F94DBC3FC25E8EC5283B2 /* AIHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39EB5114A22CB8788FD165B /* AIHistoryView.swift */; };
 		12B8D9AEF738514597E5ACE8 /* SAVYVisualTemplateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C38E55828F6FAC7D764BDB55 /* SAVYVisualTemplateTests.swift */; };
 		AF9A4013D7B1ABA7A8EB8D9D /* SAVYVisualTemplatesUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF5ED14E7F700FE3DB8A676 /* SAVYVisualTemplatesUITests.swift */; };
 /* End PBXBuildFile section */
@@ -134,6 +137,7 @@
 		212F89C0A0B251DA8BE6B5C6 /* SavyWideLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyWideLayout.swift; sourceTree = "<group>"; };
 		309B4F10E8CE7EE4541EAB90 /* AmplifyAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmplifyAuthService.swift; sourceTree = "<group>"; };
 		36FDEF49FFD195622B48C4A1 /* SAVYPostFormUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYPostFormUITests.swift; sourceTree = "<group>"; };
+		36FDEF49FFD195622B48C4B2 /* SAVYSendToAIUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYSendToAIUITests.swift; sourceTree = "<group>"; };
 		3AECBF69B00E80D33E8615BC /* SAVYHeaderOverscrollUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYHeaderOverscrollUITests.swift; sourceTree = "<group>"; };
 		3CBD1D6487DFB82AC66E7F27 /* SavyCloudSyncState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavyCloudSyncState.swift; sourceTree = "<group>"; };
 		3CD8EFEEC816A3A51D4B7412 /* EntryShareContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryShareContentTests.swift; sourceTree = "<group>"; };
@@ -219,6 +223,8 @@
 		F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderBrandTheme.swift; sourceTree = "<group>"; };
 		"TEMP_55691FD1-425F-4B9E-B6FC-7AD51FC774BD" /* SAVY.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SAVY.xcconfig; sourceTree = "<group>"; };
 		E39EB5114A22CB8788FD164D /* VisualTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualTemplate.swift; sourceTree = "<group>"; };
+		E39EB5114A22CB8788FD165A /* SendToAI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendToAI.swift; sourceTree = "<group>"; };
+		E39EB5114A22CB8788FD165B /* AIHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIHistoryView.swift; sourceTree = "<group>"; };
 		C38E55828F6FAC7D764BDB55 /* SAVYVisualTemplateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYVisualTemplateTests.swift; sourceTree = "<group>"; };
 		4EF5ED14E7F700FE3DB8A676 /* SAVYVisualTemplatesUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYVisualTemplatesUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -336,6 +342,8 @@
 				E4ED3C16D837153701CB8BF9 /* PostNumberAllocator.swift */,
 				1D7380183A27076AE8251934 /* PostTheme.swift */,
 				E39EB5114A22CB8788FD164D /* VisualTemplate.swift */,
+				E39EB5114A22CB8788FD165A /* SendToAI.swift */,
+				E39EB5114A22CB8788FD165B /* AIHistoryView.swift */,
 				F1897465A9930CD0D7A40A65 /* ReminderBrandTheme.swift */,
 				EA0D30A16C055A01DD4AD0D7 /* ReminderCalendarIntegration.swift */,
 				9B3873F2C7A6AEBD1AFB0561 /* ReminderFormView.swift */,
@@ -384,6 +392,7 @@
 				C9097749206EB8223EC12F04 /* SAVYDelegateTextExpansionUITests.swift */,
 				3AECBF69B00E80D33E8615BC /* SAVYHeaderOverscrollUITests.swift */,
 				36FDEF49FFD195622B48C4A1 /* SAVYPostFormUITests.swift */,
+				36FDEF49FFD195622B48C4B2 /* SAVYSendToAIUITests.swift */,
 				4EF5ED14E7F700FE3DB8A676 /* SAVYVisualTemplatesUITests.swift */,
 				CF17793E9766BDD8C770DF69 /* SAVYReminderActionCalendarUITests.swift */,
 			);
@@ -534,6 +543,7 @@
 				F245C75739A60D835FFAC8A5 /* SAVYDelegateTextExpansionUITests.swift in Sources */,
 				C65583F6CE815609DC971C67 /* SAVYHeaderOverscrollUITests.swift in Sources */,
 				7BCF23322BA64AB1E372378E /* SAVYPostFormUITests.swift in Sources */,
+				7BCF23322BA64AB1E372379F /* SAVYSendToAIUITests.swift in Sources */,
 				AF9A4013D7B1ABA7A8EB8D9D /* SAVYVisualTemplatesUITests.swift in Sources */,
 				E7F5F0E200B631EE00F748F4 /* SAVYReminderActionCalendarUITests.swift in Sources */,
 			);
@@ -598,6 +608,8 @@
 				F7DEFA588F491681FB4405BF /* PostNumberAllocator.swift in Sources */,
 				50423C0003F2C6D059CF99E4 /* PostTheme.swift in Sources */,
 				C12F94DBC3FC25E8EC5283A4 /* VisualTemplate.swift in Sources */,
+				C12F94DBC3FC25E8EC5283B1 /* SendToAI.swift in Sources */,
+				C12F94DBC3FC25E8EC5283B2 /* AIHistoryView.swift in Sources */,
 				A89DAF0D5D6D98E9E78EE6FC /* ReminderBrandTheme.swift in Sources */,
 				F3CF5FFA8B19816BF92E11C3 /* ReminderCalendarIntegration.swift in Sources */,
 				1BD0BEF6DD141ABC2A8412B5 /* ReminderFormView.swift in Sources */,
