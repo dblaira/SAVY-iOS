@@ -1,0 +1,19 @@
+I am deciding whether to build this into SAVY, my iPhone and Mac app. I want your honest read before I decide. Here are two mockups (mockup A, mockup B) and six screenshots of it running in the iOS Simulator (1 to 6).
+
+My words on the problem:
+"I have been forms to help structure the communication. There are only so many fucking ways to think about something and I am forced to start every fucking conversation from a blank page."
+"I want to keep the way SAVY works, with forms for follow-ups and no bloated conversation screen."
+"Form follows function."
+
+What the screenshots show:
+1. The SAVY entry form. Theme, Decide questions, Visual questions, each with an icon and my answer under it. A "Send to AI" button under the Visual answers sends the whole filled-in form to the AI.
+2. The reply comes back in the form's own shape: each question again with its icon, one short answer under it. Below that, one row: "History · 2 exchanges".
+3. History is a short list of replies, nothing else.
+4. A reply opens as its own page, same shape as the form, with a Respond button.
+5. Respond is a three-box form: What do you want next? Which part? What must stay? Then Send.
+6. Reply 2 shows my three Respond answers on top, then the same questions answered again, changed by what I asked.
+
+Questions for you:
+- Does this fit a person who reads on a phone and does not want paragraphs or a chat screen?
+- What is wrong with it?
+- What is the one thing you would change before I build it for real?
