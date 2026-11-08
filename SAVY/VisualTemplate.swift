@@ -150,15 +150,19 @@ struct VisualTemplateDraft: Codable, Equatable {
         }
     }
 
+    /// Written answers in reading order, without their questions: the visible Format first,
+    /// then every other explored Format. Read-only; nothing here changes the saved writing.
+    var writtenAnswers: [String] {
+        orderedFormatIDs.flatMap { id in
+            fields(for: id).map { $0.answer.trimmingCharacters(in: .whitespacesAndNewlines) }
+        }
+        .filter { !$0.isEmpty }
+    }
+
     /// The visible Format comes first, followed by all other explored Formats.
     /// Sharing is a snapshot: neither answers nor the selected Format are changed.
     var shareText: String {
-        let knownIDs = VisualTemplateCatalog.formats.map(\.id)
-        let unknownIDs = fieldsByFormat.keys.filter { !knownIDs.contains($0) }.sorted()
-        let orderedIDs = [selectedFormatID] + (knownIDs + unknownIDs).filter {
-            $0 != selectedFormatID && fieldsByFormat[$0] != nil
-        }
-        let sections = orderedIDs.map { id in
+        let sections = orderedFormatIDs.map { id in
             let name = VisualTemplateCatalog.format(id: id)?.name ?? id
             let writing = fields(for: id).map { field in
                 field.question.isEmpty ? field.answer : "\(field.question)\n\(field.answer)"
@@ -166,6 +170,14 @@ struct VisualTemplateDraft: Codable, Equatable {
             return "Format: \(name)\n\n\(writing)"
         }
         return "Visual templates\n\n" + sections.joined(separator: "\n\n")
+    }
+
+    private var orderedFormatIDs: [String] {
+        let knownIDs = VisualTemplateCatalog.formats.map(\.id)
+        let unknownIDs = fieldsByFormat.keys.filter { !knownIDs.contains($0) }.sorted()
+        return [selectedFormatID] + (knownIDs + unknownIDs).filter {
+            $0 != selectedFormatID && fieldsByFormat[$0] != nil
+        }
     }
 
     private static func emptyFields(for id: String) -> [Field] {
