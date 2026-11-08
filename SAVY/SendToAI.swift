@@ -129,13 +129,14 @@ enum SendToAI {
         return ClaudeKeyStore.read()
     }
 
-    /// Where the helper lives. The simulator and the Mac app talk to this Mac directly; the phone
-    /// reaches the same helper over Adam's Tailscale network, so no key ever sits on the phone.
-    static var helperURL: URL {
+    /// Where the helper lives. The simulator and the Mac app talk to this Mac directly. The phone
+    /// reaches the same helper over Adam's Tailscale network: the Mac Studio first, because it
+    /// never sleeps, then the laptop. No key ever sits on the phone.
+    static var helperURLs: [URL] {
         #if targetEnvironment(simulator) || targetEnvironment(macCatalyst)
-        return URL(string: "http://127.0.0.1:8787/ask")!
+        return [URL(string: "http://127.0.0.1:8787/ask")!]
         #else
-        return URL(string: "http://100.111.154.126:8787/ask")!
+        return [URL(string: "http://100.102.153.54:8787/ask")!, URL(string: "http://100.111.154.126:8787/ask")!]
         #endif
     }
 
@@ -182,7 +183,20 @@ enum SendToAI {
     /// `script/send-to-ai-helper.py` on Adam's Mac answers through the Claude Code login or the
     /// Codex (ChatGPT) login already on the machine.
     private static func askLocalHelper(provider: AIProvider, prompt: String) async throws -> String {
-        var request = URLRequest(url: helperURL)
+        var lastError: Error = SendToAIError.server("")
+        for url in helperURLs {
+            do {
+                return try await ask(url: url, provider: provider, prompt: prompt)
+            } catch {
+                // A Mac that is off, unreachable or not signed in hands the question to the next one.
+                lastError = error
+            }
+        }
+        throw lastError
+    }
+
+    private static func ask(url: URL, provider: AIProvider, prompt: String) async throws -> String {
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 300
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
