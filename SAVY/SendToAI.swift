@@ -25,9 +25,21 @@ enum SendToAI {
     static let respondSymbols = ["arrow.turn.down.right", "scope", "pin"]
 
     /// The questions a reply answers, in form order: Decide, then Visual. Each keeps its icon.
+    /// Decide questions are editable, so the frozen prompt is the first line of the saved field,
+    /// the question as Adam actually asked it; the catalog only supplies the icon.
     static func questions(for entry: Reminder) -> [AIQuestion] {
         let theme = PostThemeCatalog.theme(id: entry.postThemeID)
-        let decide = (theme?.questions ?? []).map { AIQuestion(prompt: $0.prompt, symbol: $0.symbol) }
+        let catalog = theme?.questions ?? []
+        let saved = entry.postAnswersContainQuestions == true ? (entry.postAnswers ?? []) : []
+        let count = max(catalog.count, saved.count)
+        let decide = (0..<count).map { index -> AIQuestion in
+            let symbol = catalog.indices.contains(index) ? catalog[index].symbol : "text.bubble"
+            let fallback = catalog.indices.contains(index) ? catalog[index].prompt : "Decide \(index + 1)"
+            guard saved.indices.contains(index) else { return AIQuestion(prompt: fallback, symbol: symbol) }
+            let firstLine = saved[index].split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+            let prompt = firstLine.trimmingCharacters(in: .whitespaces)
+            return AIQuestion(prompt: prompt.isEmpty ? fallback : prompt, symbol: symbol)
+        }
         let visual = (entry.visualTemplates ?? VisualTemplateDraft()).questions.enumerated().map {
             AIQuestion(prompt: $0.element, symbol: visualSymbols[$0.offset])
         }
@@ -37,11 +49,11 @@ enum SendToAI {
     /// The chosen providers, remembered between sends. Claude until Adam chooses otherwise.
     static var selectedProviders: Set<AIProvider> {
         get {
-            let saved = UserDefaults.standard.stringArray(forKey: providersDefaultsKey) ?? []
+            let saved = SendToAIJobs.defaults.stringArray(forKey: providersDefaultsKey) ?? []
             let set = Set(saved.compactMap(AIProvider.init(rawValue:)))
             return set.isEmpty ? [.claude] : set
         }
-        set { UserDefaults.standard.set(newValue.map(\.rawValue).sorted(), forKey: providersDefaultsKey) }
+        set { SendToAIJobs.defaults.set(newValue.map(\.rawValue).sorted(), forKey: providersDefaultsKey) }
     }
 
     /// Every reply from the first send down to `id`, oldest first.
@@ -101,7 +113,8 @@ enum SendToAI {
             String($0).trimmingCharacters(in: .whitespaces)
         }.filter { !$0.isEmpty }
         lines = lines.map { line in
-            line.replacingOccurrences(of: "^(\\d+[.)]|[-*•])\\s*", with: "", options: .regularExpression)
+            // Only a marker followed by a space is a list marker; "3.5 hours" and "-5 degrees" stay whole.
+            line.replacingOccurrences(of: "^(\\d+[.)]|[-*•])\\s+", with: "", options: .regularExpression)
         }
         if lines.count == questionCount { return lines }
         if lines.count > questionCount {
@@ -200,51 +213,109 @@ enum SendToAIError: LocalizedError {
 }
 
 /// Keeps every send alive outside any sheet, so closing Respond, leaving the form or relaunching
-/// never loses a reply that is on its way. Finished replies wait here until the entry takes them.
+/// never loses a reply that is on its way. Every request is saved before it is sent and retried
+/// after a relaunch; finished replies wait here until the entry takes them.
 @MainActor
 final class SendToAIJobs: ObservableObject {
     static let shared = SendToAIJobs()
+    private static let pendingKey = "sendToAI.pendingRequests"
     private static let finishedKey = "sendToAI.finishedReplies"
-    private static let draftPrefix = "sendToAI.respondDraft."
+    nonisolated private static let draftPrefix = "sendToAI.respondDraft."
 
-    struct Job: Identifiable, Equatable {
-        let id = UUID()
-        let entryID: UUID
-        let provider: AIProvider
+    /// Physical-device UI tests write synthetic replies; they never reach the live store.
+    nonisolated(unsafe) static let defaults: UserDefaults = {
+        guard !SavyRuntime.isTesting else {
+            let suite = "com.adamblair.savy.ui-test.send-to-ai"
+            let defaults = UserDefaults(suiteName: suite)!
+            if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_RESET_REMINDERS") {
+                defaults.removePersistentDomain(forName: suite)
+            }
+            return defaults
+        }
+        return .standard
+    }()
+
+    /// One request as sent: everything needed to ask again after a relaunch or a failure.
+    struct Request: Identifiable, Codable, Equatable {
+        var id = UUID()
+        var entryID: UUID
+        var provider: AIProvider
+        var parentID: UUID?
+        var questions: [AIQuestion]
+        var followUp: [String]
+        var message: String
     }
 
-    @Published private(set) var inFlight: [Job] = []
+    @Published private(set) var inFlight: [UUID] = []
+    @Published private(set) var pending: [Request] = []
     @Published private(set) var finished: [UUID: [AIExchange]] = [:]
     @Published private(set) var failures: [UUID: String] = [:]
 
     private init() {
-        if let data = UserDefaults.standard.data(forKey: Self.finishedKey),
+        let defaults = Self.defaults
+        if let data = defaults.data(forKey: Self.finishedKey),
            let saved = try? JSONDecoder().decode([UUID: [AIExchange]].self, from: data) {
             finished = saved
         }
+        if let data = defaults.data(forKey: Self.pendingKey),
+           let saved = try? JSONDecoder().decode([Request].self, from: data) {
+            pending = saved
+        }
+        // Requests that were on their way when SAVY last closed are asked again.
+        for request in pending { dispatch(request) }
     }
 
-    func isSending(_ entryID: UUID) -> Bool { inFlight.contains { $0.entryID == entryID } }
+    func isSending(_ entryID: UUID) -> Bool {
+        pending.contains { $0.entryID == entryID && inFlight.contains($0.id) }
+    }
+
+    func hasPending(_ entryID: UUID) -> Bool { pending.contains { $0.entryID == entryID } }
 
     func send(entryID: UUID, providers: Set<AIProvider>, parentID: UUID?, questions: [AIQuestion],
               followUp: [String], message: String) {
         failures[entryID] = nil
+        // A new send replaces whatever was still waiting for this entry.
+        pending.removeAll { $0.entryID == entryID && !inFlight.contains($0.id) }
         for provider in providers.sorted(by: { $0.rawValue < $1.rawValue }) {
-            let job = Job(entryID: entryID, provider: provider)
-            inFlight.append(job)
-            Task {
-                do {
-                    let replies = try await SendToAI.ask(provider: provider, message: message,
-                                                         questionCount: questions.count, isFollowUp: parentID != nil)
-                    let exchange = AIExchange(provider: provider.rawValue, parentID: parentID,
-                                              questions: questions, followUp: followUp, answers: replies)
-                    finished[entryID, default: []].append(exchange)
-                    persistFinished()
-                } catch {
-                    failures[entryID] = "\(provider.rawValue): \(error.localizedDescription)"
+            let request = Request(entryID: entryID, provider: provider, parentID: parentID,
+                                  questions: questions, followUp: followUp, message: message)
+            pending.append(request)
+            persistPending()
+            dispatch(request)
+        }
+    }
+
+    /// Asks again for everything still waiting on this entry.
+    func retry(_ entryID: UUID) {
+        failures[entryID] = nil
+        for request in pending where request.entryID == entryID && !inFlight.contains(request.id) {
+            dispatch(request)
+        }
+    }
+
+    private func dispatch(_ request: Request) {
+        guard !inFlight.contains(request.id) else { return }
+        inFlight.append(request.id)
+        Task {
+            do {
+                let replies = try await SendToAI.ask(provider: request.provider, message: request.message,
+                                                     questionCount: request.questions.count,
+                                                     isFollowUp: request.parentID != nil)
+                let exchange = AIExchange(provider: request.provider.rawValue, parentID: request.parentID,
+                                          questions: request.questions, followUp: request.followUp, answers: replies)
+                finished[request.entryID, default: []].append(exchange)
+                persistFinished()
+                pending.removeAll { $0.id == request.id }
+                persistPending()
+                if let parentID = request.parentID {
+                    // The Respond writing has arrived safely; only now does its draft go.
+                    Self.saveRespondDraft(["", "", ""], entryID: request.entryID, parentID: parentID)
                 }
-                inFlight.removeAll { $0.id == job.id }
+            } catch {
+                // The request stays saved; Try again or the next launch asks once more.
+                failures[request.entryID] = "\(request.provider.rawValue): \(error.localizedDescription)"
             }
+            inFlight.removeAll { $0 == request.id }
         }
     }
 
@@ -262,18 +333,24 @@ final class SendToAIJobs: ObservableObject {
 
     private func persistFinished() {
         if let data = try? JSONEncoder().encode(finished) {
-            UserDefaults.standard.set(data, forKey: Self.finishedKey)
+            Self.defaults.set(data, forKey: Self.finishedKey)
         }
     }
 
-    // Unsent Respond writing, kept per entry and reply so closing the sheet loses nothing.
-    static func respondDraft(entryID: UUID, parentID: UUID) -> [String] {
-        UserDefaults.standard.stringArray(forKey: draftPrefix + "\(entryID).\(parentID)") ?? ["", "", ""]
+    private func persistPending() {
+        if let data = try? JSONEncoder().encode(pending) {
+            Self.defaults.set(data, forKey: Self.pendingKey)
+        }
     }
-    static func saveRespondDraft(_ draft: [String], entryID: UUID, parentID: UUID) {
+
+    // Unsent Respond writing, kept per entry and reply until the reply it asked for arrives.
+    nonisolated static func respondDraft(entryID: UUID, parentID: UUID) -> [String] {
+        defaults.stringArray(forKey: draftPrefix + "\(entryID).\(parentID)") ?? ["", "", ""]
+    }
+    nonisolated static func saveRespondDraft(_ draft: [String], entryID: UUID, parentID: UUID) {
         let key = draftPrefix + "\(entryID).\(parentID)"
-        if draft.allSatisfy({ $0.isEmpty }) { UserDefaults.standard.removeObject(forKey: key) }
-        else { UserDefaults.standard.set(draft, forKey: key) }
+        if draft.allSatisfy({ $0.isEmpty }) { defaults.removeObject(forKey: key) }
+        else { defaults.set(draft, forKey: key) }
     }
 }
 

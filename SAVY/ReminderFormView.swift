@@ -805,6 +805,22 @@ struct ReminderFormView: View {
             .buttonStyle(.plain)
             .disabled(isSendingToAI || isSaving || aiProviders.isEmpty)
             .accessibilityIdentifier("SendToAI")
+            if sendToAIError != nil, aiJobs.hasPending(r.id), !isSendingToAI {
+                Button { aiJobs.retry(r.id) } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(Self.decideIconFont)
+                            .foregroundStyle(Brand.crimson)
+                            .frame(width: 24)
+                        Text("Try again")
+                            .font(Self.questionFont)
+                            .foregroundStyle(Brand.crimson)
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("SendToAIRetry")
+            }
         }
         .padding(.top, Self.decideQuestionTopPadding)
     }

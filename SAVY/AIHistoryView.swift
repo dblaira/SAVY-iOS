@@ -245,7 +245,7 @@ struct AIRespondView: View {
         let message = SendToAI.message(form: form, chain: chain, followUp: followUp)
         jobs.send(entryID: entry.id, providers: providers, parentID: previousID,
                   questions: questions, followUp: followUp, message: message)
-        SendToAIJobs.saveRespondDraft(["", "", ""], entryID: entry.id, parentID: previousID)
+        // The draft stays until the reply arrives, so a failed send can be sent again untyped.
         dismiss()
     }
 }
