@@ -19,6 +19,7 @@ struct Story: Identifiable, Codable, Equatable {
     var postedAt: Date? = nil
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
+    var aiExchanges: [AIExchange]? = nil
 
     init() {}
 
@@ -33,6 +34,21 @@ struct Story: Identifiable, Codable, Equatable {
         postedAt = try c.decodeIfPresent(Date.self, forKey: .postedAt)
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+        aiExchanges = try c.decodeIfPresent([AIExchange].self, forKey: .aiExchanges)
+    }
+}
+
+extension Story: AIExchangeHost {
+    static let aiQuestions = [
+        AIQuestion(prompt: "Title", symbol: "textformat"),
+        AIQuestion(prompt: "Subtitle", symbol: "text.alignleft"),
+        AIQuestion(prompt: "Body", symbol: "doc.text"),
+    ]
+    var aiQuestions: [AIQuestion] { Self.aiQuestions }
+    /// The filled-in form as the message: each question, the answer under it.
+    var aiForm: String {
+        zip(Self.aiQuestions, [trimmedTitle, trimmedSubtitle, trimmedBody])
+            .map { "\($0.prompt)\n\($1)" }.joined(separator: "\n\n")
     }
 }
 

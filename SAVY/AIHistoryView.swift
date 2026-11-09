@@ -4,10 +4,10 @@ import Combine
 /// Adam, 2026-11-07: "I want to keep the way SAVY works, with forms for follow-ups and no bloated
 /// conversation screen." History is a list of replies. A reply opens as the form's questions with
 /// their icons. Respond is a three-box form, never a chat box.
-struct AIHistoryView: View {
+struct AIHistoryView<Entry: AIExchangeHost>: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var jobs = SendToAIJobs.shared
-    @Binding var entry: Reminder
+    @Binding var entry: Entry
     let form: String
 
     private var exchanges: [AIExchange] { entry.aiExchanges ?? [] }
@@ -63,8 +63,8 @@ struct AIHistoryView: View {
 
 /// One reply, in the form's own shape. ChatGPT, 2026-11-08: answer "Which part?" first and keep the
 /// submitted form and unchanged answers behind an expandable row.
-struct AIReplyView: View {
-    @Binding var entry: Reminder
+struct AIReplyView<Entry: AIExchangeHost>: View {
+    @Binding var entry: Entry
     let form: String
     let exchangeID: UUID
     @State private var showsRespond = false
@@ -77,7 +77,7 @@ struct AIReplyView: View {
     private var number: Int { (exchanges.firstIndex { $0.id == exchangeID } ?? 0) + 1 }
     private var questions: [AIQuestion] {
         guard let exchange else { return [] }
-        return exchange.questions.isEmpty ? SendToAI.questions(for: entry) : exchange.questions
+        return exchange.questions.isEmpty ? entry.aiQuestions : exchange.questions
     }
     /// Indices whose answer differs from the reply this one responds to. All of them for a first reply.
     private var changed: [Int] {
@@ -162,17 +162,17 @@ struct AIReplyView: View {
 }
 
 /// The follow-up form. Three boxes, who to send to, and Send; the reply lands as the next exchange.
-struct AIRespondView: View {
+struct AIRespondView<Entry: AIExchangeHost>: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var jobs = SendToAIJobs.shared
-    @Binding var entry: Reminder
+    @Binding var entry: Entry
     let form: String
     let previousID: UUID
     @State private var followUp: [String]
     @State private var providers = SendToAI.selectedProviders
     @FocusState private var focused: Int?
 
-    init(entry: Binding<Reminder>, form: String, previousID: UUID) {
+    init(entry: Binding<Entry>, form: String, previousID: UUID) {
         _entry = entry
         self.form = form
         self.previousID = previousID
@@ -240,13 +240,156 @@ struct AIRespondView: View {
     private func send() {
         let exchanges = entry.aiExchanges ?? []
         guard let previous = exchanges.first(where: { $0.id == previousID }) else { return }
-        let questions = previous.questions.isEmpty ? SendToAI.questions(for: entry) : previous.questions
+        let questions = previous.questions.isEmpty ? entry.aiQuestions : previous.questions
         let chain = SendToAI.chain(to: previousID, in: exchanges)
         let message = SendToAI.message(form: form, chain: chain, followUp: followUp)
         jobs.send(entryID: entry.id, providers: providers, parentID: previousID,
                   questions: questions, followUp: followUp, message: message)
         // The draft stays until the reply arrives, so a failed send can be sent again untyped.
         dismiss()
+    }
+}
+
+/// The Send to AI rows and the Answer section for the forms that are not the shared entry form.
+/// Adam, 2026-11-08: "i want it on all forms." Same chooser, same Send, same reply shape, same History.
+struct AISendToAISection<Entry: AIExchangeHost>: View {
+    @ObservedObject private var jobs = SendToAIJobs.shared
+    @Binding var entry: Entry
+    let form: String
+    /// Section header color: navy on the white forms, white on the navy Story form.
+    var headerColor: Color = SavyTheme.deepNavy.opacity(0.72)
+    @State private var providers = SendToAI.selectedProviders
+    @State private var showsHistory = false
+
+    private func header(_ title: String) -> some View {
+        Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(headerColor)
+    }
+
+    private var isSending: Bool { jobs.isSending(entry.id) }
+    private var failure: String? { jobs.failures[entry.id] }
+
+    var body: some View {
+        Section {
+            AIProviderChooser(selection: $providers)
+                .onChange(of: providers) { _, chosen in SendToAI.selectedProviders = chosen }
+            Button { send() } label: {
+                HStack(spacing: 10) {
+                    if isSending {
+                        ProgressView().tint(Brand.crimson).frame(width: 24)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Brand.crimson)
+                            .frame(width: 24)
+                    }
+                    Text("Send to AI").foregroundStyle(Brand.crimson)
+                    Spacer()
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(isSending || providers.isEmpty)
+            .accessibilityIdentifier("SendToAI")
+            if failure != nil, jobs.hasPending(entry.id), !isSending {
+                Button { jobs.retry(entry.id) } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Brand.crimson)
+                            .frame(width: 24)
+                        Text("Try again").foregroundStyle(Brand.crimson)
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("SendToAIRetry")
+            }
+        } header: { header("Send to AI") }
+        .listRowBackground(Brand.card)
+        .onAppear { takeFinishedReplies() }
+        .onReceive(jobs.$finished.receive(on: DispatchQueue.main)) { _ in takeFinishedReplies() }
+        .sheet(isPresented: $showsHistory) { AIHistoryView(entry: $entry, form: form) }
+
+        if let latest = entry.aiExchanges?.last {
+            Section {
+                if let failure {
+                    Text(failure).foregroundStyle(Brand.crimson).fixedSize(horizontal: false, vertical: true)
+                }
+                let questions = latest.questions.isEmpty ? entry.aiQuestions : latest.questions
+                ForEach(Array(latest.answers.indices), id: \.self) { (index: Int) in
+                    let question = questions.indices.contains(index) ? questions[index] : AIQuestion(prompt: "Answer", symbol: "sparkles")
+                    AIAnswerField(prompt: question.prompt, symbol: question.symbol, text: answerBinding(index))
+                        .accessibilityIdentifier("Answer\(index)")
+                }
+                Button { showsHistory = true } label: {
+                    HStack(spacing: 12) {
+                        Label("History", systemImage: "clock").foregroundStyle(.black)
+                        Spacer()
+                        let count = entry.aiExchanges?.count ?? 0
+                        Text(count == 1 ? "1 exchange" : "\(count) exchanges").foregroundStyle(Brand.crimson)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Brand.crimson)
+                    }
+                }
+                .accessibilityIdentifier("AIHistory")
+            } header: { header("Answer · \(latest.provider)") }
+            .listRowBackground(Brand.card)
+        } else if let failure {
+            Section {
+                Text(failure).foregroundStyle(Brand.crimson).fixedSize(horizontal: false, vertical: true)
+            } header: { header("Answer") }
+            .listRowBackground(Brand.card)
+        }
+    }
+
+    private func send() {
+        let message = SendToAI.message(form: form, chain: [], followUp: [])
+        jobs.send(entryID: entry.id, providers: providers, parentID: nil,
+                  questions: entry.aiQuestions, followUp: [], message: message)
+    }
+
+    private func takeFinishedReplies() {
+        let replies = jobs.take(for: entry.id)
+        guard !replies.isEmpty else { return }
+        entry.aiExchanges = (entry.aiExchanges ?? []) + replies
+    }
+
+    private func answerBinding(_ index: Int) -> Binding<String> {
+        Binding(
+            get: { entry.aiExchanges?.last?.answers[index] ?? "" },
+            set: { text in
+                guard var exchanges = entry.aiExchanges, var last = exchanges.popLast(),
+                      last.answers.indices.contains(index) else { return }
+                last.answers[index] = text
+                entry.aiExchanges = exchanges + [last]
+            }
+        )
+    }
+}
+
+/// A question with its icon and an editable answer under it. Same look as the form rows.
+struct AIAnswerField: View {
+    let prompt: String
+    let symbol: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 16))
+                .foregroundStyle(Brand.crimson)
+                .frame(width: 24, height: 22)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(prompt).foregroundStyle(.black)
+                TextField("", text: $text, axis: .vertical)
+                    .lineLimit(1...)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(.black)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(prompt)
+            }
+        }
+        .padding(.top, 8)
     }
 }
 

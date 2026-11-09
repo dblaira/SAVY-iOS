@@ -288,6 +288,7 @@ struct Reminder: Identifiable, Codable, Equatable {
     // JSON decodes.
     var aiExchanges: [AIExchange]? = nil
     var aiAnswers: [String]? { aiExchanges?.last?.answers }
+
     // Graph + lifecycle
     var seededFromTemplateID: String? = nil
     var pinned: Bool = false                    // sorts to the top of the list
@@ -561,4 +562,17 @@ extension JSONDecoder {
     static let recall: JSONDecoder = {
         let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601; return d
     }()
+}
+
+/// Adam, 2026-11-08: "i want it on all forms." Any saved form that can be sent to AI and keep
+/// its replies: the shared entry, the older Social form, and Story.
+protocol AIExchangeHost {
+    var id: UUID { get }
+    var aiExchanges: [AIExchange]? { get set }
+    /// The questions a reply answers, in form order, each with its icon.
+    var aiQuestions: [AIQuestion] { get }
+}
+
+extension Reminder: AIExchangeHost {
+    var aiQuestions: [AIQuestion] { SendToAI.questions(for: self) }
 }
