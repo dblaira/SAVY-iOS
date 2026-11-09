@@ -262,3 +262,100 @@ final class SAVYVisualTemplateRecoveryTests: XCTestCase {
         XCTAssertEqual(restoredVisual.answers[0], "  Matrix writing\nSecond line.  ")
     }
 }
+
+/// Adam, 2026-11-08: "if I don't fill anything in for delegation, it should go to the entry
+/// boxes that have been filled in. I don't mind if it chooses the first word of that, but I
+/// don't want a generic name added"
+final class SAVYEntryAutoTitleTests: XCTestCase {
+    func testEmptyDelegateTakesTheFirstWrittenDecideAnswerWithoutItsQuestion() {
+        var entry = Reminder()
+        var decide = PostEntryDraft(entry: entry)
+        XCTAssertEqual(decide.theme.id, "habit")
+        decide.setAnswer("Make it Obvious\nLay out my running shoes by the door the night before.", at: 0)
+        decide.setAnswer("Make it Easy\nSecond answer.", at: 1)
+        decide.apply(to: &entry)
+        XCTAssertEqual(entry.autoTitle(), "Lay out my running shoes by the door")
+
+        var short = Reminder()
+        var oneWord = PostEntryDraft(entry: short)
+        oneWord.setAnswer("Make it Obvious\nRun", at: 0)
+        oneWord.apply(to: &short)
+        XCTAssertEqual(short.autoTitle(), "Run")
+    }
+
+    func testMultiLineQuestionsAreNeverTheName() {
+        var entry = Reminder()
+        var decide = PostEntryDraft(entry: entry)
+        decide.selectTheme("a-strong-yes")
+        decide.setAnswer(decide.theme.questions[0].prompt + "\nSwitching between apps all day", at: 0)
+        decide.apply(to: &entry)
+        XCTAssertEqual(entry.autoTitle(), "Switching between apps all day")
+    }
+
+    func testUnansweredDecideFallsThroughToVisualThenTheRestOfTheForm() {
+        var entry = Reminder()
+        PostEntryDraft(entry: entry).apply(to: &entry)
+        XCTAssertNil(entry.autoTitle(), "Untouched questions are not writing")
+
+        entry.tags = ["running"]
+        XCTAssertEqual(entry.autoTitle(), "running")
+        entry.subtasks = [Subtask(title: "  "), Subtask(title: "- Buy new shoes, today")]
+        XCTAssertEqual(entry.autoTitle(), "Buy new shoes, today")
+        entry.outcome = "Three runs logged this week."
+        XCTAssertEqual(entry.autoTitle(), "Three runs logged this week")
+        entry.whenIAm = "At the gym"
+        XCTAssertEqual(entry.autoTitle(), "At the gym")
+
+        var visual = VisualTemplateDraft()
+        visual.selectFormat("Charts")
+        visual.setAnswer("Weekly mileage. Then pace.", at: 0)
+        visual.selectFormat("Matrices")
+        visual.setAnswer("Effort against recovery", at: 2)
+        entry.visualTemplates = visual
+        XCTAssertEqual(entry.visualTemplates?.writtenAnswers, ["Effort against recovery", "Weekly mileage. Then pace."])
+        XCTAssertEqual(entry.autoTitle(), "Effort against recovery", "The visible Format reads first")
+        visual.selectFormat("Charts")
+        entry.visualTemplates = visual
+        XCTAssertEqual(entry.autoTitle(), "Weekly mileage")
+    }
+
+    func testConnectionQuestionsAreNeverTheNameAndCardsKeepTheirFullAnswer() throws {
+        var metadata = Reminder()
+        var decide = PostEntryDraft(entry: metadata, fixedTheme: ConnectionEntry.theme)
+        decide.apply(to: &metadata)
+        XCTAssertNil(metadata.autoTitle(decideTheme: ConnectionEntry.theme))
+
+        decide.setAnswer(ConnectionEntry.theme.questions[0].prompt
+                         + "\nI believed that talent mattered more than daily repetition over many years.", at: 0)
+        decide.apply(to: &metadata)
+        metadata.title = try XCTUnwrap(metadata.autoTitle(decideTheme: ConnectionEntry.theme))
+        XCTAssertEqual(metadata.title, "I believed that talent mattered more than daily")
+        XCTAssertEqual(ConnectionEntry(metadata: metadata).preview.title,
+                       "I believed that talent mattered more than daily repetition over many years.")
+
+        var unanswered = Reminder()
+        PostEntryDraft(entry: unanswered, fixedTheme: ConnectionEntry.theme).apply(to: &unanswered)
+        unanswered.whenIAm = "Walking without my phone"
+        unanswered.title = try XCTUnwrap(unanswered.autoTitle(decideTheme: ConnectionEntry.theme))
+        XCTAssertEqual(ConnectionEntry(metadata: unanswered).preview.title, "Walking without my phone")
+    }
+
+    func testGenericNamesAreRecognizedAndWrittenNamesAreNot() {
+        for name in ["New Reminder", "New Action", "New Event", "New Calendar", "New Social",
+                     "New Post", "New Connection", "  New Reminder\n"] {
+            XCTAssertTrue(EntryAutoTitle.isGenericName(name), name)
+        }
+        for name in ["New running plan", "Reminder", "", "Run"] {
+            XCTAssertFalse(EntryAutoTitle.isGenericName(name), name)
+        }
+    }
+
+    func testNamesKeepTheWrittenWordsExactly() {
+        XCTAssertNil(EntryAutoTitle.name(from: " \n\n  \n"))
+        XCTAssertEqual(EntryAutoTitle.name(from: "\n\n• Call Mom?  More later"), "Call Mom?")
+        XCTAssertEqual(EntryAutoTitle.name(from: "one two three four five six seven eight nine ten"),
+                       "one two three four five six seven eight")
+        XCTAssertEqual(EntryAutoTitle.name(fromFirstWritten: ["", "  ", "Second box", "Third box"]), "Second box")
+        XCTAssertNil(EntryAutoTitle.name(fromFirstWritten: []))
+    }
+}

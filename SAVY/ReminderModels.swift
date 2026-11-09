@@ -371,6 +371,27 @@ extension Reminder {
     /// The first written Theme answer, without its question. Nil until an answer is written.
     var firstThemeAnswer: String? { postAnswerTexts.first { !$0.isEmpty } }
 
+    /// The name for an entry whose Delegate "What do I want?" box is empty: a short name from
+    /// the first written box in form order (Decide, Visual, the other Delegate answers, Steps),
+    /// then notes and tags. Nil when nothing is written. `decideTheme` supplies a fixed theme
+    /// that is not in the catalog, such as Connection's, so its questions are never the name.
+    func autoTitle(decideTheme: PostTheme? = nil) -> String? {
+        var boxes: [String] = postAnswerTexts
+        if let theme = decideTheme {
+            let fields = theme.questionAndAnswers(from: postAnswers, containQuestions: postAnswersContainQuestions == true)
+            boxes = fields.indices.map { index in
+                let prompt: String? = theme.questions.indices.contains(index) ? theme.questions[index].prompt : nil
+                return PostTheme.answerText(in: fields[index], originalPrompt: prompt)
+            }
+        }
+        boxes += visualTemplates?.writtenAnswers ?? []
+        boxes += [whenIAm ?? "", outcome]
+        boxes += subtasks.map(\.title)
+        boxes.append(notes)
+        boxes += tags
+        return EntryAutoTitle.name(fromFirstWritten: boxes)
+    }
+
     /// Independent success markers. The legacy single Pattern value still counts so existing
     /// entries keep their meaning, while a new entry can now carry both markers at once.
     var isClearSignOfSuccess: Bool {
@@ -575,4 +596,61 @@ protocol AIExchangeHost {
 
 extension Reminder: AIExchangeHost {
     var aiQuestions: [AIQuestion] { SendToAI.questions(for: self) }
+}
+
+/// Adam, 2026-11-08: "if I don't fill anything in for delegation, it should go to the entry
+/// boxes that have been filled in. I don't mind if it chooses the first word of that, but I
+/// don't want a generic name added"
+enum EntryAutoTitle {
+    /// Reads as a name on a one-line card and stays short enough for a Calendar title.
+    static let maximumWords = 8
+
+    /// The generic names earlier saves gave an entry whose "What do I want?" box was empty.
+    static func isGenericName(_ title: String) -> Bool {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let labels = ReminderKind.allCases.map(\.label) + ReminderKind.allCases.map(\.segmentLabel)
+            + ["Post", "Connection"]
+        return labels.contains { trimmed == "New \($0)" }
+    }
+
+    /// A short name from the first box that holds writing; nil when no box holds writing.
+    static func name(fromFirstWritten boxes: [String]) -> String? {
+        for box in boxes {
+            if let written = name(from: box) { return written }
+        }
+        return nil
+    }
+
+    /// The first sentence of the first written line, up to eight of its words. A leading list
+    /// marker and trailing commas or periods are dropped; every word kept is exactly as written.
+    static func name(from text: String) -> String? {
+        let lines = text.split(whereSeparator: \.isNewline).map { line in
+            dropping(listMarkers, from: String(line), atStart: true)
+        }
+        guard let line = lines.first(where: { !$0.isEmpty }) else { return nil }
+        var sentence: String?
+        line.enumerateSubstrings(in: line.startIndex..<line.endIndex, options: .bySentences) { found, _, _, stop in
+            guard let candidate = found?.trimmingCharacters(in: .whitespaces),
+                  candidate.contains(where: \.isLetter) else { return }
+            sentence = candidate
+            stop = true
+        }
+        let words = (sentence ?? line).split(whereSeparator: \.isWhitespace).prefix(maximumWords)
+        let shortName = dropping(endPunctuation, from: words.joined(separator: " "), atStart: false)
+        return shortName.isEmpty ? nil : shortName
+    }
+
+    private static let listMarkers = CharacterSet(charactersIn: "-–—•*·").union(.whitespaces)
+    private static let endPunctuation = CharacterSet(charactersIn: ".,;:-–—…*").union(.whitespaces)
+
+    private static func dropping(_ set: CharacterSet, from text: String, atStart: Bool) -> String {
+        var scalars = text.unicodeScalars
+        if atStart {
+            while let first = scalars.first, set.contains(first) { scalars.removeFirst() }
+            while let last = scalars.last, CharacterSet.whitespaces.contains(last) { scalars.removeLast() }
+        } else {
+            while let last = scalars.last, set.contains(last) { scalars.removeLast() }
+        }
+        return String(scalars)
+    }
 }

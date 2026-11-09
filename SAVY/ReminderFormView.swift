@@ -221,6 +221,15 @@ struct ReminderFormView: View {
 
     private var entryLabel: String { connectionMode ? "Connection" : r.kind.label }
     private var hasDecideQuestions: Bool { true }
+    private var fixedDecideTheme: PostTheme? { connectionMode ? ConnectionEntry.theme : nil }
+
+    /// A name SAVY supplied on an earlier save (the generic one, or one taken from the boxes)
+    /// is not Adam's writing. While he leaves it untouched, it follows the boxes he writes.
+    private var titleWasSupplied: Bool {
+        guard r.title == initialEntry.title else { return false }
+        return EntryAutoTitle.isGenericName(initialEntry.title)
+            || initialEntry.title == initialEntry.autoTitle(decideTheme: fixedDecideTheme)
+    }
 
     private var shareContent: EntryShareContent {
         var entry = r
@@ -1433,7 +1442,12 @@ struct ReminderFormView: View {
             r.postAnswers = nil
             r.postAnswersContainQuestions = nil
         }
-        if r.title.trimmingCharacters(in: .whitespaces).isEmpty { r.title = "New \(entryLabel)" }
+        // Adam, 2026-11-08: an empty Delegate takes its name from the boxes he filled in,
+        // never a generic "New Reminder". The generic name remains only when nothing is written.
+        let supplied = titleWasSupplied
+        if supplied || r.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            r.title = r.autoTitle(decideTheme: fixedDecideTheme) ?? (supplied ? r.title : "New \(entryLabel)")
+        }
         r.updatedAt = Date()
         if r.schedule?.calendarIdentifier != nil {
             do {
