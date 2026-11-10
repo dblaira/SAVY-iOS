@@ -8,6 +8,8 @@ import MessageUI
 /// the top selector changes where the saved item lands, while the field order stays identical.
 struct ReminderFormView: View {
     @Environment(\.dismiss) private var dismiss
+    /// Mac only: knows whether this form has left the screen. See `closeOnTheMac()`.
+    @State private var closeWatch = SavyFormCloseWatch()
     @Environment(\.scenePhase) private var scenePhase
 
     let existing: Reminder?
@@ -120,7 +122,7 @@ struct ReminderFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { cancel() } label: {
-                        SavyCloseIcon()
+                        Image(systemName: "xmark.circle").font(.system(size: 22))
                     }
                     .tint(.black)
                     .accessibilityLabel("Cancel")
@@ -143,7 +145,7 @@ struct ReminderFormView: View {
                 if phase != .active { saveRecoveryDraft() }
             }
             // Auto-save: if the form is swiped away (not via Cancel) and has content, keep it.
-            .onDisappear { saveRecoveryDraft(); autosaveIfNeeded() }
+            .onDisappear { closeWatch.gone = true; saveRecoveryDraft(); autosaveIfNeeded() }
             .alert("Couldn't save \(entryLabel)", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -1370,7 +1372,7 @@ struct ReminderFormView: View {
             return
         }
         withAnimation(.spring(response: 0.3)) { showSaved = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss(); closeOnTheMac() }
     }
 
     /// Save when the sheet is dismissed by swiping (not Cancel) and the user actually entered something.
@@ -1401,6 +1403,22 @@ struct ReminderFormView: View {
         guard EntryDraftStore.shared.remove(recoveryID) else { saveFailed = true; return }
         cancelled = true
         dismiss()
+        closeOnTheMac()
+    }
+
+    /// Adam, 2026-11-10: "I can't press the X in the top left side to close the pop-up window".
+    /// The X was taking the click all along. On macOS 27, `dismiss()` marks the form closed but
+    /// the form can stay on screen until something else redraws the page under it. Saving
+    /// redraws it, which is why Save closed the form and the X did not. If the form is still
+    /// up a moment after it was told to close, take it down directly. The phone is unchanged.
+    private func closeOnTheMac() {
+        #if targetEnvironment(macCatalyst)
+        let watch = closeWatch
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            guard !watch.gone else { return }
+            SavyMacSheetCloser.closeTopSheetIfStuck()
+        }
+        #endif
     }
 
     private var hasContent: Bool {
@@ -1661,26 +1679,6 @@ struct FloppyDisk: Shape {
     }
 }
 
-/// The X that closes a form. Adam, 2026-11-10: "I can't press the X in the top left side to
-/// close the pop-up window". On the Mac, macOS 27 draws a toolbar button whose label is a plain
-/// symbol as its own bar button, and that button ignores real mouse clicks inside a form. A
-/// composed label, like Save's disk, is drawn by SAVY and keeps the click. The phone is unchanged.
-struct SavyCloseIcon: View {
-    var body: some View {
-        #if targetEnvironment(macCatalyst)
-        ZStack {
-            Color.clear
-            Image(systemName: "xmark.circle").font(.system(size: 14))
-        }
-        .frame(width: 15, height: 24)
-        .foregroundStyle(Color.black)
-        .accessibilityHidden(true)
-        #else
-        Image(systemName: "xmark.circle").font(.system(size: 22))
-        #endif
-    }
-}
-
 struct SaveDiskIcon: View {
     var size: CGFloat = 24
     var body: some View {
@@ -1690,3 +1688,30 @@ struct SaveDiskIcon: View {
             .accessibilityHidden(true)
     }
 }
+
+
+/// Tells a Mac form's close step whether the form already left the screen.
+final class SavyFormCloseWatch {
+    var gone = false
+}
+
+#if targetEnvironment(macCatalyst)
+enum SavyMacSheetCloser {
+    /// Takes down the front-most sheet, and only that one, and only if it is sitting still.
+    /// A sheet that is already on its way out is left alone: closing it twice can leave the
+    /// next form on screen with nothing behind it.
+    @MainActor
+    static func closeTopSheetIfStuck() {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                guard let root = window.rootViewController, var top = root.presentedViewController else { continue }
+                while let next = top.presentedViewController { top = next }
+                guard !top.isBeingDismissed, !top.isBeingPresented, top.transitionCoordinator == nil else { return }
+                top.dismiss(animated: true)
+                return
+            }
+        }
+    }
+}
+#endif

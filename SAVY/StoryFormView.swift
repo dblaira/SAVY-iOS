@@ -51,7 +51,7 @@ struct StoryFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { cancel() } label: {
-                        SavyCloseIcon()
+                        Image(systemName: "xmark.circle").font(.system(size: 22))
                     }
                     .tint(.black)
                     .accessibilityLabel("Cancel")

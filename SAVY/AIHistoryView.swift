@@ -47,7 +47,7 @@ struct AIHistoryView<Entry: AIExchangeHost>: View {
             .onReceive(jobs.$finished.receive(on: DispatchQueue.main)) { _ in takeFinishedReplies() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { SavyCloseIcon() }
+                    Button { dismiss() } label: { Image(systemName: "xmark.circle").font(.system(size: 22)) }
                         .tint(.black)
                 }
             }
@@ -218,7 +218,7 @@ struct AIRespondView<Entry: AIExchangeHost>: View {
             .aiPageStyle(title: "Respond")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { SavyCloseIcon() }
+                    Button { dismiss() } label: { Image(systemName: "xmark.circle").font(.system(size: 22)) }
                         .tint(.black)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -502,7 +502,7 @@ struct ClaudeKeyView: View {
             .aiPageStyle(title: "Claude key")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { SavyCloseIcon() }
+                    Button { dismiss() } label: { Image(systemName: "xmark.circle").font(.system(size: 22)) }
                         .tint(.black)
                 }
                 ToolbarItem(placement: .confirmationAction) {
