@@ -10,7 +10,7 @@ Adam: “what I'm asking for is that my social media posts, whenever I add them 
 
 Pin on the Social Media Posts page saved the post without `ReminderStore.togglePin`, so it never took the first pinned spot the way a Reminder or Action does. It now calls `togglePin`. Home also leads with any pinned entry that has no place in the order yet, newest first, so posts pinned before this fix show without being pinned again. The four-card limit, card styling, and Up Next order on other pages are unchanged.
 
-Status: 88 unit tests passed on the iPhone 18 Pro simulator, including two new ones in `SAVYReorderTests`. The signed Mac Release is installed. A real mouse click on the X closed an opened entry, and Home showed the newly pinned Social post first. Saved files on the Mac were backed up to `artifacts/x-and-carousel-backup-2026-11-10/` and were unchanged afterwards. The iPhone build is ready but not installed: Adam was using his phone and the install waits for his go.
+Status: 88 unit tests passed on the iPhone 18 Pro simulator, including two new ones in `SAVYReorderTests`. The signed Mac Release is installed. A real mouse click on the X closed an opened entry, and Home showed the newly pinned Social post first. Saved files on the Mac were backed up to `artifacts/x-and-carousel-backup-2026-11-10/` and were unchanged afterwards. Adam: “the phone is ready. go”. The iPhone Debug build was then installed in place with `devicectl` and launched; its saved files were backed up to the same folder first and compared afterwards. The agent did not look at the phone screen; Adam's own look is the acceptance check there.
 
 ## Generalization theme — November 9, 2026
 
