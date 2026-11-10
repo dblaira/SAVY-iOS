@@ -197,6 +197,23 @@ enum PostThemeCatalog {
                 PostThemeQuestion(prompt: "What do you do differently because of it?", symbol: "arrow.uturn.forward"),
             ]
         ),
+        // Adam, 2026-11-09: "I need to add a generalization form to the ios and mac os savy
+        // app. The general shape of my forms is 4 questions. The closest match I have is
+        // Pattern Recognition, but I need one for Generalization." His four questions, in his
+        // order; only the spelling of "examples" is corrected. It sits right after his top six.
+        PostTheme(
+            id: "generalization",
+            name: "Generalization",
+            questions: [
+                PostThemeQuestion(prompt: "What shining example caught my attention?", symbol: "sun.max"),
+                PostThemeQuestion(prompt: "What makes this attractive to me?", symbol: "heart"),
+                PostThemeQuestion(
+                    prompt: "Which similarities between the seemingly unrelated examples offer an invitation to generalize?",
+                    symbol: "arrow.triangle.merge"
+                ),
+                PostThemeQuestion(prompt: "What can someone do with this that almost nobody is doing?", symbol: "arrow.up.right"),
+            ]
+        ),
         PostTheme(
             id: "five-ws",
             name: "The 5 Ws",

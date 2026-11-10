@@ -94,9 +94,10 @@ final class SAVYPostEntryThemeTests: XCTestCase {
             "Advanced Strategies",
             "Frequently Misunderstood Concepts",
         ]
-        XCTAssertEqual(PostThemeCatalog.themes.count, 33, "8 original themes + Adam's 20 + Mental Model + October additions")
+        XCTAssertEqual(PostThemeCatalog.themes.count, 34, "8 original themes + Adam's 20 + Mental Model + October additions + Generalization")
         // The 20th, now Personal Lessons, moved to the top of the list on 2026-10-15.
-        let septemberThemes = PostThemeCatalog.themes.dropFirst(14).prefix(19)
+        // Generalization (2026-11-09) sits seventh, so the September themes start one later.
+        let septemberThemes = PostThemeCatalog.themes.dropFirst(15).prefix(19)
         XCTAssertEqual(Array(septemberThemes.map(\.name)), expectedNewNames)
         for theme in septemberThemes {
             XCTAssertEqual(theme.questions.count, 4, "\(theme.name) asks exactly four questions")
@@ -145,7 +146,16 @@ final class SAVYPostEntryThemeTests: XCTestCase {
         XCTAssertEqual(PostThemeCatalog.theme(id: "habit")?.questions.map(\.prompt), [
             "Make it Obvious", "Make it Easy", "Make it Attractive", "Make it Satisfying",
         ])
-        XCTAssertEqual(Array(PostThemeCatalog.themes.dropFirst(6).prefix(8).map(\.id)), [
+        // Adam, 2026-11-09: "I need to add a generalization form to the ios and mac os savy app."
+        // His four questions, right after his top six; the rest follow unchanged.
+        XCTAssertEqual(PostThemeCatalog.themes[6].name, "Generalization")
+        XCTAssertEqual(PostThemeCatalog.theme(id: "generalization")?.questions.map(\.prompt), [
+            "What shining example caught my attention?",
+            "What makes this attractive to me?",
+            "Which similarities between the seemingly unrelated examples offer an invitation to generalize?",
+            "What can someone do with this that almost nobody is doing?",
+        ])
+        XCTAssertEqual(Array(PostThemeCatalog.themes.dropFirst(7).prefix(8).map(\.id)), [
             "five-ws", "problem-solution", "before-after", "lesson-learned",
             "how-to", "story-arc", "myth-fact", "the-decision",
         ])
