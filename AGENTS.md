@@ -1,5 +1,15 @@
 # SAVY iOS Agent Instructions
 
+## Generalization theme — November 9, 2026
+
+Adam: “I need to add a generalization form to the ios and mac os savy app. The general shape of my forms is 4 questions.  The closest match I have is Pattern Recognition, but I need one for Generalization.”
+
+The Theme list now has Generalization (`generalization`) with Adam’s four questions, in his order: “What shining example caught my attention?”, “What makes this attractive to me?”, “Which similarities between the seemingly unrelated examples offer an invitation to generalize?”, “What can someone do with this that almost nobody is doing?” Only the spelling of “examples” was corrected. It is a data-only addition in `PostThemeCatalog`; no screen, styling, or font size changed.
+
+Position: seventh, right after his top six (Habit, A Strong Yes, Pattern Recognition, Inductive Reasoning, Mental Model, Personal Lessons). Claude chose that spot; Adam has not said where he wants it. Symbols were also Claude’s choice: `sun.max`, `heart`, `arrow.triangle.merge`, `arrow.up.right`.
+
+Status: 36 unit tests passed on the iPhone 18 Pro simulator (`SAVYPostEntryThemeTests`, `SAVYConnectionStoreTests`). The installed apps are built from `claude/ai-communication-interface-b714f9` with `main` merged in, so Send to AI stays. The signed Mac Release is at `/Applications/SAVY.app`; the iPhone Debug build was installed in place with `devicectl` and launched. Adam confirmed nothing unsaved was open; both recovery drafts were empty. Saved files were backed up to `artifacts/generalization-backup-2026-11-09/` first; afterwards only the two CloudKit metadata files differed on each device. The agent checked the new question inside both built apps but did not look at the Theme list on screen; Adam’s own look is the acceptance check. Not pushed to GitHub.
+
 ## Delegate naming — November 8, 2026
 
 Adam: “In the SAVY app, if I don’t enter anything into delegation, it automatically just adds new reminder and I want that change to adjust to the naming of whatever I’ve added above it, so if I don’t fill anything in for delegation, it should go to the entry boxes that have been filled in. I don’t mind if it chooses the first word of that, but I don’t want a generic name added”
