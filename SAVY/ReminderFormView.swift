@@ -120,7 +120,7 @@ struct ReminderFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { cancel() } label: {
-                        Image(systemName: "xmark.circle").font(.system(size: 22))
+                        SavyCloseIcon()
                     }
                     .tint(.black)
                     .accessibilityLabel("Cancel")
@@ -1658,6 +1658,26 @@ struct FloppyDisk: Shape {
         p.addQuadCurve(to: pt(18, 15), control: pt(18, 14))
         p.addLine(to: pt(18, 22))
         return p
+    }
+}
+
+/// The X that closes a form. Adam, 2026-11-10: "I can't press the X in the top left side to
+/// close the pop-up window". On the Mac, macOS 27 draws a toolbar button whose label is a plain
+/// symbol as its own bar button, and that button ignores real mouse clicks inside a form. A
+/// composed label, like Save's disk, is drawn by SAVY and keeps the click. The phone is unchanged.
+struct SavyCloseIcon: View {
+    var body: some View {
+        #if targetEnvironment(macCatalyst)
+        ZStack {
+            Color.clear
+            Image(systemName: "xmark.circle").font(.system(size: 14))
+        }
+        .frame(width: 15, height: 24)
+        .foregroundStyle(Color.black)
+        .accessibilityHidden(true)
+        #else
+        Image(systemName: "xmark.circle").font(.system(size: 22))
+        #endif
     }
 }
 

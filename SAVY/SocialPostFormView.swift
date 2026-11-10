@@ -64,7 +64,7 @@ struct SocialPostFormView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { cancel() } label: {
-                        Image(systemName: "xmark.circle").font(.system(size: 22))
+                        SavyCloseIcon()
                     }
                     .tint(.black)
                     .accessibilityLabel("Cancel")

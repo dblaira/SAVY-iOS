@@ -1,5 +1,17 @@
 # SAVY iOS Agent Instructions
 
+## Mac close button and pinned posts on Home — November 10, 2026
+
+Adam: “On the Mac OS version, whenever I open an entry, in order to close it, I have to save it. I can't press the X in the top left side to close the pop-up window, period.”
+
+On macOS 27.3 a toolbar button whose label is a plain symbol becomes the system's own bar button (`_UIButtonBarButton`). Inside a form sheet that button gets no hover and ignores real mouse clicks. An accessibility press still works, which is why earlier checks passed. Save's drawn label is hosted by SwiftUI and takes the click. `SavyCloseIcon` composes the same symbol so SwiftUI hosts it too, on the Mac only; the phone keeps the plain symbol. All six X buttons use it (entry form, older Social form, Story form, and the three AI history pages). Check this button with a real mouse click, never only an accessibility press. The X looks the same as before in a side-by-side capture.
+
+Adam: “what I'm asking for is that my social media posts, whenever I add them to the SAVY app and pin them, that they appear in the carousel on the homepage.” Home shows the first four pinned entries in Up Next order, and he had fourteen pinned. Asked whether to show every pin or keep four with the newest pin first, he answered “A. show every pin.”, then “newest first”, then “B.” B was “Keep 4 cards, newest pin first”, and B is built.
+
+Pin on the Social Media Posts page saved the post without `ReminderStore.togglePin`, so it never took the first pinned spot the way a Reminder or Action does. It now calls `togglePin`. Home also leads with any pinned entry that has no place in the order yet, newest first, so posts pinned before this fix show without being pinned again. The four-card limit, card styling, and Up Next order on other pages are unchanged.
+
+Status: 88 unit tests passed on the iPhone 18 Pro simulator, including two new ones in `SAVYReorderTests`. The signed Mac Release is installed. A real mouse click on the X closed an opened entry, and Home showed the newly pinned Social post first. Saved files on the Mac were backed up to `artifacts/x-and-carousel-backup-2026-11-10/` and were unchanged afterwards. The iPhone build is ready but not installed: Adam was using his phone and the install waits for his go.
+
 ## Generalization theme — November 9, 2026
 
 Adam: “I need to add a generalization form to the ios and mac os savy app. The general shape of my forms is 4 questions.  The closest match I have is Pattern Recognition, but I need one for Generalization.”
