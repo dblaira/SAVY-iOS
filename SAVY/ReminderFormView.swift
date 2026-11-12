@@ -266,7 +266,8 @@ struct ReminderFormView: View {
         if entry.marksCompounding == true { additionalMetadata.append("Compounding: Yes") }
         return EntryShareContent(entry: entry, sourceApp: "SAVY", entryLabel: entryLabel,
                                  whenIAm: entry.whenIAm ?? "", scheduleMetadata: scheduleMetadata,
-                                 additionalMetadata: additionalMetadata)
+                                 additionalMetadata: additionalMetadata,
+                                 isDraft: existing == nil || entry != existing)
     }
 
     @ViewBuilder private var unifiedEntrySections: some View {

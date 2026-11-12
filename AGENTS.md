@@ -1,3 +1,7 @@
+## Creation And Change Date And Time Stamps — November 12, 2026
+
+Adam requested creation and change timestamps for every entry type so agents can understand when entries were made or changed. Implementation and phone/QA evidence: [Creation And Change Date And Time Stamps](<docs/creation and change date and time stamps.md>). Existing writing and historical dates are preserved; share/AI text uses UTC instants. All 180 unit tests and the native repeated-sharing UI regression pass. Both timestamp apps were installed and inspected on the physical phone. Adam then needed his phone; stop phone access. The latest SAVY Reminder/Connection title-sync correction is built but still awaits installation. Preserve the installed baseline’s Send to AI and Mac close-button work.
+
 # SAVY iOS Agent Instructions
 
 ## Mac close button and pinned posts on Home — November 10, 2026

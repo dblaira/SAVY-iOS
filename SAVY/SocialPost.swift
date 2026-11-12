@@ -157,7 +157,8 @@ extension SocialPost: AIExchangeHost {
     var aiForm: String {
         let answers = [trimmedText, sourceLine.trimmingCharacters(in: .whitespacesAndNewlines),
                        connection.trimmingCharacters(in: .whitespacesAndNewlines)]
-        return zip(Self.aiQuestions, answers).map { "\($0.prompt)\n\($1)" }.joined(separator: "\n\n")
+        let form = zip(Self.aiQuestions, answers).map { "\($0.prompt)\n\($1)" }.joined(separator: "\n\n")
+        return form + "\n\nCreated: \(EntryShareContent.timestamp(createdAt))\nChanged: \(EntryShareContent.timestamp(updatedAt))"
     }
 }
 
@@ -220,11 +221,22 @@ final class SocialPostStore: ObservableObject {
     private(set) var lastWriteFailed = false
 
     private let fileURL: URL
+    private var titleChanges: AnyCancellable?
     private var postNumberAllocator: PostNumberAllocator?
 
     init(fileURL: URL) throws {
         self.fileURL = fileURL
         self.posts = try Self.load(from: fileURL)
+        titleChanges = NotificationCenter.default.publisher(for: Notification.Name("EntryCardTitleDidChange")).sink { [weak self] note in
+            MainActor.assumeIsolated {
+                guard let self, let key = note.userInfo?["id"] as? String,
+                      let date = note.userInfo?["date"] as? Date,
+                      let index = self.posts.firstIndex(where: { "post:\($0.id.uuidString)" == key }) else { return }
+                var next = self.posts
+                next[index].updatedAt = date
+                _ = self.persist(next)
+            }
+        }
     }
 
     static func live() -> SocialPostStore {
@@ -310,6 +322,7 @@ final class SocialPostStore: ObservableObject {
     func save(_ post: SocialPost) -> Bool {
         guard !loadFailed else { return false }
         var p = post
+        p.createdAt = posts.first { $0.id == p.id }?.createdAt ?? p.createdAt
         let savedNumber = posts.first { $0.id == p.id }?.postNumber ?? p.postNumber
         p.postNumber = postNumberAllocator?.numberPreservingSavedReference(for: .socialPost, id: p.id, savedNumber: savedNumber) ?? savedNumber
         p.updatedAt = Date()

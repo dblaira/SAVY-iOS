@@ -342,6 +342,8 @@ enum ScheduleInvitation {
         let organizer = organizerEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SAVY//Schedule//EN", "CALSCALE:GREGORIAN",
                      "METHOD:REQUEST", "BEGIN:VEVENT", "UID:\(reminder.id.uuidString.lowercased())@savy",
+                     "CREATED:\(utcDateTime(reminder.createdAt))",
+                     "LAST-MODIFIED:\(utcDateTime(reminder.updatedAt))",
                      "DTSTAMP:\(utcDateTime(now))", "SEQUENCE:\(max(0, Int(reminder.updatedAt.timeIntervalSince1970)))",
                      "ORGANIZER:\(mailTo(organizer))"]
         if schedule.isAllDay {

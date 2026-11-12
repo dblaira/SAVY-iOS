@@ -19,6 +19,8 @@ struct CaptureEntry: Identifiable, Codable, Equatable {
     var title: String
     var meaning: String
     var createdAt: Date
+    /// Nil on older archives whose change date was never recorded.
+    var updatedAt: Date?
     var status: CaptureStatus
 
     init(
@@ -32,6 +34,7 @@ struct CaptureEntry: Identifiable, Codable, Equatable {
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         self.meaning = meaning.trimmingCharacters(in: .whitespacesAndNewlines)
         self.createdAt = createdAt
+        self.updatedAt = createdAt
         self.status = status
     }
 }

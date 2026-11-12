@@ -60,6 +60,7 @@ final class SavyCardTitleStore: ObservableObject {
         var updated = titles
         updated[card.id] = title
         save(updated)
+        recordChange(card)
         changes.send()
         return true
     }
@@ -69,7 +70,13 @@ final class SavyCardTitleStore: ObservableObject {
         var updated = titles
         updated[card.id] = ""
         save(updated)
+        recordChange(card)
         changes.send()
+    }
+
+    private func recordChange(_ card: SavyCardTitle) {
+        NotificationCenter.default.post(name: Notification.Name("EntryCardTitleDidChange"), object: nil,
+                                        userInfo: ["id": card.id, "date": Date()])
     }
 
     func applySynced(_ values: [String: String]) { save(values) }

@@ -47,8 +47,9 @@ extension Story: AIExchangeHost {
     var aiQuestions: [AIQuestion] { Self.aiQuestions }
     /// The filled-in form as the message: each question, the answer under it.
     var aiForm: String {
-        zip(Self.aiQuestions, [trimmedTitle, trimmedSubtitle, trimmedBody])
+        let form = zip(Self.aiQuestions, [trimmedTitle, trimmedSubtitle, trimmedBody])
             .map { "\($0.prompt)\n\($1)" }.joined(separator: "\n\n")
+        return form + "\n\nCreated: \(EntryShareContent.timestamp(createdAt))\nChanged: \(EntryShareContent.timestamp(updatedAt))"
     }
 }
 
@@ -85,10 +86,21 @@ final class StoryStore: ObservableObject {
     private(set) var lastWriteFailed = false
 
     private let fileURL: URL
+    private var titleChanges: AnyCancellable?
 
     init(fileURL: URL) throws {
         self.fileURL = fileURL
         self.stories = try Self.load(from: fileURL)
+        titleChanges = NotificationCenter.default.publisher(for: Notification.Name("EntryCardTitleDidChange")).sink { [weak self] note in
+            MainActor.assumeIsolated {
+                guard let self, let key = note.userInfo?["id"] as? String,
+                      let date = note.userInfo?["date"] as? Date,
+                      let index = self.stories.firstIndex(where: { "story:\($0.id.uuidString)" == key }) else { return }
+                var next = self.stories
+                next[index].updatedAt = date
+                _ = self.persist(next)
+            }
+        }
     }
 
     static func live() -> StoryStore {
@@ -119,6 +131,7 @@ final class StoryStore: ObservableObject {
     @discardableResult
     func save(_ story: Story) -> Bool {
         var s = story
+        s.createdAt = stories.first { $0.id == s.id }?.createdAt ?? s.createdAt
         s.updatedAt = Date()
         if s.status == .posted, s.postedAt == nil {
             s.postedAt = s.updatedAt

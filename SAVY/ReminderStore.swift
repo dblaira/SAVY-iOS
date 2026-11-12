@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SwiftUI
 
@@ -13,6 +14,7 @@ final class ReminderStore: ObservableObject {
 
     private let repo: ReminderRepository
     private let cacheURL: URL
+    private var titleChanges: AnyCancellable?
     private let technicalCaptureStore: TechnicalCaptureStore
     private let candidateOutbox: CowboyCandidateOutbox
     private let candidateClient: any CowboyCandidateSubmitting
@@ -40,6 +42,19 @@ final class ReminderStore: ObservableObject {
             try? FileManager.default.removeItem(at: self.cacheURL)
         }
         loadCache()
+        titleChanges = NotificationCenter.default.publisher(for: Notification.Name("EntryCardTitleDidChange")).sink { [weak self] note in
+            MainActor.assumeIsolated {
+                guard let self, let key = note.userInfo?["id"] as? String,
+                      let date = note.userInfo?["date"] as? Date,
+                      let index = self.reminders.firstIndex(where: { "reminder:\($0.id.uuidString)" == key }) else { return }
+                var next = self.reminders
+                next[index].updatedAt = date
+                next[index].needsSync = true
+                guard self.persist(next) else { return }
+                let changed = next[index]
+                Task { await self.sync(changed) }
+            }
+        }
         if ProcessInfo.processInfo.arguments.contains("SAVY_UI_TEST_DEMO_REMINDERS"), reminders.isEmpty {
             reminders = Self.uiTestDemoReminders
             saveCache()
@@ -175,6 +190,7 @@ final class ReminderStore: ObservableObject {
         guard !loadFailed else { return false }
         var r = reminder
         let existing = reminders.first { $0.id == r.id }
+        r.createdAt = existing?.createdAt ?? r.createdAt
         if r.schedule != nil || r.scheduleSyncVersion != nil
             || existing?.schedule != nil || existing?.scheduleSyncVersion != nil {
             r.scheduleSyncVersion = 1
