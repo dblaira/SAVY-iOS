@@ -1,4 +1,24 @@
+## Creation And Change Date And Time Stamps — November 12, 2026
+
+Adam requested creation and change timestamps for every entry type so agents can understand when entries were made or changed. Implementation and phone/QA evidence: [Creation And Change Date And Time Stamps](<docs/creation and change date and time stamps.md>). Existing writing and historical dates are preserved; share/AI text uses UTC instants. All 180 unit tests and the native repeated-sharing UI regression pass. Both timestamp apps were installed and inspected on the physical phone. After Adam returned, the final Reminder/Connection title-sync build was installed and its native Copy timestamps verified again. Final phone archives preserve all authored content and dates; only CloudKit transport metadata changed. Preserve the installed baseline’s Send to AI and Mac close-button work.
+
 # SAVY iOS Agent Instructions
+
+## Mac close button and pinned posts on Home — November 10, 2026
+
+Adam: “On the Mac OS version, whenever I open an entry, in order to close it, I have to save it. I can't press the X in the top left side to close the pop-up window, period.”
+
+The first fix that morning was wrong, and Adam said so: “the macOS does not work. I don't know if you tested it or not, but it doesn't work”. It had been checked with one click right after a relaunch. The X was never the problem. A log added for one build showed the X takes the click, `cancel()` runs, `dismiss()` runs, and the page's sheet item goes to nil, but on macOS 27.3 the form stays on screen until something else redraws the page under it. Saving redraws it, which is why Save closed the form and the X did not. An accessibility press closes it too, which is why earlier agent checks passed.
+
+The fix is in `ReminderFormView`: after `dismiss()`, `closeOnTheMac()` waits 0.3 seconds and, if the form has not left the screen, closes the front sheet through UIKit (`SavyMacSheetCloser.closeTopSheetIfStuck`). It leaves a sheet alone if it is already on its way out; closing one twice left the next form stuck. Mac only. The X is the original toolbar symbol again and the first attempt's `SavyCloseIcon` is removed. The older Social form, the Story form and the AI history pages still call plain `dismiss()`; they were not changed or tested.
+
+Check this with real mouse clicks (a posted mouse event, not an accessibility press), on more than one form in a row, and on existing entries as well as blank ones. Never leave one of Adam's entries open on the Mac while testing: a form that leaves the screen without Cancel saves itself.
+
+Adam: “what I'm asking for is that my social media posts, whenever I add them to the SAVY app and pin them, that they appear in the carousel on the homepage.” Home shows the first four pinned entries in Up Next order, and he had fourteen pinned. Asked whether to show every pin or keep four with the newest pin first, he answered “A. show every pin.”, then “newest first”, then “B.” B was “Keep 4 cards, newest pin first”, and B is built.
+
+Pin on the Social Media Posts page saved the post without `ReminderStore.togglePin`, so it never took the first pinned spot the way a Reminder or Action does. It now calls `togglePin`. Home also leads with any pinned entry that has no place in the order yet, newest first, so posts pinned before this fix show without being pinned again. The four-card limit, card styling, and Up Next order on other pages are unchanged.
+
+Status: 88 unit tests passed on the iPhone 18 Pro simulator, including two new ones in `SAVYReorderTests`. The signed Mac Release with the corrected fix is installed. On it, real mouse clicks on the X closed the form 22 times out of 22: ten existing entries from Home, nine blank new entries, three entries from the Reminders page. No entry was re-saved by the testing, and the recovery drafts stayed empty. Save was not click-tested, because saving would write to Adam's entries. Home showed the newly pinned Social post first. The iPhone has the morning build (pinned-post fix; its X was never broken) and was not updated again: Adam said “no need to touch my phone”.
 
 ## Generalization theme — November 9, 2026
 

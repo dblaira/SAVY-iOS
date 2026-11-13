@@ -72,6 +72,7 @@ final class ConnectionStore: ObservableObject {
     private(set) var syncModificationDates: [String: Date] = [:]
 
     let fileURL: URL
+    private var titleChanges: AnyCancellable?
     private var loadFailed = false
 
     private struct Archive: Codable {
@@ -123,6 +124,18 @@ final class ConnectionStore: ObservableObject {
     init(fileURL: URL? = nil, launchArguments: [String] = ProcessInfo.processInfo.arguments) {
         let isUITest = launchArguments.contains("SAVY_UI_TEST_UNLOCKED")
         self.fileURL = fileURL ?? (isUITest ? Self.isolatedFileURL : Self.defaultFileURL)
+        titleChanges = NotificationCenter.default.publisher(for: Notification.Name("EntryCardTitleDidChange")).sink { [weak self] note in
+            MainActor.assumeIsolated {
+                guard let self, let key = note.userInfo?["id"] as? String,
+                      let date = note.userInfo?["date"] as? Date,
+                      let index = self.entries.firstIndex(where: { "connection:\($0.id.uuidString)" == key }) else { return }
+                var next = self.entries
+                next[index].metadata.updatedAt = date
+                var dates = self.syncModificationDates
+                dates["entry:\(next[index].id.uuidString.lowercased())"] = date
+                _ = self.persist(entries: next, sourcePins: self.sourcePinOverrides, syncModificationDates: dates)
+            }
+        }
         do {
             // RESET must never delete live or caller-supplied non-isolated storage.
             if isUITest,
@@ -223,6 +236,7 @@ final class ConnectionStore: ObservableObject {
         guard let index = entries.firstIndex(where: { $0.id == entry.id }) else { return false }
         var next = entries
         next[index].metadata.pinned.toggle()
+        next[index].metadata.updatedAt = Date()
         var dates = syncModificationDates
         dates["entry:\(entry.id.uuidString.lowercased())"] = Date()
         return persist(entries: next, sourcePins: sourcePinOverrides, syncModificationDates: dates)

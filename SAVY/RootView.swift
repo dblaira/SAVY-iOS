@@ -707,7 +707,13 @@ struct HomeFeedRow: Identifiable {
     ) -> [HomeFeedRow] {
         var rows: [HomeFeedRow] = []
 
-        for reminder in reminderStore.pinnedFeed.prefix(limit) {
+        // Adam, 2026-11-10: "B." The choice offered was to keep four cards with the newest pin
+        // first. A pinned entry with no place in the order yet was pinned after the last
+        // ordering, so it leads, newest first.
+        let pinned = reminderStore.pinnedFeed
+        let newestPins = pinned.filter { $0.upNextOrder == nil }.sorted { $0.createdAt > $1.createdAt }
+        let orderedPins = newestPins + pinned.filter { $0.upNextOrder != nil }
+        for reminder in orderedPins.prefix(limit) {
             rows.append(
                 HomeFeedRow(
                     id: reminder.id.uuidString,

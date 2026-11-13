@@ -190,6 +190,53 @@ struct Subtask: Identifiable, Codable, Equatable, Hashable {
     var done: Bool = false
 }
 
+/// One question as it stood when a reply was asked for. Frozen on the reply so changing Theme or
+/// Visual later never relabels history.
+struct AIQuestion: Codable, Equatable {
+    var prompt: String
+    var symbol: String
+}
+
+/// One Send to AI round trip, kept on the entry. Adam, 2026-11-07: "no bloated conversation screen".
+struct AIExchange: Identifiable, Codable, Equatable {
+    var id: UUID = UUID()
+    var sentAt: Date = Date()
+    /// "Claude" or "ChatGPT".
+    var provider: String = "Claude"
+    /// The reply this one responds to. Nil for a send straight from the form.
+    var parentID: UUID? = nil
+    /// The questions answered, frozen at send time. Empty on replies saved before this field existed.
+    var questions: [AIQuestion] = []
+    /// Respond answers in order: What do you want next? / Which part? / What must stay?
+    /// Empty for a send straight from the form.
+    var followUp: [String] = []
+    /// One reply per question, in form order.
+    var answers: [String] = []
+
+    init(id: UUID = UUID(), sentAt: Date = Date(), provider: String = "Claude", parentID: UUID? = nil,
+         questions: [AIQuestion] = [], followUp: [String] = [], answers: [String] = []) {
+        self.id = id
+        self.sentAt = sentAt
+        self.provider = provider
+        self.parentID = parentID
+        self.questions = questions
+        self.followUp = followUp
+        self.answers = answers
+    }
+
+    /// Replies saved by earlier builds lack provider, parent and frozen questions. Read them anyway.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        sentAt = try c.decodeIfPresent(Date.self, forKey: .sentAt) ?? Date()
+        provider = try c.decodeIfPresent(String.self, forKey: .provider) ?? "Claude"
+        parentID = try c.decodeIfPresent(UUID.self, forKey: .parentID)
+        questions = try c.decodeIfPresent([AIQuestion].self, forKey: .questions) ?? []
+        followUp = try c.decodeIfPresent([String].self, forKey: .followUp) ?? []
+        answers = try c.decodeIfPresent([String].self, forKey: .answers) ?? []
+    }
+}
+
 /// The domain model. Codable for the on-device cache; mapped to/from DB rows in the repository.
 /// Every "part" from the entry form is a field here so nothing the user enters is dropped.
 struct Reminder: Identifiable, Codable, Equatable {
@@ -236,6 +283,12 @@ struct Reminder: Identifiable, Codable, Equatable {
     var postAnswersContainQuestions: Bool? = nil
     // Optional for older entries; the whole draft retains every explored Format.
     var visualTemplates: VisualTemplateDraft? = nil
+    // Send to AI: every exchange, oldest first. Each holds one reply per form question
+    // (Decide, then Visual) and the Respond answers that asked for it. Optional so older
+    // JSON decodes.
+    var aiExchanges: [AIExchange]? = nil
+    var aiAnswers: [String]? { aiExchanges?.last?.answers }
+
     // Graph + lifecycle
     var seededFromTemplateID: String? = nil
     var pinned: Bool = false                    // sorts to the top of the list
@@ -530,6 +583,19 @@ extension JSONDecoder {
     static let recall: JSONDecoder = {
         let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601; return d
     }()
+}
+
+/// Adam, 2026-11-08: "i want it on all forms." Any saved form that can be sent to AI and keep
+/// its replies: the shared entry, the older Social form, and Story.
+protocol AIExchangeHost {
+    var id: UUID { get }
+    var aiExchanges: [AIExchange]? { get set }
+    /// The questions a reply answers, in form order, each with its icon.
+    var aiQuestions: [AIQuestion] { get }
+}
+
+extension Reminder: AIExchangeHost {
+    var aiQuestions: [AIQuestion] { SendToAI.questions(for: self) }
 }
 
 /// Adam, 2026-11-08: "if I don't fill anything in for delegation, it should go to the entry

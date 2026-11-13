@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import PhotosUI
 import UIKit
 import MessageUI
@@ -7,6 +8,8 @@ import MessageUI
 /// the top selector changes where the saved item lands, while the field order stays identical.
 struct ReminderFormView: View {
     @Environment(\.dismiss) private var dismiss
+    /// Mac only: knows whether this form has left the screen. See `closeOnTheMac()`.
+    @State private var closeWatch = SavyFormCloseWatch()
     @Environment(\.scenePhase) private var scenePhase
 
     let existing: Reminder?
@@ -36,6 +39,9 @@ struct ReminderFormView: View {
     // which Decide box has the cursor; the keyboard row reads both through `activeField`.
     @State private var decideFocus: Int?
     @State private var visualFocus: Int?
+    @ObservedObject private var aiJobs = SendToAIJobs.shared
+    @State private var aiProviders = SendToAI.selectedProviders
+    @State private var showsAIHistory = false
     @State private var subtasks: [Subtask]
     // Editable questions and answers are shared by Post themes and the fixed Connection theme.
     @State private var postDraft: PostEntryDraft
@@ -107,6 +113,12 @@ struct ReminderFormView: View {
             // the live title at full size. Compact icon buttons leave it more room.
             .savyPageTitle(r.title.trimmingCharacters(in: .whitespaces).isEmpty ? entryLabel : r.title,
                            color: SavyTheme.deepNavy)
+            .sheet(isPresented: $showsAIHistory) {
+                AIHistoryView(entry: $r, form: shareContent.entireForm)
+            }
+            // Replies finish outside this view; take them whenever they land, including after relaunch.
+            .onAppear { takeFinishedReplies() }
+            .onReceive(aiJobs.$finished.receive(on: DispatchQueue.main)) { _ in takeFinishedReplies() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { cancel() } label: {
@@ -133,7 +145,7 @@ struct ReminderFormView: View {
                 if phase != .active { saveRecoveryDraft() }
             }
             // Auto-save: if the form is swiped away (not via Cancel) and has content, keep it.
-            .onDisappear { saveRecoveryDraft(); autosaveIfNeeded() }
+            .onDisappear { closeWatch.gone = true; saveRecoveryDraft(); autosaveIfNeeded() }
             .alert("Couldn't save \(entryLabel)", isPresented: $saveFailed) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -254,7 +266,8 @@ struct ReminderFormView: View {
         if entry.marksCompounding == true { additionalMetadata.append("Compounding: Yes") }
         return EntryShareContent(entry: entry, sourceApp: "SAVY", entryLabel: entryLabel,
                                  whenIAm: entry.whenIAm ?? "", scheduleMetadata: scheduleMetadata,
-                                 additionalMetadata: additionalMetadata)
+                                 additionalMetadata: additionalMetadata,
+                                 isDraft: existing == nil || entry != existing)
     }
 
     @ViewBuilder private var unifiedEntrySections: some View {
@@ -275,6 +288,8 @@ struct ReminderFormView: View {
                           identifier: "DoneLooksLike", field: .doneLooksLike, symbol: "checkmark.circle")
         } header: { sectionHeader(EntryFormCopy.delegateHeader) }
         .listRowBackground(Brand.card)
+
+        answerSection
 
         stepsSection
 
@@ -675,7 +690,7 @@ struct ReminderFormView: View {
         let formats = VisualTemplateCatalog.formats
         return formats.contains { $0.id == selected.id } ? formats : [selected] + formats
     }
-    private let visualSymbols = ["target", "doc.text", "lightbulb", "person.2"]
+    private let visualSymbols = SendToAI.visualSymbols
 
     private var visualTemplatesSection: some View {
         Section {
@@ -763,8 +778,136 @@ struct ReminderFormView: View {
                 })
                 .padding(.top, Self.decideQuestionTopPadding)
             }
+            sendToAIRow
         }
         .listRowBackground(Brand.card)
+    }
+
+    // MARK: - Send to AI
+
+    /// Adam, 2026-11-07: "I am forced to start every fucking conversation from a blank page."
+    /// The filled-in form is the message. Claude, ChatGPT or both; the reply comes back into the
+    /// Answer box below Delegate, in the form's own shape.
+    private var isSendingToAI: Bool { aiJobs.isSending(r.id) }
+    private var sendToAIError: String? { aiJobs.failures[r.id] }
+
+    private var sendToAIRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            AIProviderChooser(selection: $aiProviders)
+                .onChange(of: aiProviders) { _, chosen in SendToAI.selectedProviders = chosen }
+            Button {
+                moveCursor(to: nil)
+                sendToAI()
+            } label: {
+                HStack(spacing: 10) {
+                    if isSendingToAI {
+                        ProgressView().tint(Brand.crimson).frame(width: 24)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                            .font(Self.decideIconFont)
+                            .foregroundStyle(Brand.crimson)
+                            .frame(width: 24)
+                    }
+                    Text(isSendingToAI ? "Asking…" : "Send to AI")
+                        .font(Self.questionFont)
+                        .foregroundStyle(Brand.crimson)
+                    Spacer()
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(isSendingToAI || isSaving || aiProviders.isEmpty)
+            .accessibilityIdentifier("SendToAI")
+            if sendToAIError != nil, aiJobs.hasPending(r.id), !isSendingToAI {
+                Button { aiJobs.retry(r.id) } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(Self.decideIconFont)
+                            .foregroundStyle(Brand.crimson)
+                            .frame(width: 24)
+                        Text("Try again")
+                            .font(Self.questionFont)
+                            .foregroundStyle(Brand.crimson)
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("SendToAIRetry")
+            }
+        }
+        .padding(.top, Self.decideQuestionTopPadding)
+    }
+
+    private func sendToAI() {
+        let questions = SendToAI.questions(for: {
+            var entry = r
+            entry.visualTemplates = visualDraft
+            postDraft.apply(to: &entry)
+            return entry
+        }())
+        let message = SendToAI.message(form: shareContent.entireForm, chain: [], followUp: [])
+        aiJobs.send(entryID: r.id, providers: aiProviders, parentID: nil,
+                    questions: questions, followUp: [], message: message)
+    }
+
+    private func takeFinishedReplies() {
+        let replies = aiJobs.take(for: r.id)
+        guard !replies.isEmpty else { return }
+        r.aiExchanges = (r.aiExchanges ?? []) + replies
+    }
+
+    private func answerBinding(_ index: Int) -> Binding<String> {
+        Binding(
+            get: { r.aiAnswers?[index] ?? "" },
+            set: { text in
+                guard var exchanges = r.aiExchanges, var last = exchanges.popLast(),
+                      last.answers.indices.contains(index) else { return }
+                last.answers[index] = text
+                r.aiExchanges = exchanges + [last]
+            }
+        )
+    }
+
+    /// Adam, 2026-11-07: "Form follows function". The latest reply has the form's own shape: each
+    /// question again with its icon, the answer under it. Questions are the ones frozen on the reply.
+    @ViewBuilder private var answerSection: some View {
+        if let latest = r.aiExchanges?.last {
+            Section {
+                if let sendToAIError {
+                    Text(sendToAIError).font(Self.questionFont).foregroundStyle(Brand.crimson)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                let questions = latest.questions.isEmpty ? SendToAI.questions(for: r) : latest.questions
+                ForEach(Array(latest.answers.indices), id: \.self) { (index: Int) in
+                    let question = questions.indices.contains(index) ? questions[index] : AIQuestion(prompt: "Answer", symbol: "sparkles")
+                    delegateField(question.prompt, text: answerBinding(index),
+                                  identifier: "Answer\(index)", field: .answer(index), symbol: question.symbol)
+                }
+                Button { showsAIHistory = true } label: {
+                    HStack(spacing: 12) {
+                        Label("History", systemImage: "clock")
+                            .foregroundStyle(.black)
+                        Spacer()
+                        Text(Self.exchangeCount(r.aiExchanges?.count ?? 0))
+                            .foregroundStyle(Brand.crimson)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Brand.crimson)
+                    }
+                }
+                .accessibilityIdentifier("AIHistory")
+            } header: { sectionHeader("Answer · \(latest.provider)") }
+            .listRowBackground(Brand.card)
+        } else if let sendToAIError {
+            Section {
+                Text(sendToAIError).font(Self.questionFont).foregroundStyle(Brand.crimson)
+                    .fixedSize(horizontal: false, vertical: true)
+            } header: { sectionHeader("Answer") }
+            .listRowBackground(Brand.card)
+        }
+    }
+
+    private static func exchangeCount(_ count: Int) -> String {
+        count == 1 ? "1 exchange" : "\(count) exchanges"
     }
 
     private func visualAnswerBinding(_ index: Int) -> Binding<String> {
@@ -799,6 +942,7 @@ struct ReminderFormView: View {
         case title
         case whenIAm
         case doneLooksLike
+        case answer(Int)
         case step(UUID)
         case tag
     }
@@ -868,6 +1012,7 @@ struct ReminderFormView: View {
         }
         order += (0..<4).map { EntryField.visual($0) }
         order += [.title, .whenIAm, .doneLooksLike]
+        order += (r.aiAnswers ?? []).indices.map { EntryField.answer($0) }
         order += subtasks.map { EntryField.step($0.id) }
         order.append(.tag)
         return order
@@ -1228,7 +1373,7 @@ struct ReminderFormView: View {
             return
         }
         withAnimation(.spring(response: 0.3)) { showSaved = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { dismiss(); closeOnTheMac() }
     }
 
     /// Save when the sheet is dismissed by swiping (not Cancel) and the user actually entered something.
@@ -1259,6 +1404,22 @@ struct ReminderFormView: View {
         guard EntryDraftStore.shared.remove(recoveryID) else { saveFailed = true; return }
         cancelled = true
         dismiss()
+        closeOnTheMac()
+    }
+
+    /// Adam, 2026-11-10: "I can't press the X in the top left side to close the pop-up window".
+    /// The X was taking the click all along. On macOS 27, `dismiss()` marks the form closed but
+    /// the form can stay on screen until something else redraws the page under it. Saving
+    /// redraws it, which is why Save closed the form and the X did not. If the form is still
+    /// up a moment after it was told to close, take it down directly. The phone is unchanged.
+    private func closeOnTheMac() {
+        #if targetEnvironment(macCatalyst)
+        let watch = closeWatch
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            guard !watch.gone else { return }
+            SavyMacSheetCloser.closeTopSheetIfStuck()
+        }
+        #endif
     }
 
     private var hasContent: Bool {
@@ -1528,3 +1689,30 @@ struct SaveDiskIcon: View {
             .accessibilityHidden(true)
     }
 }
+
+
+/// Tells a Mac form's close step whether the form already left the screen.
+final class SavyFormCloseWatch {
+    var gone = false
+}
+
+#if targetEnvironment(macCatalyst)
+enum SavyMacSheetCloser {
+    /// Takes down the front-most sheet, and only that one, and only if it is sitting still.
+    /// A sheet that is already on its way out is left alone: closing it twice can leave the
+    /// next form on screen with nothing behind it.
+    @MainActor
+    static func closeTopSheetIfStuck() {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                guard let root = window.rootViewController, var top = root.presentedViewController else { continue }
+                while let next = top.presentedViewController { top = next }
+                guard !top.isBeingDismissed, !top.isBeingPresented, top.transitionCoordinator == nil else { return }
+                top.dismiss(animated: true)
+                return
+            }
+        }
+    }
+}
+#endif
