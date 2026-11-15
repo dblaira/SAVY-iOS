@@ -261,7 +261,7 @@ final class ReminderStore: ObservableObject {
         for item in ordered {
             guard let index = next.firstIndex(where: { $0.id == item.id }), next[index].upNextOrder != item.rank else { continue }
             next[index].upNextOrder = item.rank
-            next[index].updatedAt = Date()
+            if item.id == r.id { next[index].updatedAt = r.updatedAt }
             next[index].needsSync = true
             touched.insert(item.id)
         }

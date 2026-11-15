@@ -115,6 +115,9 @@ final class SAVYReorderTests: XCTestCase {
 
         let rows = HomeFeedRow.rows(reminderStore: store, leverageStore: LeverageDataStore(), limit: 4)
         XCTAssertEqual(rows.prefix(2).map(\.id), [post.id.uuidString, pinnedReminder.id.uuidString])
+        XCTAssertEqual(store.reminders.first { $0.id == pinnedReminder.id }?.updatedAt, pinnedReminder.updatedAt,
+                       "Shifting a neighbor card's rank during pin must not overwrite its last-edited timestamp")
+        XCTAssertEqual(store.reminders.first { $0.id == pinnedReminder.id }?.createdAt, pinnedReminder.createdAt)
     }
 
     @MainActor
