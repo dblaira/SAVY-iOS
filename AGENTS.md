@@ -4,6 +4,18 @@ Adam requested creation and change timestamps for every entry type so agents can
 
 # SAVY iOS Agent Instructions
 
+## YouTube focus — November 17, 2026 (read first)
+
+Adam: “I am expending every ounce of energy to find my motivation and system to create videos for YouTube.  If it doesn’t pertain to that, it doesn’t matter.  If it does not use my powers of generalization I won’t be interested in doing it and it won’t be any good.  There are your parameters.  You can “connect dots” too (generalization).  Focus there.  And when you wonder what else you can do for me, pause and refocus there again.”
+
+This sets the priority for all work in this file. Before proposing or building anything, ask whether it gets a YouTube video made through generalization. If it does not, do not do it. When looking for more to do, return to that question.
+
+The dots are connected in [docs/youtube/generalization-video-system.md](docs/youtube/generalization-video-system.md).
+
+Do not narrow. The line Adam saved at the top of his Nov 15 note names the failure: “Every reply pulls toward the next concrete step: one video, one post, one platform, one app.” It also names the fix: “The useful move is to stay at the width you're thinking at and draw connections across it, not to pick a point and polish it.” Do not answer him with a single next video, outline, mock-up or production step unless he asks for one. The first Nov 17 answer made this mistake; its “video 1” is retracted.
+
+Adam, Nov 17: “I agree the SAVY app has beautiful forms, but I have considered that and still see feel there is a gap.” The gap is the feeling layer. The forms hold what he discovered, and nothing in the system designs what the viewer feels. That layer is found by reacting to rough material and cutting it, which is discernment, not by picturing the finished video in advance.
+
 ## Mac close button and pinned posts on Home — November 10, 2026
 
 Adam: “On the Mac OS version, whenever I open an entry, in order to close it, I have to save it. I can't press the X in the top left side to close the pop-up window, period.”
