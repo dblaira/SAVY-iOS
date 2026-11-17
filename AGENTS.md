@@ -6,7 +6,11 @@ Adam: “I am expending every ounce of energy to find my motivation and system t
 
 This sets the priority for all work in this file. Before proposing or building anything, ask whether it gets a YouTube video made through generalization. If it does not, do not do it. When looking for more to do, return to that question.
 
-The dots are connected in [docs/youtube/generalization-video-system.md](docs/youtube/generalization-video-system.md). A SAVY entry with the Generalization Theme and a Visual is one video: the Theme answers are what Adam says, and the Visual answers are what people see. SAVY needs no new feature before the first recording. The work is at Record: video 1 is “Interview myself” on the Apr 23 true crime Field Essay, with the fourth Generalization answer given on camera.
+The dots are connected in [docs/youtube/generalization-video-system.md](docs/youtube/generalization-video-system.md).
+
+Do not narrow. The line Adam saved at the top of his Nov 15 note names the failure: “Every reply pulls toward the next concrete step: one video, one post, one platform, one app.” It also names the fix: “The useful move is to stay at the width you're thinking at and draw connections across it, not to pick a point and polish it.” Do not answer him with a single next video, outline, mock-up or production step unless he asks for one. The first Nov 17 answer made this mistake; its “video 1” is retracted.
+
+Adam, Nov 17: “I agree the SAVY app has beautiful forms, but I have considered that and still see feel there is a gap.” The gap is the feeling layer. The forms hold what he discovered, and nothing in the system designs what the viewer feels. That layer is found by reacting to rough material and cutting it, which is discernment, not by picturing the finished video in advance.
 
 ## Generalization theme — November 9, 2026
 
