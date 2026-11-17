@@ -1,5 +1,13 @@
 # SAVY iOS Agent Instructions
 
+## YouTube focus — November 17, 2026 (read first)
+
+Adam: “I am expending every ounce of energy to find my motivation and system to create videos for YouTube.  If it doesn’t pertain to that, it doesn’t matter.  If it does not use my powers of generalization I won’t be interested in doing it and it won’t be any good.  There are your parameters.  You can “connect dots” too (generalization).  Focus there.  And when you wonder what else you can do for me, pause and refocus there again.”
+
+This sets the priority for all work in this file. Before proposing or building anything, ask whether it gets a YouTube video made through generalization. If it does not, do not do it. When looking for more to do, return to that question.
+
+The dots are connected in [docs/youtube/generalization-video-system.md](docs/youtube/generalization-video-system.md). A SAVY entry with the Generalization Theme and a Visual is one video: the Theme answers are what Adam says, and the Visual answers are what people see. SAVY needs no new feature before the first recording. The work is at Record: video 1 is “Interview myself” on the Apr 23 true crime Field Essay, with the fourth Generalization answer given on camera.
+
 ## Generalization theme — November 9, 2026
 
 Adam: “I need to add a generalization form to the ios and mac os savy app. The general shape of my forms is 4 questions.  The closest match I have is Pattern Recognition, but I need one for Generalization.”
