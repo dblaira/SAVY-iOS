@@ -1,6 +1,6 @@
 # SAVY iOS Agent Instructions
 
-## YouTube focus — November 17, 2026 (read first)
+## YouTube focus — November 17–18, 2026 (read first)
 
 Adam: “I am expending every ounce of energy to find my motivation and system to create videos for YouTube.  If it doesn’t pertain to that, it doesn’t matter.  If it does not use my powers of generalization I won’t be interested in doing it and it won’t be any good.  There are your parameters.  You can “connect dots” too (generalization).  Focus there.  And when you wonder what else you can do for me, pause and refocus there again.”
 
@@ -10,7 +10,13 @@ The dots are connected in [docs/youtube/generalization-video-system.md](docs/you
 
 Do not narrow. The line Adam saved at the top of his Nov 15 note names the failure: “Every reply pulls toward the next concrete step: one video, one post, one platform, one app.” It also names the fix: “The useful move is to stay at the width you're thinking at and draw connections across it, not to pick a point and polish it.” Do not answer him with a single next video, outline, mock-up or production step unless he asks for one. The first Nov 17 answer made this mistake; its “video 1” is retracted.
 
-Adam, Nov 17: “I agree the SAVY app has beautiful forms, but I have considered that and still see feel there is a gap.” The gap is the feeling layer. The forms hold what he discovered, and nothing in the system designs what the viewer feels. That layer is found by reacting to rough material and cutting it, which is discernment, not by picturing the finished video in advance.
+Adam, Nov 18: “The problem was that I was holding back. It wasn't that I wasn't doing it, it's that I was constraining myself so much that I didn't want to do it”. His own mental model for YouTube is the group lesson, from his years as a tennis instructor: “I'm here to do a group lesson. Like, you are my audience. This is a group lesson. I'm here to bring the energy.” One detailed video holds everything, and live re-viewings repeat it: “Not about giving you new information, but about driving great information home”. He chose to build his next video around this format, so helping with that video when he asks is not narrowing.
+
+The live re-viewings work with or without anyone in the chat. Adam, Nov 18: “they don't even have to participate if they don't want to.” Do not tell him he needs an audience first, and do not turn the live sessions into clips. Claude did both on Nov 19, and both were wrong.
+
+Use his words. Adam, Nov 18: “when AI uses their labels, it kind of robs me of meaning”. His words here are group lesson, holding back, driving great information home, and an edge. “Take Noticing Seriously” fits him and does not motivate him: “there's nothing interesting or exciting or motivating about that. That's just the way I live and act.” Do not lead with it. High standards are not the block: “if that was the issue, then I would be producing things and then not liking them. I'm not even producing anything.”
+
+Adam, Nov 17: “I agree the SAVY app has beautiful forms, but I have considered that and still see feel there is a gap.” Claude’s Nov 17 reading called the gap “the feeling layer”, found by cutting. That was Claude’s label, and his Nov 18 words supersede it: cutting the video down to stand alone was the holding back. Do not use that label with him.
 
 ## Generalization theme — November 9, 2026
 
