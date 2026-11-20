@@ -23,6 +23,8 @@
     --once-edge: transparent;
     --agree: #2A7A4B;
     --differ: #B0002E;
+    --gemini: #EEF6F0;
+    --gemini-edge: #2A7A4B;
     --serif: "Bodoni 72 Oldstyle", "Bodoni 72", "Didot", "Bodoni Moda", "Times New Roman", serif;
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   }
@@ -41,6 +43,8 @@
       --once-edge: #34446A;
       --agree: #6FD49A;
       --differ: #FF7D9A;
+      --gemini: #12301F;
+      --gemini-edge: #6FD49A;
     }
   }
   :root[data-theme="dark"] {
@@ -57,6 +61,8 @@
     --once-edge: #34446A;
     --agree: #6FD49A;
     --differ: #FF7D9A;
+    --gemini: #12301F;
+    --gemini-edge: #6FD49A;
   }
 
   * { box-sizing: border-box; }
@@ -135,7 +141,20 @@
   .research .label { color: var(--research-edge); }
   .dot .label { color: var(--crimson); }
   .research ul { padding-left: 18px; }
-  .research .via { font-size: 13px; color: var(--muted); }
+  .research .via, .gemini .via { font-size: 13px; color: var(--muted); }
+  .gemini { margin: 16px 0 0; border-radius: 0 12px 12px 0; padding: 14px 16px 4px; font-size: 15px; background: var(--gemini); border-left: 3px solid var(--gemini-edge); }
+  .gemini .label { color: var(--gemini-edge); }
+  .gemini ul { padding-left: 18px; }
+  .swatch.gemini { background: var(--gemini); border-left: 3px solid var(--gemini-edge); }
+
+  /* Order of disclosure */
+  .flow { list-style: none; margin: 8px 0 12px; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .flow li { margin: 0; background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 14px; }
+  .flow b { display: block; font-size: 14px; }
+  .flow span { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); }
+
+  /* Questions Gemini asked */
+  .ask { margin: 22px 0 0; font-family: var(--serif); font-weight: 400; font-size: 24px; line-height: 1.2; }
 
   /* Tables */
   .grid-table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 15px; }
@@ -158,6 +177,7 @@
   footer ul { padding-left: 18px; }
 
   @media (max-width: 720px) {
+    .flow { grid-template-columns: 1fr; }
     .track { grid-template-columns: 1fr 1fr; }
     .track li:last-child { grid-column: 1 / -1; }
     .cards, .split, .brief, .chain { grid-template-columns: 1fr; }
@@ -179,7 +199,7 @@
     <p class="kicker">YouTube · Architecture</p>
     <h1>Social Media Content</h1>
     <p class="lede">The architecture of making 100 YouTube videos: the decisions every video makes, which ones can be made once, and which ones each video makes fresh.</p>
-    <p class="date">November 20, 2026 · second version, with research added</p>
+    <p class="date">November 20, 2026 · third version: ChatGPT, Gemini and Claude’s research</p>
   </div>
 </header>
 
@@ -188,11 +208,13 @@
   <div class="source-note">
     <ul class="legend" aria-label="How to read this page">
       <li><span class="swatch chatgpt"></span>Plain text: ChatGPT’s reading of the video</li>
+      <li><span class="swatch gemini"></span>Gemini: what its workspace adds</li>
       <li><span class="swatch research"></span>Research: other sources, linked</li>
       <li><span class="swatch dot"></span>My dot: Claude’s connections</li>
     </ul>
-    <p><strong>Sources.</strong> ChatGPT’s reading of <a href="https://www.youtube.com/watch?v=PAwGwyfA428">the video</a> supplies the pillars, their wording and the timestamps (<a href="social-media-content-chatgpt.pdf">its PDF</a>). Gemini’s version is behind a share link Claude could not open; once it is pasted in, it gets its own column in <a href="#agree">Where the sources agree</a>. Quoted lines are Adam’s words unless another speaker is named.</p>
-    <p><strong>Who made the video is unconfirmed.</strong> ChatGPT credits Zach Sperrazzo, who does have a YouTube channel, but YouTube blocks cloud computers, so Claude could not open the video or check its timestamps. “Give Me X Minutes and I’ll Make You Disgustingly Good at …” is a title trend. Jake Trinder’s 15-minute keynote, used below, is a different video.</p>
+    <p><strong>Sources.</strong> ChatGPT’s reading of <a href="https://www.youtube.com/watch?v=PAwGwyfA428">the video</a> supplies the pillars, their wording and the timestamps (<a href="social-media-content-chatgpt.pdf">its PDF</a>). Gemini turned the same material into a web app and sent a review packet describing it (<a href="social-media-content-gemini.pdf">its PDF</a>); Gemini boxes show only what it adds, and <a href="#gemini-review">its three questions</a> are answered near the end. Quoted lines are Adam’s words unless another speaker is named.</p>
+    <p><strong>Gemini and ChatGPT are one reading, not two.</strong> Gemini’s packet matches ChatGPT’s word for word in its eight brief fields, its diagnostic table and its four outcomes. ChatGPT says it wrote that brief itself, so Gemini most likely built from ChatGPT’s PDF. Where they agree, the video is not confirmed twice.</p>
+    <p><strong>Who made the video is unconfirmed.</strong> Both credit Zach Sperrazzo, who does have a YouTube channel, but YouTube blocks cloud computers, so Claude could not open the video or check its timestamps. “Give Me X Minutes and I’ll Make You Disgustingly Good at …” is a title trend. Jake Trinder’s 15-minute keynote, used below, is a different video.</p>
   </div>
 
   <ol class="track" aria-label="The architecture in order">
@@ -331,6 +353,14 @@
       </ul>
     </div>
 
+    <div class="gemini">
+      <span class="label">Gemini</span>
+      <ul>
+        <li><strong>The thumbnail doesn’t repeat the title.</strong> Gemini’s brief asks what the viewer will <q>see, feel, or wonder without repeating the title words</q>. That sharpens ChatGPT’s “adds information to the title.”</li>
+        <li><strong>An “80/20 packaging rule.”</strong> Gemini lists it as part of this pillar but never says what it is. Neither ChatGPT’s reading nor the research mentions it, so treat it as unexplained until someone checks the video.</li>
+      </ul>
+    </div>
+
     <div class="dot">
       <span class="label">My dot</span>
       <p>The first two Generalization questions are the promise. <q>What shining example caught my attention?</q> is what the thumbnail shows. <q>What makes this attractive to me?</q> is the reason to click, said out loud in the first line.</p>
@@ -366,6 +396,18 @@
       <li><strong>Decide what is worth showing.</strong> An object, clip, demo, or before-and-after can create a moment the audience wants to see. If it’s strong enough to tease in the intro, make sure the full moment pays it off later.</li>
     </ul>
     <p class="src">Sperrazzo on <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=1971s">story and attention (32:51)</a>, <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=2133s">the reaction outline (35:33)</a>, and <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=2266s">on-screen reveals (37:46)</a>.</p>
+
+    <div class="gemini">
+      <span class="label">Gemini</span>
+      <p>Gemini names the steps of the reaction outline as a five-step order of disclosure. The second line under each step is Claude’s match to the Generalization questions.</p>
+      <ol class="flow" aria-label="Order of disclosure">
+        <li><b>Tease question</b><span>Open on the shining example</span></li>
+        <li><b>Context</b><span>What makes this attractive to me?</span></li>
+        <li><b>Familiar moment</b><span>The examples, each one ordinary</span></li>
+        <li><b>Unexpected twist</b><span>The similarity between the seemingly unrelated examples</span></li>
+        <li><b>Payoff</b><span>What can someone do with this that almost nobody is doing?</span></li>
+      </ol>
+    </div>
 
     <div class="research">
       <span class="label">Research</span>
@@ -405,6 +447,15 @@
       </ul>
     </div>
 
+    <div class="gemini">
+      <span class="label">Gemini</span>
+      <ul>
+        <li><strong>Count the seconds.</strong> For early exits, Gemini says to <q>count how many seconds pass before spoken confirmation and real substance appear</q>. That gives each video a number to log.</li>
+        <li><strong>Change one thing at a time.</strong> The table is there so the creator <q>isolates one variable between uploads rather than guessing</q>.</li>
+        <li><strong>One outcome per video.</strong> Its result field asks <q>What single outcome mattered</q>.</li>
+      </ul>
+    </div>
+
     <div class="dot">
       <span class="label">My dot</span>
       <p>The four rows map onto the architecture: clicks test Demand and Formula, early exits test the intro, returns test the Format, and later drops test the Story. That is Adam’s rule 4 in practice: <q>Favor data not rules — Let patterns in actual usage drive decisions</q>.</p>
@@ -414,6 +465,7 @@
   <section id="agree">
     <p class="eyebrow">Cross-check</p>
     <h2>Where the sources agree, and where they don’t</h2>
+    <p>Gemini follows ChatGPT section for section, so the middle column stands for both. Gemini appears in the third column only where it differs or adds.</p>
     <table class="grid-table">
       <thead><tr><th scope="col">Question</th><th scope="col">ChatGPT’s reading of the video</th><th scope="col">Other sources</th><th scope="col">Verdict</th></tr></thead>
       <tbody>
@@ -454,10 +506,16 @@
           <td><span class="verdict differ">Split</span></td>
         </tr>
         <tr>
-          <th scope="row">Gemini’s version</th>
-          <td data-col="Video">—</td>
-          <td data-col="Others">Not read yet: the share link would not open from here.</td>
-          <td><span class="verdict">Open</span></td>
+          <th scope="row">An “80/20 packaging rule”</th>
+          <td data-col="Video">Not mentioned.</td>
+          <td data-col="Others">Gemini lists it under Formula without saying what it is.</td>
+          <td><span class="verdict">Unexplained</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Who made the video</th>
+          <td data-col="Video">Zach Sperrazzo.</td>
+          <td data-col="Others">Gemini says the same, but it most likely built on ChatGPT’s PDF. Sperrazzo has a channel; the video itself wasn’t checked.</td>
+          <td><span class="verdict">Unconfirmed</span></td>
         </tr>
       </tbody>
     </table>
@@ -516,12 +574,51 @@
     </div>
   </section>
 
+  <section id="gemini-review">
+    <p class="eyebrow">Gemini’s workspace</p>
+    <h2>The review Gemini asked for</h2>
+    <p>Gemini turned the material into a single-page web app with six modules: a six-item pre-shoot checklist, a symptom selector for the diagnostic table, and a 10×10 grid for videos 1 to 100 with badges at 10, 25, 50, 75 and 100. Each square opens the same eight-field brief, saved in the browser, with JSON backup and copy to clipboard. Claude has seen only its review packet, not the app. The packet ends with three questions for Claude.</p>
+
+    <h3 class="ask">1. Are any critical concepts from the framework missing or under-emphasized?</h3>
+    <div class="dot">
+      <span class="label">Claude’s answer</span>
+      <p>Claude can’t check against the video, so this compares the packet with ChatGPT’s reading and the research.</p>
+      <ul>
+        <li><strong>Formula drift</strong> is named in ChatGPT’s reading at 26:31, and neither model says what it is.</li>
+        <li><strong>The “80/20 packaging rule”</strong> appears only in Gemini, also unexplained.</li>
+        <li><strong>“Find the first usable line and cut to it”</strong> is in ChatGPT’s reading and absent from the packet.</li>
+        <li><strong>Missing from both:</strong> the chain view (which link broke), YouTube’s built-in A/B test, Studio’s same-age comparisons and retention baseline, the retention split, and Muller’s warning that a clear explanation can feel easy and teach little.</li>
+      </ul>
+    </div>
+
+    <h3 class="ask">2. How could the brief or grid reduce friction during weekly batch filming?</h3>
+    <div class="dot">
+      <span class="label">Claude’s answer</span>
+      <ul>
+        <li><strong>Pre-fill what is decided once.</strong> Format, story order, the intro rule and the title rule are the same in all 100 briefs. Fill them once, and each brief keeps only the fresh fields: the example, why it pulls, the connection, the move, the title, the thumbnail, the first line and the result.</li>
+        <li><strong>Count the lesson, not only the upload.</strong> “Weekly batch filming” is Gemini’s assumption. Adam’s format is one detailed video and then live re-viewings: <q>for the next four days, I'm gonna show up at this time, and we're gonna do a live reviewing of this.</q> A square on the grid can hold the video and its sessions together.</li>
+      </ul>
+    </div>
+
+    <h3 class="ask">3. What analytics, pattern-tracking or import features would make videos 1 to 100 compound faster?</h3>
+    <div class="dot">
+      <span class="label">Claude’s answer</span>
+      <ul>
+        <li><strong>Log which link broke.</strong> Each video gets one tag from the four-row table: Demand and Formula, the intro, the Format, or the Story. Across 100 videos, the link that breaks most often is the next thing to settle once.</li>
+        <li><strong>Keep the A/B test winners.</strong> Each test leaves one title or thumbnail that beat the others. A pile of winners is where packaging patterns show up.</li>
+        <li><strong>Score your own videos as outliers.</strong> Divide each video’s views by your own median at the same age. The top ones are the repackaging candidates the Demand step describes.</li>
+        <li><strong>Keep the briefs where they can’t be lost.</strong> Browser storage stays on one device and can be cleared; the packet’s safeguard is a manual JSON backup. SAVY already saves every entry immediately, syncs the Mac and iPhone through iCloud, and holds the Generalization answers and Visuals. This repo’s rule is to build such tools in SAVY before a parallel website. Adam, October 12: <q>Fix the autosave too. I don't want to lose another entry.</q></li>
+      </ul>
+      <p>The grid’s real job is the one in Adam’s Connection: <q>Volume is beautiful because volume is where patterns can be seen.</q></p>
+    </div>
+  </section>
+
   <footer>
     <p><strong>Sources</strong></p>
     <ul>
       <li>ChatGPT, “Social Media Content Architecture,” a three-page PDF Adam shared on November 20, 2026: <a href="social-media-content-chatgpt.pdf">social-media-content-chatgpt.pdf</a>. The pillar text, the review table and the brief fields are ChatGPT’s wording. Its source line names the video as Zach Sperrazzo, <em>Give Me 40 Minutes &amp; I’ll Make You Disgustingly Good at YouTube</em>.</li>
       <li>The video: <a href="https://youtu.be/PAwGwyfA428">youtu.be/PAwGwyfA428</a>. Not opened by Claude; its title, maker and timestamps are as ChatGPT gives them. Zach Sperrazzo’s channel: <a href="https://www.youtube.com/@zachsperrazzo">@zachsperrazzo</a>.</li>
-      <li>Gemini’s version: a share link Adam sent, which could not be opened from Claude’s cloud session.</li>
+      <li>Gemini, “Social Media Content — 100-Video Production Workspace,” a three-page review packet Adam shared on November 20, 2026: <a href="social-media-content-gemini.pdf">social-media-content-gemini.pdf</a>. Its share links could not be opened from Claude’s cloud session, and the app itself was not seen.</li>
       <li>Jake Trinder: <a href="https://www.youtube.com/watch?v=Dx-c19qXdxM">Give Me 15 Minutes and I’ll Make You Disgustingly Good at YouTube</a>, as written up by <a href="https://creatorquickies.substack.com/p/five-decisions-at-90-each-give-you">Creator Quickies</a>.</li>
       <li>YouTube Help: <a href="https://support.google.com/youtube/answer/16391400">A/B test titles &amp; thumbnails</a>, <a href="https://support.google.com/youtube/answer/12942217">Content tab analytics tips</a>, <a href="https://support.google.com/youtube/answer/1715160">audience retention</a>.</li>
       <li>MrBeast’s 2024 production guide: <a href="https://www.alexanderjarvis.com/memo-how-to-succeed-in-mrbeast-production/">copy</a> and <a href="https://feeds.simonwillison.net/2024/Sep/15/how-to-succeed-in-mrbeast-production/">notes by Simon Willison</a>.</li>
