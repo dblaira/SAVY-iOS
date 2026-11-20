@@ -18,6 +18,8 @@ Use his words. Adam, Nov 18: “when AI uses their labels, it kind of robs me of
 
 Adam, Nov 17: “I agree the SAVY app has beautiful forms, but I have considered that and still see feel there is a gap.” Claude’s Nov 17 reading called the gap “the feeling layer”, found by cutting. That was Claude’s label, and his Nov 18 words supersede it: cutting the video down to stand alone was the holding back. Do not use that label with him.
 
+Adam, Nov 20: “What is the architecture of making 100 videos?” He asked for it from Zach Sperrazzo’s video (https://youtu.be/PAwGwyfA428), in “an HTML document labeled social media content”. It is [docs/youtube/social-media-content.html](docs/youtube/social-media-content.html), built from the ChatGPT PDF of the video that Adam supplied, which is saved beside it. Its timestamps were not checked against the video. Cloud sessions cannot read YouTube. The default network refuses it, and with YouTube allowed, Google answers with its bot-check page. Do not try to get past that check. Ask Adam to paste the transcript or share a folder on his Mac.
+
 ## Generalization theme — November 9, 2026
 
 Adam: “I need to add a generalization form to the ios and mac os savy app. The general shape of my forms is 4 questions.  The closest match I have is Pattern Recognition, but I need one for Generalization.”
