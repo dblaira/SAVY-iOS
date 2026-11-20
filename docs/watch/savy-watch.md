@@ -77,6 +77,7 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 - `945b2e5` (runner `xcode-27`, Xcode 27.2, the Xcode Adam builds with): the Watch app built and its screenshots below were taken. The iPhone app built with no crash, and all 11 `SAVYWatchCaptureTests` passed. The job was marked failed only because the check looked for “TEST SUCCEEDED”, and Xcode 27 prints “TEST EXECUTE SUCCEEDED”. The check is fixed in the next commit.
 - `744fc05` (runner `xcode-27`, Xcode 27.2): every check passed. The Watch app built and its screenshots were taken, the iPhone app built, and all 11 `SAVYWatchCaptureTests` passed.
 - `3ad3920` (one big button, with the nearby iPhone writing out the words): every check passed on Xcode 27.2. The Watch app built and the four screens below were taken, the iPhone app built, and all 19 `SAVYWatchCaptureTests` passed.
+- `b445f22`: every check passed on Xcode 27.2. The saved screen's navy now fills the screen.
 
 ### Screens, from the real app
 
