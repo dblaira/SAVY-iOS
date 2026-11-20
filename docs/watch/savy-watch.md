@@ -80,6 +80,8 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 
 ### Screens, from the real app
 
+Adam, on seeing these four screens: “Yep,that looks great”.
+
 These are an Apple Watch Ultra 3 simulator on Xcode 27.2, launched with `-WatchCaptureDemo` (Debug only). The recording is silent and the words are demo words; nothing was sent anywhere. On the review screen, the words stand in for what the nearby iPhone sends back.
 
 | Big button | Recording | Review: words back from the iPhone | Saved |

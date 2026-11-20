@@ -28,6 +28,8 @@ Built on `claude/awesome-heisenberg-s7jdkk`: the `SAVYWatch` app with four doors
 
 Adam, after seeing the first screens: “I was thinking about it having a face just like the voice memos where it's one large button that I can press. The idea here is to reduce friction, so if I'm reducing friction, I just need one button to press.” He also asked to “examine what it recorded because sometimes my diction can be often it might change CODEX to KODAK”. He then chose two answers: check the words “On iPhone, with audio”, and plain Save goes to “Social (Generalization)”.
 
+Adam approved the one-button screens (big button, recording, review, saved) on Nov 20: “Yep,that looks great”. That approves the screens; it is not yet a device check.
+
 The Watch is one big record button. One press records and one press stops. The review screen plays the recording back, and one tap saves it: Save as Social, or one tap on Action, Reminder or Calendar. Leaving the screen saves too. The Action Button's “Capture” shortcut opens the app already recording.
 
 watchOS has no speech-to-text, so the iPhone or Mac writes out the words, with his terms (`vocabulary`) as recognizer hints. The recording is kept beside the words as a play row at the top of the entry form. That row is the only change to the frozen form, and it appears only when a recording exists. This audio is his explicit choice. It is separate from the Sept 2 removal of “listen with Cowboyai”.
