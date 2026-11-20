@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Screen one: four doors, Action, Reminder, Calendar and Social. Tapping a door opens the
-/// Watch's own dictation. The words are saved the moment dictation finishes.
+// Watch capture kit: the same in every app that uses it.
+
+/// Screen one: one door per kind of entry. Tapping a door
+/// opens the Watch's own dictation. The words are saved the moment dictation finishes.
 struct CaptureHomeView: View {
     @EnvironmentObject private var store: WatchCaptureStore
     @State private var route: ProofRoute?
@@ -24,7 +26,7 @@ struct CaptureHomeView: View {
                     if store.problem != nil, store.waitingCount > 0 {
                         Label("\(store.waitingCount) waiting to send", systemImage: "icloud.slash")
                             .font(.footnote)
-                            .foregroundStyle(WatchTheme.cream)
+                            .foregroundStyle(WatchTheme.text)
                     }
                     if !store.items.isEmpty {
                         recent
@@ -32,32 +34,51 @@ struct CaptureHomeView: View {
                 }
                 .padding(.horizontal, 2)
             }
-            .background(WatchTheme.navy.ignoresSafeArea())
-            .navigationTitle("SAVY")
+            .background(WatchTheme.background.ignoresSafeArea())
+            .navigationTitle(WatchCaptureConfig.appName)
             .navigationDestination(item: $route) { route in
                 CaptureProofView(route: route)
             }
+            #if DEBUG
+            .task { openDemoScreen() }
+            #endif
         }
     }
+
+    #if DEBUG
+    private func openDemoScreen() {
+        guard let screen = WatchCaptureDemo.screen, route == nil, let newest = store.seedDemo() else { return }
+        switch screen {
+        case "proof":
+            route = ProofRoute(captureID: newest.id, returnsHome: false)
+        case "calendar":
+            if let timed = store.items.first(where: { $0.capture.proposedWindow != nil }) {
+                route = ProofRoute(captureID: timed.id, returnsHome: false)
+            }
+        default:
+            break
+        }
+    }
+    #endif
 
     private var recent: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Recent")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(WatchTheme.cream.opacity(0.8))
+                .foregroundStyle(WatchTheme.text.opacity(0.8))
             ForEach(store.items.prefix(6)) { item in
                 Button {
                     route = ProofRoute(captureID: item.id, returnsHome: false)
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: item.capture.kind.symbol)
-                            .foregroundStyle(WatchTheme.crimson)
+                            .foregroundStyle(WatchTheme.accent)
                         Text(item.capture.words)
                             .lineLimit(1)
-                            .foregroundStyle(WatchTheme.cream)
+                            .foregroundStyle(WatchTheme.text)
                         Spacer(minLength: 2)
                         Image(systemName: item.sentAt == nil ? "icloud.and.arrow.up" : "checkmark.icloud")
-                            .foregroundStyle(WatchTheme.cream.opacity(0.7))
+                            .foregroundStyle(WatchTheme.text.opacity(0.7))
                     }
                     .font(.footnote)
                 }
@@ -69,7 +90,7 @@ struct CaptureHomeView: View {
 
 struct ProofRoute: Hashable {
     var captureID: UUID
-    /// True right after a capture: the proof shows for four seconds, then SAVY returns home.
+    /// True right after a capture: the proof shows for four seconds, then the app returns home.
     var returnsHome: Bool
 }
 
@@ -82,15 +103,15 @@ private struct CaptureDoor: View {
             VStack(spacing: 4) {
                 Image(systemName: kind.symbol)
                     .font(.title3)
-                    .foregroundStyle(WatchTheme.crimson)
+                    .foregroundStyle(WatchTheme.accent)
                 Text(kind.label)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(WatchTheme.navy)
+                    .foregroundStyle(WatchTheme.doorText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, minHeight: 62)
-            .background(WatchTheme.cream, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(WatchTheme.door, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         } onSubmit: { words in
             onWords(words)
         }
@@ -100,7 +121,7 @@ private struct CaptureDoor: View {
     }
 }
 
-/// Screen three: proof that SAVY heard the words right. The exact words, the entry type, any
+/// Screen three: proof the Watch heard the words right. The exact words, the entry type, any
 /// day or hour it heard, and whether iCloud has them yet. One tap re-records.
 struct CaptureProofView: View {
     let route: ProofRoute
@@ -116,10 +137,10 @@ struct CaptureProofView: View {
             } else {
                 Text("This capture is no longer on the Watch.")
                     .font(.footnote)
-                    .foregroundStyle(WatchTheme.cream)
+                    .foregroundStyle(WatchTheme.text)
             }
         }
-        .background(WatchTheme.navy.ignoresSafeArea())
+        .background(WatchTheme.background.ignoresSafeArea())
         .simultaneousGesture(TapGesture().onEnded { keepsOpen = true })
         .task(id: timerRun) {
             guard route.returnsHome else { return }
@@ -135,13 +156,13 @@ struct CaptureProofView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(WatchTheme.crimson)
+                        .foregroundStyle(WatchTheme.accent)
                     Label(item.capture.kind.label, systemImage: item.capture.kind.symbol)
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(WatchTheme.navy)
+                        .foregroundStyle(WatchTheme.doorText)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(WatchTheme.cream, in: Capsule())
+                        .background(WatchTheme.door, in: Capsule())
                 }
 
                 Text(item.capture.words)
@@ -154,7 +175,7 @@ struct CaptureProofView: View {
                     Label(Self.describe(window, timeZoneIdentifier: item.capture.timeZoneIdentifier),
                           systemImage: "calendar")
                         .font(.footnote)
-                        .foregroundStyle(WatchTheme.cream)
+                        .foregroundStyle(WatchTheme.text)
                 }
 
                 status(item)
@@ -182,19 +203,19 @@ struct CaptureProofView: View {
         if item.sentAt != nil {
             Label("Saved on Watch · in iCloud", systemImage: "checkmark.icloud")
                 .font(.footnote)
-                .foregroundStyle(WatchTheme.cream)
+                .foregroundStyle(WatchTheme.text)
         } else if store.problem == .noICloudAccount {
             Label("Saved on Watch · sign in to iCloud to send", systemImage: "icloud.slash")
                 .font(.footnote)
-                .foregroundStyle(WatchTheme.cream)
+                .foregroundStyle(WatchTheme.text)
         } else if store.problem == .couldNotSend {
             Label("Saved on Watch · sends when online", systemImage: "icloud.slash")
                 .font(.footnote)
-                .foregroundStyle(WatchTheme.cream)
+                .foregroundStyle(WatchTheme.text)
         } else {
             Label("Saved on Watch · sending", systemImage: "icloud.and.arrow.up")
                 .font(.footnote)
-                .foregroundStyle(WatchTheme.cream)
+                .foregroundStyle(WatchTheme.text)
         }
     }
 

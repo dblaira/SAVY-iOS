@@ -1,8 +1,9 @@
 import SwiftUI
 import WidgetKit
 
-// Screen one of Adam's plan: a watch face complication and Smart Stack entry. A tap opens
-// SAVY on the four doors. The face never changes, so the timeline holds one entry.
+// Watch capture kit: the same in every app that uses it.
+// A watch face complication and Smart Stack entry. A tap opens the app on its doors.
+// The face never changes, so the timeline holds one entry.
 
 struct CaptureDoorEntry: TimelineEntry {
     let date: Date
@@ -22,10 +23,6 @@ struct CaptureDoorProvider: TimelineProvider {
     }
 }
 
-private enum ComplicationTheme {
-    static let crimson = Color(red: 230 / 255, green: 14 / 255, blue: 68 / 255)
-}
-
 struct CaptureDoorView: View {
     @Environment(\.widgetFamily) private var family
 
@@ -42,18 +39,18 @@ struct CaptureDoorView: View {
             Image(systemName: "mic.fill")
                 .font(.title3)
                 .widgetAccentable()
-                .widgetLabel("SAVY")
+                .widgetLabel(WatchCaptureConfig.appName)
         case .accessoryInline:
-            Label("SAVY", systemImage: "mic.fill")
+            Label(WatchCaptureConfig.appName, systemImage: "mic.fill")
         default:
             VStack(alignment: .leading, spacing: 2) {
-                Label("SAVY", systemImage: "mic.fill")
+                Label(WatchCaptureConfig.appName, systemImage: "mic.fill")
                     .font(.headline)
-                    .foregroundStyle(ComplicationTheme.crimson)
+                    .foregroundStyle(WatchTheme.accent)
                     .widgetAccentable()
                 HStack(spacing: 10) {
-                    ForEach(["bolt", "bell", "calendar", "text.bubble"], id: \.self) { symbol in
-                        Image(systemName: symbol)
+                    ForEach(WatchCaptureKind.allCases) { kind in
+                        Image(systemName: kind.symbol)
                     }
                 }
                 .font(.body)
@@ -64,14 +61,15 @@ struct CaptureDoorView: View {
 }
 
 @main
-struct SAVYWatchWidgets: Widget {
+struct WatchCaptureWidgets: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "SAVYCaptureDoor", provider: CaptureDoorProvider()) { _ in
+        StaticConfiguration(kind: WatchCaptureConfig.appName + "CaptureDoor", provider: CaptureDoorProvider()) { _ in
             CaptureDoorView()
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("SAVY Capture")
-        .description("Opens SAVY on Action, Reminder, Calendar and Social.")
+        .configurationDisplayName(WatchCaptureConfig.appName + " Capture")
+        .description("Opens " + WatchCaptureConfig.appName + " on "
+                     + ListFormatter.localizedString(byJoining: WatchCaptureKind.allCases.map(\.label)) + ".")
         .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryRectangular, .accessoryInline])
     }
 }

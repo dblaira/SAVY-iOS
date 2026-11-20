@@ -1,16 +1,30 @@
 import CloudKit
 import Foundation
 
+// Watch capture kit: the same in every app that uses it.
+
+/// Where Watch captures become entries. Each app conforms its own store, so a capture is saved
+/// through the same path the app's own Save uses and then syncs like any other entry.
+@MainActor
+protocol WatchCaptureDestination: AnyObject {
+    /// False while the app's own storage could not be read; nothing is imported then.
+    var acceptsWatchCaptures: Bool { get }
+    /// True when an entry made from this capture already exists, including a deleted one
+    /// the store still remembers.
+    func hasEntry(forWatchCapture id: UUID) -> Bool
+    /// Saves one capture as an entry. False when the local write failed.
+    func saveEntry(fromWatchCapture capture: WatchCapture) -> Bool
+}
+
 /// The Watch captures; the iPhone and Mac process. Adam’s plan: “Your Apple Watch captures the
 /// thought while you run or walk; your iPhone and MacBook Pro remain the processing tool after
-/// the run is over.” When SAVY opens or refreshes, each Watch capture in iCloud becomes a normal
-/// entry through `ReminderStore.save`, the same path the entry form’s Save uses, and then syncs
-/// to the other devices like any other entry.
+/// the run is over.” Call `importPending` when the app opens or refreshes, after the app’s own
+/// iCloud sync has confirmed the signed-in owner.
 @MainActor
 final class WatchCaptureImporter {
     static let shared = WatchCaptureImporter()
 
-    private static let ledgerKey = "SAVYWatchCaptureImporter.importedCaptureIDs"
+    private static let ledgerKey = "WatchCaptureImporter.importedCaptureIDs"
     private static let ledgerLimit = 2_000
     private let defaults: UserDefaults
     private var isImporting = false
@@ -28,8 +42,8 @@ final class WatchCaptureImporter {
 
     /// Returns how many new entries were saved.
     @discardableResult
-    func importPending(into store: ReminderStore) async -> Int {
-        guard !isImporting, store.canSync else { return 0 }
+    func importPending<Destination: WatchCaptureDestination>(into destination: Destination) async -> Int {
+        guard !isImporting, destination.acceptsWatchCaptures else { return 0 }
         isImporting = true
         defer { isImporting = false }
 
@@ -66,13 +80,13 @@ final class WatchCaptureImporter {
         var saved = 0
         for (capture, recordID) in captures {
             let key = capture.id.uuidString.lowercased()
-            if ledger.contains(key) || store.reminders.contains(where: { $0.id == capture.id }) {
+            if ledger.contains(key) || destination.hasEntry(forWatchCapture: capture.id) {
                 if !ledger.contains(key) { ledger.append(key) }
                 finished.append(recordID)
                 continue
             }
             // A failed local write leaves the capture in iCloud for the next refresh.
-            guard store.save(Reminder(watchCapture: capture)) else { break }
+            guard destination.saveEntry(fromWatchCapture: capture) else { break }
             ledger.append(key)
             finished.append(recordID)
             saved += 1
@@ -86,50 +100,5 @@ final class WatchCaptureImporter {
                                                   savePolicy: .ifServerRecordUnchanged, atomically: false)
         }
         return saved
-    }
-}
-
-extension Reminder {
-    /// One Watch capture as a SAVY entry. The words go where Adam would have typed them:
-    /// “What do I want?” for Action, Reminder and Calendar, and the first Generalization question
-    /// for Social. Nothing is added that he did not say.
-    init(watchCapture capture: WatchCapture) {
-        self.init()
-        id = capture.id
-        kind = ReminderKind(rawValue: capture.kind.rawValue) ?? .action
-        createdAt = capture.capturedAt
-        updatedAt = capture.capturedAt
-
-        if capture.kind == .post {
-            // Generalization doc: “Common scenario is that I am out for a run and have an idea
-            // hit me.” He answers only the first question, “What shining example caught my
-            // attention?”, and finishes the form after the run.
-            let theme = PostThemeCatalog.theme(id: "generalization") ?? PostThemeCatalog.defaultTheme
-            var answers = theme.prefilledAnswers
-            if let first = theme.questions.first, !answers.isEmpty {
-                answers[0] = first.prompt + "\n" + capture.words
-            }
-            postThemeID = theme.id
-            postThemeName = theme.name
-            postAnswers = answers
-            postAnswersContainQuestions = true
-            title = autoTitle() ?? capture.words
-        } else {
-            title = capture.words
-        }
-
-        if let window = capture.proposedWindow {
-            schedule = ReminderSchedule(
-                startDate: window.start,
-                endDate: window.end,
-                isAllDay: window.isAllDay,
-                timeZoneIdentifier: capture.timeZoneIdentifier,
-                alert: window.isAllDay ? .none : .atStart
-            )
-            scheduleSyncVersion = 1
-            dueDate = window.start
-            dueTime = window.isAllDay ? nil : window.start
-            endTime = window.isAllDay ? nil : window.end
-        }
     }
 }

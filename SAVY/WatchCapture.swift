@@ -1,42 +1,10 @@
 import CloudKit
 import Foundation
 
-// Shared by the SAVY Watch app and the iPhone/Mac app. The Watch writes captures into their
-// own iCloud zone; the iPhone or Mac turns each one into a normal SAVY entry. The Watch never
-// writes into SAVYEntriesV1, so a capture can never disturb the entries that already sync.
-
-/// The plan Adam brought on Nov 20, 2026: “captures a voice note into Action, Reminder,
-/// Calendar Event, or Staged Social Post”. Raw values match `ReminderKind`, so a capture
-/// becomes the same entry type the iPhone and Mac already show.
-enum WatchCaptureKind: String, Codable, CaseIterable, Identifiable, Sendable {
-    case action, reminder, event, post
-
-    var id: String { rawValue }
-
-    /// The labels the iPhone entry form uses: Calendar for events, Social for posts.
-    var label: String {
-        switch self {
-        case .action: "Action"
-        case .reminder: "Reminder"
-        case .event: "Calendar"
-        case .post: "Social"
-        }
-    }
-
-    /// The same symbols SAVY's lists show for each entry type.
-    var symbol: String {
-        switch self {
-        case .action: "bolt"
-        case .reminder: "bell"
-        case .event: "calendar"
-        case .post: "text.bubble"
-        }
-    }
-
-    /// The plan shows a “parsed time cue” for Reminder and a “proposed day and hour” for
-    /// Calendar. Action and Social keep only the words.
-    var readsTimeCue: Bool { self == .reminder || self == .event }
-}
+// Watch capture kit: the same in every app that uses it. App-specific values live in
+// WatchCaptureConfig.swift. Shared by the Watch app and the iPhone/Mac app. The Watch writes
+// captures into their own iCloud zone; the iPhone or Mac turns each one into a normal entry.
+// The Watch never writes into the app's main sync zone, so a capture cannot disturb it.
 
 /// A day or hour heard in the words, such as “tomorrow at 3 PM”.
 struct WatchTimeCue: Codable, Equatable, Sendable {
@@ -127,15 +95,14 @@ struct WatchCapture: Codable, Equatable, Identifiable, Sendable {
                             capturedAt: capturedAt, timeZone: zone, id: id)
     }
 
-    /// Reminder with a day but no hour starts at 9:00, matching SAVY's existing default
-    /// for an entry with a date and no time. Calendar with a day but no hour is all-day.
+    /// A day with no hour is all-day for kinds that say so, and starts at 9:00 otherwise.
     var proposedWindow: WatchProposedWindow? {
         guard let cue else { return nil }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
         if cue.isDayOnly {
             let day = calendar.startOfDay(for: cue.start)
-            if kind == .event {
+            if kind.dayOnlyIsAllDay {
                 let end = calendar.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
                 return WatchProposedWindow(start: day, end: end, isAllDay: true)
             }
@@ -147,12 +114,12 @@ struct WatchCapture: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-/// The Watch's own iCloud zone in SAVY's existing container. Payloads use CloudKit's
-/// encrypted fields, like SAVY's entry records.
+/// The Watch's own iCloud zone in the app's existing container. Payloads use CloudKit's
+/// encrypted fields.
 enum WatchCaptureInbox {
-    static let containerIdentifier = "iCloud.com.adamblair.harness"
-    static let zoneName = "SAVYWatchInboxV1"
-    static let recordType = "SAVYWatchCaptureV1"
+    static let containerIdentifier = WatchCaptureConfig.containerIdentifier
+    static let zoneName = WatchCaptureConfig.inboxZoneName
+    static let recordType = WatchCaptureConfig.recordType
     static let formatVersion = 1
     static let zoneID = CKRecordZone.ID(zoneName: zoneName, ownerName: CKCurrentUserDefaultName)
 

@@ -2,11 +2,17 @@ import CloudKit
 import Foundation
 import WatchKit
 
+// Watch capture kit: the same in every app that uses it.
+
 /// Every capture is written to the Watch first, so nothing is lost on a trail with no signal.
 /// Sending to iCloud follows; Watch cellular, known Wi-Fi, or the iPhone in a pocket all work.
 @MainActor
 final class WatchCaptureStore: ObservableObject {
+    #if DEBUG
+    static let shared = WatchCaptureStore(fileURL: WatchCaptureDemo.screen == nil ? nil : WatchCaptureDemo.fileURL)
+    #else
     static let shared = WatchCaptureStore()
+    #endif
 
     struct Item: Codable, Equatable, Identifiable {
         var capture: WatchCapture
@@ -32,7 +38,7 @@ final class WatchCaptureStore: ObservableObject {
 
     init(fileURL: URL? = nil) {
         let url = fileURL ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("SAVYWatch/captures.json")
+            .appendingPathComponent("\(WatchCaptureConfig.storageFolder)/captures.json")
         self.fileURL = url
         if let data = try? Data(contentsOf: url) {
             let decoder = JSONDecoder()
@@ -138,12 +144,28 @@ final class WatchCaptureStore: ObservableObject {
         }
     }
 
-    /// Asks watchOS to wake SAVY later and try again while anything is still waiting.
+    /// Asks watchOS to wake the app later and try again while anything is still waiting.
     func scheduleRetry() {
         guard waitingCount > 0 else { return }
         WKApplication.shared().scheduleBackgroundRefresh(
             withPreferredDate: Date().addingTimeInterval(15 * 60), userInfo: nil) { _ in }
     }
+
+    #if DEBUG
+    /// Demo screens only: one capture per kind with that kind's demo words, oldest first.
+    /// Returns the newest. Writes only to the temporary demo file.
+    func seedDemo() -> WatchCapture? {
+        guard WatchCaptureDemo.screen != nil else { return nil }
+        let start = Date().addingTimeInterval(-600)
+        items = WatchCaptureKind.allCases.enumerated().reversed().map { offset, kind in
+            Item(capture: WatchCapture(kind: kind, words: kind.demoWords, source: .wrist,
+                                       capturedAt: start.addingTimeInterval(Double(offset) * 60)),
+                 sentAt: nil)
+        }
+        _ = persist()
+        return items.first?.capture
+    }
+    #endif
 
     private func pruneOldSent() {
         let cutoff = Date().addingTimeInterval(-Self.keepSentFor)

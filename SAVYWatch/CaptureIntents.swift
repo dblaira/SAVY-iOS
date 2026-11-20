@@ -1,7 +1,8 @@
 import AppIntents
 
-// Siri and the Action Button. The four phrases are the ones in Adam's plan. Each one asks for
-// the words, saves them on the Watch first, and reads back what was saved.
+// Watch capture kit: this app's Siri phrases and Action Button shortcuts. Written by
+// watchkit.py from watch-capture.json. App Shortcut phrases must be literals, so this
+// file is generated per app instead of reading WatchCaptureConfig.
 
 enum ShortcutCapture {
     @MainActor
@@ -10,7 +11,7 @@ enum ShortcutCapture {
         guard let capture = store.capture(kind, words: words, source: .shortcut) else {
             return "Nothing was saved. Try again."
         }
-        // A shortcut can end before the send finishes; watchOS wakes SAVY later to retry.
+        // A shortcut can end before the send finishes; watchOS wakes the app later to retry.
         store.scheduleRetry()
         if let window = capture.proposedWindow {
             return "Saved to \(kind.label) for \(CaptureProofView.describe(window, timeZoneIdentifier: capture.timeZoneIdentifier)): \(capture.words)"
@@ -67,7 +68,7 @@ struct StageSocialPostIntent: AppIntent {
     }
 }
 
-/// For the Action Button: one press opens SAVY on the four doors.
+/// For the Action Button: one press opens the app on its doors.
 struct OpenCaptureIntent: AppIntent {
     static let title: LocalizedStringResource = "Capture in SAVY"
     static let openAppWhenRun: Bool = true
@@ -78,7 +79,7 @@ struct OpenCaptureIntent: AppIntent {
     }
 }
 
-struct SAVYWatchShortcuts: AppShortcutsProvider {
+struct WatchCaptureShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: LogActionIntent(),

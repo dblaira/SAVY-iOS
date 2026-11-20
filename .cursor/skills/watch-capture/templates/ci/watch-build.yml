@@ -1,0 +1,146 @@
+# Watch capture kit. Compiles {{APP_NAME}} Watch and {{APP_NAME}} for iPhone on a GitHub macOS
+# runner, unsigned; runs the Watch capture unit tests; and screenshots the Watch app in a Watch
+# simulator with demo words. A build check only: nothing is signed, installed or published.
+# Written by watchkit.py; change the kit template, not this file.
+name: Watch build
+
+on:
+  push:
+    paths:
+      - "{{SHARED}}/**"
+      - "{{WATCH}}/**"
+      - "{{WIDGETS}}/**"
+      - "{{TEST_DIR}}/**"
+      - "{{PROJECT}}/**"
+      - ".cursor/skills/watch-capture/**"
+      - "watch-capture.json"
+      - ".github/workflows/watch-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: watch-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    name: Watch app (watchOS Simulator) + screenshots
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kit files match watch-capture.json
+        run: |
+          if [ -f .cursor/skills/watch-capture/scripts/watchkit.py ]; then
+            python3 .cursor/skills/watch-capture/scripts/watchkit.py files --config watch-capture.json --check
+          fi
+      - name: Show Xcode
+        run: xcodebuild -version
+      - name: Build Watch app and complication
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild build \
+            -project {{PROJECT}} \
+            -scheme {{WATCH_SCHEME}} \
+            -configuration Debug \
+            -destination 'generic/platform=watchOS Simulator' \
+            -derivedDataPath build/watch \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/watch.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -E "error:" build/watch.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
+          grep -q "BUILD SUCCEEDED" build/watch.log
+      - name: Screenshots in a Watch simulator
+        continue-on-error: true
+        run: |
+          set -x
+          mkdir -p build/screenshots
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          watches = [d for runtime in sorted(devices, reverse=True) if "watchOS" in runtime
+                     for d in devices[runtime] if d["name"].startswith("Apple Watch")]
+          ultra = [d for d in watches if "Ultra" in d["name"]]
+          print((ultra or watches)[0]["udid"])
+          ')
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          APP=$(find build/watch/Build/Products -maxdepth 3 -path "*watchsimulator*" -name "{{WATCH_SCHEME}}.app" | head -1)
+          xcrun simctl install "$UDID" "$APP"
+          for screen in home proof calendar; do
+            xcrun simctl terminate "$UDID" {{WATCH_BUNDLE_ID}} || true
+            xcrun simctl launch "$UDID" {{WATCH_BUNDLE_ID}} -WatchCaptureDemo "$screen"
+            sleep 8
+            xcrun simctl io "$UDID" screenshot "build/screenshots/$screen.png"
+          done
+          ls -la build/screenshots
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-screenshots
+          path: build/screenshots
+          if-no-files-found: ignore
+      - name: Upload Watch log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-build-log
+          path: build/watch.log
+
+  phone:
+    name: iPhone app (iOS Simulator) + Watch capture tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode
+        run: xcodebuild -version
+      - name: Pick an iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          for runtime in sorted(devices, reverse=True):
+              if "iOS" not in runtime:
+                  continue
+              for device in devices[runtime]:
+                  if device["name"].startswith("iPhone"):
+                      print(device["udid"]); sys.exit()
+          ')
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+          echo "Using simulator $UDID"
+      - name: Build the iPhone app and its tests
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild build-for-testing \
+            -project {{PROJECT}} \
+            -scheme {{APP_SCHEME}} \
+            -configuration Debug \
+            -destination "id=$SIM_UDID" \
+            -derivedDataPath build/phone \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/phone.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)|TEST BUILD (SUCCEEDED|FAILED)" || true
+          grep -E "error:" build/phone.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
+          grep -q -E "TEST BUILD SUCCEEDED|BUILD SUCCEEDED" build/phone.log
+      - name: Run Watch capture tests
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project {{PROJECT}} \
+            -scheme {{APP_SCHEME}} \
+            -destination "id=$SIM_UDID" \
+            -derivedDataPath build/phone \
+            {{TEST_FILTER}} \
+            2>&1 | tee build/tests.log | grep -E "Test Case|error:|Executed|TEST (SUCCEEDED|FAILED)" || true
+          grep -E "error:" build/tests.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
+          grep -q "TEST SUCCEEDED" build/tests.log
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phone-build-logs
+          path: build/*.log

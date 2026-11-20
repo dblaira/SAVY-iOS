@@ -49,7 +49,8 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 
 ### CI results
 
-- `1164d75`: running when this was written.
+- `1164d75`: superseded by the next push before it finished.
+- `bc7b773`: the Watch app and complication built for the watchOS Simulator with no errors. The iPhone app and tests were still running when the kit work was pushed.
 
 ## Install and set up (needs Adam’s Mac, Watch and iPhone)
 
@@ -68,23 +69,19 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 
 ## Reusing this for the other apps
 
-Adam plans the same iPhone and Watch capture for three or four more apps. What carries over from SAVY:
+Adam: “save the watch workflow so I can reuse it”. The workflow is saved as the **watch capture kit**, a skill at `.cursor/skills/watch-capture/`. Its procedure, decisions and gotchas are in `SKILL.md` there. A Claude Code pointer is at `.claude/skills/watch-capture/`, and the kit is listed in the Skills Hub.
 
-- `SAVY/WatchCapture.swift`: the capture model, the day-and-hour reader and the iCloud inbox record. These depend on nothing else in SAVY.
-- `SAVYWatch/`: the queue, the doors, the proof screen and the Siri phrases. App-specific parts are the four kinds, their labels and symbols, the colors and the phrases.
-- `SAVYWatchWidgets/`: the complication. Only the name and symbols change.
-- `SAVY/WatchCaptureImporter.swift`: the import loop carries over. `Reminder(watchCapture:)`, which decides where the words go, is per app.
-- `script/watch/add_watch_targets.py` and `script/watch/check_pbxproj.py`: wiring the two targets into a project without Xcode, and checking the result.
-- `.github/workflows/watch-build.yml`: the compile and test check.
+- One file per app, `watch-capture.json`, holds the app's name, iCloud inbox, doors, Siri phrases, colors and Xcode settings. SAVY's is at the repo root and is the worked example.
+- `watchkit.py files` writes the Watch code and settings. `watchkit.py wire` adds the targets to the Xcode project. Per app, only the destination file (where the words go in that app's entries) and its tests are written by hand.
+- SAVY itself is built from the kit. SAVY's own files are generated from its config, and its project was re-wired by `watchkit.py wire` from the pre-Watch project file. CI fails if SAVY and the kit drift apart.
 
-Lessons from this build:
+Lessons from this build, also in the skill:
 
-- Check what watchOS supports before writing the design. Gemini’s plan assumed on-Watch transcription, which watchOS does not have.
-- Give each app its own inbox zone in the shared container, such as `SAVYWatchInboxV1` or `UnderstoodWatchInboxV1`, so captures never cross between apps.
-- Keep the Watch out of the app’s main sync zone.
+- Check what watchOS supports before designing. The plan assumed on-Watch transcription, which watchOS does not have.
+- Give each app its own inbox zone in the shared container, and keep the Watch out of the app's main sync zone.
+- The first `wire` run put files in the wrong build phase. It now finds each project object by its definition, and `check` prints every phase.
 
-Ways to improve it before the second app:
+Better next, also in the skill:
 
-- **One Action Button.** An Ultra has one Action Button, and only one shortcut can own it. Four separate Watch apps would compete for it. A single suite capture app could own the button, with doors that send each capture to the right app’s inbox.
-- **One shared Swift package** for the model, reader, inbox, queue and proof screen, with each app passing in its kinds, colors and mapping. A fix then reaches every app at once.
-- **A parameterized wiring script** that takes the app name, bundle IDs and group anchors as arguments, so the second app needs no script edits.
+- **One Action Button.** An Ultra has one Action Button, and only one shortcut can own it. One suite capture app could serve every app, with each door sending its capture to the right app's inbox.
+- **A Swift package** for the shared files, so a fix reaches every app at once.

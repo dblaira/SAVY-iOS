@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- The same iCloud container as SAVY on iPhone and Mac. The Watch writes only to its
+    <!-- Watch capture kit: the app's existing iCloud container. The Watch writes only to its
          own SAVYWatchInboxV1 zone; the iPhone or Mac turns each capture into an entry. -->
     <key>com.apple.developer.icloud-container-identifiers</key>
     <array>

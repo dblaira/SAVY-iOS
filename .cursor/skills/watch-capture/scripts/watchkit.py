@@ -1,0 +1,740 @@
+#!/usr/bin/env python3
+"""Watch capture kit: adds Apple Watch capture to one of Adam's iPhone/Mac apps.
+
+First built for SAVY on Nov 20, 2026. One JSON config per app (see watch-capture.json at the
+root of SAVY-iOS) drives everything:
+
+  watchkit.py files  --config watch-capture.json [--repo .] [--check]
+      Writes the shared Swift files, this app's WatchCaptureConfig.swift and CaptureIntents.swift,
+      the Watch entitlements, asset catalog, complication Info.plist and the CI workflow.
+      --check writes nothing and exits 1 if any file differs from what it would write.
+
+  watchkit.py wire   --config watch-capture.json [--repo .]
+      Adds the Watch app and complication targets, the shared files and the test files to
+      the Xcode project, and writes a shared scheme for the Watch app. Refuses to run twice.
+
+  watchkit.py check  --config watch-capture.json [--repo .]
+      Parses project.pbxproj and reports dangling references and what each target builds.
+
+  watchkit.py sync   --config watch-capture.json [--repo .]
+      Maintainer use, in SAVY-iOS only: copies SAVY's kit files back into templates/ after an
+      improvement was made and verified in SAVY.
+
+Standard library only. No Xcode needed; Xcode or CI is still needed to compile the result.
+"""
+import argparse
+import hashlib
+import json
+import re
+import shutil
+import sys
+from pathlib import Path
+
+KIT = Path(__file__).resolve().parent.parent
+TEMPLATES = KIT / "templates"
+
+# Template file -> destination, relative to the repo. {shared}, {watch}, {widgets} come from config.
+COPIED = [
+    ("shared/WatchCapture.swift", "{shared}/WatchCapture.swift"),
+    ("shared/WatchCaptureImporter.swift", "{shared}/WatchCaptureImporter.swift"),
+    ("watch/WatchCaptureApp.swift", "{watch}/WatchCaptureApp.swift"),
+    ("watch/WatchCaptureStore.swift", "{watch}/WatchCaptureStore.swift"),
+    ("watch/CaptureViews.swift", "{watch}/CaptureViews.swift"),
+    ("widgets/WatchCaptureWidgets.swift", "{widgets}/WatchCaptureWidgets.swift"),
+    ("widgets/Info.plist", "{widgets}/Info.plist"),
+]
+
+REQUIRED = ["appName", "containerIdentifier", "inboxZoneName", "recordType", "storageFolder",
+            "openPhrase", "theme", "kinds", "xcode"]
+KIND_REQUIRED = ["case", "label", "symbol", "readsTimeCue", "dayOnlyIsAllDay", "demoWords",
+                 "intent", "intentTitle", "parameterTitle", "ask", "phrase"]
+XCODE_REQUIRED = ["project", "appTarget", "appScheme", "sharedFolder", "destinationFile", "watchTarget",
+                  "widgetTarget", "teamID", "companionBundleID", "watchBundleID", "watchOSDeploymentTarget",
+                  "iosAppIcon", "testTarget", "testFolder", "testFiles"]
+
+
+def load_config(path):
+    cfg = json.loads(Path(path).read_text())
+    missing = [k for k in REQUIRED if k not in cfg]
+    missing += [f"kinds[{i}].{k}" for i, kind in enumerate(cfg.get("kinds", [])) for k in KIND_REQUIRED if k not in kind]
+    missing += [f"xcode.{k}" for k in XCODE_REQUIRED if k not in cfg.get("xcode", {})]
+    if missing:
+        sys.exit(f"watch-capture config is missing: {', '.join(missing)}")
+    for kind in cfg["kinds"]:
+        if "{app}" not in kind["phrase"]:
+            sys.exit(f"Siri phrase must contain {{app}}: {kind['phrase']}")
+    if "{app}" not in cfg["openPhrase"]:
+        sys.exit("openPhrase must contain {app}")
+    if not cfg["xcode"]["testFiles"]:
+        sys.exit("xcode.testFiles must name the Watch capture test file(s) you will write (SKILL.md, step 7).")
+    if len(cfg["kinds"]) + 1 > 10:
+        sys.exit("An app can register at most 10 App Shortcuts; use fewer kinds.")
+    return cfg
+
+
+def places(cfg):
+    x = cfg["xcode"]
+    return {"shared": x["sharedFolder"], "watch": x["watchTarget"], "widgets": x["widgetTarget"]}
+
+
+def swift(text):
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def color(hex6):
+    h = hex6.lstrip("#").upper()
+    return f"Color(red: 0x{h[0:2]} / 255, green: 0x{h[2:4]} / 255, blue: 0x{h[4:6]} / 255)"
+
+
+def kind_switch(cfg, name, doc, kind_type, value):
+    lines = [f"    /// {doc}", f"    var {name}: {kind_type} {{", "        switch self {"]
+    for kind in cfg["kinds"]:
+        lines.append(f"        case .{kind['case']}: {value(kind)}")
+    lines += ["        }", "    }"]
+    return "\n".join(lines)
+
+
+def gen_config(cfg):
+    kinds = cfg["kinds"]
+    theme = cfg["theme"]
+    cases = ", ".join(k["case"] for k in kinds)
+    parts = [
+        "import SwiftUI",
+        "",
+        "// Watch capture kit: this app's settings. Written by watchkit.py from watch-capture.json.",
+        "// Change the JSON and run `watchkit.py files` again rather than editing this file.",
+        "",
+        "enum WatchCaptureConfig {",
+        f"    static let appName = {swift(cfg['appName'])}",
+        f"    static let containerIdentifier = {swift(cfg['containerIdentifier'])}",
+        f"    static let inboxZoneName = {swift(cfg['inboxZoneName'])}",
+        f"    static let recordType = {swift(cfg['recordType'])}",
+        f"    static let storageFolder = {swift(cfg['storageFolder'])}",
+        "}",
+        "",
+        "/// The doors on the wrist, in order. Raw values are what the iPhone and Mac receive.",
+        "enum WatchCaptureKind: String, Codable, CaseIterable, Identifiable, Sendable {",
+        f"    case {cases}",
+        "",
+        "    var id: String { rawValue }",
+        "",
+        kind_switch(cfg, "label", "The door's name on the wrist.", "String", lambda k: swift(k["label"])),
+        "",
+        kind_switch(cfg, "symbol", "The door's SF Symbol.", "String", lambda k: swift(k["symbol"])),
+        "",
+        kind_switch(cfg, "readsTimeCue", "Reads a spoken day or hour into a proposed time.", "Bool",
+                    lambda k: "true" if k["readsTimeCue"] else "false"),
+        "",
+        kind_switch(cfg, "dayOnlyIsAllDay", "A day heard with no hour: all-day when true, 9:00 when false.", "Bool",
+                    lambda k: "true" if k["dayOnlyIsAllDay"] else "false"),
+        "",
+        kind_switch(cfg, "demoWords", "Debug-only demo screens show these words.", "String",
+                    lambda k: swift(k["demoWords"])),
+        "}",
+        "",
+        "enum WatchTheme {",
+        f"    static let background = {color(theme['background'])}",
+        f"    static let accent = {color(theme['accent'])}",
+        f"    static let door = {color(theme['door'])}",
+        f"    static let doorText = {color(theme['doorText'])}",
+        f"    static let text = {color(theme['text'])}",
+        "}",
+        "",
+    ]
+    return "\n".join(parts)
+
+
+def phrase(text):
+    # "{app}" becomes the App Shortcuts application-name token.
+    return swift(text).replace("{app}", "\\(.applicationName)")
+
+
+def gen_intents(cfg):
+    out = [
+        "import AppIntents",
+        "",
+        "// Watch capture kit: this app's Siri phrases and Action Button shortcuts. Written by",
+        "// watchkit.py from watch-capture.json. App Shortcut phrases must be literals, so this",
+        "// file is generated per app instead of reading WatchCaptureConfig.",
+        "",
+        "enum ShortcutCapture {",
+        "    @MainActor",
+        "    static func save(_ kind: WatchCaptureKind, words: String) -> String {",
+        "        let store = WatchCaptureStore.shared",
+        "        guard let capture = store.capture(kind, words: words, source: .shortcut) else {",
+        '            return "Nothing was saved. Try again."',
+        "        }",
+        "        // A shortcut can end before the send finishes; watchOS wakes the app later to retry.",
+        "        store.scheduleRetry()",
+        "        if let window = capture.proposedWindow {",
+        '            return "Saved to \\(kind.label) for \\(CaptureProofView.describe(window, timeZoneIdentifier: capture.timeZoneIdentifier)): \\(capture.words)"',
+        "        }",
+        '        return "Saved to \\(kind.label): \\(capture.words)"',
+        "    }",
+        "}",
+        "",
+    ]
+    for k in cfg["kinds"]:
+        out += [
+            f"struct {k['intent']}: AppIntent {{",
+            f"    static let title: LocalizedStringResource = {swift(k['intentTitle'])}",
+            "",
+            f"    @Parameter(title: {swift(k['parameterTitle'])}, requestValueDialog: {swift(k['ask'])})",
+            "    var words: String",
+            "",
+            "    @MainActor",
+            "    func perform() async throws -> some IntentResult & ProvidesDialog {",
+            f"        .result(dialog: IntentDialog(stringLiteral: ShortcutCapture.save(.{k['case']}, words: words)))",
+            "    }",
+            "}",
+            "",
+        ]
+    out += [
+        "/// For the Action Button: one press opens the app on its doors.",
+        "struct OpenCaptureIntent: AppIntent {",
+        f"    static let title: LocalizedStringResource = {swift(cfg['openPhrase'].replace('{app}', cfg['appName']))}",
+        "    static let openAppWhenRun: Bool = true",
+        "",
+        "    @MainActor",
+        "    func perform() async throws -> some IntentResult {",
+        "        .result()",
+        "    }",
+        "}",
+        "",
+        "struct WatchCaptureShortcuts: AppShortcutsProvider {",
+        "    static var appShortcuts: [AppShortcut] {",
+    ]
+    for k in cfg["kinds"]:
+        out += [
+            "        AppShortcut(",
+            f"            intent: {k['intent']}(),",
+            f"            phrases: [{phrase(k['phrase'])}],",
+            f"            shortTitle: {swift(k['intentTitle'])},",
+            f"            systemImageName: {swift(k['symbol'])}",
+            "        )",
+        ]
+    out += [
+        "        AppShortcut(",
+        "            intent: OpenCaptureIntent(),",
+        f"            phrases: [{phrase(cfg['openPhrase'])}],",
+        '            shortTitle: "Capture",',
+        '            systemImageName: "mic"',
+        "        )",
+        "    }",
+        "}",
+        "",
+    ]
+    return "\n".join(out)
+
+
+def gen_entitlements(cfg):
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Watch capture kit: the app's existing iCloud container. The Watch writes only to its
+         own {cfg['inboxZoneName']} zone; the iPhone or Mac turns each capture into an entry. -->
+    <key>com.apple.developer.icloud-container-identifiers</key>
+    <array>
+        <string>{cfg['containerIdentifier']}</string>
+    </array>
+    <key>com.apple.developer.icloud-services</key>
+    <array>
+        <string>CloudKit</string>
+    </array>
+    <key>com.apple.developer.icloud-container-environment</key>
+    <string>{cfg.get('cloudKitEnvironment', 'Development')}</string>
+</dict>
+</plist>
+"""
+
+
+def asset_json(obj):
+    return json.dumps(obj, indent=2) + "\n"
+
+
+def gen_assets(cfg):
+    h = cfg["theme"].get("accentAsset", cfg["theme"]["accent"]).lstrip("#")
+    comps = {c: f"{int(h[i:i + 2], 16) / 255:.3f}" for c, i in (("red", 0), ("green", 2), ("blue", 4))}
+    accent = {"colors": [{"color": {"color-space": "srgb", "components": {
+        "alpha": "1.000", "blue": comps["blue"], "green": comps["green"], "red": comps["red"]}},
+        "idiom": "universal"}], "info": {"author": "xcode", "version": 1}}
+    icon = {"images": [{"filename": "AppIcon.png", "idiom": "universal", "platform": "watchos",
+                        "size": "1024x1024"}], "info": {"author": "xcode", "version": 1}}
+    root = {"info": {"author": "xcode", "version": 1}}
+    return {
+        "Assets.xcassets/Contents.json": asset_json(root),
+        "Assets.xcassets/AccentColor.colorset/Contents.json": asset_json(accent),
+        "Assets.xcassets/AppIcon.appiconset/Contents.json": asset_json(icon),
+    }
+
+
+def gen_workflow(cfg):
+    x = cfg["xcode"]
+    text = (TEMPLATES / "ci/watch-build.yml").read_text()
+    test_filter = " ".join(f"-only-testing:{x['testTarget']}/{Path(t).stem}" for t in x["testFiles"])
+    values = {
+        "PROJECT": x["project"], "APP_SCHEME": x["appScheme"], "WATCH_SCHEME": x["watchTarget"],
+        "WATCH_BUNDLE_ID": x["watchBundleID"], "TEST_FILTER": test_filter,
+        "SHARED": x["sharedFolder"], "WATCH": x["watchTarget"], "WIDGETS": x["widgetTarget"],
+        "TEST_DIR": x.get("testFolder", x.get("testTarget", "Tests")), "APP_NAME": cfg["appName"],
+    }
+    for key, value in values.items():
+        text = text.replace("{{" + key + "}}", value)
+    if re.search(r"\{\{[A-Z_]+\}\}", text):
+        sys.exit("Unfilled placeholder in templates/ci/watch-build.yml")
+    return text
+
+
+def planned_files(cfg, repo):
+    """Every file `files` owns: destination path -> bytes."""
+    p = places(cfg)
+    files = {}
+    for src, dst in COPIED:
+        files[dst.format(**p)] = (TEMPLATES / src).read_bytes()
+    files[f"{p['shared']}/WatchCaptureConfig.swift"] = gen_config(cfg).encode()
+    files[f"{p['watch']}/CaptureIntents.swift"] = gen_intents(cfg).encode()
+    files[f"{p['watch']}/{p['watch']}.entitlements"] = gen_entitlements(cfg).encode()
+    for rel, text in gen_assets(cfg).items():
+        files[f"{p['watch']}/{rel}"] = text.encode()
+    icon = repo / cfg["xcode"]["iosAppIcon"]
+    if not icon.exists():
+        sys.exit(f"xcode.iosAppIcon not found: {icon}")
+    files[f"{p['watch']}/Assets.xcassets/AppIcon.appiconset/AppIcon.png"] = icon.read_bytes()
+    files[".github/workflows/watch-build.yml"] = gen_workflow(cfg).encode()
+    return files
+
+
+def cmd_files(cfg, repo, check):
+    differs = []
+    for rel, data in planned_files(cfg, repo).items():
+        path = repo / rel
+        if check:
+            if not path.exists() or path.read_bytes() != data:
+                differs.append(rel)
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        print("wrote", rel)
+    dest = repo / cfg["xcode"]["sharedFolder"] / cfg["xcode"]["destinationFile"]
+    if not dest.exists():
+        print(f"still to write by hand: {dest.relative_to(repo)} (see SKILL.md, step 4)")
+    if check:
+        for rel in differs:
+            print("differs from the kit:", rel)
+        if differs:
+            sys.exit(1)
+        print("all kit files match")
+
+
+def cmd_sync(cfg, repo):
+    p = places(cfg)
+    for src, dst in COPIED:
+        shutil.copyfile(repo / dst.format(**p), TEMPLATES / src)
+        print("template updated from", dst.format(**p))
+
+
+# ---------------------------------------------------------------- project.pbxproj
+
+def parse_pbxproj(text):
+    body = text.split("\n", 1)[1]
+    tok_re = re.compile(r'\s+|/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|[{}()=;,]|[^\s{}()=;,"]+', re.S)
+    toks = [t for t in tok_re.findall(body) if t.strip() and not t.startswith("/*") and not t.startswith("//")]
+    pos = 0
+
+    def value():
+        nonlocal pos
+        t = toks[pos]
+        if t == "{":
+            pos += 1
+            d = {}
+            while toks[pos] != "}":
+                k = toks[pos].strip('"')
+                pos += 1
+                assert toks[pos] == "=", f"expected = after {k}"
+                pos += 1
+                d[k] = value()
+                assert toks[pos] == ";", f"expected ; after {k}"
+                pos += 1
+            pos += 1
+            return d
+        if t == "(":
+            pos += 1
+            a = []
+            while toks[pos] != ")":
+                a.append(value())
+                if toks[pos] == ",":
+                    pos += 1
+            pos += 1
+            return a
+        pos += 1
+        return t[1:-1] if t.startswith('"') else t
+
+    return value()
+
+
+class Project:
+    def __init__(self, path, seed):
+        self.path = path
+        self.text = path.read_text()
+        self.root = parse_pbxproj(self.text)
+        self.objs = self.root["objects"]
+        self.used = set(re.findall(r"\b[0-9A-F]{24}\b", self.text))
+        self.seed = seed
+
+    def new_id(self, name):
+        n = 0
+        while True:
+            h = hashlib.sha1(f"{self.seed}:{name}:{n}".encode()).hexdigest().upper()[:24]
+            if h not in self.used:
+                self.used.add(h)
+                return h
+            n += 1
+
+    def find(self, isa, **match):
+        return [k for k, v in self.objs.items()
+                if v.get("isa") == isa and all(v.get(a) == b for a, b in match.items())]
+
+    def section_append(self, section, text):
+        marker = f"/* End {section} section */"
+        if marker not in self.text:
+            begin_before = "/* Begin PBXFileReference section */"
+            self.text = self.text.replace(begin_before, f"/* Begin {section} section */\n{marker}\n\n{begin_before}", 1)
+        self.text = self.text.replace(marker, text + marker, 1)
+
+    def definition(self, obj_id):
+        """Start and end of the object's own definition, never a mention of its id in a list."""
+        match = re.search(rf"^\t\t{obj_id}(?: /\*.*?\*/)? = {{\n", self.text, re.M)
+        assert match, f"object {obj_id} not found"
+        end = self.text.find("\n\t\t};\n", match.end())
+        assert end >= 0, f"end of object {obj_id} not found"
+        return match.start(), end
+
+    def list_append(self, obj_id, key, line):
+        start, stop = self.definition(obj_id)
+        key_at = self.text.find(f"\n\t\t\t{key} = (\n", start, stop)
+        assert key_at >= 0, f"{key} list of {obj_id} not found"
+        end = self.text.find("\n\t\t\t);\n", key_at, stop + 1)
+        assert end >= 0, f"end of {key} list of {obj_id} not found"
+        self.text = self.text[:end + 1] + f"\t\t\t\t{line},\n" + self.text[end + 1:]
+
+    def dict_insert(self, obj_id, key, text):
+        start, stop = self.definition(obj_id)
+        key_at = self.text.find(f"\t{key} = {{\n", start, stop)
+        assert key_at >= 0, f"{key} of {obj_id} not found"
+        line_end = self.text.find("\n", key_at) + 1
+        self.text = self.text[:line_end] + text + self.text[line_end:]
+
+
+def file_type(name):
+    return {".swift": "sourcecode.swift", ".plist": "text.plist.xml", ".entitlements": "text.plist.entitlements",
+            ".xcassets": "folder.assetcatalog"}[Path(name).suffix]
+
+
+def cmd_wire(cfg, repo):
+    x = cfg["xcode"]
+    pbx = repo / x["project"] / "project.pbxproj"
+    prj = Project(pbx, f"{x['watchTarget']}")
+    if prj.find("PBXNativeTarget", name=x["watchTarget"]):
+        sys.exit(f"{x['watchTarget']} is already in {x['project']}; wire runs once per project.")
+    if prj.find("PBXFileSystemSynchronizedRootGroup"):
+        sys.exit("This project uses Xcode folder sync. Add the Watch App target in Xcode instead "
+                 "(see SKILL.md, 'Projects that use folder sync').")
+    root_id = prj.root["rootObject"]
+    project = prj.objs[root_id]
+    app_ids = prj.find("PBXNativeTarget", name=x["appTarget"])
+    assert len(app_ids) == 1, f"app target {x['appTarget']} not found"
+    app = prj.objs[app_ids[0]]
+    app_sources = next(p for p in app["buildPhases"] if prj.objs[p]["isa"] == "PBXSourcesBuildPhase")
+    shared_groups = prj.find("PBXGroup", path=x["sharedFolder"])
+    assert len(shared_groups) == 1, f"group with path {x['sharedFolder']} not found"
+    shared_group = shared_groups[0]
+    main_group = project["mainGroup"]
+    products_group = project["productRefGroup"]
+    W, G = x["watchTarget"], x["widgetTarget"]
+    I = prj.new_id
+
+    def fileref(fid, name):
+        return (f'\t\t{fid} /* {name} */ = {{isa = PBXFileReference; lastKnownFileType = {file_type(name)}; '
+                f'path = {name}; sourceTree = "<group>"; }};\n')
+
+    def buildfile(bid, fid, name, phase):
+        return f"\t\t{bid} /* {name} in {phase} */ = {{isa = PBXBuildFile; fileRef = {fid} /* {name} */; }};\n"
+
+    refs, builds = "", ""
+    shared_names = ["WatchCaptureConfig.swift", "WatchCapture.swift", "WatchCaptureImporter.swift", x["destinationFile"]]
+    shared_refs = {n: I(f"shared:{n}") for n in shared_names}
+    for n, fid in shared_refs.items():
+        refs += fileref(fid, n)
+        prj.list_append(shared_group, "children", f"{fid} /* {n} */")
+    app_build = {}
+    for n in shared_names:
+        app_build[n] = I(f"app-build:{n}")
+        builds += buildfile(app_build[n], shared_refs[n], n, "Sources")
+        prj.list_append(app_sources, "files", f"{app_build[n]} /* {n} in Sources */")
+
+    watch_sources = ["CaptureIntents.swift", "CaptureViews.swift", "WatchCaptureApp.swift", "WatchCaptureStore.swift"]
+    watch_refs = {n: I(f"watch:{n}") for n in watch_sources + ["Assets.xcassets", f"{W}.entitlements"]}
+    widget_refs = {n: I(f"widgets:{n}") for n in ["WatchCaptureWidgets.swift", "Info.plist"]}
+    for n, fid in list(watch_refs.items()) + list(widget_refs.items()):
+        refs += fileref(fid, n)
+    prod_watch, prod_widgets = I("product:watch"), I("product:widgets")
+    refs += (f"\t\t{prod_watch} /* {W}.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; "
+             f"includeInIndex = 0; path = {W}.app; sourceTree = BUILT_PRODUCTS_DIR; }};\n")
+    refs += (f'\t\t{prod_widgets} /* {G}.appex */ = {{isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; '
+             f"includeInIndex = 0; path = {G}.appex; sourceTree = BUILT_PRODUCTS_DIR; }};\n")
+
+    watch_build = {n: I(f"watch-build:{n}") for n in watch_sources + ["WatchCaptureConfig.swift", "WatchCapture.swift"]}
+    for n, bid in watch_build.items():
+        builds += buildfile(bid, watch_refs.get(n) or shared_refs[n], n, "Sources")
+    watch_assets = I("watch-build:assets")
+    builds += buildfile(watch_assets, watch_refs["Assets.xcassets"], "Assets.xcassets", "Resources")
+    widget_build = {n: I(f"widgets-build:{n}") for n in ["WatchCaptureWidgets.swift", "WatchCaptureConfig.swift"]}
+    for n, bid in widget_build.items():
+        builds += buildfile(bid, widget_refs.get(n) or shared_refs[n], n, "Sources")
+    embed_build = I("watch-build:embed")
+    builds += (f"\t\t{embed_build} /* {G}.appex in Embed Foundation Extensions */ = {{isa = PBXBuildFile; "
+               f"fileRef = {prod_widgets} /* {G}.appex */; settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};\n")
+
+    tests = x.get("testFiles", [])
+    if tests:
+        test_ids = prj.find("PBXNativeTarget", name=x["testTarget"])
+        assert len(test_ids) == 1, f"test target {x['testTarget']} not found"
+        test_sources = next(p for p in prj.objs[test_ids[0]]["buildPhases"]
+                            if prj.objs[p]["isa"] == "PBXSourcesBuildPhase")
+        test_group = prj.find("PBXGroup", path=x.get("testFolder", x["testTarget"]))[0]
+        for t in tests:
+            name = Path(t).name
+            fid, bid = I(f"test:{name}"), I(f"test-build:{name}")
+            refs += fileref(fid, name)
+            builds += buildfile(bid, fid, name, "Sources")
+            prj.list_append(test_group, "children", f"{fid} /* {name} */")
+            prj.list_append(test_sources, "files", f"{bid} /* {name} in Sources */")
+
+    prj.section_append("PBXBuildFile", builds)
+    prj.section_append("PBXFileReference", refs)
+
+    t_watch, t_widgets = I("target:watch"), I("target:widgets")
+    proxy, dep = I("proxy:widgets"), I("dependency:widgets")
+    prj.section_append("PBXContainerItemProxy", f"""\t\t{proxy} /* PBXContainerItemProxy */ = {{
+\t\t\tisa = PBXContainerItemProxy;
+\t\t\tcontainerPortal = {root_id} /* Project object */;
+\t\t\tproxyType = 1;
+\t\t\tremoteGlobalIDString = {t_widgets};
+\t\t\tremoteInfo = {G};
+\t\t}};
+""")
+    prj.section_append("PBXTargetDependency", f"""\t\t{dep} /* PBXTargetDependency */ = {{
+\t\t\tisa = PBXTargetDependency;
+\t\t\ttarget = {t_widgets} /* {G} */;
+\t\t\ttargetProxy = {proxy} /* PBXContainerItemProxy */;
+\t\t}};
+""")
+
+    def phase(pid, isa, name, files, extra=""):
+        lines = "".join(f"\t\t\t\t{f},\n" for f in files)
+        return (f"\t\t{pid} /* {name} */ = {{\n\t\t\tisa = {isa};\n\t\t\tbuildActionMask = 2147483647;\n{extra}"
+                f"\t\t\tfiles = (\n{lines}\t\t\t);\n\t\t\trunOnlyForDeploymentPostprocessing = 0;\n\t\t}};\n")
+
+    ws, wf, wr, we = I("phase:watch-sources"), I("phase:watch-frameworks"), I("phase:watch-resources"), I("phase:watch-embed")
+    gs, gf, gr = I("phase:widgets-sources"), I("phase:widgets-frameworks"), I("phase:widgets-resources")
+    prj.section_append("PBXSourcesBuildPhase",
+                       phase(ws, "PBXSourcesBuildPhase", "Sources",
+                             [f"{watch_build[n]} /* {n} in Sources */" for n in sorted(watch_build)])
+                       + phase(gs, "PBXSourcesBuildPhase", "Sources",
+                               [f"{widget_build[n]} /* {n} in Sources */" for n in sorted(widget_build)]))
+    prj.section_append("PBXFrameworksBuildPhase",
+                       phase(wf, "PBXFrameworksBuildPhase", "Frameworks", [])
+                       + phase(gf, "PBXFrameworksBuildPhase", "Frameworks", []))
+    prj.section_append("PBXResourcesBuildPhase",
+                       phase(wr, "PBXResourcesBuildPhase", "Resources", [f"{watch_assets} /* Assets.xcassets in Resources */"])
+                       + phase(gr, "PBXResourcesBuildPhase", "Resources", []))
+    prj.section_append("PBXCopyFilesBuildPhase",
+                       phase(we, "PBXCopyFilesBuildPhase", "Embed Foundation Extensions",
+                             [f"{embed_build} /* {G}.appex in Embed Foundation Extensions */"],
+                             extra='\t\t\tdstPath = "";\n\t\t\tdstSubfolderSpec = 13;\n'
+                                   '\t\t\tname = "Embed Foundation Extensions";\n'))
+
+    wg, gg = I("group:watch"), I("group:widgets")
+    def group(gid, name, children):
+        lines = "".join(f"\t\t\t\t{c},\n" for c in children)
+        return (f"\t\t{gid} /* {name} */ = {{\n\t\t\tisa = PBXGroup;\n\t\t\tchildren = (\n{lines}\t\t\t);\n"
+                f'\t\t\tpath = {name};\n\t\t\tsourceTree = "<group>";\n\t\t}};\n')
+    prj.section_append("PBXGroup",
+                       group(wg, W, [f"{fid} /* {n} */" for n, fid in sorted(watch_refs.items())])
+                       + group(gg, G, [f"{fid} /* {n} */" for n, fid in sorted(widget_refs.items())]))
+    prj.list_append(main_group, "children", f"{wg} /* {W} */")
+    prj.list_append(main_group, "children", f"{gg} /* {G} */")
+    prj.list_append(products_group, "children", f"{prod_watch} /* {W}.app */")
+    prj.list_append(products_group, "children", f"{prod_widgets} /* {G}.appex */")
+
+    cw, cg = I("configlist:watch"), I("configlist:widgets")
+    prj.section_append("PBXNativeTarget", f"""\t\t{t_watch} /* {W} */ = {{
+\t\t\tisa = PBXNativeTarget;
+\t\t\tbuildConfigurationList = {cw} /* Build configuration list for PBXNativeTarget "{W}" */;
+\t\t\tbuildPhases = (
+\t\t\t\t{ws} /* Sources */,
+\t\t\t\t{wf} /* Frameworks */,
+\t\t\t\t{wr} /* Resources */,
+\t\t\t\t{we} /* Embed Foundation Extensions */,
+\t\t\t);
+\t\t\tbuildRules = (
+\t\t\t);
+\t\t\tdependencies = (
+\t\t\t\t{dep} /* PBXTargetDependency */,
+\t\t\t);
+\t\t\tname = {W};
+\t\t\tpackageProductDependencies = (
+\t\t\t);
+\t\t\tproductName = {W};
+\t\t\tproductReference = {prod_watch} /* {W}.app */;
+\t\t\tproductType = "com.apple.product-type.application";
+\t\t}};
+\t\t{t_widgets} /* {G} */ = {{
+\t\t\tisa = PBXNativeTarget;
+\t\t\tbuildConfigurationList = {cg} /* Build configuration list for PBXNativeTarget "{G}" */;
+\t\t\tbuildPhases = (
+\t\t\t\t{gs} /* Sources */,
+\t\t\t\t{gf} /* Frameworks */,
+\t\t\t\t{gr} /* Resources */,
+\t\t\t);
+\t\t\tbuildRules = (
+\t\t\t);
+\t\t\tdependencies = (
+\t\t\t);
+\t\t\tname = {G};
+\t\t\tpackageProductDependencies = (
+\t\t\t);
+\t\t\tproductName = {G};
+\t\t\tproductReference = {prod_widgets} /* {G}.appex */;
+\t\t\tproductType = "com.apple.product-type.app-extension";
+\t\t}};
+""")
+    prj.list_append(root_id, "targets", f"{t_watch} /* {W} */")
+    prj.list_append(root_id, "targets", f"{t_widgets} /* {G} */")
+    team = x["teamID"]
+    prj.dict_insert(root_id, "TargetAttributes",
+                    f"\t\t\t\t\t{t_watch} = {{\n\t\t\t\t\t\tDevelopmentTeam = {team};\n\t\t\t\t\t\tProvisioningStyle = Automatic;\n\t\t\t\t\t}};\n"
+                    f"\t\t\t\t\t{t_widgets} = {{\n\t\t\t\t\t\tDevelopmentTeam = {team};\n\t\t\t\t\t\tProvisioningStyle = Automatic;\n\t\t\t\t\t}};\n")
+
+    def settings(pairs):
+        out = ""
+        for k, v in sorted(pairs.items()):
+            if isinstance(v, list):
+                out += f"\t\t\t\t{k} = (\n" + "".join(f"\t\t\t\t\t{q(i)},\n" for i in v) + "\t\t\t\t);\n"
+            else:
+                out += f"\t\t\t\t{k} = {q(v)};\n"
+        return out
+
+    def q(v):
+        v = str(v)
+        return v if re.fullmatch(r"[A-Za-z0-9_./]+", v) else '"' + v.replace('"', '\\"') + '"'
+
+    common = {"CODE_SIGN_STYLE": "Automatic", "CURRENT_PROJECT_VERSION": x.get("buildNumber", "1"),
+              "DEVELOPMENT_TEAM": team, "GENERATE_INFOPLIST_FILE": "YES",
+              "INFOPLIST_KEY_CFBundleDisplayName": cfg["appName"], "MARKETING_VERSION": x.get("version", "1.0"),
+              "PRODUCT_NAME": "$(TARGET_NAME)", "SDKROOT": "watchos", "SWIFT_EMIT_LOC_STRINGS": "YES",
+              "TARGETED_DEVICE_FAMILY": "4", "WATCHOS_DEPLOYMENT_TARGET": x["watchOSDeploymentTarget"]}
+    watch_settings = dict(common, **{
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon", "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
+        "CODE_SIGN_ENTITLEMENTS": f"{W}/{W}.entitlements", "ENABLE_PREVIEWS": "YES",
+        "INFOPLIST_KEY_UISupportedInterfaceOrientations": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown",
+        "INFOPLIST_KEY_WKCompanionAppBundleIdentifier": x["companionBundleID"],
+        "INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp": "YES",
+        "LD_RUNPATH_SEARCH_PATHS": ["$(inherited)", "@executable_path/Frameworks"],
+        "PRODUCT_BUNDLE_IDENTIFIER": x["watchBundleID"]})
+    widget_settings = dict(common, **{
+        "APPLICATION_EXTENSION_API_ONLY": "YES", "INFOPLIST_FILE": f"{G}/Info.plist",
+        "LD_RUNPATH_SEARCH_PATHS": ["$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"],
+        "PRODUCT_BUNDLE_IDENTIFIER": x["watchBundleID"] + ".widgets", "SKIP_INSTALL": "YES"})
+    configs, lists = "", ""
+    for list_id, target, values in ((cw, W, watch_settings), (cg, G, widget_settings)):
+        ids = []
+        for name in ("Debug", "Release"):
+            cid = I(f"config:{target}:{name}")
+            ids.append((cid, name))
+            configs += (f"\t\t{cid} /* {name} */ = {{\n\t\t\tisa = XCBuildConfiguration;\n\t\t\tbuildSettings = {{\n"
+                        f"{settings(values)}\t\t\t}};\n\t\t\tname = {name};\n\t\t}};\n")
+        lines = "".join(f"\t\t\t\t{cid} /* {name} */,\n" for cid, name in ids)
+        lists += (f'\t\t{list_id} /* Build configuration list for PBXNativeTarget "{target}" */ = {{\n'
+                  f"\t\t\tisa = XCConfigurationList;\n\t\t\tbuildConfigurations = (\n{lines}\t\t\t);\n"
+                  f"\t\t\tdefaultConfigurationIsVisible = 0;\n\t\t\tdefaultConfigurationName = Debug;\n\t\t}};\n")
+    prj.section_append("XCBuildConfiguration", configs)
+    prj.section_append("XCConfigurationList", lists)
+
+    parse_pbxproj(prj.text)  # must still parse
+    pbx.write_text(prj.text)
+    scheme = (TEMPLATES / "ci/watch.xcscheme").read_text()
+    scheme = scheme.replace("{{TARGET_ID}}", t_watch).replace("{{WATCH}}", W).replace("{{PROJECT}}", x["project"])
+    scheme_path = repo / x["project"] / "xcshareddata/xcschemes" / f"{W}.xcscheme"
+    scheme_path.parent.mkdir(parents=True, exist_ok=True)
+    scheme_path.write_text(scheme)
+    print(f"wired {W} ({t_watch}) and {G} ({t_widgets}) into {x['project']}; scheme {scheme_path.relative_to(repo)}")
+    report(parse_pbxproj(prj.text))
+
+
+def report(root):
+    objs = root["objects"]
+    ids = set(objs)
+    dangling = []
+
+    def walk(v, path):
+        if isinstance(v, dict):
+            for k, x in v.items():
+                walk(x, path + [k])
+        elif isinstance(v, list):
+            for x in v:
+                walk(x, path)
+        elif isinstance(v, str) and re.fullmatch(r"[0-9A-F]{24}", v) and v not in ids:
+            dangling.append((".".join(path), v))
+
+    for k, v in objs.items():
+        walk(v, [k])
+    print("dangling references:", dangling or "none")
+    grouped = {c for v in objs.values() if v.get("isa") == "PBXGroup" for c in v.get("children", [])}
+    loose = [v.get("path") for k, v in objs.items() if v.get("isa") == "PBXFileReference" and k not in grouped]
+    print("file references outside any group:", loose or "none")
+    for t in objs[root["rootObject"]]["targets"]:
+        o = objs[t]
+        sdks = sorted({objs[c]["buildSettings"].get("SDKROOT", "(project)")
+                       for c in objs[o["buildConfigurationList"]]["buildConfigurations"]})
+        print(f"{o['name']}: {o['productType']} {sdks}")
+        for p in o["buildPhases"]:
+            names = []
+            for f in objs[p].get("files", []):
+                ref = objs[f].get("fileRef") or objs[f].get("productRef")
+                names.append(objs[ref].get("path") or objs[ref].get("productName"))
+            kit = sorted(n for n in names if "Watch" in n or n.startswith("Capture") or n.endswith(".appex"))
+            label = objs[p].get("name") or objs[p]["isa"].replace("PBX", "").replace("BuildPhase", "")
+            print(f"    {label}: {len(names)} files; kit files: {kit}")
+    return dangling, loose
+
+
+def cmd_check(cfg, repo):
+    pbx = repo / cfg["xcode"]["project"] / "project.pbxproj"
+    dangling, loose = report(parse_pbxproj(pbx.read_text()))
+    if dangling:
+        sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("command", choices=["files", "wire", "check", "sync"])
+    parser.add_argument("--config", required=True)
+    parser.add_argument("--repo", default=".")
+    parser.add_argument("--check", action="store_true", help="files: compare only, write nothing")
+    args = parser.parse_args()
+    cfg = load_config(args.config)
+    repo = Path(args.repo).resolve()
+    if args.command == "files":
+        cmd_files(cfg, repo, args.check)
+    elif args.command == "wire":
+        cmd_wire(cfg, repo)
+    elif args.command == "check":
+        cmd_check(cfg, repo)
+    else:
+        cmd_sync(cfg, repo)
+
+
+if __name__ == "__main__":
+    main()

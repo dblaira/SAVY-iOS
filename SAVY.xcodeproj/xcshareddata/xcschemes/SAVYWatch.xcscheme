@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "D52AEA9A6124963C9E9A1505"
+               BlueprintIdentifier = "9E9098AC8A34F8888E25ACD3"
                BuildableName = "SAVYWatch.app"
                BlueprintName = "SAVYWatch"
                ReferencedContainer = "container:SAVY.xcodeproj">
@@ -44,7 +44,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "D52AEA9A6124963C9E9A1505"
+            BlueprintIdentifier = "9E9098AC8A34F8888E25ACD3"
             BuildableName = "SAVYWatch.app"
             BlueprintName = "SAVYWatch"
             ReferencedContainer = "container:SAVY.xcodeproj">
@@ -61,7 +61,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "D52AEA9A6124963C9E9A1505"
+            BlueprintIdentifier = "9E9098AC8A34F8888E25ACD3"
             BuildableName = "SAVYWatch.app"
             BlueprintName = "SAVYWatch"
             ReferencedContainer = "container:SAVY.xcodeproj">

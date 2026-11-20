@@ -46,6 +46,12 @@ matches the description. Short alias skills also exist:
 Core skills also list these phrases in their `description` so agents
 auto-load them when you talk that way — no slash-command required.
 
+## Build skills (run as procedures in an app's repo)
+
+- [[watch-capture]] — adds the SAVY Apple Watch capture app to another of
+  Adam's iPhone/Mac apps: one config file, generated code, project wiring,
+  CI build check; lives in SAVY-iOS `.cursor/skills/watch-capture/`
+
 ## Detection skills (pattern recognition, run as procedures)
 
 - [[market-inefficiency]] — Adam's 7-gate chain from inefficiency
