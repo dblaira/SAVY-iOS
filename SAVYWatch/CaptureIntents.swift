@@ -14,7 +14,7 @@ enum ShortcutCapture {
         // A shortcut can end before the send finishes; watchOS wakes the app later to retry.
         store.scheduleRetry()
         if let window = capture.proposedWindow {
-            return "Saved to \(kind.label) for \(CaptureProofView.describe(window, timeZoneIdentifier: capture.timeZoneIdentifier)): \(capture.words)"
+            return "Saved to \(kind.label) for \(CaptureProofContent.describe(window, timeZoneIdentifier: capture.timeZoneIdentifier)): \(capture.words)"
         }
         return "Saved to \(kind.label): \(capture.words)"
     }
@@ -68,14 +68,15 @@ struct StageSocialPostIntent: AppIntent {
     }
 }
 
-/// For the Action Button: one press opens the app on its doors.
+/// For the Action Button: one press opens the app already recording.
 struct OpenCaptureIntent: AppIntent {
     static let title: LocalizedStringResource = "Capture in SAVY"
     static let openAppWhenRun: Bool = true
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        .result()
+        WatchCaptureLaunch.shared.requestRecording()
+        return .result()
     }
 }
 

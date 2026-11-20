@@ -8,20 +8,34 @@ Adam, Nov 20, while this was being built: “I'm gonna put the same type of iPho
 
 ## What is built
 
+### One big button — Adam, Nov 20, after seeing the first screens
+
+Adam: “I was thinking about it having a face just like the voice memos where it's one large button that I can press. The idea here is to reduce friction, so if I'm reducing friction, I just need one button to press. I pressed the button, I record it, and then after it's recorded, then there can be some selections. It could just be, you know, save and make sure it saves, or it could be choosing different options if it's an action or something like that, but it's really a capture surface is what it is. The only other thing I'd really like besides recording it is being able to examine what it recorded because sometimes my diction can be often it might change CODEX to KODAK or something like that.”
+
+He then chose two things:
+- **Where to check the words:** “On iPhone, with audio”.
+- **Where a plain Save goes:** “Social (Generalization)”.
+
+This replaces the first build's four doors with Watch dictation.
+
 | Plan item | Built |
 |---|---|
 | Watch target inside `SAVY.xcodeproj` | `SAVYWatch` (watchOS 11+, bundle `com.adamblair.savy.watchkitapp`), display name SAVY |
-| Screen 1: complication and Smart Stack | `SAVYWatchWidgets`: circular, corner, rectangular and inline; a tap opens SAVY |
-| Screen 2: voice capture | Four doors: Action, Reminder, Calendar, Social. A tap opens the Watch’s own dictation |
-| Screen 3: proof | Success tap on the wrist, the exact words, the entry type, any day or hour heard, the iCloud status. Shows for four seconds, then returns. Any tap keeps it open. One tap re-records |
-| Four Siri phrases | “Log an action in SAVY”, “Add a reminder in SAVY”, “Create a calendar event in SAVY”, “Stage a social post in SAVY”. Siri asks for the words and reads back what was saved |
-| Action Button | Any of those four, or “Capture in SAVY”, which opens the four doors |
-| Local queue first | Every capture is written to the Watch before anything is sent. Waiting captures send when SAVY opens and when watchOS wakes it to retry |
-| Sync to iPhone and Mac | iCloud, in SAVY’s existing container `iCloud.com.adamblair.harness` |
+| Complication and Smart Stack | `SAVYWatchWidgets`: circular, corner, rectangular and inline; a tap opens SAVY |
+| One big button | Crimson record button. One press records, with a timer and moving level bars; one press stops |
+| After recording | Play it back. **Save** files it as Social (the first Generalization question). One tap on Action, Reminder or Calendar files it as that instead. Delete or Again are below. Leaving the screen saves it, so a recording is never lost |
+| Proof it saved | A tap on the wrist, the type, the recording, and “Saved on Watch · sending”, then “· in iCloud” |
+| Action Button | The “Capture” shortcut opens SAVY already recording, so the orange button is the one press |
+| Four Siri phrases | “Log an action in SAVY”, “Add a reminder in SAVY”, “Create a calendar event in SAVY”, “Stage a social post in SAVY”. Siri asks for the words, saves them and reads them back |
+| Local first | Every recording is written to the Watch the moment it stops. Waiting captures send when SAVY opens and when watchOS wakes it to retry |
+| Checking the words | The iPhone or Mac writes out the words, with Adam's own terms (Codex, Claude, SAVY, Generalization and more) as hints to the recognizer. The recording stays beside the words: a “Watch recording” play row at the top of the entry |
+| Sync | iCloud, in SAVY's existing container `iCloud.com.adamblair.harness`, zone `SAVYWatchInboxV1` |
 
 ### How each capture lands on the iPhone and Mac
 
 When SAVY opens or refreshes, each capture becomes a normal entry through `ReminderStore.save`, the same path the entry form’s Save uses. It then syncs to the other devices like any other entry.
+- For a recording, this device first writes out the words. If Speech Recognition is off or nothing was heard, the entry still arrives with the recording, under SAVY's generic name (“New Social”). The form replaces that name once Adam types.
+- Only one device makes the entry: the first iPhone or Mac claims the capture in iCloud. Every device keeps its own copy of the recording, and the claiming device deletes the capture from iCloud after two weeks.
 
 | Door | Entry | Where the words go | Day or hour |
 |---|---|---|---|
@@ -34,7 +48,7 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 
 ## Where the build differs from the plan, and why
 
-1. **The words come from Watch dictation, and no raw audio is saved.** The plan records audio and makes a live transcript on the Watch. Apple’s speech-to-text frameworks, `SFSpeechRecognizer` and `SpeechAnalyzer`, are not available on watchOS. Apple’s documentation lists iOS, iPadOS, Mac Catalyst, macOS and visionOS, plus tvOS for SpeechAnalyzer. A Watch app can record audio, but it cannot turn that recording into words. Watch dictation gives the exact words right away, which is the plan’s proof. Keeping raw audio means the iPhone writes the words after the run, so the proof moves off the wrist. That choice is Adam’s; see Open questions.
+1. **The Watch records; the iPhone writes out the words.** The plan made a live transcript on the Watch. Apple’s speech-to-text frameworks, `SFSpeechRecognizer` and `SpeechAnalyzer`, are not available on watchOS. Watch dictation always opens Apple’s dictation screen first, so it cannot start on one press. Adam chose one press and audio, with the words checked on the iPhone beside the recording.
 2. **No AWS or Supabase upload.** Adam cancelled AWS on Oct 12 (“I cancelled AWS last night”). SAVY now syncs through iCloud, so the Watch uses iCloud too.
 3. **No separate WatchConnectivity path.** When the iPhone is in a pocket, the Watch’s iCloud traffic already goes through it. One path has fewer ways to fail. It can be added if a capture is ever slow to appear.
 4. **The Watch writes to its own iCloud zone, `SAVYWatchInboxV1`.** SAVY’s entries live in `SAVYEntriesV1`, and an unreadable record there stops entry sync until it is repaired. The Watch never writes there, so a Watch bug cannot stall the iPhone and Mac. The iPhone and Mac import only after iCloud sync has confirmed the signed-in owner. Each import is saved locally before the capture is removed from iCloud, and a ledger keeps a deleted entry from coming back.
@@ -74,10 +88,9 @@ The Calendar proof shows “Lunch with Sam Friday at noon”, said on Friday Nov
 
 ## Open questions for Adam
 
-1. Raw audio or words on the wrist? Today the words show on the wrist and no audio is kept. The other option keeps the recording and the iPhone writes the words after the run.
-2. Should the Action Button open the four doors, or go straight to one entry type with Siri asking for the words?
-3. Does the Social door belong on the first Generalization question, or on another theme?
-4. Do the door names and symbols read right on the wrist: Action, Reminder, Calendar and Social, with the same symbols SAVY’s lists use?
+1. Does a recording keep going when your wrist drops mid-run? It should, with the audio background mode, but it has to be tried on the Ultra 3.
+2. Should the complication also open straight into recording, like the Action Button?
+3. Are there more words the iPhone keeps mishearing? Add them to `vocabulary` in `watch-capture.json`.
 
 ## Reusing this for the other apps
 

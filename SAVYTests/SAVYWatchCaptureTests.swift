@@ -2,9 +2,9 @@ import CloudKit
 import XCTest
 @testable import SAVY
 
-/// The Watch plan's promise, as tests: the words Adam says on the wrist arrive on the iPhone
-/// and Mac as the entry type he chose, in the box he would have typed them into, with any day
-/// or hour he said, and nothing he did not say. Values only; no store, iCloud or Watch.
+/// The Watch plan's promise, as tests: what Adam says on the wrist arrives on the iPhone and Mac
+/// as the entry type he chose, in the box he would have typed it into, with any day or hour he
+/// said, its recording kept, and nothing he did not say. Values only; no store, iCloud or Watch.
 final class SAVYWatchCaptureTests: XCTestCase {
     private let fixedMoment = Date(timeIntervalSince1970: 1_795_000_000)
 
@@ -124,6 +124,72 @@ final class SAVYWatchCaptureTests: XCTestCase {
         XCTAssertNotEqual(record.recordID.zoneID, SavyCloudKitRecordCodec.zoneID)
         XCTAssertFalse(SavyCloudKitRecordCodec.owns(record.recordID))
         XCTAssertEqual(try WatchCaptureInbox.capture(from: record), capture)
+    }
+
+    // MARK: One big button: recordings (Adam, Nov 20: “I pressed the button, I record it”)
+
+    func testPlainSaveIsSocial() {
+        // Adam chose: plain Save lands as the first Generalization answer.
+        XCTAssertEqual(WatchCaptureKind.saveDefault, .post)
+    }
+
+    func testRecordingTravelsWithItsAudioAndNoWordsYet() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).m4a")
+        try Data("not really audio".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let capture = WatchCapture(kind: .post, words: "", source: .wrist, capturedAt: fixedMoment,
+                                   audioFileName: file.lastPathComponent, audioDuration: 7)
+        XCTAssertTrue(capture.hasRecording)
+        let record = try WatchCaptureInbox.record(for: capture, audioURL: file)
+        XCTAssertEqual(WatchCaptureInbox.audioURL(in: record), file)
+        XCTAssertEqual(try WatchCaptureInbox.capture(from: record), capture)
+    }
+
+    func testACaptureWithNeitherWordsNorRecordingIsRejected() throws {
+        let empty = WatchCapture(kind: .action, words: "   ", source: .wrist, capturedAt: fixedMoment)
+        XCTAssertThrowsError(try WatchCaptureInbox.capture(from: WatchCaptureInbox.record(for: empty)))
+    }
+
+    func testWordsWrittenOutLaterKeepTheRecordingAndReadTheDay() throws {
+        let recording = WatchCapture(kind: .reminder, words: "", source: .wrist, capturedAt: Date(),
+                                     audioFileName: "a.m4a", audioDuration: 4)
+        XCTAssertNil(recording.cue)
+        let written = recording.replacingWords("Call the vet tomorrow at 9 AM")
+        XCTAssertEqual(written.id, recording.id)
+        XCTAssertEqual(written.audioFileName, "a.m4a")
+        XCTAssertEqual(written.audioDuration, 4)
+        XCTAssertNotNil(written.cue)
+        XCTAssertNotNil(Reminder(watchCapture: written).schedule)
+    }
+
+    func testChoosingATypeKeepsTheRecording() {
+        let recording = WatchCapture(kind: .post, words: "", source: .wrist, capturedAt: fixedMoment,
+                                     audioFileName: "b.m4a", audioDuration: 3)
+        let action = recording.withKind(.action)
+        XCTAssertEqual(action.kind, .action)
+        XCTAssertEqual(action.id, recording.id)
+        XCTAssertEqual(action.audioFileName, "b.m4a")
+    }
+
+    func testRecordingWithNoWordsWrittenGetsSAVYsGenericName() throws {
+        // Speech Recognition off, or nothing heard: the entry still arrives, with the recording,
+        // under the generic name the form replaces once Adam types his words.
+        let social = Reminder(watchCapture: WatchCapture(kind: .post, words: "", source: .wrist, capturedAt: fixedMoment,
+                                                         audioFileName: "c.m4a", audioDuration: 5))
+        XCTAssertEqual(social.title, "New Social")
+        XCTAssertTrue(EntryAutoTitle.isGenericName(social.title))
+        XCTAssertEqual(social.postAnswers?.first, "What shining example caught my attention?\n")
+        XCTAssertEqual(social.postAnsweredCount, 0)
+
+        let action = Reminder(watchCapture: WatchCapture(kind: .action, words: "", source: .wrist, capturedAt: fixedMoment,
+                                                         audioFileName: "d.m4a", audioDuration: 5))
+        XCTAssertEqual(action.title, "New Action")
+        XCTAssertTrue(EntryAutoTitle.isGenericName(action.title))
+    }
+
+    func testVocabularyHintsIncludeCodex() {
+        // Adam, Nov 20: dictation “might change CODEX to KODAK”.
+        XCTAssertTrue(WatchCaptureConfig.vocabulary.contains("Codex"))
     }
 
     func testInboxRejectsARecordWhoseNameDoesNotMatchItsCapture() throws {

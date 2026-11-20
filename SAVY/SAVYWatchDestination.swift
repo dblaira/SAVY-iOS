@@ -15,9 +15,10 @@ extension ReminderStore: WatchCaptureDestination {
 }
 
 extension Reminder {
-    /// One Watch capture as a SAVY entry. The words go where Adam would have typed them:
-    /// “What do I want?” for Action, Reminder and Calendar, and the first Generalization question
-    /// for Social. Nothing is added that he did not say.
+    /// One Watch capture as a SAVY entry. The words, written out from his recording or heard by
+    /// Siri, go where Adam would have typed them: “What do I want?” for Action, Reminder and
+    /// Calendar, and the first Generalization question for Social. Nothing is added that he did
+    /// not say. The recording stays on this device beside the entry (WatchRecordingRow).
     init(watchCapture capture: WatchCapture) {
         self.init()
         id = capture.id
@@ -38,9 +39,11 @@ extension Reminder {
             postThemeName = theme.name
             postAnswers = answers
             postAnswersContainQuestions = true
-            title = autoTitle() ?? capture.words
+            title = autoTitle() ?? "New \(kind.label)"
         } else {
-            title = capture.words
+            // Nothing written out (Speech Recognition off, or no words heard): SAVY's generic
+            // name, which the form replaces with his words once he types them.
+            title = capture.words.isEmpty ? "New \(kind.label)" : capture.words
         }
 
         if let window = capture.proposedWindow {

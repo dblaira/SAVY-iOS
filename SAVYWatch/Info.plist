@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Watch capture kit. Merged with the keys Xcode generates. The audio background mode keeps
+	     a recording going after the wrist drops; recording itself always starts on screen. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SAVY records what you say so your iPhone can write out the words.</string>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+</dict>
+</plist>

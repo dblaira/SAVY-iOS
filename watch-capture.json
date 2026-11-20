@@ -6,6 +6,22 @@
   "recordType": "SAVYWatchCaptureV1",
   "storageFolder": "SAVYWatch",
   "openPhrase": "Capture in {app}",
+  "defaultKind": "post",
+  "vocabulary": [
+    "Codex",
+    "Claude",
+    "Gemini",
+    "SAVY",
+    "Understood",
+    "Harness",
+    "Cowboy AI",
+    "Generalization",
+    "Xcode",
+    "YouTube",
+    "Dr Plants",
+    "Blue's Clues"
+  ],
+  "microphoneUsage": "SAVY records what you say so your iPhone can write out the words.",
   "theme": {
     "background": "08172D",
     "accent": "E60E44",
@@ -85,7 +101,9 @@
     "iosAppIcon": "SAVY/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
     "testTarget": "SAVYTests",
     "testFolder": "SAVYTests",
-    "testFiles": ["SAVYWatchCaptureTests.swift"],
+    "testFiles": [
+      "SAVYWatchCaptureTests.swift"
+    ],
     "ciRunner": "xcode-27"
   }
 }

@@ -26,7 +26,13 @@ Adam, during the build: “I'm gonna put the same type of iPhone Apple Watch app
 
 Built on `claude/awesome-heisenberg-s7jdkk`: the `SAVYWatch` app with four doors (Action, Reminder, Calendar, Social), Watch dictation, a four-second proof screen with one-tap re-record, a local-first queue, his four Siri phrases, an Action Button shortcut, and the `SAVYWatchWidgets` complication. Captures go to their own iCloud zone, `SAVYWatchInboxV1`, in the existing container. The iPhone and Mac turn each one into a normal entry through `ReminderStore.save`, after iCloud sync confirms the owner. Never let the Watch write to `SAVYEntriesV1`. A Social capture answers the first Generalization question only, in line with the YouTube habit: “Common scenario is that I am out for a run and have an idea hit me.”
 
-The plan's on-Watch transcription of a recording cannot be built: Apple's speech-to-text frameworks are not on watchOS. The words come from Watch dictation, and no raw audio is kept; whether to keep audio is Adam's open question. There is no AWS upload (AWS was cancelled Oct 12), no WatchConnectivity path, no StoreKit 2, and no embedding in the iPhone app yet.
+Adam, after seeing the first screens: “I was thinking about it having a face just like the voice memos where it's one large button that I can press. The idea here is to reduce friction, so if I'm reducing friction, I just need one button to press.” He also asked to “examine what it recorded because sometimes my diction can be often it might change CODEX to KODAK”. He then chose two answers: check the words “On iPhone, with audio”, and plain Save goes to “Social (Generalization)”.
+
+The Watch is one big record button. One press records and one press stops. The review screen plays the recording back, and one tap saves it: Save as Social, or one tap on Action, Reminder or Calendar. Leaving the screen saves too. The Action Button's “Capture” shortcut opens the app already recording.
+
+watchOS has no speech-to-text, so the iPhone or Mac writes out the words, with his terms (`vocabulary`) as recognizer hints. The recording is kept beside the words as a play row at the top of the entry form. That row is the only change to the frozen form, and it appears only when a recording exists. This audio is his explicit choice. It is separate from the Sept 2 removal of “listen with Cowboyai”.
+
+There is no AWS upload (AWS was cancelled Oct 12), no WatchConnectivity path, no StoreKit 2, and no embedding in the iPhone app yet.
 
 Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 11 `SAVYWatchCaptureTests` pass. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. It is not signed with his team, installed on his Watch, or tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
 

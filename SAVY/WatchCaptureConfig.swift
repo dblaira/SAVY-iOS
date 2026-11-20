@@ -9,6 +9,8 @@ enum WatchCaptureConfig {
     static let inboxZoneName = "SAVYWatchInboxV1"
     static let recordType = "SAVYWatchCaptureV1"
     static let storageFolder = "SAVYWatch"
+    /// Adam's own words, given to the speech recognizer as hints when it writes out a recording.
+    static let vocabulary: [String] = ["Codex", "Claude", "Gemini", "SAVY", "Understood", "Harness", "Cowboy AI", "Generalization", "Xcode", "YouTube", "Dr Plants", "Blue's Clues"]
 }
 
 /// The doors on the wrist, in order. Raw values are what the iPhone and Mac receive.
@@ -16,6 +18,9 @@ enum WatchCaptureKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case action, reminder, event, post
 
     var id: String { rawValue }
+
+    /// Save on the Watch, without picking a type, uses this one.
+    static let saveDefault: WatchCaptureKind = .post
 
     /// The door's name on the wrist.
     var label: String {

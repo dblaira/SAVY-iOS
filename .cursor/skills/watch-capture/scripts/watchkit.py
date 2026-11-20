@@ -37,15 +37,18 @@ TEMPLATES = KIT / "templates"
 COPIED = [
     ("shared/WatchCapture.swift", "{shared}/WatchCapture.swift"),
     ("shared/WatchCaptureImporter.swift", "{shared}/WatchCaptureImporter.swift"),
+    ("shared/WatchCaptureTranscriber.swift", "{shared}/WatchCaptureTranscriber.swift"),
+    ("shared/WatchRecordingRow.swift", "{shared}/WatchRecordingRow.swift"),
     ("watch/WatchCaptureApp.swift", "{watch}/WatchCaptureApp.swift"),
     ("watch/WatchCaptureStore.swift", "{watch}/WatchCaptureStore.swift"),
+    ("watch/WatchRecorder.swift", "{watch}/WatchRecorder.swift"),
     ("watch/CaptureViews.swift", "{watch}/CaptureViews.swift"),
     ("widgets/WatchCaptureWidgets.swift", "{widgets}/WatchCaptureWidgets.swift"),
     ("widgets/Info.plist", "{widgets}/Info.plist"),
 ]
 
 REQUIRED = ["appName", "containerIdentifier", "inboxZoneName", "recordType", "storageFolder",
-            "openPhrase", "theme", "kinds", "xcode"]
+            "openPhrase", "defaultKind", "vocabulary", "microphoneUsage", "theme", "kinds", "xcode"]
 KIND_REQUIRED = ["case", "label", "symbol", "readsTimeCue", "dayOnlyIsAllDay", "demoWords",
                  "intent", "intentTitle", "parameterTitle", "ask", "phrase"]
 XCODE_REQUIRED = ["project", "appTarget", "appScheme", "sharedFolder", "destinationFile", "watchTarget",
@@ -63,6 +66,8 @@ def load_config(path):
     for kind in cfg["kinds"]:
         if "{app}" not in kind["phrase"]:
             sys.exit(f"Siri phrase must contain {{app}}: {kind['phrase']}")
+    if cfg["defaultKind"] not in [k["case"] for k in cfg["kinds"]]:
+        sys.exit("defaultKind must be one of the kinds' cases")
     if "{app}" not in cfg["openPhrase"]:
         sys.exit("openPhrase must contain {app}")
     if not cfg["xcode"]["testFiles"]:
@@ -110,6 +115,8 @@ def gen_config(cfg):
         f"    static let inboxZoneName = {swift(cfg['inboxZoneName'])}",
         f"    static let recordType = {swift(cfg['recordType'])}",
         f"    static let storageFolder = {swift(cfg['storageFolder'])}",
+        "    /// Adam's own words, given to the speech recognizer as hints when it writes out a recording.",
+        "    static let vocabulary: [String] = [" + ", ".join(swift(w) for w in cfg["vocabulary"]) + "]",
         "}",
         "",
         "/// The doors on the wrist, in order. Raw values are what the iPhone and Mac receive.",
@@ -117,6 +124,9 @@ def gen_config(cfg):
         f"    case {cases}",
         "",
         "    var id: String { rawValue }",
+        "",
+        "    /// Save on the Watch, without picking a type, uses this one.",
+        f"    static let saveDefault: WatchCaptureKind = .{cfg['defaultKind']}",
         "",
         kind_switch(cfg, "label", "The door's name on the wrist.", "String", lambda k: swift(k["label"])),
         "",
@@ -167,7 +177,7 @@ def gen_intents(cfg):
         "        // A shortcut can end before the send finishes; watchOS wakes the app later to retry.",
         "        store.scheduleRetry()",
         "        if let window = capture.proposedWindow {",
-        '            return "Saved to \\(kind.label) for \\(CaptureProofView.describe(window, timeZoneIdentifier: capture.timeZoneIdentifier)): \\(capture.words)"',
+        '            return "Saved to \\(kind.label) for \\(CaptureProofContent.describe(window, timeZoneIdentifier: capture.timeZoneIdentifier)): \\(capture.words)"',
         "        }",
         '        return "Saved to \\(kind.label): \\(capture.words)"',
         "    }",
@@ -190,14 +200,15 @@ def gen_intents(cfg):
             "",
         ]
     out += [
-        "/// For the Action Button: one press opens the app on its doors.",
+        "/// For the Action Button: one press opens the app already recording.",
         "struct OpenCaptureIntent: AppIntent {",
         f"    static let title: LocalizedStringResource = {swift(cfg['openPhrase'].replace('{app}', cfg['appName']))}",
         "    static let openAppWhenRun: Bool = true",
         "",
         "    @MainActor",
         "    func perform() async throws -> some IntentResult {",
-        "        .result()",
+        "        WatchCaptureLaunch.shared.requestRecording()",
+        "        return .result()",
         "    }",
         "}",
         "",
@@ -244,6 +255,24 @@ def gen_entitlements(cfg):
     </array>
     <key>com.apple.developer.icloud-container-environment</key>
     <string>{cfg.get('cloudKitEnvironment', 'Development')}</string>
+</dict>
+</plist>
+"""
+
+
+def gen_watch_info(cfg):
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+\t<!-- Watch capture kit. Merged with the keys Xcode generates. The audio background mode keeps
+\t     a recording going after the wrist drops; recording itself always starts on screen. -->
+\t<key>NSMicrophoneUsageDescription</key>
+\t<string>{cfg['microphoneUsage']}</string>
+\t<key>WKBackgroundModes</key>
+\t<array>
+\t\t<string>audio</string>
+\t</array>
 </dict>
 </plist>
 """
@@ -297,6 +326,7 @@ def planned_files(cfg, repo):
     files[f"{p['shared']}/WatchCaptureConfig.swift"] = gen_config(cfg).encode()
     files[f"{p['watch']}/CaptureIntents.swift"] = gen_intents(cfg).encode()
     files[f"{p['watch']}/{p['watch']}.entitlements"] = gen_entitlements(cfg).encode()
+    files[f"{p['watch']}/Info.plist"] = gen_watch_info(cfg).encode()
     for rel, text in gen_assets(cfg).items():
         files[f"{p['watch']}/{rel}"] = text.encode()
     icon = repo / cfg["xcode"]["iosAppIcon"]
@@ -464,7 +494,9 @@ def cmd_wire(cfg, repo):
         return f"\t\t{bid} /* {name} in {phase} */ = {{isa = PBXBuildFile; fileRef = {fid} /* {name} */; }};\n"
 
     refs, builds = "", ""
-    shared_names = ["WatchCaptureConfig.swift", "WatchCapture.swift", "WatchCaptureImporter.swift", x["destinationFile"]]
+    # The iPhone/Mac app builds all of these; the Watch builds only the config and the capture model.
+    shared_names = ["WatchCaptureConfig.swift", "WatchCapture.swift", "WatchCaptureImporter.swift",
+                    "WatchCaptureTranscriber.swift", "WatchRecordingRow.swift", x["destinationFile"]]
     shared_refs = {n: I(f"shared:{n}") for n in shared_names}
     for n, fid in shared_refs.items():
         refs += fileref(fid, n)
@@ -475,8 +507,9 @@ def cmd_wire(cfg, repo):
         builds += buildfile(app_build[n], shared_refs[n], n, "Sources")
         prj.list_append(app_sources, "files", f"{app_build[n]} /* {n} in Sources */")
 
-    watch_sources = ["CaptureIntents.swift", "CaptureViews.swift", "WatchCaptureApp.swift", "WatchCaptureStore.swift"]
-    watch_refs = {n: I(f"watch:{n}") for n in watch_sources + ["Assets.xcassets", f"{W}.entitlements"]}
+    watch_sources = ["CaptureIntents.swift", "CaptureViews.swift", "WatchCaptureApp.swift", "WatchCaptureStore.swift",
+                     "WatchRecorder.swift"]
+    watch_refs = {n: I(f"watch:{n}") for n in watch_sources + ["Assets.xcassets", f"{W}.entitlements", "Info.plist"]}
     widget_refs = {n: I(f"widgets:{n}") for n in ["WatchCaptureWidgets.swift", "Info.plist"]}
     for n, fid in list(watch_refs.items()) + list(widget_refs.items()):
         refs += fileref(fid, n)
@@ -640,6 +673,7 @@ def cmd_wire(cfg, repo):
     watch_settings = dict(common, **{
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon", "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
         "CODE_SIGN_ENTITLEMENTS": f"{W}/{W}.entitlements", "ENABLE_PREVIEWS": "YES",
+        "INFOPLIST_FILE": f"{W}/Info.plist",
         "INFOPLIST_KEY_UISupportedInterfaceOrientations": "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown",
         "INFOPLIST_KEY_WKCompanionAppBundleIdentifier": x["companionBundleID"],
         "INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp": "YES",

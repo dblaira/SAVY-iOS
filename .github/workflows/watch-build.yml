@@ -83,7 +83,7 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           APP=$(find build/watch/Build/Products -maxdepth 3 -path "*watchsimulator*" -name "SAVYWatch.app" | head -1)
           xcrun simctl install "$UDID" "$APP"
-          for screen in home proof calendar; do
+          for screen in home recording review saved; do
             xcrun simctl terminate "$UDID" com.adamblair.savy.watchkitapp || true
             xcrun simctl launch "$UDID" com.adamblair.savy.watchkitapp -WatchCaptureDemo "$screen"
             sleep 8

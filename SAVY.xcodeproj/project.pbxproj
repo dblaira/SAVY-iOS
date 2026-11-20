@@ -105,11 +105,14 @@
 		A4E673A3B5B6683B42920D55 /* WatchCaptureConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39C27C09CE412C7ABBC104C /* WatchCaptureConfig.swift */; };
 		988B1168B99AF0C167A3098D /* WatchCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AB317F61657EEEA2733EE8 /* WatchCapture.swift */; };
 		4D134E780019A7B1216360FB /* WatchCaptureImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC9956A22879780AFE7B4DF1 /* WatchCaptureImporter.swift */; };
+		15FB47EF5C1FAF1225451DAB /* WatchCaptureTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C01410809A5B72065719DB4 /* WatchCaptureTranscriber.swift */; };
+		A7C4A90F34FF8F4171EF484B /* WatchRecordingRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1801FFC0FFED0546FEBDF526 /* WatchRecordingRow.swift */; };
 		53AB48C5310E81EFC24EFDB6 /* SAVYWatchDestination.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAAFBC6BC1A01F22E8A594FD /* SAVYWatchDestination.swift */; };
 		3126E74C3B43588260F27550 /* CaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 692B214180B8677A9F747781 /* CaptureIntents.swift */; };
 		9C41990E9BEEAE99E0DD9239 /* CaptureViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A73F0B86000120A1EEEC942 /* CaptureViews.swift */; };
 		0A8DF9C04CB3B63417582130 /* WatchCaptureApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69013D28B322978E8CCBCE28 /* WatchCaptureApp.swift */; };
 		11F5BF3EF0428050970BAB03 /* WatchCaptureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2DE44E685D7CE303EB722F8 /* WatchCaptureStore.swift */; };
+		89956F47DE5ED1641FD534AB /* WatchRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E13F2DD44531F107FFF804E /* WatchRecorder.swift */; };
 		EC4FFC60C9B29AA695796999 /* WatchCaptureConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39C27C09CE412C7ABBC104C /* WatchCaptureConfig.swift */; };
 		5F092A5A51A3CB8CD5B0A5E5 /* WatchCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72AB317F61657EEEA2733EE8 /* WatchCapture.swift */; };
 		D992AE270D913122104716FF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B29E27A57A696C4EFFBE3589 /* Assets.xcassets */; };
@@ -260,13 +263,17 @@
 		F39C27C09CE412C7ABBC104C /* WatchCaptureConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCaptureConfig.swift; sourceTree = "<group>"; };
 		72AB317F61657EEEA2733EE8 /* WatchCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCapture.swift; sourceTree = "<group>"; };
 		CC9956A22879780AFE7B4DF1 /* WatchCaptureImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCaptureImporter.swift; sourceTree = "<group>"; };
+		5C01410809A5B72065719DB4 /* WatchCaptureTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCaptureTranscriber.swift; sourceTree = "<group>"; };
+		1801FFC0FFED0546FEBDF526 /* WatchRecordingRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRecordingRow.swift; sourceTree = "<group>"; };
 		EAAFBC6BC1A01F22E8A594FD /* SAVYWatchDestination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYWatchDestination.swift; sourceTree = "<group>"; };
 		692B214180B8677A9F747781 /* CaptureIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureIntents.swift; sourceTree = "<group>"; };
 		8A73F0B86000120A1EEEC942 /* CaptureViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViews.swift; sourceTree = "<group>"; };
 		69013D28B322978E8CCBCE28 /* WatchCaptureApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCaptureApp.swift; sourceTree = "<group>"; };
 		B2DE44E685D7CE303EB722F8 /* WatchCaptureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCaptureStore.swift; sourceTree = "<group>"; };
+		1E13F2DD44531F107FFF804E /* WatchRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRecorder.swift; sourceTree = "<group>"; };
 		B29E27A57A696C4EFFBE3589 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		37212CC172C20ED39436BA97 /* SAVYWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAVYWatch.entitlements; sourceTree = "<group>"; };
+		AEA8B7456F63D3D941DA0D3F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		12699E4428F129E70C754710 /* WatchCaptureWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCaptureWidgets.swift; sourceTree = "<group>"; };
 		4774915A4283FC2102598888 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BD5660641492CA8D18B1F83D /* SAVYWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SAVYWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -444,6 +451,8 @@
 				F39C27C09CE412C7ABBC104C /* WatchCaptureConfig.swift */,
 				72AB317F61657EEEA2733EE8 /* WatchCapture.swift */,
 				CC9956A22879780AFE7B4DF1 /* WatchCaptureImporter.swift */,
+				5C01410809A5B72065719DB4 /* WatchCaptureTranscriber.swift */,
+				1801FFC0FFED0546FEBDF526 /* WatchRecordingRow.swift */,
 				EAAFBC6BC1A01F22E8A594FD /* SAVYWatchDestination.swift */,
 			);
 			path = SAVY;
@@ -478,9 +487,11 @@
 				B29E27A57A696C4EFFBE3589 /* Assets.xcassets */,
 				692B214180B8677A9F747781 /* CaptureIntents.swift */,
 				8A73F0B86000120A1EEEC942 /* CaptureViews.swift */,
+				AEA8B7456F63D3D941DA0D3F /* Info.plist */,
 				37212CC172C20ED39436BA97 /* SAVYWatch.entitlements */,
 				69013D28B322978E8CCBCE28 /* WatchCaptureApp.swift */,
 				B2DE44E685D7CE303EB722F8 /* WatchCaptureStore.swift */,
+				1E13F2DD44531F107FFF804E /* WatchRecorder.swift */,
 			);
 			path = SAVYWatch;
 			sourceTree = "<group>";
@@ -794,6 +805,8 @@
 				A4E673A3B5B6683B42920D55 /* WatchCaptureConfig.swift in Sources */,
 				988B1168B99AF0C167A3098D /* WatchCapture.swift in Sources */,
 				4D134E780019A7B1216360FB /* WatchCaptureImporter.swift in Sources */,
+				15FB47EF5C1FAF1225451DAB /* WatchCaptureTranscriber.swift in Sources */,
+				A7C4A90F34FF8F4171EF484B /* WatchRecordingRow.swift in Sources */,
 				53AB48C5310E81EFC24EFDB6 /* SAVYWatchDestination.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -808,6 +821,7 @@
 				0A8DF9C04CB3B63417582130 /* WatchCaptureApp.swift in Sources */,
 				EC4FFC60C9B29AA695796999 /* WatchCaptureConfig.swift in Sources */,
 				11F5BF3EF0428050970BAB03 /* WatchCaptureStore.swift in Sources */,
+				89956F47DE5ED1641FD534AB /* WatchRecorder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1095,6 +1109,7 @@
 				DEVELOPMENT_TEAM = 7FKUS5M5QS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SAVYWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SAVY;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.adamblair.savy;
@@ -1124,6 +1139,7 @@
 				DEVELOPMENT_TEAM = 7FKUS5M5QS;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SAVYWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SAVY;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.adamblair.savy;

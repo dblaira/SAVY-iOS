@@ -258,6 +258,14 @@ struct ReminderFormView: View {
     }
 
     @ViewBuilder private var unifiedEntrySections: some View {
+        // A Watch recording leads, so the written words below can be checked against it.
+        if WatchRecordingFiles.url(for: r.id) != nil {
+            Section {
+                WatchRecordingRow(entryID: r.id)
+            }
+            .listRowBackground(Brand.card)
+        }
+
         // Every entry leads with its theme and Decide questions, followed by shared fields.
         if hasDecideQuestions {
             postThemeSection

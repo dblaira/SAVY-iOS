@@ -60,39 +60,56 @@ enum WatchTimeCueReader {
 
 struct WatchCapture: Codable, Equatable, Identifiable, Sendable {
     enum Source: String, Codable, Sendable {
-        /// A tile on the Watch screen.
+        /// The big button on the Watch: a recording.
         case wrist
-        /// Siri, the Action Button, or the Shortcuts app.
+        /// Siri, the Action Button, or the Shortcuts app: words Siri heard.
         case shortcut
     }
 
     var id: UUID
     var kind: WatchCaptureKind
-    /// The words exactly as dictated, without leading or trailing spaces.
+    /// The words exactly as heard, without leading or trailing spaces. Empty for a recording
+    /// until the iPhone or Mac writes it out.
     var words: String
     var capturedAt: Date
     var timeZoneIdentifier: String
     var cue: WatchTimeCue?
     var source: Source
+    /// The recording's file name on the device that holds it. Nil for a capture made of words.
+    var audioFileName: String?
+    var audioDuration: TimeInterval?
 
     init(kind: WatchCaptureKind, words: String, source: Source,
-         capturedAt: Date = Date(), timeZone: TimeZone = .current, id: UUID = UUID()) {
+         capturedAt: Date = Date(), timeZone: TimeZone = .current, id: UUID = UUID(),
+         audioFileName: String? = nil, audioDuration: TimeInterval? = nil) {
         self.id = id
         self.kind = kind
         self.words = words.trimmingCharacters(in: .whitespacesAndNewlines)
         self.capturedAt = capturedAt
         self.timeZoneIdentifier = timeZone.identifier
         self.source = source
+        self.audioFileName = audioFileName
+        self.audioDuration = audioDuration
         self.cue = kind.readsTimeCue
             ? WatchTimeCueReader.cue(in: self.words, heardAt: capturedAt, timeZone: timeZone)
             : nil
     }
 
-    /// Re-recording keeps the same capture, so the iPhone receives one entry, not two.
+    var hasRecording: Bool { audioFileName != nil }
+
+    /// Words written later, or re-recorded, keep the same capture and its recording, so the
+    /// iPhone receives one entry, not two. A spoken day or hour is read again from the new words.
     func replacingWords(_ newWords: String) -> WatchCapture {
         let zone = TimeZone(identifier: timeZoneIdentifier) ?? .current
-        return WatchCapture(kind: kind, words: newWords, source: source,
-                            capturedAt: capturedAt, timeZone: zone, id: id)
+        return WatchCapture(kind: kind, words: newWords, source: source, capturedAt: capturedAt,
+                            timeZone: zone, id: id, audioFileName: audioFileName, audioDuration: audioDuration)
+    }
+
+    /// The type chosen after recording.
+    func withKind(_ newKind: WatchCaptureKind) -> WatchCapture {
+        let zone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        return WatchCapture(kind: newKind, words: words, source: source, capturedAt: capturedAt,
+                            timeZone: zone, id: id, audioFileName: audioFileName, audioDuration: audioDuration)
     }
 
     /// A day with no hour is all-day for kinds that say so, and starts at 9:00 otherwise.
@@ -134,7 +151,12 @@ enum WatchCaptureInbox {
         CKRecord.ID(recordName: "capture-\(id.uuidString.lowercased())", zoneID: zoneID)
     }
 
-    static func record(for capture: WatchCapture) throws -> CKRecord {
+    /// The recording travels as a CloudKit asset named "audio" beside the encrypted payload.
+    static let audioKey = "audio"
+    /// Set by the first iPhone or Mac that turns the capture into an entry.
+    static let importedAtKey = "importedAt"
+
+    static func record(for capture: WatchCapture, audioURL: URL? = nil) throws -> CKRecord {
         let record = CKRecord(recordType: recordType, recordID: recordID(for: capture.id))
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -142,6 +164,7 @@ enum WatchCaptureInbox {
         let data = try encoder.encode(Payload(formatVersion: formatVersion, capture: capture))
         record["schemaVersion"] = NSNumber(value: formatVersion)
         record.encryptedValues["payload"] = data as NSData
+        if let audioURL { record[audioKey] = CKAsset(fileURL: audioURL) }
         return record
     }
 
@@ -154,7 +177,12 @@ enum WatchCaptureInbox {
         let payload = try decoder.decode(Payload.self, from: data)
         guard payload.formatVersion == formatVersion,
               recordID(for: payload.capture.id) == record.recordID,
-              !payload.capture.words.isEmpty else { throw CodecError.invalidRecord }
+              !payload.capture.words.isEmpty || payload.capture.hasRecording else { throw CodecError.invalidRecord }
         return payload.capture
+    }
+
+    /// The downloaded recording of a fetched record, if it has one.
+    static func audioURL(in record: CKRecord) -> URL? {
+        (record[audioKey] as? CKAsset)?.fileURL
     }
 }
