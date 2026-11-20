@@ -102,6 +102,17 @@
 		C12F94DBC3FC25E8EC5283A4 /* VisualTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39EB5114A22CB8788FD164D /* VisualTemplate.swift */; };
 		12B8D9AEF738514597E5ACE8 /* SAVYVisualTemplateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C38E55828F6FAC7D764BDB55 /* SAVYVisualTemplateTests.swift */; };
 		AF9A4013D7B1ABA7A8EB8D9D /* SAVYVisualTemplatesUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF5ED14E7F700FE3DB8A676 /* SAVYVisualTemplatesUITests.swift */; };
+		2ABD09B47477C77182D730F1 /* WatchCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A36B1640218622D388AB673 /* WatchCapture.swift */; };
+		1D68888F26007A2A53E22943 /* WatchCaptureImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9FF23861B45F843600DD87C /* WatchCaptureImporter.swift */; };
+		8CAC5231E1A6A0AD710F468A /* WatchCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A36B1640218622D388AB673 /* WatchCapture.swift */; };
+		B2AE1F76067F7CD807F4C0D8 /* SAVYWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 374B6128147255FE0A3B6D23 /* SAVYWatchApp.swift */; };
+		B9F5EB4BAFC4AE55D8F915AA /* WatchCaptureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA00420E1092B1A99A384156 /* WatchCaptureStore.swift */; };
+		EAB6188994FFAA93E44B4DFA /* CaptureViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D1DA0C9F53502B62E41E5A /* CaptureViews.swift */; };
+		2E1318B999E6C02AED6D1297 /* CaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D73F09EE699CF0E5CC47C109 /* CaptureIntents.swift */; };
+		06788322FCCB40D031FCEC6E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F9C261334CCC8565EC29AE16 /* Assets.xcassets */; };
+		5C3CE34C7431F2669702BDA3 /* SAVYWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 91B17E61877132E8A3B62738 /* SAVYWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C9E51A9B52949FDA23281AD6 /* SAVYWatchWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C59B8520FA418B9B4F57327 /* SAVYWatchWidgets.swift */; };
+		55F6120B871A4DFF55843153 /* SAVYWatchCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77576B856EFA336709A808D4 /* SAVYWatchCaptureTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -119,7 +130,28 @@
 			remoteGlobalIDString = F9770833D9C90E9EA5883D75;
 			remoteInfo = SAVY;
 		};
+		C83368AEBACC62D22C080FAE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3DA3A1EAB03B2D0873868AC9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CE5CBA9FAF4BEF74BF1FEB13;
+			remoteInfo = SAVYWatchWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1728010C66B45BE04243E62B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5C3CE34C7431F2669702BDA3 /* SAVYWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		0664053D22FAA613F02569D1 /* SAVY.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAVY.entitlements; sourceTree = "<group>"; };
@@ -221,6 +253,19 @@
 		E39EB5114A22CB8788FD164D /* VisualTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualTemplate.swift; sourceTree = "<group>"; };
 		C38E55828F6FAC7D764BDB55 /* SAVYVisualTemplateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYVisualTemplateTests.swift; sourceTree = "<group>"; };
 		4EF5ED14E7F700FE3DB8A676 /* SAVYVisualTemplatesUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYVisualTemplatesUITests.swift; sourceTree = "<group>"; };
+		6A36B1640218622D388AB673 /* WatchCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCapture.swift; sourceTree = "<group>"; };
+		E9FF23861B45F843600DD87C /* WatchCaptureImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCaptureImporter.swift; sourceTree = "<group>"; };
+		374B6128147255FE0A3B6D23 /* SAVYWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYWatchApp.swift; sourceTree = "<group>"; };
+		CA00420E1092B1A99A384156 /* WatchCaptureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCaptureStore.swift; sourceTree = "<group>"; };
+		73D1DA0C9F53502B62E41E5A /* CaptureViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureViews.swift; sourceTree = "<group>"; };
+		D73F09EE699CF0E5CC47C109 /* CaptureIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureIntents.swift; sourceTree = "<group>"; };
+		F9C261334CCC8565EC29AE16 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		931C459C9E2A1B3CD6D0A951 /* SAVYWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SAVYWatch.entitlements; sourceTree = "<group>"; };
+		1C59B8520FA418B9B4F57327 /* SAVYWatchWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYWatchWidgets.swift; sourceTree = "<group>"; };
+		19418D13C35444B90B9690B0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9B06763EA1F7CB6AF0CC959F /* SAVYWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SAVYWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		91B17E61877132E8A3B62738 /* SAVYWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SAVYWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		77576B856EFA336709A808D4 /* SAVYWatchCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SAVYWatchCaptureTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -231,6 +276,20 @@
 				19214B7721DC2F78026511BE /* Amplify in Frameworks */,
 				C8AF92E504C468AF17F3B019 /* AWSCognitoAuthPlugin in Frameworks */,
 				664EB67BC67D378B061A9F6E /* AWSPluginsCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E1C02D10E4DD8778E91080D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EA2BCE28554C43B69E5385C7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,6 +310,8 @@
 				81B8D9162176E51C28F60467 /* SAVY.app */,
 				BB21E7E709F5315C8570F028 /* SAVYTests.xctest */,
 				5503A99385004788C0010715 /* SAVYUITests.xctest */,
+				9B06763EA1F7CB6AF0CC959F /* SAVYWatch.app */,
+				91B17E61877132E8A3B62738 /* SAVYWatchWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -261,6 +322,8 @@
 				98F24F8E60B5F6D6B4417B74 /* SAVY */,
 				54384D66314DE9A7C58CAF7D /* SAVYTests */,
 				B04A7A0C7EE66517EEA3C9AB /* SAVYUITests */,
+				375BCEE16B3992FA533EBF39 /* SAVYWatch */,
+				7A001D6B12120F9AD54B5091 /* SAVYWatchWidgets */,
 				2B1FBB9014C427ADF4F73315 /* Products */,
 				0F1BFC50308B2D390063EEF4 /* Recovered References */,
 			);
@@ -282,6 +345,7 @@
 				C38E55828F6FAC7D764BDB55 /* SAVYVisualTemplateTests.swift */,
 				4E55E0360BA2CAEDA692F662 /* SAVYPostNumberingTests.swift */,
 				7F320F84432D5816D1B13F94 /* SAVYReorderTests.swift */,
+				77576B856EFA336709A808D4 /* SAVYWatchCaptureTests.swift */,
 			);
 			path = SAVYTests;
 			sourceTree = "<group>";
@@ -369,6 +433,8 @@
 				A8BD89A861F5D8F81C7AD8A6 /* SocialPostFormView.swift */,
 				C012FD956DFC102F88B7CA11 /* Story.swift */,
 				72CDA1CA00DAA63B15761979 /* StoryFormView.swift */,
+				6A36B1640218622D388AB673 /* WatchCapture.swift */,
+				E9FF23861B45F843600DD87C /* WatchCaptureImporter.swift */,
 				91ECB28D206394A46BDB0729 /* Fonts */,
 				ED4751A86936C48347791FA0 /* Resources */,
 			);
@@ -396,6 +462,28 @@
 				6DC7E0E10C3DC45A574F62B0 /* PersonalAuthorityCandidates.json */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		375BCEE16B3992FA533EBF39 /* SAVYWatch */ = {
+			isa = PBXGroup;
+			children = (
+				F9C261334CCC8565EC29AE16 /* Assets.xcassets */,
+				D73F09EE699CF0E5CC47C109 /* CaptureIntents.swift */,
+				73D1DA0C9F53502B62E41E5A /* CaptureViews.swift */,
+				931C459C9E2A1B3CD6D0A951 /* SAVYWatch.entitlements */,
+				374B6128147255FE0A3B6D23 /* SAVYWatchApp.swift */,
+				CA00420E1092B1A99A384156 /* WatchCaptureStore.swift */,
+			);
+			path = SAVYWatch;
+			sourceTree = "<group>";
+		};
+		7A001D6B12120F9AD54B5091 /* SAVYWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				19418D13C35444B90B9690B0 /* Info.plist */,
+				1C59B8520FA418B9B4F57327 /* SAVYWatchWidgets.swift */,
+			);
+			path = SAVYWatchWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -459,6 +547,46 @@
 			productReference = 81B8D9162176E51C28F60467 /* SAVY.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D52AEA9A6124963C9E9A1505 /* SAVYWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6B5A4B06616740E0A278F792 /* Build configuration list for PBXNativeTarget "SAVYWatch" */;
+			buildPhases = (
+				EDD0EE08DCF27844A3CE25D3 /* Sources */,
+				4E1C02D10E4DD8778E91080D /* Frameworks */,
+				C68D08EB34740E088CD23D29 /* Resources */,
+				1728010C66B45BE04243E62B /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8CD2D60D1856C07429FFF657 /* PBXTargetDependency */,
+			);
+			name = SAVYWatch;
+			packageProductDependencies = (
+			);
+			productName = SAVYWatch;
+			productReference = 9B06763EA1F7CB6AF0CC959F /* SAVYWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		CE5CBA9FAF4BEF74BF1FEB13 /* SAVYWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 67B0E37C9BE0315A45633F10 /* Build configuration list for PBXNativeTarget "SAVYWatchWidgets" */;
+			buildPhases = (
+				57A043ED18BA94DBEA600618 /* Sources */,
+				EA2BCE28554C43B69E5385C7 /* Frameworks */,
+				BD3DF005CCC9DACB483E765D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SAVYWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = SAVYWatchWidgets;
+			productReference = 91B17E61877132E8A3B62738 /* SAVYWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -478,6 +606,14 @@
 						TestTargetID = F9770833D9C90E9EA5883D75;
 					};
 					F9770833D9C90E9EA5883D75 = {
+						DevelopmentTeam = 7FKUS5M5QS;
+						ProvisioningStyle = Automatic;
+					};
+					D52AEA9A6124963C9E9A1505 = {
+						DevelopmentTeam = 7FKUS5M5QS;
+						ProvisioningStyle = Automatic;
+					};
+					CE5CBA9FAF4BEF74BF1FEB13 = {
 						DevelopmentTeam = 7FKUS5M5QS;
 						ProvisioningStyle = Automatic;
 					};
@@ -504,6 +640,8 @@
 				F9770833D9C90E9EA5883D75 /* SAVY */,
 				C5F0F32DCB930F81E2318BB8 /* SAVYTests */,
 				C786FF3174742FDC23101F57 /* SAVYUITests */,
+				D52AEA9A6124963C9E9A1505 /* SAVYWatch */,
+				CE5CBA9FAF4BEF74BF1FEB13 /* SAVYWatchWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -518,6 +656,21 @@
 				2557A7638646B33DDAD75CA8 /* PersonalAuthorityCandidates.json in Resources */,
 				3F8FE417FB159DD5CC726CA6 /* Roboto-Medium.ttf in Resources */,
 				BC6829860ABA267D108308E1 /* amplifyconfiguration.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C68D08EB34740E088CD23D29 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				06788322FCCB40D031FCEC6E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BD3DF005CCC9DACB483E765D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -543,6 +696,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				55F6120B871A4DFF55843153 /* SAVYWatchCaptureTests.swift in Sources */,
 				E15EDD5654E39EC535C91980 /* EntryShareContentTests.swift in Sources */,
 				88337AF99E5BF9ADF975C3C2 /* SAVYCardTitleTests.swift in Sources */,
 				E0B2389A35640A13329FB075 /* SAVYCloudImageTests.swift in Sources */,
@@ -563,6 +717,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2ABD09B47477C77182D730F1 /* WatchCapture.swift in Sources */,
+				1D68888F26007A2A53E22943 /* WatchCaptureImporter.swift in Sources */,
 				1F81165E193B169485545DDD /* AWSGraphClient.swift in Sources */,
 				F6F01445457DD9AD6544F48D /* AWSGraphDiagnostic.swift in Sources */,
 				9F6BC503481DB377D87643B2 /* AmplifyAuthService.swift in Sources */,
@@ -632,6 +788,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EDD0EE08DCF27844A3CE25D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2E1318B999E6C02AED6D1297 /* CaptureIntents.swift in Sources */,
+				EAB6188994FFAA93E44B4DFA /* CaptureViews.swift in Sources */,
+				B2AE1F76067F7CD807F4C0D8 /* SAVYWatchApp.swift in Sources */,
+				8CAC5231E1A6A0AD710F468A /* WatchCapture.swift in Sources */,
+				B9F5EB4BAFC4AE55D8F915AA /* WatchCaptureStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		57A043ED18BA94DBEA600618 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C9E51A9B52949FDA23281AD6 /* SAVYWatchWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -644,6 +820,11 @@
 			isa = PBXTargetDependency;
 			target = F9770833D9C90E9EA5883D75 /* SAVY */;
 			targetProxy = 15FB44BCC65BA1A790448C18 /* PBXContainerItemProxy */;
+		};
+		8CD2D60D1856C07429FFF657 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CE5CBA9FAF4BEF74BF1FEB13 /* SAVYWatchWidgets */;
+			targetProxy = C83368AEBACC62D22C080FAE /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -891,6 +1072,116 @@
 			};
 			name = Release;
 		};
+		3685B4CCE65FD1D96B1A9ADD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SAVYWatch/SAVYWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7FKUS5M5QS;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SAVY;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.adamblair.savy;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adamblair.savy.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		7A85A4EE7FD4C12440D53B94 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SAVYWatch/SAVYWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7FKUS5M5QS;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SAVY;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.adamblair.savy;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adamblair.savy.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
+		};
+		FD458599A911F24BBBFF833D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7FKUS5M5QS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SAVYWatchWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SAVY;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adamblair.savy.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		DCC4A804DF60BEF6FA00A6A6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7FKUS5M5QS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SAVYWatchWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SAVY;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adamblair.savy.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -926,6 +1217,24 @@
 			buildConfigurations = (
 				377CFB8BE2AD3D588F9A36E1 /* Debug */,
 				EEF21691D2CC21239BA5B2DC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6B5A4B06616740E0A278F792 /* Build configuration list for PBXNativeTarget "SAVYWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3685B4CCE65FD1D96B1A9ADD /* Debug */,
+				7A85A4EE7FD4C12440D53B94 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		67B0E37C9BE0315A45633F10 /* Build configuration list for PBXNativeTarget "SAVYWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FD458599A911F24BBBFF833D /* Debug */,
+				DCC4A804DF60BEF6FA00A6A6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

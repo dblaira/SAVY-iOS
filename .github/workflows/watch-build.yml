@@ -1,0 +1,106 @@
+# Compiles SAVY Watch and SAVY for iPhone on a GitHub macOS runner, unsigned, and runs the
+# Watch capture unit tests. A build check only: nothing is signed, installed or published.
+name: Watch build
+
+on:
+  push:
+    paths:
+      - "SAVY/**"
+      - "SAVYWatch/**"
+      - "SAVYWatchWidgets/**"
+      - "SAVYTests/**"
+      - "SAVY.xcodeproj/**"
+      - ".github/workflows/watch-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: watch-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    name: SAVY Watch (watchOS Simulator)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode
+        run: xcodebuild -version
+      - name: Build Watch app and complication
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild build \
+            -project SAVY.xcodeproj \
+            -scheme SAVYWatch \
+            -configuration Debug \
+            -destination 'generic/platform=watchOS Simulator' \
+            -derivedDataPath build/watch \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/watch.log | grep -E "error:|warning:.*(SAVYWatch|WatchCapture)|BUILD (SUCCEEDED|FAILED)" || true
+          grep -E "error:" build/watch.log | sed -E 's/^.*\/(SAVY[^ ]*)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
+          grep -q "BUILD SUCCEEDED" build/watch.log
+      - name: Upload Watch log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-build-log
+          path: build/watch.log
+
+  phone:
+    name: SAVY (iOS Simulator) + Watch capture tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode
+        run: xcodebuild -version
+      - name: Pick an iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          for runtime in sorted(devices, reverse=True):
+              if "iOS" not in runtime:
+                  continue
+              for device in devices[runtime]:
+                  if device["name"].startswith("iPhone"):
+                      print(device["udid"]); sys.exit()
+          ')
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+          echo "Using simulator $UDID"
+      - name: Build SAVY and its tests
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild build-for-testing \
+            -project SAVY.xcodeproj \
+            -scheme SAVY \
+            -configuration Debug \
+            -destination "id=$SIM_UDID" \
+            -derivedDataPath build/phone \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/phone.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)|TEST BUILD (SUCCEEDED|FAILED)" || true
+          grep -E "error:" build/phone.log | sed -E 's/^.*\/(SAVY[^ ]*)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
+          grep -q -E "TEST BUILD SUCCEEDED|BUILD SUCCEEDED" build/phone.log
+      - name: Run Watch capture tests
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project SAVY.xcodeproj \
+            -scheme SAVY \
+            -destination "id=$SIM_UDID" \
+            -derivedDataPath build/phone \
+            -only-testing:SAVYTests/SAVYWatchCaptureTests \
+            2>&1 | tee build/tests.log | grep -E "Test Case|error:|Executed|TEST (SUCCEEDED|FAILED)" || true
+          grep -E "error:" build/tests.log | sed -E 's/^.*\/(SAVY[^ ]*)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
+          grep -q "TEST SUCCEEDED" build/tests.log
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phone-build-logs
+          path: build/*.log
