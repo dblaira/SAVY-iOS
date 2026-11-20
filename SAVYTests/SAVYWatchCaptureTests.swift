@@ -132,7 +132,8 @@ final class SAVYWatchCaptureTests: XCTestCase {
         let record = try WatchCaptureInbox.record(for: capture)
         let moved = CKRecord(recordType: record.recordType, recordID: WatchCaptureInbox.recordID(for: other.id))
         moved["schemaVersion"] = record["schemaVersion"]
-        moved.encryptedValues["payload"] = record.encryptedValues["payload"] as? Data
+        let payload = try XCTUnwrap(record.encryptedValues["payload"] as? Data)
+        moved.encryptedValues["payload"] = payload as NSData
         XCTAssertThrowsError(try WatchCaptureInbox.capture(from: moved))
     }
 }

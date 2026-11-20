@@ -18,6 +18,18 @@ Use his words. Adam, Nov 18: “when AI uses their labels, it kind of robs me of
 
 Adam, Nov 17: “I agree the SAVY app has beautiful forms, but I have considered that and still see feel there is a gap.” Claude’s Nov 17 reading called the gap “the feeling layer”, found by cutting. That was Claude’s label, and his Nov 18 words supersede it: cutting the video down to stand alone was the holding back. Do not use that label with him.
 
+## Apple Watch — November 20, 2026
+
+Adam: “Okay, we're going to build an Apple Watch app for the SAVY app. I put a lot of the details in this document and I was talking to Gemini when I did it.” The document is “SAVY On Your Wrist Without Breaking Your Stride”: the Action Button or Siri captures into Action, Reminder, Calendar Event or Staged Social Post, the Watch saves first and shows the exact words as proof, and the iPhone and Mac process after the run.
+
+Adam, during the build: “I'm gonna put the same type of iPhone Apple Watch app on for three or four of my other apps and it's gonna have almost identical functionality”. He will ask later to save and improve the workflow. Record reusable steps and lessons in the Watch doc as you go.
+
+Built on `claude/awesome-heisenberg-s7jdkk`: the `SAVYWatch` app with four doors (Action, Reminder, Calendar, Social), Watch dictation, a four-second proof screen with one-tap re-record, a local-first queue, his four Siri phrases, an Action Button shortcut, and the `SAVYWatchWidgets` complication. Captures go to their own iCloud zone, `SAVYWatchInboxV1`, in the existing container. The iPhone and Mac turn each one into a normal entry through `ReminderStore.save`, after iCloud sync confirms the owner. Never let the Watch write to `SAVYEntriesV1`. A Social capture answers the first Generalization question only, in line with the YouTube habit: “Common scenario is that I am out for a run and have an idea hit me.”
+
+The plan's on-Watch transcription of a recording cannot be built: Apple's speech-to-text frameworks are not on watchOS. The words come from Watch dictation, and no raw audio is kept; whether to keep audio is Adam's open question. There is no AWS upload (AWS was cancelled Oct 12), no WatchConnectivity path, no StoreKit 2, and no embedding in the iPhone app yet.
+
+Status: written in a cloud session without Xcode or his Macs. It is compiled only by the GitHub Actions check `.github/workflows/watch-build.yml`. It is not signed, installed or tested on his Watch. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
+
 ## Generalization theme — November 9, 2026
 
 Adam: “I need to add a generalization form to the ios and mac os savy app. The general shape of my forms is 4 questions.  The closest match I have is Pattern Recognition, but I need one for Generalization.”
