@@ -42,10 +42,12 @@ final class WatchRecorder: ObservableObject {
             try session.setCategory(.record, mode: .default)
             try session.setActive(true)
             let settings: [String: Any] = [
+                // Speech needs little: 16 kHz mono at 24 kbps is about 3 KB a second, so a
+                // recording reaches the nearby iPhone in a few small live messages.
                 AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: 22_050,
+                AVSampleRateKey: 16_000,
                 AVNumberOfChannelsKey: 1,
-                AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
+                AVEncoderBitRateKey: 24_000,
             ]
             let recorder = try AVAudioRecorder(url: url, settings: settings)
             recorder.isMeteringEnabled = true

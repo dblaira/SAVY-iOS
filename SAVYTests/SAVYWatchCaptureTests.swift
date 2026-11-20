@@ -187,6 +187,14 @@ final class SAVYWatchCaptureTests: XCTestCase {
         XCTAssertTrue(EntryAutoTitle.isGenericName(action.title))
     }
 
+    func testFixListTurnsKodakIntoCodex() {
+        // Adam, Nov 20: “it might change CODEX to KODAK or something like that.”
+        XCTAssertEqual(WatchCaptureTranscriber.corrected("Ask KODAK to review the Watch build"),
+                       "Ask Codex to review the Watch build")
+        XCTAssertEqual(WatchCaptureTranscriber.corrected("kodak's answer"), "Codex's answer")
+        XCTAssertEqual(WatchCaptureTranscriber.corrected("Kodaks stay as said"), "Kodaks stay as said")
+    }
+
     func testVocabularyHintsIncludeCodex() {
         // Adam, Nov 20: dictation “might change CODEX to KODAK”.
         XCTAssertTrue(WatchCaptureConfig.vocabulary.contains("Codex"))

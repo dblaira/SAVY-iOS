@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Speech
 
@@ -35,11 +36,64 @@ enum WatchRecordingFiles {
     }
 }
 
-/// Writes out the words of a Watch recording, on this device when it can. Adam's own words
-/// (WatchCaptureConfig.vocabulary) are given to the recognizer as hints, so “Codex” is less
-/// likely to come back as “Kodak”. The recording is kept either way, so any word can be checked.
+/// Writes out the words of a Watch recording, on this device. On iOS 26 and later it uses the
+/// on-device SpeechAnalyzer first, which can work while the app is in the background; the older
+/// recognizer is the fallback. Adam's own words (WatchCaptureConfig.vocabulary) are given as hints,
+/// and his fix list (WatchCaptureConfig.corrections, such as “Kodak” → “Codex”) is applied last.
+/// The recording is kept either way, so any word can be checked.
 enum WatchCaptureTranscriber {
     static func words(fromRecordingAt url: URL) async -> String? {
+        var text: String? = nil
+        if #available(iOS 26.0, *) {
+            text = await analyzerWords(fromRecordingAt: url)
+        }
+        if text == nil {
+            text = await recognizerWords(fromRecordingAt: url)
+        }
+        return text.map(corrected)
+    }
+
+    /// Whole words from the fix list, matched without regard to case.
+    static func corrected(_ text: String) -> String {
+        var result = text
+        for (heard, meant) in WatchCaptureConfig.corrections {
+            let pattern = "\\b" + NSRegularExpression.escapedPattern(for: heard) + "\\b"
+            result = result.replacingOccurrences(of: pattern, with: NSRegularExpression.escapedTemplate(for: meant),
+                                                 options: [.regularExpression, .caseInsensitive])
+        }
+        return result
+    }
+
+    @available(iOS 26.0, *)
+    private static func analyzerWords(fromRecordingAt url: URL) async -> String? {
+        guard SpeechTranscriber.isAvailable,
+              let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale.current) else { return nil }
+        let transcriber = SpeechTranscriber(locale: locale, preset: .transcription)
+        do {
+            if let installation = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
+                try await installation.downloadAndInstall()
+            }
+            let analyzer = SpeechAnalyzer(modules: [transcriber], options: nil)
+            let context = AnalysisContext()
+            context.contextualStrings[.general] = WatchCaptureConfig.vocabulary
+            try await analyzer.setContext(context)
+            async let collected = transcriber.results.reduce(into: AttributedString()) { whole, result in
+                whole += result.text
+            }
+            let file = try AVAudioFile(forReading: url)
+            if let last = try await analyzer.analyzeSequence(from: file) {
+                try await analyzer.finalizeAndFinish(through: last)
+            } else {
+                await analyzer.cancelAndFinishNow()
+            }
+            let text = String(try await collected.characters).trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? nil : text
+        } catch {
+            return nil
+        }
+    }
+
+    private static func recognizerWords(fromRecordingAt url: URL) async -> String? {
         guard await isAuthorized(), let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else { return nil }
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.shouldReportPartialResults = false

@@ -109,6 +109,16 @@ final class WatchCaptureStore: ObservableObject {
         return true
     }
 
+    /// The words the nearby iPhone wrote out. A capture still on the Watch sends them with it;
+    /// one already in iCloud keeps them for the wrist only, because the iPhone writes them out
+    /// again when it makes the entry.
+    func applyWordsFromPhone(_ words: String, to id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }), items[index].capture.words.isEmpty else { return }
+        items[index].capture = items[index].capture.replacingWords(words)
+        _ = persist()
+        WKInterfaceDevice.current().play(.click)
+    }
+
     /// Only a draft can be thrown away; a saved capture may already be on its way.
     func discardDraft(_ id: UUID) {
         guard let item = item(id: id), item.isDraft else { return }

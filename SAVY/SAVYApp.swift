@@ -15,7 +15,11 @@ final class SavyAppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        if !SavyRuntime.isTesting { application.registerForRemoteNotifications() }
+        if !SavyRuntime.isTesting {
+            application.registerForRemoteNotifications()
+            // The Watch sends recordings here to have their words written out (watch capture kit).
+            WatchCapturePhoneLink.shared.activate()
+        }
         return true
     }
 }

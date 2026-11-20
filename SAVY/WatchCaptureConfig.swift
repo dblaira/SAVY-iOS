@@ -11,6 +11,8 @@ enum WatchCaptureConfig {
     static let storageFolder = "SAVYWatch"
     /// Adam's own words, given to the speech recognizer as hints when it writes out a recording.
     static let vocabulary: [String] = ["Codex", "Claude", "Gemini", "SAVY", "Understood", "Harness", "Cowboy AI", "Generalization", "Xcode", "YouTube", "Dr Plants", "Blue's Clues"]
+    /// Words the recognizer keeps mishearing, and what Adam meant. Whole words, any case.
+    static let corrections: [String: String] = ["Kodak": "Codex"]
 }
 
 /// The doors on the wrist, in order. Raw values are what the iPhone and Mac receive.

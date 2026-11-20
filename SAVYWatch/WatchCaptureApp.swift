@@ -20,6 +20,10 @@ struct WatchCaptureApp: App {
 /// Sends waiting captures whenever the app comes to the front or watchOS wakes it to retry.
 @MainActor
 final class WatchCaptureAppDelegate: NSObject, WKApplicationDelegate {
+    func applicationDidFinishLaunching() {
+        WatchPhoneLink.shared.activate()
+    }
+
     func applicationDidBecomeActive() {
         Task { await WatchCaptureStore.shared.sendPending() }
     }

@@ -111,6 +111,7 @@ struct CaptureHomeView: View {
         guard let result = recorder.stop(),
               let capture = store.keepRecording(at: result.url, duration: result.duration) else { return }
         route = .review(capture.id)
+        WatchPhoneLink.shared.askPhoneForWords(capture, audioURL: result.url)
     }
 
     private func reRecord(replacing id: UUID) {
@@ -127,6 +128,8 @@ struct CaptureHomeView: View {
         case "recording":
             recorder.showDemoRecording()
         case "review":
+            // As if the nearby iPhone had already sent back the words.
+            store.applyWordsFromPhone(WatchCaptureKind.saveDefault.demoWords, to: recording.id)
             route = .review(recording.id)
         case "saved":
             store.save(recording.id, as: WatchCaptureKind.saveDefault)
@@ -204,6 +207,7 @@ struct ReviewView: View {
     let onReRecord: () -> Void
     @EnvironmentObject private var store: WatchCaptureStore
     @StateObject private var player = WatchRecordingPlayer()
+    @ObservedObject private var link = WatchPhoneLink.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var deleted = false
@@ -261,6 +265,8 @@ struct ReviewView: View {
                             .foregroundStyle(WatchTheme.text.opacity(0.8))
                     }
                 }
+
+                WrittenWords(item: item, isWaiting: link.waiting.contains(item.id))
 
                 Button { save(as: WatchCaptureKind.saveDefault) } label: {
                     VStack(spacing: 0) {
@@ -357,6 +363,7 @@ struct CaptureProofView: View {
 struct CaptureProofContent: View {
     let item: WatchCaptureStore.Item
     @ObservedObject var player: WatchRecordingPlayer
+    @ObservedObject private var link = WatchPhoneLink.shared
     @EnvironmentObject private var store: WatchCaptureStore
 
     var body: some View {
@@ -373,12 +380,6 @@ struct CaptureProofContent: View {
                         .padding(.vertical, 3)
                         .background(WatchTheme.door, in: Capsule())
                 }
-                if !item.capture.words.isEmpty {
-                    Text(item.capture.words)
-                        .font(.body)
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
                 if item.capture.hasRecording {
                     Button {
                         if let url = store.audioURL(for: item.capture) { player.toggle(url) }
@@ -388,16 +389,8 @@ struct CaptureProofContent: View {
                             .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
-                    Text("Your iPhone writes out the words.")
-                        .font(.footnote)
-                        .foregroundStyle(WatchTheme.text.opacity(0.8))
                 }
-                if let window = item.capture.proposedWindow {
-                    Label(Self.describe(window, timeZoneIdentifier: item.capture.timeZoneIdentifier),
-                          systemImage: "calendar")
-                        .font(.footnote)
-                        .foregroundStyle(WatchTheme.text)
-                }
+                WrittenWords(item: item, isWaiting: link.waiting.contains(item.id))
                 Label(item.statusText(problem: store.problem), systemImage: item.statusSymbol)
                     .font(.footnote)
                     .foregroundStyle(WatchTheme.text)
@@ -414,6 +407,41 @@ struct CaptureProofContent: View {
         var time = Date.FormatStyle().hour().minute()
         time.timeZone = zone
         return window.start.formatted(day) + " · " + window.start.formatted(time)
+    }
+}
+
+/// The words, so a misheard one (“Kodak” for “Codex”) shows before it reaches the entry. They come
+/// from Siri, or from the nearby iPhone a few seconds after a recording stops.
+struct WrittenWords: View {
+    let item: WatchCaptureStore.Item
+    let isWaiting: Bool
+
+    var body: some View {
+        if !item.capture.words.isEmpty {
+            Text(item.capture.words)
+                .font(.body)
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("WatchWrittenWords")
+            if let window = item.capture.proposedWindow {
+                Label(CaptureProofContent.describe(window, timeZoneIdentifier: item.capture.timeZoneIdentifier),
+                      systemImage: "calendar")
+                    .font(.footnote)
+                    .foregroundStyle(WatchTheme.text)
+            }
+        } else if isWaiting {
+            HStack(spacing: 6) {
+                ProgressView()
+                    .frame(width: 18, height: 18)
+                Text("Your iPhone is writing out the words…")
+                    .font(.footnote)
+                    .foregroundStyle(WatchTheme.text)
+            }
+        } else if item.capture.hasRecording {
+            Text("Your iPhone writes out the words.")
+                .font(.footnote)
+                .foregroundStyle(WatchTheme.text.opacity(0.8))
+        }
     }
 }
 

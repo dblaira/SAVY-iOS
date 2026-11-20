@@ -21,6 +21,9 @@
     "Dr Plants",
     "Blue's Clues"
   ],
+  "corrections": {
+    "Kodak": "Codex"
+  },
   "microphoneUsage": "SAVY records what you say so your iPhone can write out the words.",
   "theme": {
     "background": "08172D",

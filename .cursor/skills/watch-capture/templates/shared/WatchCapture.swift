@@ -186,3 +186,16 @@ enum WatchCaptureInbox {
         (record[audioKey] as? CKAsset)?.fileURL
     }
 }
+
+/// The live messages between the Watch and the nearby iPhone: the recording in parts one way,
+/// the written-out words the other. Kept here so both sides agree.
+enum WatchLinkMessage {
+    static let type = "type"
+    static let recordingPart = "recordingPart"
+    static let words = "words"
+    static let captureID = "captureID"
+    static let index = "index"
+    static let count = "count"
+    static let fileExtension = "ext"
+    static let data = "data"
+}

@@ -21,7 +21,10 @@ Adam, Nov 20, on the Watch design: “one large button that I can press. The ide
 What one run produces in an app:
 - **One big record button** on the Watch, like Voice Memos: one press records, one press stops. The Action Button's “Capture” shortcut opens the app already recording.
 - **A review screen.** Play the recording back. One tap on Save files it as the default type (`defaultKind`), or one tap on another type files it as that. Leaving the screen saves it too; only Delete throws it away. The wrist taps on save, and a proof screen shows the iCloud status.
-- **The words are written out by the iPhone or Mac.** watchOS has no speech-to-text, so the iPhone or Mac writes out each recording, with Adam's `vocabulary` as recognizer hints. The recording is kept on each device, and a play row in the entry sits beside the words, so “Kodak” can be checked and fixed.
+- **The nearby iPhone writes out the words and sends them back to the wrist.** Adam: “let's just assume that I have my phone with me ... the phone should be able to intervene or show me the text.” watchOS has no speech-to-text. Right after a recording stops, it goes to the iPhone in live messages, which wake the iPhone app in the background. The iPhone writes out the words and sends them back, and the review screen shows them.
+  - The iPhone uses SpeechAnalyzer on iOS 26 and later, with the older recognizer as the fallback. Adam's `vocabulary` goes in as hints, and his `corrections` (“Kodak” → “Codex”) are applied last.
+  - When the iPhone is out of reach, the words are written out later, when the app opens on the iPhone or Mac.
+  - The recording is kept on each device, with a play row in the entry beside the words.
 - Siri phrases, one per kind, which save Siri's words directly. A watch face complication.
 - Captures travel through the app's own iCloud inbox zone. The first iPhone or Mac to process a capture claims it, so only one entry is made.
 
@@ -33,8 +36,8 @@ SAVY was the first app; its build record is `docs/watch/savy-watch.md` in SAVY-i
 |---|---|
 | `scripts/watchkit.py` | `files` writes the code and settings; `wire` adds the targets to the Xcode project; `check` reports the project; `sync` refreshes templates from SAVY |
 | `scripts/ci_results.py` | Reads a CI run from its job logs: each job's result, the compiler crash and failure lines, and the Watch screenshots saved as PNG files |
-| `templates/shared/` | `WatchCapture.swift` (capture, day-and-hour reader, iCloud record with the recording as an asset), built by the iPhone/Mac and the Watch. `WatchCaptureImporter.swift` (claim, keep the recording, write out the words, save), `WatchCaptureTranscriber.swift` and `WatchRecordingRow.swift` (play beside the words), built by the iPhone/Mac only. The same in every app |
-| `templates/watch/` | Watch app, recorder and player, local queue and sender, big button, review and proof screens. The same in every app |
+| `templates/shared/` | Built by the iPhone/Mac and the Watch: `WatchCapture.swift` (capture, day-and-hour reader, iCloud record with the recording as an asset, link message keys). Built by the iPhone/Mac only: `WatchCaptureImporter.swift` (claim, keep the recording, write out the words, save), `WatchCaptureTranscriber.swift`, `WatchRecordingRow.swift` (play beside the words) and `WatchCapturePhoneLink.swift` (receive a recording from the Watch, send the words back). The same in every app |
+| `templates/watch/` | Watch app, recorder and player, phone link, local queue and sender, big button, review and proof screens. The same in every app |
 | `templates/widgets/` | Complication. The same in every app |
 | `templates/ci/` | GitHub Actions build check and the Watch scheme |
 | `watch-capture.json` at the SAVY-iOS root | The worked example of an app config |
@@ -50,6 +53,7 @@ Generated per app from the config: `WatchCaptureConfig.swift` (names, iCloud zon
    - `inboxZoneName` and `recordType`, unique per app, such as `UnderstoodWatchInboxV1`;
    - `kinds` and `defaultKind`, the type a plain Save uses;
    - `vocabulary`, Adam's names and terms for the speech recognizer;
+   - `corrections`, words it keeps mishearing mapped to what he meant;
    - `microphoneUsage`.
 
    Use Adam's own words for type labels and Siri phrases. Each phrase must contain `{app}`. An app can register at most 10 App Shortcuts, so use at most nine kinds. A kind's `case` is the raw value the iPhone/Mac side receives.
@@ -63,6 +67,7 @@ Generated per app from the config: `WatchCaptureConfig.swift` (names, iCloud zon
    Also:
    - Add `WatchRecordingRow(entryID:)` at the top of the app's entry form, shown only when `WatchRecordingFiles.url(for:)` finds a recording.
    - Add `NSSpeechRecognitionUsageDescription` to the app's Info.plist.
+   - Call `WatchCapturePhoneLink.shared.activate()` in the app delegate's `didFinishLaunching`, but not under tests. The Watch's messages arrive there, even when iOS launches the app in the background.
 6. **Hook the import.** Call `await WatchCaptureImporter.shared.importPending(into: store)` on launch and on each foreground refresh, and only after the app's own iCloud sync has confirmed the signed-in owner. In SAVY, `RootView.importWatchCaptures()` gates on `CloudKitDocumentSync.status`.
 7. **Write tests** for the mapping in the app's unit test target, and list them in `xcode.testFiles`. SAVY's are in `SAVYTests/SAVYWatchCaptureTests.swift`. They test values only: no store, no iCloud, no Watch.
 8. **Wire the project, once:** `python3 .cursor/skills/watch-capture/scripts/watchkit.py wire --config watch-capture.json`. It must report no dangling references and no file outside a group. Every kit file must sit in the right target's Sources phase.
@@ -74,7 +79,7 @@ Generated per app from the config: `WatchCaptureConfig.swift` (names, iCloud zon
 
    Read the results with `python3 .cursor/skills/watch-capture/scripts/ci_results.py --repo OWNER/REPO --branch BRANCH --out DIR`. Fix until green, and send Adam the screenshots.
 10. **Install, on Adam's Mac.** Open the project, choose the Watch scheme and his Watch, and Run. If signing mentions iCloud, tick the app's container under Signing & Capabilities for the Watch target. The first install asks for Developer Mode on the Watch. Install the iPhone and Mac apps from the same branch, because they do the importing.
-11. **On the Watch.** Settings, Action Button, Action, Shortcut: pick the app's “Capture”, which opens the app already recording. Allow the microphone on the first recording. Add the complication to a watch face. Try each Siri phrase. On the iPhone, allow Speech Recognition when the first recording arrives.
+11. **On the Watch.** Settings, Action Button, Action, Shortcut: pick the app's “Capture”, which opens the app already recording. Allow the microphone on the first recording. Add the complication to a watch face. Try each Siri phrase. On the iPhone, open the app once with the Watch app installed and allow Speech Recognition; the link asks then.
 12. **Record it** in the app's AGENTS.md: Adam's words, what was built, what is verified, and what is not.
 
 ## Decisions carried from SAVY, and why
@@ -82,6 +87,9 @@ Generated per app from the config: `WatchCaptureConfig.swift` (names, iCloud zon
 - **The Watch records; the iPhone or Mac writes out the words.** Apple's speech-to-text frameworks (`SFSpeechRecognizer`, `SpeechAnalyzer`) are not available on watchOS. Watch dictation always opens Apple's own dictation screen first, so it cannot start on one press. Recording sound can. Adam chose this on Nov 20: one press records, and he checks the words on the iPhone beside the recording.
 - **Recording starts on screen** (watchOS refuses to start it in the background). The `audio` background mode keeps it going when the wrist drops; verify this on a real Watch.
 - **A recording is never lost.** It is kept on the Watch the moment it stops. Leaving the review screen saves it, and a draft left by a closed app is saved at the next launch.
+- **The phone link only writes out words; it never makes the entry.** Entries are still made once, through the iCloud import, so the live path cannot double anything. Words that arrive after Save are shown on the wrist only. The iPhone writes them out again when it imports.
+- **Live messages, not file transfers.** `transferFile` is queued and not delivered right away. `sendMessage` from an active Watch app wakes the iPhone app in the background. Recordings are 16 kHz mono AAC at 24 kbps and travel in 48 KB parts.
+- **Background speech is the open risk.** Older reports say `SFSpeechRecognizer` fails in the background (error 1700). SpeechAnalyzer (iOS 26+) is on-device and tried first. If neither works with the phone in a pocket, the words still arrive later; verify on Adam's phone.
 - **One device makes the entry.** The first iPhone or Mac claims the capture in iCloud (`importedAt`, saved only if unchanged). Every device keeps its own copy of the recording. The claiming device deletes the capture from iCloud after two weeks.
 - **Each app's Watch writes only to its own inbox zone.** It never writes to the app's main sync zone. In SAVY, an unreadable record in the main zone stops entry sync until it is repaired, so a Watch bug must not be able to reach that zone.
 - **The importer is idempotent.** It saves locally before removing the capture from iCloud. A per-device ledger and the capture id keep an entry from being imported twice or coming back after deletion.

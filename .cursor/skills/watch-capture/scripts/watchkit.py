@@ -39,9 +39,11 @@ COPIED = [
     ("shared/WatchCaptureImporter.swift", "{shared}/WatchCaptureImporter.swift"),
     ("shared/WatchCaptureTranscriber.swift", "{shared}/WatchCaptureTranscriber.swift"),
     ("shared/WatchRecordingRow.swift", "{shared}/WatchRecordingRow.swift"),
+    ("shared/WatchCapturePhoneLink.swift", "{shared}/WatchCapturePhoneLink.swift"),
     ("watch/WatchCaptureApp.swift", "{watch}/WatchCaptureApp.swift"),
     ("watch/WatchCaptureStore.swift", "{watch}/WatchCaptureStore.swift"),
     ("watch/WatchRecorder.swift", "{watch}/WatchRecorder.swift"),
+    ("watch/WatchPhoneLink.swift", "{watch}/WatchPhoneLink.swift"),
     ("watch/CaptureViews.swift", "{watch}/CaptureViews.swift"),
     ("widgets/WatchCaptureWidgets.swift", "{widgets}/WatchCaptureWidgets.swift"),
     ("widgets/Info.plist", "{widgets}/Info.plist"),
@@ -117,6 +119,10 @@ def gen_config(cfg):
         f"    static let storageFolder = {swift(cfg['storageFolder'])}",
         "    /// Adam's own words, given to the speech recognizer as hints when it writes out a recording.",
         "    static let vocabulary: [String] = [" + ", ".join(swift(w) for w in cfg["vocabulary"]) + "]",
+        "    /// Words the recognizer keeps mishearing, and what Adam meant. Whole words, any case.",
+        "    static let corrections: [String: String] = " + (
+            "[" + ", ".join(f"{swift(k)}: {swift(v)}" for k, v in cfg.get("corrections", {}).items()) + "]"
+            if cfg.get("corrections") else "[:]"),
         "}",
         "",
         "/// The doors on the wrist, in order. Raw values are what the iPhone and Mac receive.",
@@ -496,7 +502,8 @@ def cmd_wire(cfg, repo):
     refs, builds = "", ""
     # The iPhone/Mac app builds all of these; the Watch builds only the config and the capture model.
     shared_names = ["WatchCaptureConfig.swift", "WatchCapture.swift", "WatchCaptureImporter.swift",
-                    "WatchCaptureTranscriber.swift", "WatchRecordingRow.swift", x["destinationFile"]]
+                    "WatchCaptureTranscriber.swift", "WatchRecordingRow.swift", "WatchCapturePhoneLink.swift",
+                    x["destinationFile"]]
     shared_refs = {n: I(f"shared:{n}") for n in shared_names}
     for n, fid in shared_refs.items():
         refs += fileref(fid, n)
@@ -508,7 +515,7 @@ def cmd_wire(cfg, repo):
         prj.list_append(app_sources, "files", f"{app_build[n]} /* {n} in Sources */")
 
     watch_sources = ["CaptureIntents.swift", "CaptureViews.swift", "WatchCaptureApp.swift", "WatchCaptureStore.swift",
-                     "WatchRecorder.swift"]
+                     "WatchRecorder.swift", "WatchPhoneLink.swift"]
     watch_refs = {n: I(f"watch:{n}") for n in watch_sources + ["Assets.xcassets", f"{W}.entitlements", "Info.plist"]}
     widget_refs = {n: I(f"widgets:{n}") for n in ["WatchCaptureWidgets.swift", "Info.plist"]}
     for n, fid in list(watch_refs.items()) + list(widget_refs.items()):

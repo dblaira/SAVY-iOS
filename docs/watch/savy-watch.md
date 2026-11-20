@@ -18,6 +18,15 @@ He then chose two things:
 
 This replaces the first build's four doors with Watch dictation.
 
+Adam, next: “let's just assume that I have my phone with me, so if I don't have my phone with me then I won't be able to look at the text. If I do, then the phone should be able to intervene or show me the text. It could activate that way. There's gonna be situations where I don't have my phone with me, but rare, and if my phone's not actually with me, it's 10 feet away. Like it's within Bluetooth range”.
+
+So the nearby iPhone steps in:
+1. Right after a recording stops, the Watch sends it to the iPhone in live messages. A live message wakes SAVY on the iPhone in the background.
+2. The iPhone writes out the words and sends them back.
+3. The review screen shows “Your iPhone is writing out the words…”, then the words, and any day or hour it heard.
+
+When the iPhone is out of reach, the words are written out later, from iCloud.
+
 | Plan item | Built |
 |---|---|
 | Watch target inside `SAVY.xcodeproj` | `SAVYWatch` (watchOS 11+, bundle `com.adamblair.savy.watchkitapp`), display name SAVY |
@@ -28,7 +37,7 @@ This replaces the first build's four doors with Watch dictation.
 | Action Button | The “Capture” shortcut opens SAVY already recording, so the orange button is the one press |
 | Four Siri phrases | “Log an action in SAVY”, “Add a reminder in SAVY”, “Create a calendar event in SAVY”, “Stage a social post in SAVY”. Siri asks for the words, saves them and reads them back |
 | Local first | Every recording is written to the Watch the moment it stops. Waiting captures send when SAVY opens and when watchOS wakes it to retry |
-| Checking the words | The iPhone or Mac writes out the words, with Adam's own terms (Codex, Claude, SAVY, Generalization and more) as hints to the recognizer. The recording stays beside the words: a “Watch recording” play row at the top of the entry |
+| Checking the words | On the wrist: the nearby iPhone writes out the words a few seconds after you stop, and they show on the review screen. On the iPhone or Mac: the words in the entry, with a “Watch recording” play row at the top to hear what was actually said. The recognizer gets Adam's terms (Codex, Claude, SAVY, Generalization and more) as hints. A fix list (`corrections`: “Kodak” → “Codex”) is applied last |
 | Sync | iCloud, in SAVY's existing container `iCloud.com.adamblair.harness`, zone `SAVYWatchInboxV1` |
 
 ### How each capture lands on the iPhone and Mac
@@ -89,8 +98,9 @@ The Calendar proof shows “Lunch with Sam Friday at noon”, said on Friday Nov
 ## Open questions for Adam
 
 1. Does a recording keep going when your wrist drops mid-run? It should, with the audio background mode, but it has to be tried on the Ultra 3.
-2. Should the complication also open straight into recording, like the Action Button?
-3. Are there more words the iPhone keeps mishearing? Add them to `vocabulary` in `watch-capture.json`.
+2. Do the words come back to the wrist with the iPhone in your pocket? This relies on iOS letting SAVY write out words in the background. Older reports say the older recognizer can't. SAVY tries iOS 26's on-device SpeechAnalyzer first. If the words don't come back in your pocket, they still arrive on the iPhone when SAVY opens.
+3. Should the complication also open straight into recording, like the Action Button?
+4. Are there more words it keeps mishearing? Add them to `vocabulary` (hints) or `corrections` (fixes) in `watch-capture.json`.
 
 ## Reusing this for the other apps
 
