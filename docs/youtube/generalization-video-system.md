@@ -86,7 +86,7 @@ YouTube does not accept the same video twice. YouTube Help says the second uploa
 
 Adam: “What is the architecture of making 100 videos?” The answer, from ChatGPT’s reading of Zach Sperrazzo’s video, is in [Social Media Content](social-media-content.html): Demand, then Formula (title, thumbnail, intro), Format, Story, and a review after each upload.
 
-**My dot:** Most of it can be decided once. The format is the group lesson, and the four Generalization questions give the story its order. Each video then needs one Generalization entry plus a title, a thumbnail and a first line. The Images Visual already asks the thumbnail questions. No SAVY question asks for the title, the first line or the result yet.
+**My dot:** A video is a chain of decisions, and each one that is settled once stops being a link that can break on every video. Most of it can be decided once. The format is the group lesson, and the four Generalization questions give the story its order. Each video then needs one Generalization entry plus a title, a thumbnail and a first line. The Images Visual already asks the thumbnail questions. No SAVY question asks for the title, the first line or the result yet.
 
 ## November 17: the gap is the feeling, and it is found by cutting
 

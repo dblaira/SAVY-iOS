@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Social Media Content</title>
-<meta name="description" content="The architecture of making 100 YouTube videos, from ChatGPT's reading of Zach Sperrazzo's video, connected to Adam's Generalization form and group lesson.">
+<meta name="description" content="The architecture of making 100 YouTube videos: ChatGPT's reading of the video, Claude's research, and connections to Adam's Generalization form and group lesson.">
 <style>
   :root {
     --navy: #08172D;
@@ -17,9 +17,12 @@
     --surface: #F3EAD5;
     --surface-soft: #FBF7EE;
     --dot: #FFF3F5;
-    --dot-edge: #E60E44;
+    --research: #EEF2F8;
+    --research-edge: #08172D;
     --link: #B0002E;
     --once-edge: transparent;
+    --agree: #2A7A4B;
+    --differ: #B0002E;
     --serif: "Bodoni 72 Oldstyle", "Bodoni 72", "Didot", "Bodoni Moda", "Times New Roman", serif;
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   }
@@ -32,8 +35,12 @@
       --surface: #16243E;
       --surface-soft: #111D33;
       --dot: #26162A;
+      --research: #132845;
+      --research-edge: #8FA8D6;
       --link: #FF7D9A;
       --once-edge: #34446A;
+      --agree: #6FD49A;
+      --differ: #FF7D9A;
     }
   }
   :root[data-theme="dark"] {
@@ -44,20 +51,20 @@
     --surface: #16243E;
     --surface-soft: #111D33;
     --dot: #26162A;
+    --research: #132845;
+    --research-edge: #8FA8D6;
     --link: #FF7D9A;
     --once-edge: #34446A;
+    --agree: #6FD49A;
+    --differ: #FF7D9A;
   }
 
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  body {
-    margin: 0;
-    background: var(--page);
-    color: var(--ink);
-    font: 16px/1.55 var(--sans);
-  }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 var(--sans); }
   .wrap { max-width: 880px; margin: 0 auto; padding: 0 16px; }
-  a { color: var(--link); text-underline-offset: 2px; }
+  a { color: var(--link); text-underline-offset: 2px; overflow-wrap: anywhere; }
+  q { quotes: "“" "”"; }
 
   /* Header */
   .hero { background: var(--navy); color: #FFFFFF; border-bottom: 1px solid var(--crimson); }
@@ -68,12 +75,18 @@
   .hero .date { margin: 18px 0 0; font-size: 13px; color: var(--tan); }
 
   /* Source note */
-  .source-note { margin: 24px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); font-size: 14px; color: var(--muted); }
+  .source-note { margin: 24px 0 0; padding: 14px 16px 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); font-size: 14px; color: var(--muted); }
   .source-note strong { color: var(--ink); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; padding: 0; list-style: none; }
+  .legend li { margin: 0; display: flex; align-items: center; gap: 6px; }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); }
+  .swatch.chatgpt { background: var(--page); }
+  .swatch.research { background: var(--research); border-left: 3px solid var(--research-edge); }
+  .swatch.dot { background: var(--dot); border-left: 3px solid var(--crimson); }
 
   /* Track */
   .track { list-style: none; margin: 28px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; counter-reset: step; }
-  .track li { position: relative; background: var(--surface); border-radius: 12px; padding: 12px 12px 12px; min-width: 0; }
+  .track li { background: var(--surface); border-radius: 12px; padding: 12px; min-width: 0; margin: 0; }
   .track li::before { counter-increment: step; content: counter(step); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--crimson); color: #FFFFFF; font: 700 12px/1 var(--sans); }
   .track b { display: block; margin-top: 8px; font-family: var(--serif); font-weight: 400; font-size: 22px; line-height: 1.1; }
   .track span { display: block; margin-top: 4px; font-size: 13px; line-height: 1.35; color: var(--muted); }
@@ -88,6 +101,15 @@
   ol, ul { margin: 0 0 12px; padding-left: 22px; }
   li { margin: 0 0 8px; }
   .src { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+
+  /* Chain */
+  .chain { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 12px; }
+  .chain > div { background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .links { display: flex; gap: 6px; margin: 4px 0 10px; flex-wrap: wrap; }
+  .links span { display: inline-grid; place-items: center; min-width: 44px; height: 30px; padding: 0 6px; border-radius: 15px; border: 2px solid var(--crimson); font: 700 13px/1 var(--sans); color: var(--crimson); }
+  .links span.set { border-color: var(--line); color: var(--muted); text-decoration: line-through; }
+  .odds { font-family: var(--serif); font-size: 40px; line-height: 1; margin: 0 0 4px; }
+  .odds small { font-family: var(--sans); font-size: 14px; color: var(--muted); }
 
   /* Set once / each video */
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0 0; }
@@ -105,16 +127,24 @@
   .card { background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 4px; font-size: 15px; }
   .callout { border-left: 3px solid var(--crimson); background: var(--surface); border-radius: 0 12px 12px 0; padding: 14px 16px 4px; margin: 0 0 12px; }
 
-  /* Claude's connections */
-  .dot { margin: 16px 0 0; background: var(--dot); border: 1px solid color-mix(in srgb, var(--dot-edge) 25%, transparent); border-radius: 12px; padding: 14px 16px 4px; font-size: 15px; }
-  .dot .label { display: inline-block; margin: 0 0 8px; font: 700 11px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--crimson); }
-  q { quotes: "“" "”"; }
+  /* Research and Claude's connections */
+  .research, .dot { margin: 16px 0 0; border-radius: 0 12px 12px 0; padding: 14px 16px 4px; font-size: 15px; }
+  .research { background: var(--research); border-left: 3px solid var(--research-edge); }
+  .dot { background: var(--dot); border-left: 3px solid var(--crimson); }
+  .label { display: inline-block; margin: 0 0 8px; font: 700 11px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; }
+  .research .label { color: var(--research-edge); }
+  .dot .label { color: var(--crimson); }
+  .research ul { padding-left: 18px; }
+  .research .via { font-size: 13px; color: var(--muted); }
 
-  /* Review table */
-  .review { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 15px; }
-  .review th, .review td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
-  .review thead th { background: var(--surface); font-size: 13px; letter-spacing: .02em; }
+  /* Tables */
+  .grid-table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 15px; }
+  .grid-table th, .grid-table td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .grid-table thead th { background: var(--surface); font-size: 13px; letter-spacing: .02em; }
   .review tbody th { width: 40%; }
+  .verdict { display: inline-block; padding: 2px 9px; border-radius: 10px; font: 700 12px/1.5 var(--sans); border: 1px solid currentColor; white-space: nowrap; }
+  .verdict.agree { color: var(--agree); }
+  .verdict.differ { color: var(--differ); }
 
   /* Brief */
   .brief { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 12px; }
@@ -130,14 +160,15 @@
   @media (max-width: 720px) {
     .track { grid-template-columns: 1fr 1fr; }
     .track li:last-child { grid-column: 1 / -1; }
-    .cards, .split, .brief { grid-template-columns: 1fr; }
+    .cards, .split, .brief, .chain { grid-template-columns: 1fr; }
   }
-  @media (max-width: 560px) {
-    .review thead { display: none; }
-    .review, .review tbody, .review tr, .review th, .review td { display: block; width: 100%; }
-    .review tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
-    .review th, .review td { border: 0; padding: 4px 0; }
+  @media (max-width: 600px) {
+    .grid-table thead { display: none; }
+    .grid-table, .grid-table tbody, .grid-table tr, .grid-table th, .grid-table td { display: block; width: 100%; }
+    .grid-table tr { border-bottom: 1px solid var(--line); padding: 10px 0; }
+    .grid-table th, .grid-table td { border: 0; padding: 3px 0; }
     .review tbody th { width: 100%; }
+    .grid-table td[data-col]::before { content: attr(data-col) ": "; font-weight: 700; color: var(--muted); font-size: 13px; }
   }
 </style>
 </head>
@@ -148,15 +179,21 @@
     <p class="kicker">YouTube · Architecture</p>
     <h1>Social Media Content</h1>
     <p class="lede">The architecture of making 100 YouTube videos: the decisions every video makes, which ones can be made once, and which ones each video makes fresh.</p>
-    <p class="date">November 20, 2026</p>
+    <p class="date">November 20, 2026 · second version, with research added</p>
   </div>
 </header>
 
 <main class="wrap">
 
-  <p class="source-note">
-    <strong>Source.</strong> The pillars, their wording and the timestamps come from ChatGPT’s reading of Zach Sperrazzo’s video, <a href="https://www.youtube.com/watch?v=PAwGwyfA428">Give Me 40 Minutes &amp; I’ll Make You Disgustingly Good at YouTube</a>, which Adam shared as a PDF (<a href="social-media-content-chatgpt.pdf">original</a>). Claude could not open the video because YouTube blocks cloud computers, so the timestamps and title have not been checked against the video itself. Quoted lines are Adam’s words. Boxes marked <strong>My dot</strong> are Claude’s connections.
-  </p>
+  <div class="source-note">
+    <ul class="legend" aria-label="How to read this page">
+      <li><span class="swatch chatgpt"></span>Plain text: ChatGPT’s reading of the video</li>
+      <li><span class="swatch research"></span>Research: other sources, linked</li>
+      <li><span class="swatch dot"></span>My dot: Claude’s connections</li>
+    </ul>
+    <p><strong>Sources.</strong> ChatGPT’s reading of <a href="https://www.youtube.com/watch?v=PAwGwyfA428">the video</a> supplies the pillars, their wording and the timestamps (<a href="social-media-content-chatgpt.pdf">its PDF</a>). Gemini’s version is behind a share link Claude could not open; once it is pasted in, it gets its own column in <a href="#agree">Where the sources agree</a>. Quoted lines are Adam’s words unless another speaker is named.</p>
+    <p><strong>Who made the video is unconfirmed.</strong> ChatGPT credits Zach Sperrazzo, who does have a YouTube channel, but YouTube blocks cloud computers, so Claude could not open the video or check its timestamps. “Give Me X Minutes and I’ll Make You Disgustingly Good at …” is a title trend. Jake Trinder’s 15-minute keynote, used below, is a different video.</p>
+  </div>
 
   <ol class="track" aria-label="The architecture in order">
     <li><b>Demand</b><span>Evidence someone wants it</span></li>
@@ -166,10 +203,39 @@
     <li class="loop"><b>Review</b><span>Each upload improves the next</span></li>
   </ol>
 
+  <section id="chain">
+    <p class="eyebrow">The architecture</p>
+    <h2>A video is a chain of decisions</h2>
+
+    <div class="research">
+      <span class="label">Research</span>
+      <p>Jake Trinder, who runs more than 100 YouTube channels, treats a video as a chain of dependent stages: any one weak link can sink it. Five decisions that are each 90% right all land together only 59% of the time. A flop usually traces back to one stage, and the numbers show where to look, not what to fix.</p>
+      <p class="via">From a <a href="https://creatorquickies.substack.com/p/five-decisions-at-90-each-give-you">Creator Quickies write-up</a> of his keynote, <a href="https://www.youtube.com/watch?v=Dx-c19qXdxM">Give Me 15 Minutes and I’ll Make You Disgustingly Good at YouTube</a>. Claude has not watched it.</p>
+    </div>
+
+    <div class="chain" aria-label="Chain arithmetic">
+      <div>
+        <h3>Every decision made fresh</h3>
+        <div class="links"><span>90%</span><span>90%</span><span>90%</span><span>90%</span><span>90%</span></div>
+        <p class="odds">59% <small>of videos hold at every link</small></p>
+      </div>
+      <div>
+        <h3>Two decisions settled once</h3>
+        <div class="links"><span class="set">set</span><span class="set">set</span><span>90%</span><span>90%</span><span>90%</span></div>
+        <p class="odds">73% <small>of videos hold at every link</small></p>
+      </div>
+    </div>
+
+    <div class="dot">
+      <span class="label">My dot</span>
+      <p>This is why deciding things once matters for 100 videos. A decision that is settled and proven stops being a link that can break on every video. Out of 100 videos, that is roughly 73 where every link holds instead of 59. The 90% is Trinder’s example; the second line is Claude’s arithmetic, there to show the shape, not a measurement.</p>
+    </div>
+  </section>
+
   <section id="same-every-video">
     <p class="eyebrow">The architecture</p>
     <h2>What is the same in every video</h2>
-    <p>Sperrazzo’s three pillars are Formula, Format and Story, with research on demand before them and a review after. Across 100 videos, most of that can be decided once. Claude sorted ChatGPT’s points into the two columns below.</p>
+    <p>The video’s three pillars are Formula, Format and Story, with research on demand before them and a review after. Claude sorted them into what is decided once and what each video decides.</p>
 
     <div class="split">
       <div class="once">
@@ -180,9 +246,9 @@
           <li><strong>Story order:</strong> the four Generalization questions, in order. Open on the example, say why it pulled you, show the connection, give the move.</li>
           <li><strong>Intro rule:</strong> say the promise in natural language right away, and bring something from the thumbnail into the opening.</li>
           <li><strong>Title rule:</strong> make the subject and the angle clear.</li>
-          <li><strong>Thumbnail style:</strong> text-led or image-led, settled after testing a few.</li>
+          <li><strong>Thumbnail style:</strong> text-led or image-led, settled with YouTube’s built-in A/B test.</li>
           <li><strong>Gear:</strong> Blue Yeti, iPhone 17 Pro Max with Final Cut Camera, Sunpak light, Final Cut Pro.</li>
-          <li><strong>Review questions:</strong> the same four after every upload.</li>
+          <li><strong>Review:</strong> the same four questions after every upload, read in YouTube Studio.</li>
         </ul>
       </div>
       <div class="fresh">
@@ -201,7 +267,7 @@
 
     <div class="dot">
       <span class="label">My dot</span>
-      <p>Eight fields to fill for every video could become the holding back Adam named on November 18: <q>I was constraining myself so much that I didn't want to do it</q>. Deciding the left column once leaves each video with what his YouTube doc already says: one SAVY entry with the Generalization Theme and a Visual is one video. Sperrazzo adds three packaging lines on top of it: a title, a thumbnail and a first line.</p>
+      <p>Eight fields to fill for every video could become the holding back Adam named on November 18: <q>I was constraining myself so much that I didn't want to do it</q>. Deciding the left column once leaves each video with what his YouTube doc already says: one SAVY entry with the Generalization Theme and a Visual is one video. The video adds three packaging lines on top of it: a title, a thumbnail and a first line.</p>
     </div>
   </section>
 
@@ -216,10 +282,19 @@
     <p>As your own catalog grows, run the same comparison on it. An older video can be worth repackaging if the footage already delivers the promise suggested by a stronger title and thumbnail.</p>
     <p class="src">Sperrazzo on <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=300s">outliers (5:00)</a>, <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=563s">research before production (9:23)</a>, and <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=710s">using your own catalog (11:50)</a>.</p>
 
+    <div class="research">
+      <span class="label">Research</span>
+      <ul>
+        <li><strong>Scoring an outlier.</strong> Divide a video’s views by the channel’s median views for videos of similar age. The median keeps one old hit from setting the bar. <span class="via">(<a href="https://www.overseeros.com/blog/youtube-outlier-analysis">Overseer</a>)</span></li>
+        <li><strong>Where demand-first fits less.</strong> A viewer comment on Trinder’s keynote says this approach suits channels whose viewers already have a problem to solve, and suits less the channels that have to create demand. <span class="via">(Reported in a search summary; a single comment, weak evidence.)</span></li>
+      </ul>
+    </div>
+
     <div class="dot">
       <span class="label">My dot</span>
       <p>This step is generalization aimed at YouTube itself. An outlier is a shining example. “Look for what repeats” is the third Generalization question: <q>Which similarities between the seemingly unrelated examples offer an invitation to generalize?</q></p>
-      <p>The catalog paragraph matches Adam’s Connection: <q>Volume is beautiful because volume is where patterns can be seen.</q> After enough uploads, his own videos become the outliers he studies.</p>
+      <p>Adam is after an edge: <q>I want an edge. I want something that I'm not seeing a lot of, that seems obvious</q>. An edge means few outliers on the same topic, so his evidence comes from the second place the step names: the format. Blue’s Clues, which aired the same episode five days in a row, is that kind of evidence for the group lesson.</p>
+      <p>The catalog paragraph matches his Connection: <q>Volume is beautiful because volume is where patterns can be seen.</q> After enough uploads, his own videos become the outliers he studies.</p>
     </div>
   </section>
 
@@ -246,6 +321,15 @@
       <p>Show someone the title and thumbnail, then play the first few seconds. Ask what they expected and whether the opening confirms it. You should be able to make the link through both the spoken line and the visual.</p>
     </div>
     <p class="src">Sperrazzo on <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=966s">the formula (16:06)</a>, <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=1277s">thumbnail and audience choices (21:17)</a>, and <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=1410s">the blind test (23:30)</a>.</p>
+
+    <div class="research">
+      <span class="label">Research</span>
+      <ul>
+        <li><strong>YouTube has the test built in.</strong> In YouTube Studio, one video can test up to three titles and thumbnails, and YouTube then shows everyone the one with the most watch time. Changing the title or thumbnail during the test stops it, and Shorts can’t use it. <span class="via">(<a href="https://support.google.com/youtube/answer/16391400">YouTube Help</a>)</span></li>
+        <li><strong>The first minute keeps the thumbnail’s promise.</strong> MrBeast’s 2024 production guide, as reported, says most viewers leave in the first minute, and that minute has to show their expectations from the thumbnail will be met. <span class="via">(<a href="https://www.alexanderjarvis.com/memo-how-to-succeed-in-mrbeast-production/">copy of the guide</a>, <a href="https://feeds.simonwillison.net/2024/Sep/15/how-to-succeed-in-mrbeast-production/">Simon Willison’s notes</a>)</span></li>
+        <li><strong>Check the promise claim by claim.</strong> Trinder breaks the title’s promise into small, true claims and checks each one against the finished video. <span class="via">(<a href="https://creatorquickies.substack.com/p/five-decisions-at-90-each-give-you">Creator Quickies</a>)</span></li>
+      </ul>
+    </div>
 
     <div class="dot">
       <span class="label">My dot</span>
@@ -283,10 +367,16 @@
     </ul>
     <p class="src">Sperrazzo on <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=1971s">story and attention (32:51)</a>, <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=2133s">the reaction outline (35:33)</a>, and <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=2266s">on-screen reveals (37:46)</a>.</p>
 
+    <div class="research">
+      <span class="label">Research</span>
+      <p><strong>A clear explanation can teach almost nothing.</strong> For his PhD at the University of Sydney (2008), Derek Muller, who later started Veritasium, showed physics students clear, concise explanation videos. They said the videos were easy to follow, yet their test scores barely moved, and the videos mostly made them more confident in ideas they already had wrong. A video in which a student voices the common wrong idea and a teacher corrects it felt more confusing and produced better learning. His summary of the wider research points to learning that is social: other learners and a caring teacher.</p>
+      <p class="via">(<a href="https://thejournal.com/articles/2015/05/05/watching-videos-does-not-necessarily-lead-to-learning.aspx">THE Journal, 2015</a>; <a href="https://sydney.edu.au/news-opinion/news/2024/11/05/the-element-of-truth.html">University of Sydney, 2024</a>. Small classroom studies, reported secondhand.)</p>
+    </div>
+
     <div class="dot">
       <span class="label">My dot</span>
       <p>“A familiar idea can become interesting when an example makes it click in a new way” describes a generalization. The four Generalization questions are already an order of disclosure: the example, why it pulls, the connection, the move. The connection is the turn, and the move is the payoff.</p>
-      <p>The live re-viewings add a reveal of Adam’s own: <q>I'm gonna pause some parts of the video, and say, this is what I was thinking</q>. For “what is worth showing,” the Graphic Imagery Visual already asks <q>What should this make clear while I talk?</q></p>
+      <p>Muller’s finding shows that driving information home takes more than playing it again. What teaches is the pause where the wrong idea is said out loud and corrected. That is Adam’s live re-viewing: <q>I'm gonna pause some parts of the video, and say, this is what I was thinking</q>. A caring teacher with other learners is the group lesson.</p>
     </div>
   </section>
 
@@ -294,7 +384,7 @@
     <p class="eyebrow">After publishing</p>
     <h2>Use each upload to improve the next one</h2>
     <p>Before publishing, decide what outcome matters for this episode. Reach, subscriptions, useful replies, and business inquiries answer different questions. Compare similar uploads at comparable ages, and use the results to choose the next revision.</p>
-    <table class="review">
+    <table class="grid-table review">
       <thead><tr><th scope="col">What you observe</th><th scope="col">What to inspect first</th></tr></thead>
       <tbody>
         <tr><th scope="row">Few viewers click after seeing the video</th><td>Revisit the evidence for demand and whether the title and thumbnail express a clear reason to click.</td></tr>
@@ -306,9 +396,75 @@
     <p>Log what you think happened, what you’ll change, and what later episodes show. Save the stronger examples as references for future videos.</p>
     <p class="src">ChatGPT’s review prompts, drawn from Sperrazzo’s <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=933s">three diagnostic lenses (15:33)</a> and his discussion of <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=1591s">formula drift (26:31)</a>, <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=1704s">format and subscriptions (28:24)</a>, and <a href="https://www.youtube.com/watch?v=PAwGwyfA428&amp;t=1987s">story after the click (33:07)</a>.</p>
 
+    <div class="research">
+      <span class="label">Research</span>
+      <ul>
+        <li><strong>“Comparable ages” is built into YouTube Studio.</strong> The Content tab compares each video with your typical performance, and analytics can show a video’s first 24 hours, 7 days or 28 days side by side with others. YouTube cautions that the first 24 hours is neither specially important to recommendations nor a predictor of later performance. <span class="via">(<a href="https://support.google.com/youtube/answer/12942217">YouTube Help</a>)</span></li>
+        <li><strong>The retention graph has your own baseline.</strong> Its gray band is your typical retention, from your last 10 videos of similar length. <span class="via">(<a href="https://support.google.com/youtube/answer/1715160">YouTube Help</a>)</span></li>
+        <li><strong>The sources split on retention.</strong> MrBeast’s guide, as reported, pushes average view duration and average percentage viewed as high as possible. Trinder says retention is not the goal; the test is whether the video delivered each claim in its title. YouTube’s own A/B test picks winners by watch time, which counts both the click and the viewing.</li>
+      </ul>
+    </div>
+
     <div class="dot">
       <span class="label">My dot</span>
-      <p>The four rows map one-to-one onto the architecture: clicks test Demand and Formula, early exits test the intro, returns test the Format, and later drops test the Story. That is Adam’s rule 4 in practice: <q>Favor data not rules — Let patterns in actual usage drive decisions</q>.</p>
+      <p>The four rows map onto the architecture: clicks test Demand and Formula, early exits test the intro, returns test the Format, and later drops test the Story. That is Adam’s rule 4 in practice: <q>Favor data not rules — Let patterns in actual usage drive decisions</q>.</p>
+    </div>
+  </section>
+
+  <section id="agree">
+    <p class="eyebrow">Cross-check</p>
+    <h2>Where the sources agree, and where they don’t</h2>
+    <table class="grid-table">
+      <thead><tr><th scope="col">Question</th><th scope="col">ChatGPT’s reading of the video</th><th scope="col">Other sources</th><th scope="col">Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <th scope="row">Title, thumbnail and intro as one promise</th>
+          <td data-col="Video">Draft them together; the intro confirms the thumbnail.</td>
+          <td data-col="Others">MrBeast’s guide: the first minute shows the thumbnail’s promise will be met. Trinder: check each claim in the title against the cut.</td>
+          <td><span class="verdict agree">Agree</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Testing the packaging</th>
+          <td data-col="Video">Test text-led against image-led thumbnails; run a blind test.</td>
+          <td data-col="Others">YouTube tests up to three titles and thumbnails on one video and keeps the one with the most watch time.</td>
+          <td><span class="verdict agree">Agree</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Comparing uploads</th>
+          <td data-col="Video">Compare similar uploads at comparable ages.</td>
+          <td data-col="Others">YouTube Studio compares first 24 hours, 7 days and 28 days, but warns the first day predicts little.</td>
+          <td><span class="verdict agree">Agree</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Retention</th>
+          <td data-col="Video">Find where viewers leave and check the story there.</td>
+          <td data-col="Others">MrBeast’s guide: keep it as high as possible. Trinder: retention is not the goal; delivering the title’s claims is.</td>
+          <td><span class="verdict differ">Split</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Making an idea land</th>
+          <td data-col="Video">A familiar idea clicks when an example shows it in a new way.</td>
+          <td data-col="Others">Muller: clear explanations felt easy and taught little; saying the wrong idea first and correcting it taught more.</td>
+          <td><span class="verdict agree">Agree, with a warning</span></td>
+        </tr>
+        <tr>
+          <th scope="row">How often to publish</th>
+          <td data-col="Video">Improve the format across several attempts.</td>
+          <td data-col="Others">Dr Plants, asked for the most overrated advice: <q>Posting consistently I post three videos a year on random dates</q>. Adam: <q>Volume is the only way to sustainable interest.</q></td>
+          <td><span class="verdict differ">Split</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Gemini’s version</th>
+          <td data-col="Video">—</td>
+          <td data-col="Others">Not read yet: the share link would not open from here.</td>
+          <td><span class="verdict">Open</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="dot">
+      <span class="label">My dot</span>
+      <p>The last split has a middle in Adam’s own format. One detailed video, like Dr Plants’ few, carries many live re-viewings, which is where the volume goes.</p>
     </div>
   </section>
 
@@ -330,7 +486,7 @@
       <div class="field">
         <h3>Title</h3>
         <p>What promise will the viewer read?</p>
-        <p class="savy gap"><b>Not in SAVY yet.</b></p>
+        <p class="savy gap"><b>Not in SAVY yet.</b> Write up to three for YouTube’s A/B test.</p>
       </div>
       <div class="field">
         <h3>Thumbnail</h3>
@@ -355,7 +511,7 @@
       <div class="field">
         <h3>Result and next change</h3>
         <p>What outcome matters? What happened? What will I test next?</p>
-        <p class="savy gap"><b>Not in SAVY yet.</b></p>
+        <p class="savy gap"><b>Not in SAVY yet.</b> Read it in YouTube Studio: typical performance, the first 7 days, and the retention baseline.</p>
       </div>
     </div>
   </section>
@@ -364,9 +520,15 @@
     <p><strong>Sources</strong></p>
     <ul>
       <li>ChatGPT, “Social Media Content Architecture,” a three-page PDF Adam shared on November 20, 2026: <a href="social-media-content-chatgpt.pdf">social-media-content-chatgpt.pdf</a>. The pillar text, the review table and the brief fields are ChatGPT’s wording. Its source line names the video as Zach Sperrazzo, <em>Give Me 40 Minutes &amp; I’ll Make You Disgustingly Good at YouTube</em>.</li>
-      <li>Video: <a href="https://youtu.be/PAwGwyfA428">youtu.be/PAwGwyfA428</a>. Not opened by Claude; timestamps are ChatGPT’s.</li>
-      <li>Adam’s words, his gear, and the line “one SAVY entry with the Generalization Theme and a Visual is one video”: <a href="generalization-video-system.md">generalization-video-system.md</a>.</li>
-      <li>Generalization questions: <code>SAVY/PostTheme.swift</code>. Images and Graphic Imagery questions: <code>SAVY/VisualTemplate.swift</code>.</li>
+      <li>The video: <a href="https://youtu.be/PAwGwyfA428">youtu.be/PAwGwyfA428</a>. Not opened by Claude; its title, maker and timestamps are as ChatGPT gives them. Zach Sperrazzo’s channel: <a href="https://www.youtube.com/@zachsperrazzo">@zachsperrazzo</a>.</li>
+      <li>Gemini’s version: a share link Adam sent, which could not be opened from Claude’s cloud session.</li>
+      <li>Jake Trinder: <a href="https://www.youtube.com/watch?v=Dx-c19qXdxM">Give Me 15 Minutes and I’ll Make You Disgustingly Good at YouTube</a>, as written up by <a href="https://creatorquickies.substack.com/p/five-decisions-at-90-each-give-you">Creator Quickies</a>.</li>
+      <li>YouTube Help: <a href="https://support.google.com/youtube/answer/16391400">A/B test titles &amp; thumbnails</a>, <a href="https://support.google.com/youtube/answer/12942217">Content tab analytics tips</a>, <a href="https://support.google.com/youtube/answer/1715160">audience retention</a>.</li>
+      <li>MrBeast’s 2024 production guide: <a href="https://www.alexanderjarvis.com/memo-how-to-succeed-in-mrbeast-production/">copy</a> and <a href="https://feeds.simonwillison.net/2024/Sep/15/how-to-succeed-in-mrbeast-production/">notes by Simon Willison</a>.</li>
+      <li>Derek Muller’s research: <a href="https://thejournal.com/articles/2015/05/05/watching-videos-does-not-necessarily-lead-to-learning.aspx">THE Journal</a> and <a href="https://sydney.edu.au/news-opinion/news/2024/11/05/the-element-of-truth.html">University of Sydney</a>.</li>
+      <li>Outlier scoring: <a href="https://www.overseeros.com/blog/youtube-outlier-analysis">Overseer</a>.</li>
+      <li>Dr Plants: Think Media Podcast, “He Got 6 Million Subscribers With Only 12 Videos” (<a href="https://www.youtube.com/watch?v=iYPcnhNNjW0">video</a>), quoted from the transcript in Adam’s Google Drive.</li>
+      <li>Adam’s words, his gear, and the line “one SAVY entry with the Generalization Theme and a Visual is one video”: <a href="generalization-video-system.md">generalization-video-system.md</a>. Generalization questions: <code>SAVY/PostTheme.swift</code>. Images questions: <code>SAVY/VisualTemplate.swift</code>.</li>
     </ul>
   </footer>
 
