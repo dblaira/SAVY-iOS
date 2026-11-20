@@ -36,8 +36,12 @@ jobs:
           if [ -f .cursor/skills/watch-capture/scripts/watchkit.py ]; then
             python3 .cursor/skills/watch-capture/scripts/watchkit.py files --config watch-capture.json --check
           fi
-      - name: Show Xcode
-        run: xcodebuild -version
+      - name: Use the newest Xcode on the runner
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
       - name: Build Watch app and complication
         run: |
           set -o pipefail
@@ -52,6 +56,8 @@ jobs:
             2>&1 | tee build/watch.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
           grep -E "error:" build/watch.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
           if ! grep -q -E "BUILD SUCCEEDED" build/watch.log; then
+            echo "----- compiler crash context -----"
+            grep -n -A60 "Command SwiftCompile failed" build/watch.log | grep -v -E "^[0-9]+-\s*$" | cut -c1-400 | head -120 || true
             echo "----- failure lines -----"
             grep -n -i -E "error|failed|fatal|cannot|unable" build/watch.log | grep -v -i "warning" | tail -60 || true
             echo "----- last 60 lines -----"
@@ -109,8 +115,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Show Xcode
-        run: xcodebuild -version
+      - name: Use the newest Xcode on the runner
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
       - name: Pick an iPhone simulator
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c '
@@ -139,6 +149,8 @@ jobs:
             2>&1 | tee build/phone.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)|TEST BUILD (SUCCEEDED|FAILED)" || true
           grep -E "error:" build/phone.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
           if ! grep -q -E "TEST BUILD SUCCEEDED|BUILD SUCCEEDED" build/phone.log; then
+            echo "----- compiler crash context -----"
+            grep -n -A60 "Command SwiftCompile failed" build/phone.log | grep -v -E "^[0-9]+-\s*$" | cut -c1-400 | head -120 || true
             echo "----- failure lines -----"
             grep -n -i -E "error|failed|fatal|cannot|unable" build/phone.log | grep -v -i "warning" | tail -60 || true
             echo "----- last 60 lines -----"
@@ -157,6 +169,8 @@ jobs:
             2>&1 | tee build/tests.log | grep -E "Test Case|error:|Executed|TEST (SUCCEEDED|FAILED)" || true
           grep -E "error:" build/tests.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
           if ! grep -q -E "TEST SUCCEEDED" build/tests.log; then
+            echo "----- compiler crash context -----"
+            grep -n -A60 "Command SwiftCompile failed" build/tests.log | grep -v -E "^[0-9]+-\s*$" | cut -c1-400 | head -120 || true
             echo "----- failure lines -----"
             grep -n -i -E "error|failed|fatal|cannot|unable" build/tests.log | grep -v -i "warning" | tail -60 || true
             echo "----- last 60 lines -----"
