@@ -200,7 +200,11 @@ struct CaptureProofView: View {
 
     @ViewBuilder
     private func status(_ item: WatchCaptureStore.Item) -> some View {
-        if item.sentAt != nil {
+        if isDemo {
+            Label("Demo · not sent", systemImage: "icloud.slash")
+                .font(.footnote)
+                .foregroundStyle(WatchTheme.text)
+        } else if item.sentAt != nil {
             Label("Saved on Watch · in iCloud", systemImage: "checkmark.icloud")
                 .font(.footnote)
                 .foregroundStyle(WatchTheme.text)
@@ -217,6 +221,14 @@ struct CaptureProofView: View {
                 .font(.footnote)
                 .foregroundStyle(WatchTheme.text)
         }
+    }
+
+    private var isDemo: Bool {
+        #if DEBUG
+        WatchCaptureDemo.screen != nil
+        #else
+        false
+        #endif
     }
 
     static func describe(_ window: WatchProposedWindow, timeZoneIdentifier: String) -> String {

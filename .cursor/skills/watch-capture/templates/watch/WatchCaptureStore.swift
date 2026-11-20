@@ -91,6 +91,10 @@ final class WatchCaptureStore: ObservableObject {
     /// Sends every capture still waiting. Safe to call often; a second call while one is
     /// running returns at once.
     func sendPending() async {
+        #if DEBUG
+        // Demo words never leave the device: no iCloud, so they can never become entries.
+        if WatchCaptureDemo.screen != nil { return }
+        #endif
         guard !isSending else { return }
         let waiting = items.filter { $0.sentAt == nil }
         guard !waiting.isEmpty else {

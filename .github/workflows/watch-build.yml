@@ -1,6 +1,8 @@
 # Watch capture kit. Compiles SAVY Watch and SAVY for iPhone on a GitHub macOS
-# runner, unsigned; runs the Watch capture unit tests; and screenshots the Watch app in a Watch
-# simulator with demo words. A build check only: nothing is signed, installed or published.
+# runner for the simulators; runs the Watch capture unit tests; and screenshots the Watch app in a
+# Watch simulator with demo words. The Watch build is signed to run locally so its iCloud
+# entitlement is present (without it, opening iCloud ends the app). Nothing is signed with
+# Adam's team, installed on a device or published.
 # Written by watchkit.py; change the kit template, not this file.
 name: Watch build
 
@@ -52,7 +54,7 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=watchOS Simulator' \
             -derivedDataPath build/watch \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
             2>&1 | tee build/watch.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
           grep -E "error:" build/watch.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
           if ! grep -q -E "BUILD SUCCEEDED" build/watch.log; then
