@@ -52,6 +52,7 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 - `bc7b773`: the Watch app and complication built for the watchOS Simulator with no errors.
 - `d2eff53` (runner Xcode 26.6, Swift 6.3.3): the Watch app built, installed and ran on an Apple Watch Ultra 3 simulator. The iPhone build hit a Swift compiler crash in IRGen on SAVY's existing `ReminderScheduleView.swift` (a `ReminderAlert` thunk). This PR does not touch that file.
 - `945b2e5` (runner `xcode-27`, Xcode 27.2, the Xcode Adam builds with): the Watch app built and its screenshots below were taken. The iPhone app built with no crash, and all 11 `SAVYWatchCaptureTests` passed. The job was marked failed only because the check looked for “TEST SUCCEEDED”, and Xcode 27 prints “TEST EXECUTE SUCCEEDED”. The check is fixed in the next commit.
+- `744fc05` (runner `xcode-27`, Xcode 27.2): every check passed. The Watch app built and its screenshots were taken, the iPhone app built, and all 11 `SAVYWatchCaptureTests` passed.
 
 ### Screens, from the real app
 
