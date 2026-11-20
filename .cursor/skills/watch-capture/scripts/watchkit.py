@@ -278,6 +278,8 @@ def gen_workflow(cfg):
         "WATCH_BUNDLE_ID": x["watchBundleID"], "TEST_FILTER": test_filter,
         "SHARED": x["sharedFolder"], "WATCH": x["watchTarget"], "WIDGETS": x["widgetTarget"],
         "TEST_DIR": x.get("testFolder", x.get("testTarget", "Tests")), "APP_NAME": cfg["appName"],
+        # Match the Xcode the app is built with on Adam's Macs.
+        "CI_RUNNER": x.get("ciRunner", "xcode-27"),
     }
     for key, value in values.items():
         text = text.replace("{{" + key + "}}", value)

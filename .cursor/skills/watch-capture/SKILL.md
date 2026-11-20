@@ -23,6 +23,7 @@ What one run produces in an app: a Watch app with one door per entry type. Each 
 | Path | What it is |
 |---|---|
 | `scripts/watchkit.py` | `files` writes the code and settings; `wire` adds the targets to the Xcode project; `check` reports the project; `sync` refreshes templates from SAVY |
+| `scripts/ci_results.py` | Reads a CI run from its job logs: each job's result, the compiler crash and failure lines, and the Watch screenshots saved as PNG files |
 | `templates/shared/` | `WatchCapture.swift` (capture, day-and-hour reader, iCloud record) and `WatchCaptureImporter.swift` (iPhone/Mac import). The same in every app |
 | `templates/watch/` | Watch app, local queue and sender, doors and proof screen. The same in every app |
 | `templates/widgets/` | Complication. The same in every app |
@@ -45,7 +46,13 @@ Generated per app from the config: `WatchCaptureConfig.swift` (names, iCloud zon
 6. **Hook the import.** Call `await WatchCaptureImporter.shared.importPending(into: store)` on launch and on each foreground refresh, and only after the app's own iCloud sync has confirmed the signed-in owner. In SAVY, `RootView.importWatchCaptures()` gates on `CloudKitDocumentSync.status`.
 7. **Write tests** for the mapping in the app's unit test target, and list them in `xcode.testFiles`. SAVY's are in `SAVYTests/SAVYWatchCaptureTests.swift`. They test values only: no store, no iCloud, no Watch.
 8. **Wire the project, once:** `python3 .cursor/skills/watch-capture/scripts/watchkit.py wire --config watch-capture.json`. It must report no dangling references and no file outside a group. Every kit file must sit in the right target's Sources phase.
-9. **Push and read CI.** The workflow compiles both apps unsigned, runs the tests, screenshots the Watch app in a Watch simulator using each kind's `demoWords`, and checks that the kit files still match the config. Read errors with `gh api repos/OWNER/REPO/check-runs/JOB_ID/annotations`. Screenshots are in the `watch-screenshots` artifact. Fix until green.
+9. **Push and read CI.** The workflow:
+   - checks that the kit files still match the config;
+   - compiles both apps for the simulators on the `xcode-27` runner (`xcode.ciRunner`);
+   - runs the tests;
+   - screenshots the Watch app in an Apple Watch Ultra simulator using each kind's `demoWords`.
+
+   Read the results with `python3 .cursor/skills/watch-capture/scripts/ci_results.py --repo OWNER/REPO --branch BRANCH --out DIR`. Fix until green, and send Adam the screenshots.
 10. **Install, on Adam's Mac.** Open the project, choose the Watch scheme and his Watch, and Run. If signing mentions iCloud, tick the app's container under Signing & Capabilities for the Watch target. The first install asks for Developer Mode on the Watch. Install the iPhone and Mac apps from the same branch, because they do the importing.
 11. **On the Watch.** Settings, Action Button, Action, Shortcut: pick the app's “Capture” or a single kind. Add the complication to a watch face. Try each Siri phrase.
 12. **Record it** in the app's AGENTS.md: Adam's words, what was built, what is verified, and what is not.
@@ -65,7 +72,10 @@ Generated per app from the config: `WatchCaptureConfig.swift` (names, iCloud zon
 - Each project object must be found by its own definition, never by its id inside a list. The first SAVY run of `wire` put files in the wrong phase until this was fixed. `check` prints each phase so this is visible.
 - App Shortcut phrases and intent titles must be literals. That is why `CaptureIntents.swift` is generated rather than read from config.
 - An Ultra has one Action Button, so only one app's shortcut can own it.
-- CI runs on `macos-26`. Simulator builds are unsigned. Compile errors come back as check-run annotations, ten per step.
+- CI runs on the `xcode-27` runner, to match the Xcode Adam builds with. On `macos-26` (Xcode 26.6, Swift 6.3.3), SAVY's existing `ReminderScheduleView.swift` crashes the compiler in IRGen. That is a toolchain crash, not a Watch-code error.
+- Artifact downloads can be unreachable from an agent's session, but job logs are readable. The workflow therefore prints failure context and screenshots (base64) into the log, and `ci_results.py` reads them back. Shell tracing (`set -x`) must be off while printing, or the trace interleaves with the image data.
+- The Watch simulator build is signed to run locally. Unsigned, it has no iCloud entitlement, and the app ends when it opens iCloud. The screenshots then show only the clock face.
+- Demo mode (`-WatchCaptureDemo`, Debug only) never sends to iCloud and labels captures “Demo · not sent”. Demo words must never become entries.
 
 ## Better next
 

@@ -1,5 +1,5 @@
 # Watch capture kit. Compiles SAVY Watch and SAVY for iPhone on a GitHub macOS
-# runner for the simulators; runs the Watch capture unit tests; and screenshots the Watch app in a
+# runner (xcode-27) for the simulators; runs the Watch capture unit tests; and screenshots the Watch app in a
 # Watch simulator with demo words. The Watch build is signed to run locally so its iCloud
 # entitlement is present (without it, opening iCloud ends the app). Nothing is signed with
 # Adam's team, installed on a device or published.
@@ -29,7 +29,7 @@ concurrency:
 jobs:
   watch:
     name: Watch app (watchOS Simulator) + screenshots
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -91,10 +91,11 @@ jobs:
           done
           ls -la build/screenshots
           # Artifacts may be unreachable from where results are read, so the job log carries
-          # each screenshot as base64 between markers.
+          # each screenshot as base64 between markers. Tracing stays off so it cannot interleave.
+          set +x
           for f in build/screenshots/*.png; do
             echo "WATCH-SCREENSHOT-BEGIN $(basename "$f")"
-            base64 -i "$f" | fold -w 1000
+            base64 -i "$f" | fold -w 76
             echo "WATCH-SCREENSHOT-END $(basename "$f")"
           done
       - name: Upload screenshots
@@ -113,7 +114,7 @@ jobs:
 
   phone:
     name: iPhone app (iOS Simulator) + Watch capture tests
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4

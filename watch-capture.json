@@ -85,6 +85,7 @@
     "iosAppIcon": "SAVY/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
     "testTarget": "SAVYTests",
     "testFolder": "SAVYTests",
-    "testFiles": ["SAVYWatchCaptureTests.swift"]
+    "testFiles": ["SAVYWatchCaptureTests.swift"],
+    "ciRunner": "xcode-27"
   }
 }
