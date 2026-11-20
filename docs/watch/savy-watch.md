@@ -76,16 +76,17 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 - `d2eff53` (runner Xcode 26.6, Swift 6.3.3): the Watch app built, installed and ran on an Apple Watch Ultra 3 simulator. The iPhone build hit a Swift compiler crash in IRGen on SAVY's existing `ReminderScheduleView.swift` (a `ReminderAlert` thunk). This PR does not touch that file.
 - `945b2e5` (runner `xcode-27`, Xcode 27.2, the Xcode Adam builds with): the Watch app built and its screenshots below were taken. The iPhone app built with no crash, and all 11 `SAVYWatchCaptureTests` passed. The job was marked failed only because the check looked for “TEST SUCCEEDED”, and Xcode 27 prints “TEST EXECUTE SUCCEEDED”. The check is fixed in the next commit.
 - `744fc05` (runner `xcode-27`, Xcode 27.2): every check passed. The Watch app built and its screenshots were taken, the iPhone app built, and all 11 `SAVYWatchCaptureTests` passed.
+- `3ad3920` (one big button, with the nearby iPhone writing out the words): every check passed on Xcode 27.2. The Watch app built and the four screens below were taken, the iPhone app built, and all 19 `SAVYWatchCaptureTests` passed.
 
 ### Screens, from the real app
 
-These are an Apple Watch Ultra 3 simulator on Xcode 27.2, launched with `-WatchCaptureDemo` (Debug only). The words are demo words, never sent anywhere.
+These are an Apple Watch Ultra 3 simulator on Xcode 27.2, launched with `-WatchCaptureDemo` (Debug only). The recording is silent and the words are demo words; nothing was sent anywhere. On the review screen, the words stand in for what the nearby iPhone sends back.
 
-| Doors | Proof: Social | Proof: Calendar |
-|---|---|---|
-| ![Doors](screenshots/1-doors.png) | ![Proof, Social](screenshots/2-proof-social.png) | ![Proof, Calendar](screenshots/3-proof-calendar.png) |
+| Big button | Recording | Review: words back from the iPhone | Saved |
+|---|---|---|---|
+| ![Big button](screenshots/1-big-button.png) | ![Recording](screenshots/2-recording.png) | ![Review](screenshots/3-review.png) | ![Saved](screenshots/4-saved.png) |
 
-The Calendar proof shows “Lunch with Sam Friday at noon”, said on Friday Nov 20, read as Fri, Nov 27 · 12:00 PM. A real capture shows “Saved on Watch · sending”, then “Saved on Watch · in iCloud”, in place of “Demo · not sent”.
+On the review screen, Action, Reminder and Calendar sit just below Save; turn the Digital Crown to reach them. A real capture shows “Saved on Watch · sending”, then “· in iCloud”, in place of “Demo · not sent”.
 
 ## Install and set up (needs Adam’s Mac, Watch and iPhone)
 

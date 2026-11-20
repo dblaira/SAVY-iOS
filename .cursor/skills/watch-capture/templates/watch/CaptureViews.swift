@@ -231,6 +231,7 @@ struct ReviewView: View {
                     .foregroundStyle(WatchTheme.text)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(WatchTheme.background.ignoresSafeArea())
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { saveIfDraft() }
@@ -354,6 +355,7 @@ struct CaptureProofView: View {
                     .foregroundStyle(WatchTheme.text)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(WatchTheme.background.ignoresSafeArea())
         .onDisappear { player.stop() }
     }
@@ -395,6 +397,7 @@ struct CaptureProofContent: View {
                     .font(.footnote)
                     .foregroundStyle(WatchTheme.text)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 2)
         }
     }
