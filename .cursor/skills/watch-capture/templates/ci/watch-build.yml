@@ -51,7 +51,13 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/watch.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
           grep -E "error:" build/watch.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
-          grep -q "BUILD SUCCEEDED" build/watch.log
+          if ! grep -q -E "BUILD SUCCEEDED" build/watch.log; then
+            echo "----- failure lines -----"
+            grep -n -i -E "error|failed|fatal|cannot|unable" build/watch.log | grep -v -i "warning" | tail -60 || true
+            echo "----- last 60 lines -----"
+            tail -n 60 build/watch.log
+            exit 1
+          fi
       - name: Screenshots in a Watch simulator
         continue-on-error: true
         run: |
@@ -76,6 +82,13 @@ jobs:
             xcrun simctl io "$UDID" screenshot "build/screenshots/$screen.png"
           done
           ls -la build/screenshots
+          # Artifacts may be unreachable from where results are read, so the job log carries
+          # each screenshot as base64 between markers.
+          for f in build/screenshots/*.png; do
+            echo "WATCH-SCREENSHOT-BEGIN $(basename "$f")"
+            base64 -i "$f" | fold -w 1000
+            echo "WATCH-SCREENSHOT-END $(basename "$f")"
+          done
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -125,7 +138,13 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/phone.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)|TEST BUILD (SUCCEEDED|FAILED)" || true
           grep -E "error:" build/phone.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
-          grep -q -E "TEST BUILD SUCCEEDED|BUILD SUCCEEDED" build/phone.log
+          if ! grep -q -E "TEST BUILD SUCCEEDED|BUILD SUCCEEDED" build/phone.log; then
+            echo "----- failure lines -----"
+            grep -n -i -E "error|failed|fatal|cannot|unable" build/phone.log | grep -v -i "warning" | tail -60 || true
+            echo "----- last 60 lines -----"
+            tail -n 60 build/phone.log
+            exit 1
+          fi
       - name: Run Watch capture tests
         run: |
           set -o pipefail
@@ -137,7 +156,13 @@ jobs:
             {{TEST_FILTER}} \
             2>&1 | tee build/tests.log | grep -E "Test Case|error:|Executed|TEST (SUCCEEDED|FAILED)" || true
           grep -E "error:" build/tests.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
-          grep -q "TEST SUCCEEDED" build/tests.log
+          if ! grep -q -E "TEST SUCCEEDED" build/tests.log; then
+            echo "----- failure lines -----"
+            grep -n -i -E "error|failed|fatal|cannot|unable" build/tests.log | grep -v -i "warning" | tail -60 || true
+            echo "----- last 60 lines -----"
+            tail -n 60 build/tests.log
+            exit 1
+          fi
       - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@v4
