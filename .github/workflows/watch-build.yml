@@ -169,9 +169,9 @@ jobs:
             -destination "id=$SIM_UDID" \
             -derivedDataPath build/phone \
             -only-testing:SAVYTests/SAVYWatchCaptureTests \
-            2>&1 | tee build/tests.log | grep -E "Test Case|error:|Executed|TEST (SUCCEEDED|FAILED)" || true
+            2>&1 | tee build/tests.log | grep -E "Test Case|error:|Executed|TEST (EXECUTE )?(SUCCEEDED|FAILED)" || true
           grep -E "error:" build/tests.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
-          if ! grep -q -E "TEST SUCCEEDED" build/tests.log; then
+          if ! grep -q -E "TEST (EXECUTE )?SUCCEEDED" build/tests.log; then
             echo "----- compiler crash context -----"
             grep -n -A60 "Command SwiftCompile failed" build/tests.log | grep -v -E "^[0-9]+-\s*$" | cut -c1-400 | head -120 || true
             echo "----- failure lines -----"

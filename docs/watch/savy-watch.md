@@ -44,13 +44,24 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 ## Status
 
 - Written in a cloud session with no Xcode and no access to Adam’s Macs (no Tailscale secrets and no Remote Control folder were available).
-- Compile check: `.github/workflows/watch-build.yml` builds `SAVYWatch` for the watchOS Simulator and `SAVY` for the iOS Simulator, both unsigned, on a GitHub macOS runner. It also runs `SAVYWatchCaptureTests` (values only: no store, iCloud or Watch). The result for each pushed commit is recorded under [CI results](#ci-results).
+- Compile check: `.github/workflows/watch-build.yml` runs on the `xcode-27` GitHub runner. It builds `SAVYWatch` for the watchOS Simulator and `SAVY` for the iOS Simulator, and runs `SAVYWatchCaptureTests` (values only: no store, iCloud or Watch). It also screenshots the Watch app. Results per commit are under [CI results](#ci-results).
 - Not yet done: signing, installing on the Watch, any on-device check, and the first real capture going from wrist to iPhone. Adam’s own use is the acceptance check.
 
 ### CI results
 
-- `1164d75`: superseded by the next push before it finished.
-- `bc7b773`: the Watch app and complication built for the watchOS Simulator with no errors. The iPhone app and tests were still running when the kit work was pushed.
+- `bc7b773`: the Watch app and complication built for the watchOS Simulator with no errors.
+- `d2eff53` (runner Xcode 26.6, Swift 6.3.3): the Watch app built, installed and ran on an Apple Watch Ultra 3 simulator. The iPhone build hit a Swift compiler crash in IRGen on SAVY's existing `ReminderScheduleView.swift` (a `ReminderAlert` thunk). This PR does not touch that file.
+- `945b2e5` (runner `xcode-27`, Xcode 27.2, the Xcode Adam builds with): the Watch app built and its screenshots below were taken. The iPhone app built with no crash, and all 11 `SAVYWatchCaptureTests` passed. The job was marked failed only because the check looked for “TEST SUCCEEDED”, and Xcode 27 prints “TEST EXECUTE SUCCEEDED”. The check is fixed in the next commit.
+
+### Screens, from the real app
+
+These are an Apple Watch Ultra 3 simulator on Xcode 27.2, launched with `-WatchCaptureDemo` (Debug only). The words are demo words, never sent anywhere.
+
+| Doors | Proof: Social | Proof: Calendar |
+|---|---|---|
+| ![Doors](screenshots/1-doors.png) | ![Proof, Social](screenshots/2-proof-social.png) | ![Proof, Calendar](screenshots/3-proof-calendar.png) |
+
+The Calendar proof shows “Lunch with Sam Friday at noon”, said on Friday Nov 20, read as Fri, Nov 27 · 12:00 PM. A real capture shows “Saved on Watch · sending”, then “Saved on Watch · in iCloud”, in place of “Demo · not sent”.
 
 ## Install and set up (needs Adam’s Mac, Watch and iPhone)
 

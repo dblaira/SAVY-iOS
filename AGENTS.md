@@ -28,7 +28,7 @@ Built on `claude/awesome-heisenberg-s7jdkk`: the `SAVYWatch` app with four doors
 
 The plan's on-Watch transcription of a recording cannot be built: Apple's speech-to-text frameworks are not on watchOS. The words come from Watch dictation, and no raw audio is kept; whether to keep audio is Adam's open question. There is no AWS upload (AWS was cancelled Oct 12), no WatchConnectivity path, no StoreKit 2, and no embedding in the iPhone app yet.
 
-Status: written in a cloud session without Xcode or his Macs. It is compiled only by the GitHub Actions check `.github/workflows/watch-build.yml`. It is not signed, installed or tested on his Watch. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
+Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 11 `SAVYWatchCaptureTests` pass. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. It is not signed with his team, installed on his Watch, or tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
 
 ## Generalization theme — November 9, 2026
 
