@@ -40,7 +40,7 @@ watchOS has no speech-to-text, so the iPhone or Mac writes out the words, with h
 
 There is no AWS upload (AWS was cancelled Oct 12), no WatchConnectivity path, no StoreKit 2, and no embedding in the iPhone app yet.
 
-Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 11 `SAVYWatchCaptureTests` pass. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. On Nov 20 it was signed with his team and installed from his Mac Studio on his Apple Watch Ultra 3, where it opens; on that Mac, 19 `SAVYWatchCaptureTests` pass and `watchkit.py files --check` matches. It is not yet tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
+Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 19 `SAVYWatchCaptureTests` pass, last at `8bbc23e` in the approved look. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. On Nov 20 it was signed with his team and installed from his Mac Studio on his Apple Watch Ultra 3, where it opens; on that Mac, 19 `SAVYWatchCaptureTests` pass and `watchkit.py files --check` matches. It is not yet tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
 
 ## Generalization theme — November 9, 2026
 
