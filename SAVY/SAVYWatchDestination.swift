@@ -40,10 +40,14 @@ extension Reminder {
             postAnswers = answers
             postAnswersContainQuestions = true
             title = autoTitle() ?? "New \(kind.label)"
+            // SAVY took this name from his answer, so it keeps following the boxes as he edits them.
+            titleOrigin = .generated
         } else {
-            // Nothing written out (Speech Recognition off, or no words heard): SAVY's generic
-            // name, which the form replaces with his words once he types them.
+            // His words go in “What do I want?”, as if he had typed them there. With nothing
+            // written out (Speech Recognition off, or no words heard), SAVY's generic name stands
+            // in, and the form replaces it once he writes.
             title = capture.words.isEmpty ? "New \(kind.label)" : capture.words
+            titleOrigin = capture.words.isEmpty ? .generated : .authored
         }
 
         if let window = capture.proposedWindow {

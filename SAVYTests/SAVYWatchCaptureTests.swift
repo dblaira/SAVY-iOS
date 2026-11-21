@@ -178,14 +178,29 @@ final class SAVYWatchCaptureTests: XCTestCase {
         let social = Reminder(watchCapture: WatchCapture(kind: .post, words: "", source: .wrist, capturedAt: fixedMoment,
                                                          audioFileName: "c.m4a", audioDuration: 5))
         XCTAssertEqual(social.title, "New Social")
-        XCTAssertTrue(EntryAutoTitle.isGenericName(social.title))
+        XCTAssertEqual(social.titleOrigin, .generated)
         XCTAssertEqual(social.postAnswers?.first, "What shining example caught my attention?\n")
         XCTAssertEqual(social.postAnsweredCount, 0)
+        // Once he writes the answer, Save names the entry from it, as for any entry SAVY named.
+        var written = social
+        written.postAnswers?[0] = "What shining example caught my attention?\nBlue's Clues pauses for the kid"
+        written.resolveDelegateTitle(entryLabel: "Social")
+        XCTAssertEqual(written.title, "Blue's Clues pauses for the kid")
 
         let action = Reminder(watchCapture: WatchCapture(kind: .action, words: "", source: .wrist, capturedAt: fixedMoment,
                                                          audioFileName: "d.m4a", audioDuration: 5))
         XCTAssertEqual(action.title, "New Action")
-        XCTAssertTrue(EntryAutoTitle.isGenericName(action.title))
+        XCTAssertEqual(action.titleOrigin, .generated)
+    }
+
+    func testSpokenWordsInWhatDoIWantAreHisWritingAndASocialNameFollowsHisAnswer() {
+        // Nov 20 title rule on main: a title he wrote is kept; a name SAVY supplied follows the boxes.
+        let action = Reminder(watchCapture: WatchCapture(kind: .action, words: "Email Dr Plants", source: .wrist,
+                                                         capturedAt: fixedMoment))
+        XCTAssertEqual(action.titleOrigin, .authored)
+        let social = Reminder(watchCapture: WatchCapture(kind: .post, words: "Blue's Clues pauses for the kid",
+                                                         source: .wrist, capturedAt: fixedMoment))
+        XCTAssertEqual(social.titleOrigin, .generated)
     }
 
     func testFixListTurnsKodakIntoCodex() {
