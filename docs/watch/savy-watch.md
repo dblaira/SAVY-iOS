@@ -62,7 +62,7 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 3. **The Watch-to-iPhone link only writes out the words.** Entries still come from iCloud, once. The link was added on Nov 20 after Adam said the iPhone should “show me the text”: the Watch sends the recording to the nearby iPhone, and the iPhone sends the words back to the wrist. It never makes the entry, so nothing is doubled.
 4. **The Watch writes to its own iCloud zone, `SAVYWatchInboxV1`.** SAVY’s entries live in `SAVYEntriesV1`, and an unreadable record there stops entry sync until it is repaired. The Watch never writes there, so a Watch bug cannot stall the iPhone and Mac. The iPhone and Mac import only after iCloud sync has confirmed the signed-in owner. Each import is saved locally before the capture is removed from iCloud, and a ledger keeps a deleted entry from coming back.
 5. **StoreKit 2 is not built.** The plan ties it to selling SAVY. Nothing needs unlocking for Adam’s own use yet.
-6. **The Watch app is not embedded in the iPhone app yet.** Install it by running the `SAVYWatch` scheme. The iPhone and Mac build settings are unchanged apart from two new source files. Embedding is needed later for TestFlight or the App Store.
+6. **The Watch app rides inside the iPhone app, since Nov 21.** It was first installed on its own by running the `SAVYWatch` scheme. On Adam's devices that left the two apps unable to see each other as a pair (WatchConnectivity 7018), so the words never reached the wrist. `watchkit.py embed` added an Embed Watch Content step to the iPhone target, for iOS only, so the Mac build is unchanged. A paired-simulator run on his Mac proved it: with the Watch app inside, the words came back in 3.5 seconds; with it taken out, the same 7018.
 
 ## Status
 
@@ -161,9 +161,19 @@ What each condition answers:
 
 For any capture, the `record.stop` line compares the recording's length with the time between the two presses. A recording that stopped when the wrist dropped shows there.
 
-### What a cloud session can and cannot test
+### Test in simulators first
 
-GitHub builds both apps and runs the unit tests (23, including the trail) on every push, and screenshots the Watch screens in a simulator. It cannot press a real Watch, use a real microphone, reach iCloud as Adam, or talk to his iPhone. Those need his Mac: a Claude session running there (the Claude desktop app, or `claude remote-control` in the SAVY-iOS folder) can build, install, and read the trail.
+Adam, Nov 21: “Do 1000% of your tests on a fucking simulator. That's what you should do. It should work perfectly on a goddamn fucking simulator. Instead of sitting here holding me to this fucking desk.”
+
+`scripts/sim_link_test.py` in the kit does that for the Watch-to-iPhone link, on GitHub or on his Mac, with no device and no person:
+
+```bash
+python3 .cursor/skills/watch-capture/scripts/sim_link_test.py --config watch-capture.json --app <path to the simulator build of SAVY.app>
+```
+
+It pairs an iPhone and a Watch simulator, installs both apps, and has the Watch send a spoken recording across the live link. Two hooks make that possible, both compiled for the simulator only: the Watch sends a recording the test placed, and the iPhone answers with set words. It reads both trails and passes only when the words come back with the Watch app inside the iPhone app. It also runs the stand-alone setup, which must fail the way his devices did.
+
+A simulator cannot use his iCloud account, the real microphone or Bluetooth. Recording, iCloud and the entry on the iPhone were shown on his own devices on Nov 21. GitHub also builds both apps, runs the unit tests and screenshots the Watch screens on every push.
 
 ## Open questions for Adam
 

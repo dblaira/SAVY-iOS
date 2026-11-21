@@ -38,7 +38,7 @@ The Watch is one big record button. One press records and one press stops. The r
 
 watchOS has no speech-to-text, so the iPhone or Mac writes out the words, with his terms (`vocabulary`) as recognizer hints. The recording is kept beside the words as a play row at the top of the entry form. That row is the only change to the frozen form, and it appears only when a recording exists. This audio is his explicit choice. It is separate from the Sept 2 removal of “listen with Cowboyai”.
 
-There is no AWS upload (AWS was cancelled Oct 12), no StoreKit 2, and no embedding in the iPhone app yet. The Watch-to-iPhone link (WatchConnectivity) only writes out the words for the wrist; entries are made once, from iCloud.
+There is no AWS upload (AWS was cancelled Oct 12) and no StoreKit 2. Since Nov 21 the Watch app is embedded in the iPhone app (iOS only); before that it was installed on its own, which is why the words never reached the wrist. The Watch-to-iPhone link (WatchConnectivity) only writes out the words for the wrist; entries are made once, from iCloud.
 
 Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 19 `SAVYWatchCaptureTests` pass, last at `8bbc23e` in the approved look. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. On Nov 20 it was signed with his team and installed from his Mac Studio on his Apple Watch Ultra 3, where it opens; on that Mac, 19 `SAVYWatchCaptureTests` pass and `watchkit.py files --check` matches. It is not yet tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
 
@@ -58,7 +58,14 @@ Found by reading the code on Nov 21, and fixed:
 The test on his devices, Nov 21 (installed and read by the session on his Mac Studio; iPhone app built from this branch merged with Send to AI, so Send to AI is back on his iPhone):
 
 - Works: both of his recordings went from the Watch to iCloud and became Social entries on the iPhone, with the words written out and the recording kept.
-- Fails: the words never come back to the wrist. The Watch's trail says “WatchConnectivity 7018 companionAppNotInstalled”. Both apps have the link running and each says the other is not installed. The built iPhone app has no Watch folder: the Watch app is installed on its own, not inside the iPhone app. Embedding it is the likely fix and was not yet proven on Nov 21.
+- Fails: the words never come back to the wrist. The Watch's trail says “WatchConnectivity 7018 companionAppNotInstalled”. Both apps have the link running and each says the other is not installed. The built iPhone app has no Watch folder: the Watch app is installed on its own, not inside the iPhone app.
+
+The cause and the fix were then proven in simulators, with no one at a desk. The session on his Mac ran the kit's link test (`scripts/sim_link_test.py`) in a paired iPhone 17 and Apple Watch Ultra 3 simulator on Nov 21:
+
+- Watch app inside the iPhone app, both signed for the simulator, 40 seconds to settle after install: the words came back. The Watch saw the iPhone app, sent the recording in 3 parts, the iPhone answered live, and the Watch had the words 3.5 seconds later.
+- Same apps with the Watch folder taken out of the iPhone app: “WatchConnectivity 7018 companionAppNotInstalled”, his devices' failure exactly.
+
+So the fix is `watchkit.py embed`, applied to SAVY on Nov 21: the iPhone target carries the Watch app, for iOS only. Two things the simulator run also showed: the apps must be signed (an unsigned build's apps are named “SAVY” and “SAVYWatch” in their signatures, not by their bundle IDs, and the system never pairs them), and the pairing needs a moment after install. The fixed build is not on his devices yet. On real devices the Watch app has to arrive through the iPhone app; that install and his last look are what remain.
 
 Adam, Nov 21, after being kept at his desk for that test: “Do 1000% of your tests on a fucking simulator. That's what you should do. It should work perfectly on a goddamn fucking simulator. Instead of sitting here holding me to this fucking desk.” And: “No, no more testing. I mean, for me to have to be here while you fucking test it, you have to be kidding me.” This is his explicit word for Watch work, and it overrides “No simulator-first workflow” below for testing: prove a change in paired iPhone and Watch simulators first, with no one at a desk, and ask him only for the last look on his own devices. A simulator cannot use his iCloud account or the real microphone; say so plainly when a result depends on them. He also refused further approval prompts that day: a message from a cloud session to the session on his Mac asks him to press Allow each time, and so does each command that Mac session runs while it is set to ask.
 
