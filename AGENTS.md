@@ -38,9 +38,17 @@ The Watch is one big record button. One press records and one press stops. The r
 
 watchOS has no speech-to-text, so the iPhone or Mac writes out the words, with his terms (`vocabulary`) as recognizer hints. The recording is kept beside the words as a play row at the top of the entry form. That row is the only change to the frozen form, and it appears only when a recording exists. This audio is his explicit choice. It is separate from the Sept 2 removal of “listen with Cowboyai”.
 
-There is no AWS upload (AWS was cancelled Oct 12), no WatchConnectivity path, no StoreKit 2, and no embedding in the iPhone app yet.
+There is no AWS upload (AWS was cancelled Oct 12), no StoreKit 2, and no embedding in the iPhone app yet. The Watch-to-iPhone link (WatchConnectivity) only writes out the words for the wrist; entries are made once, from iCloud.
 
 Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 19 `SAVYWatchCaptureTests` pass, last at `8bbc23e` in the approved look. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. On Nov 20 it was signed with his team and installed from his Mac Studio on his Apple Watch Ultra 3, where it opens; on that Mac, 19 `SAVYWatchCaptureTests` pass and `watchkit.py files --check` matches. It is not yet tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
+
+Adam, Nov 21: “The Apple Watch SAVY app works and doesn't work. It needs a lot of testing. Help me figure out how to test it or test it yourself. How do we connect and make sure that it works properly”. He has not yet said which part fails. Reading the code in a cloud session found these, none confirmed on his devices:
+
+- The words coming back and the entry both happen in the iPhone app, and that code is only on this branch. His installed apps are normally built from `claude/ai-communication-interface-b714f9` with `main` merged in. `main` was merged into that branch at 10:58 PM on Nov 20, after the Watch install, and it has no Watch code. Before installing the iPhone or Mac app, merge this branch into the one being installed. A trial merge of this branch, `main` and Send to AI conflicted only in `AGENTS.md`. Do not install the iPhone app from this branch alone: it has no Send to AI.
+- Three system callbacks in the Watch code could stop the app under Swift 6 when called off the main thread. One fires when the iPhone does not answer. Fixed.
+- A recording cut short by the system was reported as ten minutes long. Fixed.
+
+Each capture now leaves a trail. Both apps write one line per step, with the reason when a step fails and never the words, to `Application Support/SAVYWatch/trail.jsonl`. On his Mac, `watchtrail.py pull --config watch-capture.json` (in the kit's `scripts/`) copies both files off the devices and prints where each capture stopped; that device-copy step has not run yet. The test is three captures: SAVY open on the iPhone, iPhone locked in a pocket, iPhone out of reach. See “Testing on the Watch and iPhone” in the SAVY Watch doc. `main` was merged into this branch on Nov 21.
 
 ## Generalization theme — November 9, 2026
 

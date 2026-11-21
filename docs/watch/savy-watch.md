@@ -59,16 +59,16 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 
 1. **The Watch records; the iPhone writes out the words.** The plan made a live transcript on the Watch. Apple’s speech-to-text frameworks, `SFSpeechRecognizer` and `SpeechAnalyzer`, are not available on watchOS. Watch dictation always opens Apple’s dictation screen first, so it cannot start on one press. Adam chose one press and audio, with the words checked on the iPhone beside the recording.
 2. **No AWS or Supabase upload.** Adam cancelled AWS on Oct 12 (“I cancelled AWS last night”). SAVY now syncs through iCloud, so the Watch uses iCloud too.
-3. **No separate WatchConnectivity path.** When the iPhone is in a pocket, the Watch’s iCloud traffic already goes through it. One path has fewer ways to fail. It can be added if a capture is ever slow to appear.
+3. **The Watch-to-iPhone link only writes out the words.** Entries still come from iCloud, once. The link was added on Nov 20 after Adam said the iPhone should “show me the text”: the Watch sends the recording to the nearby iPhone, and the iPhone sends the words back to the wrist. It never makes the entry, so nothing is doubled.
 4. **The Watch writes to its own iCloud zone, `SAVYWatchInboxV1`.** SAVY’s entries live in `SAVYEntriesV1`, and an unreadable record there stops entry sync until it is repaired. The Watch never writes there, so a Watch bug cannot stall the iPhone and Mac. The iPhone and Mac import only after iCloud sync has confirmed the signed-in owner. Each import is saved locally before the capture is removed from iCloud, and a ledger keeps a deleted entry from coming back.
 5. **StoreKit 2 is not built.** The plan ties it to selling SAVY. Nothing needs unlocking for Adam’s own use yet.
 6. **The Watch app is not embedded in the iPhone app yet.** Install it by running the `SAVYWatch` scheme. The iPhone and Mac build settings are unchanged apart from two new source files. Embedding is needed later for TestFlight or the App Store.
 
 ## Status
 
-- Written in a cloud session with no Xcode and no access to Adam’s Macs (no Tailscale secrets and no Remote Control folder were available).
+- Written in cloud sessions with no Xcode and no access to Adam’s Macs (no Tailscale secrets and no Remote Control folder were available). A session on his Mac Studio signed and installed the Watch app on Nov 20.
 - Compile check: `.github/workflows/watch-build.yml` runs on the `xcode-27` GitHub runner. It builds `SAVYWatch` for the watchOS Simulator and `SAVY` for the iOS Simulator, and runs `SAVYWatchCaptureTests` (values only: no store, iCloud or Watch). It also screenshots the Watch app. Results per commit are under [CI results](#ci-results).
-- Not yet done: signing, installing on the Watch, any on-device check, and the first real capture going from wrist to iPhone. Adam’s own use is the acceptance check.
+- On his Apple Watch Ultra 3 since Nov 20, where it opens. Adam, Nov 21: “The Apple Watch SAVY app works and doesn't work. It needs a lot of testing.” No real capture has yet been followed from the wrist to an entry. See [Testing on the Watch and iPhone](#testing-on-the-watch-and-iphone). Adam’s own use is the acceptance check.
 
 ### CI results
 
@@ -99,10 +99,71 @@ The same build on his Apple Watch Ultra 3, Nov 20, 10:20 PM:
 ## Install and set up (needs Adam’s Mac, Watch and iPhone)
 
 1. On the Mac, open `SAVY.xcodeproj`, choose the `SAVYWatch` scheme and the Ultra 3 as the destination, and Run. Automatic signing registers `com.adamblair.savy.watchkitapp` and `com.adamblair.savy.watchkitapp.widgets`. If signing reports iCloud, open Signing & Capabilities for SAVYWatch and tick the `iCloud.com.adamblair.harness` container.
-2. Install the iPhone and Mac apps from this branch too. They are the side that turns captures into entries.
+2. Install the iPhone and Mac apps from a build that has this branch in it. They are the side that writes out the words and turns captures into entries. His installed apps are normally built from `claude/ai-communication-interface-b714f9` (Send to AI) with `main` merged in, and that branch has no Watch code. Merge this branch into the one being installed first; a trial merge of all three on Nov 21 conflicted only in `AGENTS.md`.
 3. Action Button: in Settings on the Watch, choose Action Button, then Action, then Shortcut, and pick a SAVY shortcut. Apple’s Ultra guide gives this path.
 4. Complication: edit the watch face and add SAVY Capture.
-5. First test: tap Action, say a sentence, and check the words on the proof screen. Then open SAVY on the iPhone and find the entry in Actions.
+5. First test: see [Testing on the Watch and iPhone](#testing-on-the-watch-and-iphone).
+
+## Testing on the Watch and iPhone
+
+Adam, Nov 21: “The Apple Watch SAVY app works and doesn't work. It needs a lot of testing. Help me figure out how to test it or test it yourself. How do we connect and make sure that it works properly”
+
+### How the pieces connect
+
+A capture has to do four things. The first happens on the Watch alone. The other three need the iPhone app.
+
+| # | What must happen | Where | It needs |
+|---|---|---|---|
+| 1 | Recorded and kept | Watch | The microphone allowed for SAVY on the Watch |
+| 2 | Words back on the wrist | Watch to iPhone and back, over Bluetooth | The iPhone nearby, running a SAVY that has the Watch code, with Speech Recognition allowed |
+| 3 | In iCloud | Watch to iCloud | The Watch signed in to iCloud, and the Watch build allowed to use `iCloud.com.adamblair.harness` |
+| 4 | Entry in SAVY | iCloud to iPhone or Mac | SAVY opened on an iPhone or Mac that has the Watch code, with its own iCloud sync in a ready state |
+
+### What reading the code found, Nov 21
+
+Nothing here is confirmed on his devices yet. Each is a way the app could work and not work.
+
+1. **The iPhone app may not have the Watch code.** The Watch app was installed from this branch at about 10:20 PM on Nov 20. At 10:43 to 10:58 PM, `main` got three fixes and was merged into `claude/ai-communication-interface-b714f9`, the branch his installed apps are normally built from. That branch has no Watch code. If the iPhone runs that build, the Watch records, saves and reaches iCloud, and steps 2 and 4 never happen.
+2. **Three callbacks could stop the Watch app.** The project builds in Swift 6 mode. Three closures written inside main-thread types were handed to the system as callbacks: the error handler for a recording sent to the iPhone, the background retry, and the microphone permission. If the system calls one from another thread, the app stops. The first fires exactly when the iPhone does not answer. All three are fixed (`@Sendable`, or the `async` form).
+3. **A recording the system cut short was reported as ten minutes long.** The length now comes from the file itself.
+4. **Every failure was silent.** “Sends when online” covered every iCloud failure, including ones that waiting never fixes. An import that waited on SAVY's own sync, a missing Speech Recognition permission, and an iPhone that never answered all left no trace.
+
+### The trail
+
+Each app now writes one line per step to `Application Support/SAVYWatch/trail.jsonl` in its own container: a time, the step, whether it worked, the capture's id, and a state, a count or an error code. It never holds the words or the recording. The file keeps its last few hundred lines. The same lines go to the system log under the category `WatchCaptureTrail`.
+
+The Watch's status line also says more: “iCloud refused it (code 10)” or “iCloud storage is full”, where it used to say “sends when online” for everything.
+
+### The test
+
+1. On the Mac, build the iPhone app from a branch with all three in it (this branch, `main`, Send to AI) and install it. Install the Watch app from this branch again. The usual checks before touching the iPhone apply: no open editor with unsaved writing, and saved files compared before and after.
+2. Adam opens SAVY on the iPhone once, and allows Speech Recognition if it asks.
+3. Adam makes three captures on the Watch, saying anything real, one for each condition:
+   - iPhone unlocked with SAVY open;
+   - iPhone locked, in a pocket;
+   - iPhone's Bluetooth off, or the iPhone left in another room.
+4. Adam opens SAVY on the iPhone and looks for three new Social entries, each with its “Watch recording” row.
+5. On the Mac, with the iPhone connected:
+
+   ```bash
+   python3 .cursor/skills/watch-capture/scripts/watchtrail.py pull --config watch-capture.json
+   ```
+
+   It copies both trail files off the devices and prints, for each capture, the four results and what to do about the first one that stopped. The device-copy part was written without a Mac and has not run; if it fails, copy `Library/Application Support/SAVYWatch/trail.jsonl` out of each app's container by hand and run `watchtrail.py read` on the two files.
+
+What each condition answers:
+
+| Capture | Words back on the wrist | Answers |
+|---|---|---|
+| SAVY open on the iPhone | Expected within seconds | Does the link work at all? |
+| iPhone locked in a pocket | Unknown | Can iOS write out words while SAVY is in the background? If not, the words arrive when SAVY is next opened. |
+| iPhone out of reach | Not expected | Does the capture still reach iCloud and become an entry later? |
+
+For any capture, the `record.stop` line compares the recording's length with the time between the two presses. A recording that stopped when the wrist dropped shows there.
+
+### What a cloud session can and cannot test
+
+GitHub builds both apps and runs the unit tests (23, including the trail) on every push, and screenshots the Watch screens in a simulator. It cannot press a real Watch, use a real microphone, reach iCloud as Adam, or talk to his iPhone. Those need his Mac: a Claude session running there (the Claude desktop app, or `claude remote-control` in the SAVY-iOS folder) can build, install, and read the trail.
 
 ## Open questions for Adam
 
