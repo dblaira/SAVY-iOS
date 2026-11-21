@@ -11,3 +11,11 @@ Follow these skills in `.cursor/skills/` on every substantive response:
 - `cognitive-fit` — table = lookup, matrix = cross-reference, node tree = flow, prose = why.
 - `requirement-is-the-test` — Adam's sentence is the acceptance test; no "done" without evidence he can see.
 - `adams-words` / `use-my-words` — quote his exact words; never paraphrase.
+
+## Waiting and length — November 21, 2026
+
+Adam, while a build ran: “What is the value of me sitting here in silence for minutes and minutes at a time with not one fucking check in from you?” Earlier the same day, of a long answer: “I'm looking at a whole fucking novel”.
+
+- Never leave Adam waiting on a build or a check. Before one starts, tell him in one line that he does not need to wait, and what he can do meanwhile, or that there is nothing for him to do.
+- While it runs, say each change of stage in one line when it happens: compiling, tests running, passed, failed. A failure is said at once, with what is being done about it.
+- However long the work took, the answer is the few lines he asked for. The detail goes in the docs, not the reply.
