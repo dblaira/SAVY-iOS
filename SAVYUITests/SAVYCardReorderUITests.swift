@@ -127,7 +127,7 @@ final class SAVYCardReorderUITests: XCTestCase {
         moveUp()
         assertOrder(moved.map(homeRow))
 
-        // The first unpinned card cannot displace the pinned Social Media Posts card.
+        // The first unpinned card cannot displace the pinned Social card.
         moveUp()
         assertOrder(moved.map(homeRow))
         attach("02 Home card moved below the pinned card")
@@ -481,9 +481,9 @@ final class SAVYCardReorderUITests: XCTestCase {
                       "The Home summary should retain the first three stored Post references in list order")
         XCTAssertTrue(pinned.staticTexts["Synthetic post 2 starts with a clear observation."].exists,
                       "The pinned Home card should preview the first Post's authored sentence")
-        XCTAssertEqual(pinned.staticTexts.matching(NSPredicate(format: "label == %@", "Social Media Posts")).count, 1,
+        XCTAssertEqual(pinned.staticTexts.matching(NSPredicate(format: "label == %@", "Social")).count, 1,
                        "The Home card should show its title once")
-        XCTAssertFalse(pinned.staticTexts["SOCIAL MEDIA POSTS"].exists,
+        XCTAssertFalse(pinned.staticTexts.matching(NSPredicate(format: "label == %@", "SOCIAL")).firstMatch.exists,
                        "The Home card should not repeat its title in an eyebrow")
         let pinnedHeight = pinned.frame.height
 
@@ -599,7 +599,7 @@ final class SAVYCardReorderUITests: XCTestCase {
         reveal(card)
         card.tapOrClick()
         XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12),
-                      "The Home card did not open Social Media Posts")
+                      "The Home card did not open Social")
     }
 
     private func openActions() {

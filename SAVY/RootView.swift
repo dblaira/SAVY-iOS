@@ -842,7 +842,7 @@ struct HomeLeverageCard: Identifiable, Hashable {
         HomeLeverageCard(id: "beliefs", sectionID: "beliefs", eyebrow: "CONNECTION", title: "Connection"),
         HomeLeverageCard(id: "ontology", sectionID: "ontology", eyebrow: "ONTOLOGY", title: "Adam's Ontology"),
         HomeLeverageCard(id: "essays", sectionID: "field-essays", eyebrow: "FIELD ESSAYS", title: "Field Essays"),
-        HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: "SOCIAL MEDIA POSTS", title: "Social Media Posts")
+        HomeLeverageCard(id: "news", sectionID: "news-channel", eyebrow: LeverageContent.newsChannel.eyebrow, title: LeverageContent.newsChannel.title)
     ]
 }
 

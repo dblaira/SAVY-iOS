@@ -190,6 +190,10 @@ struct Subtask: Identifiable, Codable, Equatable, Hashable {
     var done: Bool = false
 }
 
+enum EntryTitleOrigin: String, Codable {
+    case authored, generated
+}
+
 /// The domain model. Codable for the on-device cache; mapped to/from DB rows in the repository.
 /// Every "part" from the entry form is a field here so nothing the user enters is dropped.
 struct Reminder: Identifiable, Codable, Equatable {
@@ -197,6 +201,8 @@ struct Reminder: Identifiable, Codable, Equatable {
     var kind: ReminderKind = .reminder         // reminder / action / event (local-first for now)
     // Core
     var title: String = ""
+    /// Older entries have no origin. Preserve their nonblank titles until Delegate is edited.
+    var titleOrigin: EntryTitleOrigin? = nil
     var notes: String = ""
     var url: String = ""
     var imageLocalPath: String? = nil          // local filename; cloud upload is 1.0.1
@@ -317,6 +323,18 @@ extension Reminder {
 
     /// The first written Theme answer, without its question. Nil until an answer is written.
     var firstThemeAnswer: String? { postAnswerTexts.first { !$0.isEmpty } }
+
+    mutating func editDelegateTitle(_ text: String) {
+        title = text
+        titleOrigin = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .generated : .authored
+    }
+
+    /// Call after applying the final answers. A saved title's spelling cannot establish its origin.
+    mutating func resolveDelegateTitle(entryLabel: String, decideTheme: PostTheme? = nil) {
+        guard titleOrigin == .generated || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        title = autoTitle(decideTheme: decideTheme) ?? "New \(entryLabel)"
+        titleOrigin = .generated
+    }
 
     /// The name for an entry whose Delegate "What do I want?" box is empty: a short name from
     /// the first written box in form order (Decide, Visual, the other Delegate answers, Steps),
@@ -538,14 +556,6 @@ extension JSONDecoder {
 enum EntryAutoTitle {
     /// Reads as a name on a one-line card and stays short enough for a Calendar title.
     static let maximumWords = 8
-
-    /// The generic names earlier saves gave an entry whose "What do I want?" box was empty.
-    static func isGenericName(_ title: String) -> Bool {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let labels = ReminderKind.allCases.map(\.label) + ReminderKind.allCases.map(\.segmentLabel)
-            + ["Post", "Connection"]
-        return labels.contains { trimmed == "New \($0)" }
-    }
 
     /// A short name from the first box that holds writing; nil when no box holds writing.
     static func name(fromFirstWritten boxes: [String]) -> String? {

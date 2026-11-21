@@ -4,6 +4,62 @@ import XCTest
 
 final class SAVYCloudSyncTests: XCTestCase {
     @MainActor
+    func testDelegateTitleOriginsRoundTripThroughCloudKitAndLocalStores() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let reminderFile = directory.appendingPathComponent("reminders.json")
+        let connectionFile = directory.appendingPathComponent("connections.json")
+        let reminders = ReminderStore(cacheURL: reminderFile)
+        let connections = ConnectionStore(fileURL: connectionFile, launchArguments: [])
+        let reminderAdapter = RemindersSyncAdapter(store: reminders)
+        let connectionAdapter = ConnectionsSyncAdapter(store: connections)
+
+        let date = Date(timeIntervalSince1970: 100)
+        let legacy = Reminder(title: "Run", createdAt: date, updatedAt: date)
+        var authored = Reminder(createdAt: date, updatedAt: date)
+        authored.editDelegateTitle("Run")
+        var generated = Reminder(notes: "Run", createdAt: date, updatedAt: date)
+        generated.resolveDelegateTitle(entryLabel: "Reminder")
+        let entries = [legacy, authored, generated]
+        let connectionEntries = entries.map { ConnectionEntry(metadata: $0) }
+
+        XCTAssertTrue(reminders.applySynced(entries))
+        XCTAssertTrue(connections.applySynced(entries: connectionEntries, sourcePins: [:], hiddenSourceIDs: []))
+        let receivingReminders = ReminderStore(cacheURL: directory.appendingPathComponent("received-reminders.json"))
+        let receivedConnectionFile = directory.appendingPathComponent("received-connections.json")
+        let receivingConnections = ConnectionStore(fileURL: receivedConnectionFile, launchArguments: [])
+        let adapters: [(any SavySyncAdapter, any SavySyncAdapter)] = [
+            (reminderAdapter, RemindersSyncAdapter(store: receivingReminders)),
+            (connectionAdapter, ConnectionsSyncAdapter(store: receivingConnections)),
+        ]
+
+        for (sender, receiver) in adapters {
+            let snapshot = sender.snapshot()
+            XCTAssertEqual(snapshot.count, entries.count)
+            var received: [String: SyncJSON] = [:]
+            for (key, value) in snapshot {
+                let outgoing = SavyCloudRecord(
+                    id: SavyCloudRecordID(documentKey: sender.documentKey, key: key),
+                    entry: SyncEntry(value: value, modifiedAt: 1, deleted: false)
+                )
+                let record = try SavyCloudKitRecordCodec.encode(outgoing)
+                let decoded = try SavyCloudKitRecordCodec.decode(record, documents: [sender.documentKey])
+                received[key] = try XCTUnwrap(decoded.entry.value)
+            }
+            XCTAssertEqual(received, snapshot)
+            XCTAssertTrue(receiver.applyAndConfirm(received))
+            XCTAssertEqual(receiver.snapshot(), snapshot)
+        }
+
+        let reloadedReminders = ReminderStore(cacheURL: directory.appendingPathComponent("received-reminders.json"))
+        let reloadedConnections = ConnectionStore(fileURL: receivedConnectionFile, launchArguments: [])
+        for entry in entries {
+            XCTAssertEqual(reloadedReminders.reminders.first { $0.id == entry.id }, entry)
+            XCTAssertEqual(reloadedConnections.entries.first { $0.id == entry.id }?.metadata, entry)
+        }
+    }
+
+    @MainActor
     func testCanonicalTieAndDeletionAreIndependentOfReceiveOrder() throws {
         let a = SyncEntry(value: .object(["writing": .string("a exact original")]), modifiedAt: 100, deleted: false)
         let z = SyncEntry(value: .object(["writing": .string("z exact original")]), modifiedAt: 100, deleted: false)
