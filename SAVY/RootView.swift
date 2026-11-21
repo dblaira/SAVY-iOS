@@ -192,6 +192,15 @@ struct RootView: View {
         guard syncsWithCloud else { return }
         await documentSync.syncNow()
         await CalendarScheduleBridge.shared.retryPendingSync()
+        await importWatchCaptures()
+    }
+
+    /// Turns Apple Watch captures waiting in iCloud into entries. It runs only after iCloud
+    /// sync has confirmed this device belongs to the signed-in owner, so another Apple
+    /// account's captures never land in this device's entries.
+    private func importWatchCaptures() async {
+        guard syncsWithCloud, ["synced", "pending", "fetching"].contains(documentSync.status) else { return }
+        await WatchCaptureImporter.shared.importPending(into: reminderStore)
     }
 
     var body: some View {
@@ -290,6 +299,7 @@ struct RootView: View {
             .task {
                 guard syncsWithCloud else { return }
                 await documentSync.start()
+                await importWatchCaptures()
             }
             .task(id: scenePhase) {
                 // While SAVY is in front (the Mac window can stay open for days), keep pulling.

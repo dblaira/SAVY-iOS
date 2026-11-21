@@ -1,0 +1,123 @@
+{
+  "appName": "SAVY",
+  "containerIdentifier": "iCloud.com.adamblair.harness",
+  "cloudKitEnvironment": "Development",
+  "inboxZoneName": "SAVYWatchInboxV1",
+  "recordType": "SAVYWatchCaptureV1",
+  "storageFolder": "SAVYWatch",
+  "openPhrase": "Capture in {app}",
+  "defaultKind": "post",
+  "vocabulary": [
+    "Codex",
+    "Claude",
+    "Gemini",
+    "SAVY",
+    "Understood",
+    "Harness",
+    "Cowboy AI",
+    "Generalization",
+    "Xcode",
+    "YouTube",
+    "Dr Plants",
+    "Blue's Clues"
+  ],
+  "corrections": {
+    "Kodak": "Codex"
+  },
+  "microphoneUsage": "SAVY records what you say so your iPhone can write out the words.",
+  "theme": {
+    "background": "D8C2A0",
+    "accent": "7A1428",
+    "accentAsset": "7A1428",
+    "accentOnDark": "E60E44",
+    "door": "F3EAD5",
+    "doorText": "08172D",
+    "text": "08172D",
+    "strongText": "08172D",
+    "ring": "08172D",
+    "edge": "6B4E2E",
+    "titleStrokes": [
+      [[300, 408], [201, 243], [118, 528], [303, 476], [170, 746], [85, 598]],
+      [[303, 688], [415, 358], [517, 688]],
+      [[497, 365], [600, 690], [718, 342]],
+      [[923, 320], [785, 778], [716, 597], [793, 593]],
+      [[740, 447], [855, 542]]
+    ]
+  },
+  "kinds": [
+    {
+      "case": "action",
+      "label": "Action",
+      "symbol": "bolt",
+      "readsTimeCue": false,
+      "dayOnlyIsAllDay": false,
+      "demoWords": "Email the gym about Saturday's group lesson",
+      "intent": "LogActionIntent",
+      "intentTitle": "Log an Action",
+      "parameterTitle": "Action",
+      "ask": "What's the action?",
+      "phrase": "Log an action in {app}"
+    },
+    {
+      "case": "reminder",
+      "label": "Reminder",
+      "symbol": "bell",
+      "readsTimeCue": true,
+      "dayOnlyIsAllDay": false,
+      "demoWords": "Renew the passport tomorrow at 9 AM",
+      "intent": "AddReminderIntent",
+      "intentTitle": "Add a Reminder",
+      "parameterTitle": "Reminder",
+      "ask": "What's the reminder?",
+      "phrase": "Add a reminder in {app}"
+    },
+    {
+      "case": "event",
+      "label": "Calendar",
+      "symbol": "calendar",
+      "readsTimeCue": true,
+      "dayOnlyIsAllDay": true,
+      "demoWords": "Lunch with Sam Friday at noon",
+      "intent": "CreateCalendarEventIntent",
+      "intentTitle": "Create a Calendar Event",
+      "parameterTitle": "Event",
+      "ask": "What's the event?",
+      "phrase": "Create a calendar event in {app}"
+    },
+    {
+      "case": "post",
+      "label": "Social",
+      "symbol": "text.bubble",
+      "readsTimeCue": false,
+      "dayOnlyIsAllDay": false,
+      "demoWords": "Blue's Clues pauses so the kid can answer. That is the group lesson.",
+      "intent": "StageSocialPostIntent",
+      "intentTitle": "Stage a Social Post",
+      "parameterTitle": "Post",
+      "ask": "What shining example caught your attention?",
+      "phrase": "Stage a social post in {app}"
+    }
+  ],
+  "xcode": {
+    "project": "SAVY.xcodeproj",
+    "appTarget": "SAVY",
+    "appScheme": "SAVY",
+    "sharedFolder": "SAVY",
+    "destinationFile": "SAVYWatchDestination.swift",
+    "watchTarget": "SAVYWatch",
+    "widgetTarget": "SAVYWatchWidgets",
+    "teamID": "7FKUS5M5QS",
+    "companionBundleID": "com.adamblair.savy",
+    "watchBundleID": "com.adamblair.savy.watchkitapp",
+    "watchOSDeploymentTarget": "11.0",
+    "version": "1.0",
+    "buildNumber": "1",
+    "iosAppIcon": "SAVY/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+    "testTarget": "SAVYTests",
+    "testFolder": "SAVYTests",
+    "testFiles": [
+      "SAVYWatchCaptureTests.swift"
+    ],
+    "ciRunner": "xcode-27"
+  }
+}

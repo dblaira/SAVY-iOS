@@ -18,6 +18,30 @@ Use his words. Adam, Nov 18: “when AI uses their labels, it kind of robs me of
 
 Adam, Nov 17: “I agree the SAVY app has beautiful forms, but I have considered that and still see feel there is a gap.” Claude’s Nov 17 reading called the gap “the feeling layer”, found by cutting. That was Claude’s label, and his Nov 18 words supersede it: cutting the video down to stand alone was the holding back. Do not use that label with him.
 
+## Apple Watch — November 20, 2026
+
+Adam: “Okay, we're going to build an Apple Watch app for the SAVY app. I put a lot of the details in this document and I was talking to Gemini when I did it.” The document is “SAVY On Your Wrist Without Breaking Your Stride”: the Action Button or Siri captures into Action, Reminder, Calendar Event or Staged Social Post, the Watch saves first and shows the exact words as proof, and the iPhone and Mac process after the run.
+
+Adam, during the build: “I'm gonna put the same type of iPhone Apple Watch app on for three or four of my other apps and it's gonna have almost identical functionality”. Then: “save the watch workflow so I can reuse it”. It is saved as the watch capture kit, `.cursor/skills/watch-capture/` (pointer in `.claude/skills/`). SAVY is built from it: `watch-capture.json` drives `watchkit.py files` and `wire`. Improve the code in SAVY, verify it in CI, then `watchkit.py sync` to update the templates. CI fails if SAVY and the kit differ.
+
+Built on `claude/awesome-heisenberg-s7jdkk`: the `SAVYWatch` app with four doors (Action, Reminder, Calendar, Social), Watch dictation, a four-second proof screen with one-tap re-record, a local-first queue, his four Siri phrases, an Action Button shortcut, and the `SAVYWatchWidgets` complication. Captures go to their own iCloud zone, `SAVYWatchInboxV1`, in the existing container. The iPhone and Mac turn each one into a normal entry through `ReminderStore.save`, after iCloud sync confirms the owner. Never let the Watch write to `SAVYEntriesV1`. A Social capture answers the first Generalization question only, in line with the YouTube habit: “Common scenario is that I am out for a run and have an idea hit me.”
+
+Adam, after seeing the first screens: “I was thinking about it having a face just like the voice memos where it's one large button that I can press. The idea here is to reduce friction, so if I'm reducing friction, I just need one button to press.” He also asked to “examine what it recorded because sometimes my diction can be often it might change CODEX to KODAK”. He then chose two answers: check the words “On iPhone, with audio”, and plain Save goes to “Social (Generalization)”.
+
+Adam approved the one-button screens (big button, recording, review, saved) on Nov 20: “Yep,that looks great”. That approves the screens; it is not yet a device check.
+
+Adam chose the Watch's look on Nov 20, looking at his own Watch. In order: “Show me a mock up with the surrounding background color as a light sand brown, instead of navy.” Then: “Yes, but add a navy blue ring (border) around the red button.  And darken the red to maroon.  Use the unique font styling that is used on the SAVY icon.” Then: “perfect. let's add some texture to the edges.  A bit darker around the edges please.” And of those edges: “Yes, keep them”. This look is approved; do not change it without his word.
+
+The look: sand `D8C2A0` that darkens toward `6B4E2E` with paper grain at the edges of the screen, a maroon `7A1428` button inside a navy `08172D` ring, navy words, and “SAVY” at the top left in the icon's own lettering. The icon's lettering is hand-drawn lines, not a font, so the Watch draws its traced pen strokes. All of it is the `theme` block of `watch-capture.json`. The new keys (`ring`, `strongText`, `edge`, `titleStrokes`, `accentOnDark`) are optional, so his other Watch apps keep their look until their own settings ask for them. The complication keeps the brighter crimson, because maroon disappears on a dark watch face.
+
+The Watch is one big record button. One press records and one press stops. The review screen plays the recording back, and one tap saves it: Save as Social, or one tap on Action, Reminder or Calendar. Leaving the screen saves too. The Action Button's “Capture” shortcut opens the app already recording.
+
+watchOS has no speech-to-text, so the iPhone or Mac writes out the words, with his terms (`vocabulary`) as recognizer hints. The recording is kept beside the words as a play row at the top of the entry form. That row is the only change to the frozen form, and it appears only when a recording exists. This audio is his explicit choice. It is separate from the Sept 2 removal of “listen with Cowboyai”.
+
+There is no AWS upload (AWS was cancelled Oct 12), no WatchConnectivity path, no StoreKit 2, and no embedding in the iPhone app yet.
+
+Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 19 `SAVYWatchCaptureTests` pass, last at `8bbc23e` in the approved look. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. On Nov 20 it was signed with his team and installed from his Mac Studio on his Apple Watch Ultra 3, where it opens; on that Mac, 19 `SAVYWatchCaptureTests` pass and `watchkit.py files --check` matches. It is not yet tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
+
 ## Generalization theme — November 9, 2026
 
 Adam: “I need to add a generalization form to the ios and mac os savy app. The general shape of my forms is 4 questions.  The closest match I have is Pattern Recognition, but I need one for Generalization.”
