@@ -340,6 +340,9 @@ def find_devices():
     watch = iphone = None
     for device in devices:
         hardware = device.get("hardwareProperties", {})
+        # Simulators are listed too, and a simulated Watch can come before the real one.
+        if hardware.get("reality", "physical") != "physical":
+            continue
         kind = f"{hardware.get('platform', '')} {hardware.get('deviceType', '')} {hardware.get('productType', '')}".lower()
         identifier = device.get("identifier") or hardware.get("udid")
         name = device.get("deviceProperties", {}).get("name", "")
