@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>100 Studies: AI in Personal Life</title>
+<meta name="description" content="One hundred studies and data sources on how people use AI in their own lives, outside of work.">
+<style>
+  :root{
+    --bg:#12110e; --panel:#1b1a16; --panel2:#24221c; --text:#f4f1e9; --soft:#d8d3c6; --muted:#a39e90;
+    --line:#35322a; --red:#e8584f; --gold:#dcb66a;
+    --serif:Didot,"Bodoni 72","Bodoni MT","Times New Roman",serif;
+    --body:Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font:1.125rem/1.55 var(--body)}
+  a{color:var(--red);text-underline-offset:3px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
+
+  .hero{padding:56px 0 34px;border-bottom:1px solid var(--line)}
+  .kicker{margin:0;font:700 .75rem/1 var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+  .hero h1{margin:14px 0 6px;font-family:var(--serif);font-weight:400;line-height:.9;font-size:clamp(4.2rem,17vw,6.4rem)}
+  .hero h1 b{font-weight:400;color:var(--red)}
+  .hero .sub{margin:14px 0 0;font-size:clamp(1.375rem,4.6vw,1.75rem);line-height:1.3;max-width:24em}
+  .hero .when{margin:18px 0 0;font:500 .875rem/1.5 var(--sans);color:var(--muted)}
+
+  .note{margin:26px 0 0;padding:16px 18px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:0 12px 12px 0;font:400 1rem/1.55 var(--sans);color:var(--soft)}
+  .note b{color:var(--text)}
+  .note p{margin:0 0 8px} .note p:last-child{margin:0}
+
+  .nav{position:sticky;top:0;z-index:5;background:rgba(18,17,14,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .nav div{display:flex;gap:8px;overflow-x:auto;padding:10px 18px;max-width:1080px;margin:0 auto;scrollbar-width:none}
+  .nav div::-webkit-scrollbar{display:none}
+  .nav a{flex:none;font:600 .8125rem/1 var(--sans);color:var(--soft);text-decoration:none;padding:9px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+  .nav a i{font-style:normal;color:var(--red);margin-left:4px}
+
+  .dots{padding:44px 0 6px}
+  .eyebrow{margin:0;font:700 .75rem/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
+  h2{font-family:var(--serif);font-weight:400;font-size:clamp(2.1rem,7vw,3rem);line-height:1.05;margin:10px 0 0}
+  .dotlist{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:12px;counter-reset:d}
+  .dotlist li{counter-increment:d;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px 62px;position:relative}
+  .dotlist li::before{content:counter(d);position:absolute;left:18px;top:14px;font:400 2.1rem/1 var(--serif);color:var(--red)}
+  .dotlist h3{margin:0 0 6px;font:400 1.375rem/1.2 var(--serif)}
+  .dotlist p{margin:0;font-size:1.0625rem;color:var(--soft)}
+  .dotlist em{font-style:normal;color:var(--gold)}
+
+  section{padding:48px 0 0}
+  .sec{border-top:2px solid var(--red);padding-top:14px}
+  .sec .count{margin:0;font:700 .75rem/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;min-width:0}
+  .card p{margin:0}
+  .no{font:700 .6875rem/1 var(--sans);letter-spacing:.16em;color:var(--muted)}
+  .stat{font-family:var(--serif);font-size:clamp(2.4rem,10vw,3.25rem);line-height:1.02;margin-top:10px !important;color:var(--text);overflow-wrap:anywhere}
+  .find{font-size:1.125rem;line-height:1.5;margin-top:10px !important;color:var(--soft)}
+  .src{font:400 .9375rem/1.4 var(--sans);margin-top:14px !important;padding-top:12px;border-top:1px solid var(--line);color:var(--text)}
+  .src b{font-weight:600}
+  .meta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin-top:8px !important;font:400 .8125rem/1.4 var(--sans);color:var(--muted)}
+  .chip{border:1px solid var(--gold);color:var(--gold);border-radius:999px;padding:2px 9px;font-weight:600;font-size:.6875rem;letter-spacing:.06em;text-transform:uppercase}
+  .meta a{margin-left:auto;font-weight:600;white-space:nowrap}
+
+  footer{margin:56px 0 0;padding:22px 0 48px;border-top:1px solid var(--line);font:400 .9375rem/1.55 var(--sans);color:var(--muted)}
+
+  @media (min-width:860px){
+    .grid{grid-template-columns:1fr 1fr}
+    .dotlist{grid-template-columns:1fr 1fr}
+    .hero{padding-top:76px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">YouTube &middot; Research file</p>
+    <h1><b>100</b><br>Studies</h1>
+    <p class="sub">How people use AI in their own lives, outside of work.</p>
+    <p class="when">November 21, 2026 &middot; 48 from the U.S., 52 from other countries or worldwide</p>
+    <div class="note">
+      <p><b>What is in here.</b> 64 surveys, 7 sets of government statistics, 5 chat-log studies, 5 web-traffic studies, 4 venture capital reports, 3 app-data reports, 2 bank-records reports, 2 company reports, 2 social media studies, 2 experiments, 2 browsing-data studies, 1 card-spending panel and 1 research review.</p>
+      <p><b>How it was checked.</b> Every finding came from a web search in this session. The original pages could not be opened from here, so each link goes to the source or to coverage of it. Check the link before saying a number on camera.</p>
+      <p><b>Scope.</b> These are studies of people, not companies. Some surveys count any use, including at work, because they did not ask where.</p>
+    </div>
+  </div>
+</header>
+
+<nav class="nav" aria-label="Sections"><div>
+  <a href="#dots">What it shows</a>
+    <a href="#pay">Who pays <i>6</i></a>
+  <a href="#use">How many people use it <i>7</i></a>
+  <a href="#what">What they use it for <i>8</i></a>
+  <a href="#shop">Search, shopping and travel <i>8</i></a>
+  <a href="#money">Money <i>4</i></a>
+  <a href="#health">Health <i>6</i></a>
+  <a href="#feel">Companions and feelings <i>13</i></a>
+  <a href="#young">Kids, teens and students <i>7</i></a>
+  <a href="#old">Older adults <i>4</i></a>
+  <a href="#world">Country by country <i>27</i></a>
+  <a href="#trust">Trust and attitudes <i>5</i></a>
+  <a href="#apps">Apps and web traffic <i>5</i></a>
+</div></nav>
+
+<main class="wrap">
+
+  <div class="dots" id="dots">
+    <p class="eyebrow">Claude&rsquo;s read of the pile</p>
+    <h2>Six things the 100 show together</h2>
+    <ol class="dotlist">
+      <li><h3>Records and surveys disagree on who pays.</h3><p>Bank and card records put paying households at <em>2% to 4.5%</em> (No. 01 to 03). Surveys mostly say <em>40% to 55%</em> of AI users pay (No. 04 and 06), though one a year earlier said 3% (No. 05). Bank records miss anything billed through an app store or bundled into another product. Surveys count whatever people call paying. The records side with Adam&rsquo;s first instinct that very few pay.</p></li>
+      <li><h3>About half use it, a quarter daily, one in 25 all day.</h3><p>In the U.S., 49% use chatbots, 24% daily and 4% almost constantly (No. 07). Other rich countries land close by: the UK at 54%, Australia at 48.6%, South Korea at 44.5%.</p></li>
+      <li><h3>Mostly, people ask it things.</h3><p>Half of ChatGPT messages are asking (No. 14). Looking things up is the top use in the U.S., Canada and across six countries, and 76% of users in China use it to answer questions.</p></li>
+      <li><h3>Many who don&rsquo;t use it don&rsquo;t know how.</h3><p>In South Korea, 63.5% of non-users say they don&rsquo;t know how or find it hard to learn. In Brazil, 52% of non-users didn&rsquo;t know the tools exist.</p></li>
+      <li><h3>Logs and surveys disagree on companionship too.</h3><p>In chat logs, emotional talk is small: 2.9% of Claude conversations, with companionship under 0.5%. In surveys it is large: 72% of U.S. teens have tried an AI companion.</p></li>
+      <li><h3>Age and income split everything.</h3><p>Seoul: 63.9% under 55 against 12.2% over. The EU: 64% of ages 16 to 24 against 7% of ages 65 to 74. Brazil: 69% of the richest class against 16% of the poorest.</p></li>
+    </ol>
+  </div>
+
+  <section id="pay">
+    <header class="sec"><p class="count">6 studies</p><h2>Who pays</h2></header>
+    <div class="grid">
+      <article class="card" id="s1">
+        <p class="no">No. 01</p>
+        <p class="stat">2.2%</p>
+        <p class="find">of PNC customer households paid for a generative AI subscription in May 2026. That is up about 155% in a year. Over 4% of higher-income households paid, and under 1% of lower-income ones.</p>
+        <p class="src"><b>PNC Economics, Consumer Report</b></p>
+        <p class="meta"><span class="chip">Bank data</span><span>U.S. (PNC customers)</span><span>June 2026</span><a href="https://www.cbsnews.com/news/generative-ai-subscriptions-consumer-spending/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s2">
+        <p class="no">No. 02</p>
+        <p class="stat">About 3%</p>
+        <p class="find">of households paid for an AI service in 2026, going by card and bank payments. The median paying household spent about $20 a month.</p>
+        <p class="src"><b>Bank of America Institute</b></p>
+        <p class="meta"><span class="chip">Bank data</span><span>U.S. (Bank of America customers)</span><span>2026</span><a href="https://whizi.io/resources/ai-subscription-statistics/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s3">
+        <p class="no">No. 03</p>
+        <p class="stat">4.5%</p>
+        <p class="find">of consumers had a paid personal subscription to ChatGPT, Gemini or Claude in August 2026, up from 2.1% a year before. The top 1% of payers spent about $903 a month.</p>
+        <p class="src"><b>a16z, Top 100 Gen AI Consumer Apps, 7th edition (YipitData cards)</b></p>
+        <p class="meta"><span class="chip">Card panel</span><span>U.S.</span><span>Oct 2026</span><a href="https://a16z.com/100-gen-ai-apps-7/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s4">
+        <p class="no">No. 04</p>
+        <p class="stat">55%</p>
+        <p class="find">of AI users pay for at least one AI product. Adoption moved only from 61% to 64% of adults, daily use rose from 19% to 25%, and the top 14% of payers made 60% of the spending.</p>
+        <p class="src"><b>Menlo Ventures, 2026: The State of Consumer AI</b></p>
+        <p class="meta"><span class="chip">VC report</span><span>U.S. (5,067 adults)</span><span>Sept 2026</span><a href="https://menlovc.com/perspective/2026-the-state-of-consumer-ai/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s5">
+        <p class="no">No. 05</p>
+        <p class="stat">3%</p>
+        <p class="find">of AI users paid for a premium service a year earlier. 61% of adults had used AI in the past six months and 19% used it daily.</p>
+        <p class="src"><b>Menlo Ventures, 2025: The State of Consumer AI</b></p>
+        <p class="meta"><span class="chip">VC report</span><span>U.S.</span><span>June 2025</span><a href="https://www.semafor.com/article/06/27/2025/only-3-of-ai-users-pay-for-tools-leaving-huge-untapped-revenue-for-companies-report">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s6">
+        <p class="no">No. 06</p>
+        <p class="stat">4 in 10</p>
+        <p class="find">consumers say they pay for generative AI products. Half of those who don&#x27;t pay say the free tools are good enough. 53% are experimenting with it or using it regularly, up from 38%.</p>
+        <p class="src"><b>Deloitte, Connected Consumer Survey 2025</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (3,524 consumers)</span><span>2025</span><a href="https://www.deloitte.com/us/en/insights/industry/telecommunications/connectivity-mobile-trends-survey.html">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="use">
+    <header class="sec"><p class="count">7 studies</p><h2>How many people use it</h2></header>
+    <div class="grid">
+      <article class="card" id="s7">
+        <p class="no">No. 07</p>
+        <p class="stat">49%</p>
+        <p class="find">of adults use AI chatbots, up from 33% in 2024. 24% use them daily and 4% use them almost constantly.</p>
+        <p class="src"><b>Pew Research Center, Americans and AI 2026</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>June 2026</span><a href="https://www.pewresearch.org/internet/2026/06/17/americans-and-ai-2026/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s8">
+        <p class="no">No. 08</p>
+        <p class="stat">24%</p>
+        <p class="find">use AI daily, up 10 points in a year. Among daily users, 37% start a search with AI and 32% start with a search engine. Adults 45 to 60 lead on use and on paid subscriptions.</p>
+        <p class="src"><b>Goodwater Capital, 2026 US Consumer Survey</b></p>
+        <p class="meta"><span class="chip">VC report</span><span>U.S. (1,554 consumers)</span><span>June 2026</span><a href="https://www.goodwatercap.com/perspectives/2026-consumer-survey">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s9">
+        <p class="no">No. 09</p>
+        <p class="stat">65%</p>
+        <p class="find">of adults used an AI language model in the past week, up from 52% in early 2025.</p>
+        <p class="src"><b>Elon University, Imagining the Digital Future Center, 2026 survey</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>May 2026</span><a href="https://www.elon.edu/u/news/2026/09/14/elon-survey-finds-most-americans-believe-human-purpose-is-in-peril-in-the-age-of-ai/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s10">
+        <p class="no">No. 10</p>
+        <p class="stat">47.8% vs 39.3%</p>
+        <p class="find">Across many studies, 47.8% of men and 39.3% of women had used generative AI. The first version pooled 18 studies and more than 140,000 people.</p>
+        <p class="src"><b>Harvard Business School (Koning and others), Global Evidence on Gender Gaps and Generative AI</b></p>
+        <p class="meta"><span class="chip">Research review</span><span>Worldwide</span><span>2024, updated 2026</span><a href="https://aiinstitute.hbs.edu/the-gender-divide-in-generative-ai-a-global-challenge-update/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s11">
+        <p class="no">No. 11</p>
+        <p class="stat">32.7%</p>
+        <p class="find">of working-age adults used generative AI outside of work in August 2024. Use of any kind, work or home, reached about 58% in early 2026.</p>
+        <p class="src"><b>St. Louis Fed (Bick, Blandin and Deming), Real-Time Population Survey</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (ages 18 to 64)</span><span>2024 to 2026</span><a href="https://fred.stlouisfed.org/series/RPSGENAIUSAGESHARENONWORK">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s12">
+        <p class="no">No. 12</p>
+        <p class="stat">27%</p>
+        <p class="find">of Americans say they have never used AI tools, down from 33% a year earlier. 51% have used them to research topics they are curious about, up from 37%.</p>
+        <p class="src"><b>Quinnipiac University Poll</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>March 2026</span><a href="https://poll.qu.edu/images/polling/us/us03302026_uaio53.pdf">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s13">
+        <p class="no">No. 13</p>
+        <p class="stat">44%</p>
+        <p class="find">of adults use AI tools like ChatGPT sometimes or very often, and 56% rarely or never.</p>
+        <p class="src"><b>NBC News Decision Desk Poll with SurveyMonkey</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (19,410 adults)</span><span>June 2025</span><a href="https://nbcnews.com/politics/nbc-news-polls/poll-americans-form-views-ai-divided-role-school-everyday-life-rcna212782">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="what">
+    <header class="sec"><p class="count">8 studies</p><h2>What they use it for</h2></header>
+    <div class="grid">
+      <article class="card" id="s14">
+        <p class="no">No. 14</p>
+        <p class="stat">70%</p>
+        <p class="find">of consumer ChatGPT use is not for work. Three kinds of conversation make up nearly 80%: practical guidance, seeking information and writing. 49% of messages are asking.</p>
+        <p class="src"><b>OpenAI and NBER, How People Use ChatGPT</b></p>
+        <p class="meta"><span class="chip">Chat logs</span><span>Worldwide (consumer plans)</span><span>Sept 2025</span><a href="https://www.nber.org/papers/w34255">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s15">
+        <p class="no">No. 15</p>
+        <p class="stat">#1</p>
+        <p class="find">Therapy and companionship ranked as the top use of generative AI in 2025, ahead of organizing life and finding purpose. The ranking draws on what people post in online forums such as Reddit.</p>
+        <p class="src"><b>Marc Zao-Sanders in Harvard Business Review, How People Are Really Using Gen AI in 2025</b></p>
+        <p class="meta"><span class="chip">Social media</span><span>Online forums</span><span>April 2025</span><a href="https://ipcloseup.com/2025/06/25/harvard-business-review-research-finds-the-top-use-of-gen-a-i-in-2025-is-companionship-therapy/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s16">
+        <p class="no">No. 16</p>
+        <p class="stat">37.5M</p>
+        <p class="find">Copilot conversations show health is the top topic on phones at every hour of the day. Desktop use is work and technical, and religion and philosophy rise late at night.</p>
+        <p class="src"><b>Microsoft AI, It&#x27;s About Time: The Copilot Usage Report 2025</b></p>
+        <p class="meta"><span class="chip">Chat logs</span><span>Worldwide</span><span>Dec 2025</span><a href="https://microsoft.ai/news/its-about-time-the-copilot-usage-report-2025/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s17">
+        <p class="no">No. 17</p>
+        <p class="stat">About 10%</p>
+        <p class="find">of 47,000 publicly shared ChatGPT conversations show people talking about their emotions. These are only chats that users chose to share.</p>
+        <p class="src"><b>The Washington Post</b></p>
+        <p class="meta"><span class="chip">Chat logs</span><span>English-language shared chats</span><span>Nov 2025</span><a href="https://www.benton.org/headlines/how-people-really-use-chatgpt-according-47000-conversations-shared-online">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s18">
+        <p class="no">No. 18</p>
+        <p class="stat">51%</p>
+        <p class="find">of people who use AI language models say their main purpose is personal, informal learning. 24% say work and 11% say school.</p>
+        <p class="src"><b>Elon University, Imagining the Digital Future Center</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (500 users)</span><span>March 2025</span><a href="https://www.elon.edu/u/news/2025/03/12/survey-52-of-u-s-adults-now-use-ai-large-language-models-like">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s19">
+        <p class="no">No. 19</p>
+        <p class="stat">60%</p>
+        <p class="find">of adults have used AI to search for information, the most common of eight uses asked about. Companionship was the least common at 16%, and 25% among young adults.</p>
+        <p class="src"><b>AP-NORC Center</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (1,437 adults)</span><span>July 2025</span><a href="https://apnorc.org/projects/young-adults-leading-the-way-in-ai-adoption/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s20">
+        <p class="no">No. 20</p>
+        <p class="stat">52%</p>
+        <p class="find">of Canadian AI users use it as a search engine, 42% to experiment and see how it works, and 35% to write things for personal use.</p>
+        <p class="src"><b>CIRA, 2026 Canadian Internet Trends</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Canada (2,000 adults)</span><span>July 2026</span><a href="https://www.cira.ca/uploads/2026/07/2026-Internet-Trends-by-CIRA_Full-survey-results.pdf">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s21">
+        <p class="no">No. 21</p>
+        <p class="stat">7% → 10%</p>
+        <p class="find">Weekly use of AI chatbots for news rose in a year. It is 17% among ages 18 to 24 and 5% among those 55 and older.</p>
+        <p class="src"><b>Reuters Institute, Digital News Report 2026</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>About 48 markets</span><span>June 2026</span><a href="https://reutersinstitute.politics.ox.ac.uk/digital-news-report/2026/dnr-executive-summary">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="shop">
+    <header class="sec"><p class="count">8 studies</p><h2>Search, shopping and travel</h2></header>
+    <div class="grid">
+      <article class="card" id="s22">
+        <p class="no">No. 22</p>
+        <p class="stat">+693%</p>
+        <p class="find">Visits to retail sites from generative AI tools in the 2025 holiday season, against the year before. Those visitors were 31% more likely to buy.</p>
+        <p class="src"><b>Adobe Analytics, 2025 Holiday Shopping</b></p>
+        <p class="meta"><span class="chip">Traffic data</span><span>U.S. (over 1 trillion site visits)</span><span>Jan 2026</span><a href="https://news.adobe.com/news/2026/01/adobe-holiday-shopping-season">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s23">
+        <p class="no">No. 23</p>
+        <p class="stat">80%</p>
+        <p class="find">of search users rely on AI summaries for at least 40% of their searches. People use AI chat tools for research (68%), news and weather (48%) and shopping advice (42%).</p>
+        <p class="src"><b>Bain with Dynata, Generative AI Consumer Survey</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (1,117 respondents)</span><span>Feb 2025</span><a href="https://www.bain.com/insights/goodbye-clicks-hello-ai-zero-click-search-redefines-marketing/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s24">
+        <p class="no">No. 24</p>
+        <p class="stat">50%</p>
+        <p class="find">of consumers now deliberately use AI search to guide what they buy. 44% of those users call it their main source, ahead of regular search at 31%.</p>
+        <p class="src"><b>McKinsey, New Front Door to the Internet</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>Oct 2025</span><a href="https://www.mckinsey.com/capabilities/growth-marketing-and-sales/our-insights/new-front-door-to-the-internet-winning-in-the-age-of-ai-search">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s25">
+        <p class="no">No. 25</p>
+        <p class="stat">8% vs 15%</p>
+        <p class="find">People clicked a search result on 8% of Google visits that showed an AI summary and 15% of visits that didn&#x27;t. 18% of searches produced a summary.</p>
+        <p class="src"><b>Pew Research Center, browsing data study</b></p>
+        <p class="meta"><span class="chip">Browsing data</span><span>U.S. (900 adults&#x27; browsing)</span><span>July 2025</span><a href="https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s26">
+        <p class="no">No. 26</p>
+        <p class="stat">20%</p>
+        <p class="find">of Americans use AI tools ten or more times a month, but growth is slowing and regular search has not dropped.</p>
+        <p class="src"><b>SparkToro with Datos clickstream data</b></p>
+        <p class="meta"><span class="chip">Browsing data</span><span>U.S. (desktop)</span><span>2025</span><a href="https://sparktoro.com/blog/new-research-20-of-americans-use-ai-tools-10x-month-but-growth-is-slowing-and-traditional-search-hasnt-dipped/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s27">
+        <p class="no">No. 27</p>
+        <p class="stat">56%</p>
+        <p class="find">of travelers used AI to plan, book or get help on at least one trip in the past year, up from 33% in early 2025.</p>
+        <p class="src"><b>Phocuswright, The AI Surge</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (travelers)</span><span>2026</span><a href="https://www.phocuswire.com/ai-surge-us-behavioral-shift-travel-phocuswright-research-2026">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s28">
+        <p class="no">No. 28</p>
+        <p class="stat">69%</p>
+        <p class="find">of Gen Z travelers turn to generative AI to plan trips and while traveling, the most of any age group.</p>
+        <p class="src"><b>Booking.com, 2026 Travel Trends</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>34 countries (32,800 travelers)</span><span>2026</span><a href="https://www.statista.com/chart/amp/36471/gen-z-consults-gen-ai-for-travel-advice/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s29">
+        <p class="no">No. 29</p>
+        <p class="stat">1 in 4</p>
+        <p class="find">consumers used generative AI shopping tools in 2025, and 31% more plan to. Only 19% would pay for a chatbot or shopping assistant.</p>
+        <p class="src"><b>Capgemini, What Matters to Today&#x27;s Consumer 2026</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>12 countries (12,000 consumers)</span><span>Jan 2026</span><a href="https://www.capgemini.com/insights/research-library/what-matters-to-todays-consumer-2026">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="money">
+    <header class="sec"><p class="count">4 studies</p><h2>Money</h2></header>
+    <div class="grid">
+      <article class="card" id="s30">
+        <p class="no">No. 30</p>
+        <p class="stat">1 in 5</p>
+        <p class="find">people who sought financial advice in the past year turned to AI. Fewer than one in three have confidence in the financial advice AI gives.</p>
+        <p class="src"><b>Gallup with Edward Jones</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (adults 21+)</span><span>Aug 2026</span><a href="https://abcnews.com/Technology/wireStory/us-adults-ai-financial-guidance-trust-gallup-poll-135452999">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s31">
+        <p class="no">No. 31</p>
+        <p class="stat">26%</p>
+        <p class="find">of people ask AI chatbots their personal finance questions. 55% of those users say they would not trust a chatbot for good finance advice.</p>
+        <p class="src"><b>NerdWallet with The Harris Poll</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>2025</span><a href="https://www.nerdwallet.com/finance/studies/using-ai-for-personal-finances">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s32">
+        <p class="no">No. 32</p>
+        <p class="stat">51%</p>
+        <p class="find">of respondents say they turn to AI for financial advice or information.</p>
+        <p class="src"><b>J.D. Power</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>Sept 2025</span><a href="https://bankingjournal.aba.com/2025/09/survey-consumers-increasingly-turn-to-ai-for-financial-advice/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s33">
+        <p class="no">No. 33</p>
+        <p class="stat">24%</p>
+        <p class="find">of consumers on average used AI for money management between May and September 2026.</p>
+        <p class="src"><b>PYMNTS Intelligence, The Money Prompt</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>Nov 2026</span><a href="https://www.pymnts.com/report/study/the-money-prompt-consumers-want-advice-without-giving-up-control/">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="health">
+    <header class="sec"><p class="count">6 studies</p><h2>Health</h2></header>
+    <div class="grid">
+      <article class="card" id="s34">
+        <p class="no">No. 34</p>
+        <p class="stat">32%</p>
+        <p class="find">of adults turned to an AI chatbot for health information in the past year. 41% of those users have uploaded personal medical information such as test results.</p>
+        <p class="src"><b>KFF Tracking Poll on Health Information and Trust</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (1,343 adults)</span><span>March 2026</span><a href="https://www.kff.org/health-information-trust/poll-1-in-3-adults-are-turning-to-ai-chatbots-for-health-information-equaling-the-share-who-use-social-media-for-health/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s35">
+        <p class="no">No. 35</p>
+        <p class="stat">17%</p>
+        <p class="find">of adults used AI chatbots at least once a month for health information and advice in an earlier poll, rising to 25% of adults under 30.</p>
+        <p class="src"><b>KFF Health Misinformation Tracking Poll</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>2024</span><a href="https://www.kff.org/health-information-trust/kff-health-misinformation-tracking-poll-artificial-intelligence-and-health-information/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s36">
+        <p class="no">No. 36</p>
+        <p class="stat">13.1%</p>
+        <p class="find">of people ages 12 to 21 used generative AI for mental health advice, and 22.2% of those 18 to 21.</p>
+        <p class="src"><b>RAND, in JAMA Network Open</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (1,058 youth)</span><span>Nov 2025</span><a href="https://www.rand.org/news/press/2025/11/one-in-eight-adolescents-and-young-adults-use-ai-chatbots.html">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s37">
+        <p class="no">No. 37</p>
+        <p class="stat">19.2%</p>
+        <p class="find">of adolescents and young adults used AI chatbots for mental health advice a year later. 63% of them had not told anyone.</p>
+        <p class="src"><b>RAND, in JAMA Pediatrics</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>June 2026</span><a href="https://www.rand.org/news/press/2026/06/nearly-1-in-5-us-adolescents-and-young-adults-use-ai.html">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s38">
+        <p class="no">No. 38</p>
+        <p class="stat">40 million</p>
+        <p class="find">people a day ask ChatGPT health questions. More than 5% of all its messages are about health, and one in four weekly users sends a health prompt each week.</p>
+        <p class="src"><b>OpenAI, AI as a Healthcare Ally</b></p>
+        <p class="meta"><span class="chip">Company data</span><span>Worldwide</span><span>Jan 2026</span><a href="https://cdn.openai.com/pdf/2cb29276-68cd-4ec6-a5f4-c01c5e7a36e9/OpenAI-AI-as-a-Healthcare-Ally-Jan-2026.pdf">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s39">
+        <p class="no">No. 39</p>
+        <p class="stat">48.7%</p>
+        <p class="find">of AI users who report mental health challenges use an AI language model for therapeutic support. The sample was only people who already use these tools.</p>
+        <p class="src"><b>Sentio</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (AI users)</span><span>2025</span><a href="https://sentio.org/ai-research/ai-survey">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="feel">
+    <header class="sec"><p class="count">13 studies</p><h2>Companions and feelings</h2></header>
+    <div class="grid">
+      <article class="card" id="s40">
+        <p class="no">No. 40</p>
+        <p class="stat">72%</p>
+        <p class="find">of teens have used an AI companion at least once, and 52% use one a few times a month or more. A third use them for social interaction and relationships.</p>
+        <p class="src"><b>Common Sense Media with NORC, Talk, Trust, and Trade-Offs</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>July 2025</span><a href="https://www.commonsensemedia.org/research/talk-trust-and-trade-offs-how-and-why-teens-use-ai-companions">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s41">
+        <p class="no">No. 41</p>
+        <p class="stat">2.9%</p>
+        <p class="find">of Claude conversations are about emotional or personal matters, mostly advice and coaching. Companionship and roleplay together are under 0.5%.</p>
+        <p class="src"><b>Anthropic, How People Use Claude for Support, Advice, and Companionship</b></p>
+        <p class="meta"><span class="chip">Chat logs</span><span>Worldwide (4.5 million conversations)</span><span>June 2025</span><a href="https://www.anthropic.com/research/how-people-use-claude-for-support-advice-and-companionship">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s42">
+        <p class="no">No. 42</p>
+        <p class="stat">About 1,000</p>
+        <p class="find">people used ChatGPT for four weeks in a randomized trial. Heavier daily use went with more loneliness and emotional dependence. A companion analysis of 40 million conversations found emotional use is rare and concentrated in a small group.</p>
+        <p class="src"><b>OpenAI and MIT Media Lab</b></p>
+        <p class="meta"><span class="chip">Experiment</span><span>U.S. and worldwide</span><span>March 2025</span><a href="https://openai.com/index/affective-use-study">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s43">
+        <p class="no">No. 43</p>
+        <p class="stat">16%</p>
+        <p class="find">of singles have engaged with AI as a romantic companion, and 33% of Gen Z singles. 26% use AI to help their dating lives, more than four times the year before.</p>
+        <p class="src"><b>Match, Singles in America 2025</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (singles)</span><span>June 2025</span><a href="https://www.aol.com/singles-using-ai-date-300-120000818.html">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s44">
+        <p class="no">No. 44</p>
+        <p class="stat">47%</p>
+        <p class="find">of singles view AI negatively when it comes to romantic relationships. Two in five singles ages 18 to 39 would refuse to date someone who uses an AI companion app.</p>
+        <p class="src"><b>Match, Singles in America 2026</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (singles)</span><span>June 2026</span><a href="https://mtch.com/news/ai-is-everywhere-romance-is-still-off-limits/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s45">
+        <p class="no">No. 45</p>
+        <p class="stat">19%</p>
+        <p class="find">of adults have chatted with an AI system made to simulate a romantic partner. Young adults were more than twice as likely as older adults.</p>
+        <p class="src"><b>BYU Wheatley Institute, Counterfeit Connections</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>2025</span><a href="https://wheatley.byu.edu/counterfeit-connections">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s46">
+        <p class="no">No. 46</p>
+        <p class="stat">1 in 7</p>
+        <p class="find">young adults in committed relationships regularly interact with an AI romantic companion. More than half hide it, fully or partly, from their partner.</p>
+        <p class="src"><b>BYU Wheatley Institute, Secret Soulmates</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (2,431 adults ages 18 to 30)</span><span>May 2026</span><a href="https://www.deseret.com/family/2026/05/19/young-adults-cheat-dating-ai-chatbot-companions-byu-wheatley-study/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s47">
+        <p class="no">No. 47</p>
+        <p class="stat">Same as a person</p>
+        <p class="find">In experiments, talking with an AI companion eased loneliness about as much as talking with another person, and more than watching YouTube. The effect was short-lived.</p>
+        <p class="src"><b>Harvard Business School (De Freitas and others), Journal of Consumer Research</b></p>
+        <p class="meta"><span class="chip">Experiment</span><span>Online experiments</span><span>2025</span><a href="https://www.library.hbs.edu/working-knowledge/feeling-lonely-an-attentive-listener-is-an-ai-prompt-away">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s48">
+        <p class="no">No. 48</p>
+        <p class="stat">1,506</p>
+        <p class="find">top posts from Reddit&#x27;s r/MyBoyfriendIsAI, a community of over 27,000 members. Many relationships began by accident during ordinary use, and more are with general chatbots like ChatGPT than with companion apps.</p>
+        <p class="src"><b>MIT Media Lab, “My Boyfriend is AI”</b></p>
+        <p class="meta"><span class="chip">Social media</span><span>Reddit</span><span>Sept 2025</span><a href="https://arxiv.org/abs/2509.11391">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s49">
+        <p class="no">No. 49</p>
+        <p class="stat">19%</p>
+        <p class="find">of high school students say they or someone they know has had a romantic relationship with AI. 42% say the same about using AI for companionship.</p>
+        <p class="src"><b>Center for Democracy and Technology</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (1,030 students, grades 9 to 12)</span><span>Oct 2025</span><a href="https://cdt.org/press/cdt-survey-research-finds-use-of-ai-in-k-12-schools-connected-to-negative-effects-on-students-including-their-real-life-relationships/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s50">
+        <p class="no">No. 50</p>
+        <p class="stat">1%</p>
+        <p class="find">of adults under 40 have an AI friend and 10% are open to one. 25% think AI partners could replace real-life romance.</p>
+        <p class="src"><b>Institute for Family Studies with YouGov</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (about 2,000 adults under 40)</span><span>Nov 2024</span><a href="https://ifstudies.org/blog/artificial-intelligence-and-relationships-1-in-4-young-adults-believe-ai-partners-could-replace-real-life-romance">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s51">
+        <p class="no">No. 51</p>
+        <p class="stat">220 million</p>
+        <p class="find">downloads of AI companion apps worldwide by July 2025, with $221 million spent in them. The top 10% of apps take 89% of the revenue.</p>
+        <p class="src"><b>Appfigures</b></p>
+        <p class="meta"><span class="chip">App data</span><span>Worldwide (app stores)</span><span>Aug 2025</span><a href="https://techcrunch.com/2025/08/12/ai-companion-apps-on-track-to-pull-in-120m-in-2025">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s52">
+        <p class="no">No. 52</p>
+        <p class="stat">27%</p>
+        <p class="find">of adult internet users have significant social or emotional interactions with AI. A third of them consider the AI a friend, and 35% say it sometimes agrees with them too much.</p>
+        <p class="src"><b>Elon University, The Rise of AI Companions</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>Sept 2026</span><a href="https://www.elon.edu/u/news/2026/09/02/imagining-the-digital-future-center-reports-on-the-rise-of-ai-companions/">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="young">
+    <header class="sec"><p class="count">7 studies</p><h2>Kids, teens and students</h2></header>
+    <div class="grid">
+      <article class="card" id="s53">
+        <p class="no">No. 53</p>
+        <p class="stat">64%</p>
+        <p class="find">of teens ages 13 to 17 use AI chatbots, and 28% use them every day. ChatGPT is the only one a majority of teens use (59%).</p>
+        <p class="src"><b>Pew Research Center, Teens, Social Media and AI Chatbots</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>Dec 2025</span><a href="https://www.pewresearch.org/internet/2025/12/09/teens-social-media-and-ai-chatbots-2025/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s54">
+        <p class="no">No. 54</p>
+        <p class="stat">64% vs 51%</p>
+        <p class="find">64% of teens say they use AI chatbots, but only 51% of their parents think they do. About 1 in 5 teens get news from chatbots.</p>
+        <p class="src"><b>Pew Research Center, How Teens Use and View AI</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S.</span><span>Feb 2026</span><a href="https://www.pewresearch.org/internet/2026/02/24/how-teens-use-and-view-ai/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s55">
+        <p class="no">No. 55</p>
+        <p class="stat">1 in 10</p>
+        <p class="find">parents say their child aged 5 to 12 uses AI chatbots.</p>
+        <p class="src"><b>Pew Research Center, parents survey</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (3,054 parents)</span><span>2025</span><a href="https://www.pewresearch.org/short-reads/2026/03/12/key-findings-about-how-americans-view-artificial-intelligence/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s56">
+        <p class="no">No. 56</p>
+        <p class="stat">35%</p>
+        <p class="find">of children who use AI chatbots say it feels like talking to a friend. Among vulnerable children, 23% use them because they have no one else to talk to.</p>
+        <p class="src"><b>Internet Matters, Me, Myself &amp; AI</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>UK (1,000 children, 2,000 parents)</span><span>July 2025</span><a href="https://www.internetmatters.org/hub/research/me-myself-and-ai-chatbot-research/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s57">
+        <p class="no">No. 57</p>
+        <p class="stat">95%</p>
+        <p class="find">of undergraduates use AI in at least one way. 20% say it makes them feel lonelier and 21% say less lonely.</p>
+        <p class="src"><b>HEPI and Kortext, Student Generative AI Survey 2026</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>UK (1,054 undergraduates)</span><span>March 2026</span><a href="https://www.hepi.ac.uk/reports/student-generative-ai-survey-2026/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s58">
+        <p class="no">No. 58</p>
+        <p class="stat">22%</p>
+        <p class="find">of people ages 14 to 29 use AI daily and 29% weekly, about the same as a year earlier. 42% feel anxious about it.</p>
+        <p class="src"><b>Gallup, Walton Family Foundation and GSV, Voices of Gen Z</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (1,572 people ages 14 to 29)</span><span>April 2026</span><a href="https://news.gallup.com/poll/708224/gen-z-adoption-steady-skepticism-climbs.aspx">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s59">
+        <p class="no">No. 59</p>
+        <p class="stat">Nearly 1 in 3</p>
+        <p class="find">parents of children 8 and under say their child has used AI for school-related learning. Among parents of 5- to 8-year-olds it is 39%.</p>
+        <p class="src"><b>Common Sense Media, Census: Media Use by Kids Zero to Eight</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (1,578 parents)</span><span>Feb 2025</span><a href="https://www.commonsensemedia.org/research/the-2025-common-sense-census-media-use-by-kids-zero-to-eight">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="old">
+    <header class="sec"><p class="count">4 studies</p><h2>Older adults</h2></header>
+    <div class="grid">
+      <article class="card" id="s60">
+        <p class="no">No. 60</p>
+        <p class="stat">30%</p>
+        <p class="find">of adults 50 and older used generative AI in 2025, up from 18% in 2024 and 9% in 2023.</p>
+        <p class="src"><b>AARP, 2026 Tech Trends and Adults 50-Plus</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (adults 50+)</span><span>Jan 2026</span><a href="https://www.aarp.org/pri/topics/technology/internet-media-devices/2026-technology-trends-older-adults/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s61">
+        <p class="no">No. 61</p>
+        <p class="stat">41%</p>
+        <p class="find">of adults over 50 who use AI have asked an AI tool a health question.</p>
+        <p class="src"><b>AARP, AI health tools survey</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (1,031 adults 50+)</span><span>Feb 2026</span><a href="https://www.aarp.org/pri/topics/technology/internet-media-devices/artificial-intelligence-health-tools/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s62">
+        <p class="no">No. 62</p>
+        <p class="stat">55%</p>
+        <p class="find">of adults 50 and older have used AI they speak or type to. 14% used it for health information, 12% for social connection, and 46% have little or no trust in what it says.</p>
+        <p class="src"><b>University of Michigan, National Poll on Healthy Aging</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (2,883 adults ages 50 to 97)</span><span>2025</span><a href="https://ihpi.umich.edu/national-poll-healthy-aging/national-findings/how-older-adults-use-and-think-about-ai">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s63">
+        <p class="no">No. 63</p>
+        <p class="stat">63.9% vs 12.2%</p>
+        <p class="find">In Seoul, 63.9% of residents under 55 have used generative AI and 12.2% of older residents have. Overall it is 43.2%.</p>
+        <p class="src"><b>Seoul city survey</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Seoul, South Korea</span><span>April 2026</span><a href="https://www.koreatimes.co.kr/southkorea/society/20260421/ai-use-triples-among-seoul-residents-but-generational-divide-persists">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="world">
+    <header class="sec"><p class="count">27 studies</p><h2>Country by country</h2></header>
+    <div class="grid">
+      <article class="card" id="s64">
+        <p class="no">No. 64</p>
+        <p class="stat">32.7%</p>
+        <p class="find">of people in the EU used a generative AI tool in the last three months. About a quarter used one for private purposes. Among ages 16 to 24 it was 64%, and among 65 to 74 it was 7%.</p>
+        <p class="src"><b>Eurostat</b></p>
+        <p class="meta"><span class="chip">Government statistics</span><span>European Union</span><span>2025</span><a href="https://data.europa.eu/en/publications/datastories/artificial-intelligence-europe-how-ai-entering-everyday-life">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s65">
+        <p class="no">No. 65</p>
+        <p class="stat">18% → 34%</p>
+        <p class="find">Weekly use of generative AI nearly doubled in a year across six countries. 22% used ChatGPT in the past week, and looking up information became the top use.</p>
+        <p class="src"><b>Reuters Institute, Generative AI and News Report 2025</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Argentina, Denmark, France, Japan, UK, U.S.</span><span>Oct 2025</span><a href="https://reutersinstitute.politics.ox.ac.uk/generative-ai-and-news-report-2025-how-people-think-about-ais-role-journalism-and-society">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s66">
+        <p class="no">No. 66</p>
+        <p class="stat">51%</p>
+        <p class="find">used a standalone generative AI tool in the past week across the same six countries a year later.</p>
+        <p class="src"><b>Reuters Institute, Generative AI and News Report 2026</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Six core countries of nine surveyed</span><span>2026</span><a href="https://reutersinstitute.politics.ox.ac.uk/generative-ai-and-news-report-2026-standalone-tools-information-infrastructure">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s67">
+        <p class="no">No. 67</p>
+        <p class="stat">18.8%</p>
+        <p class="find">of the world&#x27;s working-age people used generative AI in June 2026: 28.8% in richer countries and 16.2% in poorer ones. The UAE leads at 73%.</p>
+        <p class="src"><b>Microsoft AI Economy Institute, Global AI Diffusion Q2 2026</b></p>
+        <p class="meta"><span class="chip">Company data</span><span>Worldwide (147 economies)</span><span>Sept 2026</span><a href="https://blogs.microsoft.com/on-the-issues/2026/09/21/the-continued-state-of-global-ai-diffusion-in-2026/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s68">
+        <p class="no">No. 68</p>
+        <p class="stat">54%</p>
+        <p class="find">of UK adults use AI tools such as ChatGPT, Copilot or Gemini, with younger adults highest.</p>
+        <p class="src"><b>Ofcom, Adults&#x27; Media Use and Attitudes</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>UK</span><span>April 2026</span><a href="https://www.ofcom.org.uk/media-use-and-attitudes/media-habits-adults/passive-social-media-use-ai-companionship-and-online-side-hustles-uk-adults-media-and-online-lives-revealed">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s69">
+        <p class="no">No. 69</p>
+        <p class="stat">48%</p>
+        <p class="find">of people surveyed used generative AI in the past year. Use was highest in emerging markets and lowest in the U.S. and Canada at about 29%.</p>
+        <p class="src"><b>Google and Ipsos, Our Life with AI</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>21 countries</span><span>Jan 2025</span><a href="https://www.ipsos.com/en-us/google-ipsos-multi-country-ai-survey-2025">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s70">
+        <p class="no">No. 70</p>
+        <p class="stat">515 million</p>
+        <p class="find">people in China used generative AI by June 2025, which is 36.5% of the population and double the number six months earlier.</p>
+        <p class="src"><b>CNNIC, Statistical Report on Internet Development</b></p>
+        <p class="meta"><span class="chip">Government statistics</span><span>China</span><span>Oct 2025</span><a href="https://scmp.com/tech/tech-trends/article/3329667/chinas-generative-ai-user-base-doubles-515-million-6-months">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s71">
+        <p class="no">No. 71</p>
+        <p class="stat">700 million+</p>
+        <p class="find">people in China used generative AI by mid-2026, more than half the population. 76% of users say they use it to answer questions.</p>
+        <p class="src"><b>CNNIC, Report on the Development of Generative AI Applications</b></p>
+        <p class="meta"><span class="chip">Government statistics</span><span>China</span><span>Sept 2026</span><a href="https://scmp.com/tech/tech-trends/article/3369231/chinas-generative-ai-user-base-crosses-700-million-covering-over-half-population">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s72">
+        <p class="no">No. 72</p>
+        <p class="stat">26.7%</p>
+        <p class="find">of individuals in Japan had used generative AI, against 68.8% in the U.S. and 81.2% in China.</p>
+        <p class="src"><b>Japan Ministry of Internal Affairs and Communications, 2025 White Paper</b></p>
+        <p class="meta"><span class="chip">Government statistics</span><span>Japan, U.S., China</span><span>July 2025</span><a href="https://hcamag.com/asia/specialisation/hr-technology/japan-lags-behind-china-us-in-use-of-gen-ai/496241">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s73">
+        <p class="no">No. 73</p>
+        <p class="stat">58.8%</p>
+        <p class="find">of individuals in Japan had used generative AI a year later, more than double.</p>
+        <p class="src"><b>Japan Ministry of Internal Affairs and Communications, 2026 White Paper</b></p>
+        <p class="meta"><span class="chip">Government statistics</span><span>Japan</span><span>2026</span><a href="https://www.soumu.go.jp/johotsusintokei/whitepaper/eng/WP2026_overview.pdf">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s74">
+        <p class="no">No. 74</p>
+        <p class="stat">34%</p>
+        <p class="find">of people use AI at least once a week and 15% daily. 71% of AI users use ChatGPT.</p>
+        <p class="src"><b>Bitkom</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Germany (1,003 people 16+)</span><span>April 2026</span><a href="https://www.bitkom.org/Presse/Presseinformation/Ein-Drittel-nutzt-KI-mindestens-einmal-pro-Woche">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s75">
+        <p class="no">No. 75</p>
+        <p class="stat">About half</p>
+        <p class="find">of Canadians use AI tools like ChatGPT or Copilot at least weekly, rising to 60 to 70% of those under 45.</p>
+        <p class="src"><b>Toronto Metropolitan University</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Canada (1,700 respondents)</span><span>2026</span><a href="https://www.torontomu.ca/diversity/reports/ai-and-chat-use/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s76">
+        <p class="no">No. 76</p>
+        <p class="stat">18%</p>
+        <p class="find">of Canadian generative AI users use it daily, 34% a few times a week and 26% a few times a month. 73% of students use it for schoolwork.</p>
+        <p class="src"><b>KPMG Canada, Generative AI Adoption Index</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Canada (3,804 adults)</span><span>Oct 2025</span><a href="https://kpmg.com/ca/en/media/2025/10/generative-ai-boom-among-canadian-students-raises-dilemmas.html">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s77">
+        <p class="no">No. 77</p>
+        <p class="stat">48.6%</p>
+        <p class="find">of Australian adults have used generative AI at least once.</p>
+        <p class="src"><b>Australian National University with Google, AI Adoption in Australia</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Australia</span><span>2026</span><a href="https://www.anu.edu.au/news/all-news/almost-half-of-australian-adults-have-used-generative-ai">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s78">
+        <p class="no">No. 78</p>
+        <p class="stat">45.6%</p>
+        <p class="find">of Australians had recently used a generative AI tool, up from 39% in a 2024 study. The survey includes people who don&#x27;t use the internet.</p>
+        <p class="src"><b>Australian Digital Inclusion Index</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Australia</span><span>Nov 2025</span><a href="https://www.admscentre.org.au/?p=30925">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s79">
+        <p class="no">No. 79</p>
+        <p class="stat">58%</p>
+        <p class="find">of Australians 14 and older, 13.6 million people, use AI tools in an average four weeks.</p>
+        <p class="src"><b>Roy Morgan</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Australia</span><span>March 2026</span><a href="https://www.roymorgan.com/findings/10248-artificial-intelligence-ai-tools-usage-march-2026">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s80">
+        <p class="no">No. 80</p>
+        <p class="stat">45%</p>
+        <p class="find">of French adults say they have taken up generative AI, up from 32% in 2024.</p>
+        <p class="src"><b>Ifop for Talan, generative AI barometer</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>France (1,100 adults)</span><span>March 2025</span><a href="https://www.ifop.com/wp-content/uploads/2025/07/121460-Rapport_compressed_compressed_compressed-1.pdf">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s81">
+        <p class="no">No. 81</p>
+        <p class="stat">60%</p>
+        <p class="find">of Indian internet users use AI assistants to search the web, and about 75% say they use them more than a year ago.</p>
+        <p class="src"><b>YouGov, How AI Is Changing Online Discovery in 2026</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>India (internet users)</span><span>2026</span><a href="https://news24online.com/india/ai-search-india-how-ai-changed-the-way-indians-search-the-internet-60-indian-users-prefer-ai-chatbots-for-web-search-report-reveals-surprising-details/886702/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s82">
+        <p class="no">No. 82</p>
+        <p class="stat">55%</p>
+        <p class="find">of rural young people use AI almost every day, and 86% have used ChatGPT.</p>
+        <p class="src"><b>Head Held High Foundation, Insights into Bharat&#x27;s AI Generation</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>Rural India (3,005 people ages 18 to 29)</span><span>March 2026</span><a href="https://www.head-held-high.org/wp-content/uploads/2026/03/Insights-into-Bharats-AI-Generation.pdf">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s83">
+        <p class="no">No. 83</p>
+        <p class="stat">4x</p>
+        <p class="find">People in India use ChatGPT for technical tasks at nearly four times the world average. India has about 100 million weekly users, mostly in big cities.</p>
+        <p class="src"><b>OpenAI Signals, How India Uses ChatGPT</b></p>
+        <p class="meta"><span class="chip">Chat logs</span><span>India</span><span>2026</span><a href="https://cdn.openai.com/signals/how-india-uses-chatgpt.pdf">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s84">
+        <p class="no">No. 84</p>
+        <p class="stat">38.9%</p>
+        <p class="find">of people had used generative AI, up from 24.0% in 2024 and 12.3% in 2023. Of those who hadn&#x27;t, 63.5% said they don&#x27;t know how or find it hard to learn.</p>
+        <p class="src"><b>KISDI, Intelligent Information Society User Panel Survey</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>South Korea (4,324 people ages 18 to 72)</span><span>2025</span><a href="https://www.digitaltoday.co.kr/en/view/58979/koreans-generative-ai-usage-rate-39-percent-average-daily-use-49-minutes">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s85">
+        <p class="no">No. 85</p>
+        <p class="stat">44.5%</p>
+        <p class="find">of people had used generative AI in 2025, up from 33.3% in 2024.</p>
+        <p class="src"><b>Korea Ministry of Science and ICT, Survey on Internet Usage</b></p>
+        <p class="meta"><span class="chip">Government statistics</span><span>South Korea (50,750 people ages 3+)</span><span>2026</span><a href="https://www.digitaltoday.co.kr/en/view/44135/south-koreans-generative-ai-use-rises-to-44-5-percent-up-11-2-points-on-year">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s86">
+        <p class="no">No. 86</p>
+        <p class="stat">32%</p>
+        <p class="find">of internet users in Brazil use generative AI, about 50 million people. It is 69% in the richest class and 16% in the poorest. Among people who don&#x27;t use it, 52% didn&#x27;t know the tools exist.</p>
+        <p class="src"><b>Cetic.br, TIC Domicílios 2025</b></p>
+        <p class="meta"><span class="chip">Government statistics</span><span>Brazil (ages 10+)</span><span>Dec 2025</span><a href="https://cetic.br/en/noticia/50-milhoes-de-brasileiros-ja-usam-ia-mas-potenciais-beneficios-continuam-limitados-as-camadas-de-maior-renda-e-escolaridade/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s87">
+        <p class="no">No. 87</p>
+        <p class="stat">82%</p>
+        <p class="find">of people had knowingly used AI in the past six months. In the UK it was 70%.</p>
+        <p class="src"><b>EY AI Sentiment Index 2025</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>15 countries (15,060 people)</span><span>April 2025</span><a href="https://ey.com/en_uk/newsroom/2025/04/ey-ai-sentiment-index-2025">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s88">
+        <p class="no">No. 88</p>
+        <p class="stat">84%</p>
+        <p class="find">of people had used AI in the past six months in the second yearly survey.</p>
+        <p class="src"><b>EY AI Sentiment Report 2026</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>23 markets (over 18,000 people)</span><span>2026</span><a href="https://www.ey.com/en_ro/newsroom/2026/03/ey-survey-autonomous-ai-is-no-longer-theoretical-as-adoption-grows-despite-ongoing-trust-concerns">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s89">
+        <p class="no">No. 89</p>
+        <p class="stat">24% vs 0.7%</p>
+        <p class="find">24% of internet users in high-income countries use ChatGPT, against 5.8% in upper-middle-income countries, 4.7% in lower-middle and 0.7% in low-income ones.</p>
+        <p class="src"><b>World Bank, Policy Research Working Paper 11231</b></p>
+        <p class="meta"><span class="chip">Traffic data</span><span>Worldwide (website traffic)</span><span>2025</span><a href="https://openknowledge.worldbank.org/entities/publication/f4eea48b-41cd-4242-87ad-82dfa0dc85f2">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s90">
+        <p class="no">No. 90</p>
+        <p class="stat">Over 50%</p>
+        <p class="find">of worldwide visits to generative AI tools came from middle-income countries, far above their share of the world economy. Low-income countries made up less than 1%.</p>
+        <p class="src"><b>World Bank, Who on Earth Is Using Generative AI?</b></p>
+        <p class="meta"><span class="chip">Traffic data</span><span>Worldwide (website traffic)</span><span>Aug 2024</span><a href="https://blogs.worldbank.org/en/digital-development/who-on-earth-is-using-generative-ai-">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="trust">
+    <header class="sec"><p class="count">5 studies</p><h2>Trust and attitudes</h2></header>
+    <div class="grid">
+      <article class="card" id="s91">
+        <p class="no">No. 91</p>
+        <p class="stat">46%</p>
+        <p class="find">of people are willing to trust AI systems, though 66% use AI with some regularity. Trust is about three in five in emerging economies and two in five in advanced ones.</p>
+        <p class="src"><b>University of Melbourne and KPMG, Trust, Attitudes and Use of AI</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>47 countries (48,340 people)</span><span>2025</span><a href="https://kpmg.com/au/en/insights/artificial-intelligence-ai/trust-in-ai-global-insights-2025.html">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s92">
+        <p class="no">No. 92</p>
+        <p class="stat">34% vs 16%</p>
+        <p class="find">A median of 34% of adults across 25 countries are more concerned than excited about AI in daily life, and 16% are more excited. The U.S. and Italy are highest for concern at 50%.</p>
+        <p class="src"><b>Pew Research Center, How People Around the World View AI</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>25 countries</span><span>Oct 2025</span><a href="https://www.pewresearch.org/global/2025/10/15/how-people-around-the-world-view-ai/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s93">
+        <p class="no">No. 93</p>
+        <p class="stat">52% and 53%</p>
+        <p class="find">52% say products that use AI make them excited, and 53% say they make them nervous.</p>
+        <p class="src"><b>Ipsos AI Monitor 2025</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>30 countries</span><span>2025</span><a href="https://www.ipsos.com/en/conflicting-global-perceptions-around-ai-present-mixed-signals-brands">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s94">
+        <p class="no">No. 94</p>
+        <p class="stat">73%</p>
+        <p class="find">of iPhone users who tried Apple Intelligence said it added little or no value, and 87% of Samsung users said the same of Galaxy AI. Only 11.6% of iPhone users would pay for AI features.</p>
+        <p class="src"><b>SellCell</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>U.S. (over 2,000 smartphone users)</span><span>Dec 2024</span><a href="https://9to5mac.com/2024/12/16/most-iphone-owners-see-little-to-no-value-in-apple-intelligence-so-far/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s95">
+        <p class="no">No. 95</p>
+        <p class="stat">70% vs 43%</p>
+        <p class="find">70% of consumers were excited about generative AI at work, but only 43% were enthusiastic about its effect on daily life. 75% had used ChatGPT or another AI tool.</p>
+        <p class="src"><b>BCG, Consumers Know More About AI Than Businesses Think</b></p>
+        <p class="meta"><span class="chip">Survey</span><span>21 countries (21,000 consumers)</span><span>April 2024</span><a href="https://bcg.com/press/24april2024-consumers-genai-in-the-workplace-and-daily-life">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+  <section id="apps">
+    <header class="sec"><p class="count">5 studies</p><h2>Apps and web traffic</h2></header>
+    <div class="grid">
+      <article class="card" id="s96">
+        <p class="no">No. 96</p>
+        <p class="stat">36% vs 21%</p>
+        <p class="find">On a typical day, 36% of ChatGPT&#x27;s monthly users open it, against 21% for Gemini. After 12 months, about half of ChatGPT&#x27;s desktop users are still there.</p>
+        <p class="src"><b>a16z, State of Consumer AI 2025</b></p>
+        <p class="meta"><span class="chip">VC report</span><span>U.S.</span><span>Dec 2025</span><a href="https://a16z.com/state-of-consumer-ai-2025-product-hits-misses-and-whats-next/">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s97">
+        <p class="no">No. 97</p>
+        <p class="stat">1.8 billion</p>
+        <p class="find">UK visits to ChatGPT in the first eight months of 2025, up from 368 million in the same months of 2024.</p>
+        <p class="src"><b>Ofcom, Online Nation 2025</b></p>
+        <p class="meta"><span class="chip">Traffic data</span><span>UK</span><span>Late 2025</span><a href="https://www.ofcom.org.uk/media-use-and-attitudes/online-habits/from-apps-to-ai-search-how-the-uk-goes-online-in-2025">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s98">
+        <p class="no">No. 98</p>
+        <p class="stat">$3.4 billion</p>
+        <p class="find">in in-app purchases went to ChatGPT in 2025. People spent more on apps than on mobile games for the first time, and generative AI apps logged over a trillion sessions.</p>
+        <p class="src"><b>Sensor Tower, State of Mobile 2026</b></p>
+        <p class="meta"><span class="chip">App data</span><span>Worldwide</span><span>Jan 2026</span><a href="https://sensortower.com/press/press-release-boosted-by-gen-ai-services-consumers-spent-more-money-in-apps-than-games-for-first-time">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s99">
+        <p class="no">No. 99</p>
+        <p class="stat">36 billion</p>
+        <p class="find">hours on generative AI apps were projected for the first half of 2026, up from 17.2 billion a year before. The top three assistants take 89% of the time.</p>
+        <p class="src"><b>Sensor Tower, State of AI 2026</b></p>
+        <p class="meta"><span class="chip">App data</span><span>Worldwide</span><span>June 2026</span><a href="https://sensortower.com/blog/state-of-ai-2026">Open source &#8599;</a></p>
+      </article>
+      <article class="card" id="s100">
+        <p class="no">No. 100</p>
+        <p class="stat">655 million</p>
+        <p class="find">people a month visited generative AI websites, up 57% in a year. ChatGPT&#x27;s share of that traffic fell from 76% to 53%, and 461 million of its 494 million users also used Google.</p>
+        <p class="src"><b>Similarweb, 2026 Generative AI Landscape</b></p>
+        <p class="meta"><span class="chip">Traffic data</span><span>Worldwide (web only)</span><span>June 2026</span><a href="https://aisearch.similarweb.com/blog/gen-ai-stats/">Open source &#8599;</a></p>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    <p>Compiled by Claude for Adam on November 21, 2026. Numbers are quoted as the search results reported them. Where a finding rests on a news write-up of a study, the link goes to that write-up.</p>
+  </footer>
+</main>
+</body>
+</html>
