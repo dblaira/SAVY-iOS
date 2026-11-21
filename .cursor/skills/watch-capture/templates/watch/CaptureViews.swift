@@ -29,8 +29,8 @@ struct CaptureHomeView: View {
                     home
                 }
             }
-            .background(WatchTheme.background.ignoresSafeArea())
-            .navigationTitle(recorder.isRecording ? "" : WatchCaptureConfig.appName)
+            .background { WatchBackground() }
+            .modifier(WatchTitleBar(hidden: recorder.isRecording))
             .navigationDestination(item: $route) { route in
                 switch route {
                 case .review(let id):
@@ -141,14 +141,14 @@ struct CaptureHomeView: View {
     #endif
 }
 
-/// The big button. Crimson inside a cream ring, like a record button.
+/// The big button. The accent color inside a ring, like a record button.
 struct RecordButton: View {
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             ZStack {
-                Circle().strokeBorder(WatchTheme.door, lineWidth: 5)
+                Circle().strokeBorder(WatchTheme.ring, lineWidth: 5)
                 Circle().fill(WatchTheme.accent).padding(11)
                 Image(systemName: "mic.fill")
                     .font(.system(size: 34, weight: .semibold))
@@ -173,7 +173,7 @@ struct RecordingView: View {
             Text(recordingClock(recorder.elapsed))
                 .font(.system(size: 34, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.white)
+                .foregroundStyle(WatchTheme.strongText)
             HStack(alignment: .center, spacing: 3) {
                 ForEach(Array(recorder.levels.enumerated()), id: \.offset) { _, level in
                     Capsule()
@@ -184,7 +184,7 @@ struct RecordingView: View {
             .frame(height: 44)
             Button(action: onStop) {
                 ZStack {
-                    Circle().strokeBorder(WatchTheme.door, lineWidth: 5)
+                    Circle().strokeBorder(WatchTheme.ring, lineWidth: 5)
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(WatchTheme.accent)
                         .frame(width: 38, height: 38)
@@ -232,7 +232,7 @@ struct ReviewView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(WatchTheme.background.ignoresSafeArea())
+        .background { WatchBackground() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { saveIfDraft() }
         }
@@ -260,7 +260,7 @@ struct ReviewView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(recordingClock(item.capture.audioDuration ?? 0))
                             .font(.title3.monospacedDigit())
-                            .foregroundStyle(.white)
+                            .foregroundStyle(WatchTheme.strongText)
                         Text("Recorded")
                             .font(.footnote)
                             .foregroundStyle(WatchTheme.text.opacity(0.8))
@@ -356,7 +356,7 @@ struct CaptureProofView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(WatchTheme.background.ignoresSafeArea())
+        .background { WatchBackground() }
         .onDisappear { player.stop() }
     }
 }
@@ -388,7 +388,7 @@ struct CaptureProofContent: View {
                     } label: {
                         Label("Recording · \(recordingClock(item.capture.audioDuration ?? 0))",
                               systemImage: player.isPlaying ? "stop.circle" : "play.circle")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(WatchTheme.strongText)
                     }
                     .buttonStyle(.plain)
                 }
@@ -423,7 +423,7 @@ struct WrittenWords: View {
         if !item.capture.words.isEmpty {
             Text(item.capture.words)
                 .font(.body)
-                .foregroundStyle(.white)
+                .foregroundStyle(WatchTheme.strongText)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("WatchWrittenWords")
             if let window = item.capture.proposedWindow {
@@ -435,6 +435,7 @@ struct WrittenWords: View {
         } else if isWaiting {
             HStack(spacing: 6) {
                 ProgressView()
+                    .tint(WatchTheme.strongText)
                     .frame(width: 18, height: 18)
                 Text("Your iPhone is writing out the words…")
                     .font(.footnote)
@@ -445,6 +446,142 @@ struct WrittenWords: View {
                 .font(.footnote)
                 .foregroundStyle(WatchTheme.text.opacity(0.8))
         }
+    }
+}
+
+/// Behind every Watch screen: the app's color, a bit darker and rougher toward the edges, like
+/// the paper in the app icon. Without `WatchTheme.edge` it is the flat color.
+struct WatchBackground: View {
+    var body: some View {
+        ZStack {
+            WatchTheme.background
+            if let edge = WatchTheme.edge {
+                EllipticalGradient(
+                    stops: [
+                        .init(color: edge.opacity(0), location: 0),
+                        .init(color: edge.opacity(0), location: 0.5),
+                        .init(color: edge.opacity(0.22), location: 0.78),
+                        .init(color: edge.opacity(0.5), location: 1),
+                    ],
+                    center: .center, startRadiusFraction: 0, endRadiusFraction: 0.74)
+                WatchEdgeGrain(dark: edge, light: WatchTheme.door)
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+}
+
+/// Paper grain: small specks, thicker toward the edges and none in the middle. The same specks
+/// on every draw, so nothing shimmers when the screen redraws.
+struct WatchEdgeGrain: View {
+    let dark: Color
+    let light: Color
+
+    var body: some View {
+        Canvas { context, size in
+            let halfWidth = size.width / 2, halfHeight = size.height / 2
+            guard halfWidth > 0, halfHeight > 0 else { return }
+            var random = WatchGrainRandom(seed: 0x5A56_5921)
+            for _ in 0..<3200 {
+                let x = random.unit() * size.width
+                let y = random.unit() * size.height
+                let chance = random.unit(), shade = random.unit(), sizeRoll = random.unit()
+                let dx = (x - halfWidth) / halfWidth, dy = (y - halfHeight) / halfHeight
+                let strength = min(1, max(0, ((dx * dx + dy * dy).squareRoot() - 0.55) / 0.7))
+                guard chance < strength else { continue }
+                let side = 0.5 + sizeRoll * 0.9
+                let color = shade < 0.75
+                    ? dark.opacity(0.10 + strength * 0.30)
+                    : light.opacity(0.10 + strength * 0.18)
+                context.fill(Path(CGRect(x: x, y: y, width: side, height: side)), with: .color(color))
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// A small fixed-seed generator, so the grain is identical every time it is drawn.
+struct WatchGrainRandom {
+    private var state: UInt64
+
+    init(seed: UInt64) { state = seed }
+
+    /// The next number from 0 up to, not including, 1.
+    mutating func unit() -> CGFloat {
+        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+        return CGFloat((state >> 33) & 0xFF_FFFF) / CGFloat(0x100_0000)
+    }
+}
+
+/// The app's name at the top of the first screen. An app with its own lettering gives the pen
+/// strokes in `WatchTheme.titleStrokes` and gets them drawn; an app without keeps the plain title.
+struct WatchTitleBar: ViewModifier {
+    let hidden: Bool
+
+    func body(content: Content) -> some View {
+        if WatchTheme.titleStrokes.isEmpty {
+            content.navigationTitle(hidden ? "" : WatchCaptureConfig.appName)
+        } else {
+            content.toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    WatchTitle().opacity(hidden ? 0 : 1)
+                }
+            }
+        }
+    }
+}
+
+/// The app's name in its own hand-drawn lettering.
+struct WatchTitle: View {
+    var body: some View {
+        WatchTitleMark(strokes: WatchTheme.titleStrokes)
+            .stroke(WatchTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            .aspectRatio(WatchTitleMark.aspectRatio(of: WatchTheme.titleStrokes), contentMode: .fit)
+            .padding(1.5)
+            .frame(height: 28)
+            .accessibilityElement()
+            .accessibilityLabel(WatchCaptureConfig.appName)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("WatchTitle")
+    }
+}
+
+/// Hand-drawn lettering as straight lines, scaled to fit the space it is given.
+struct WatchTitleMark: Shape {
+    let strokes: [[CGPoint]]
+
+    static func bounds(of strokes: [[CGPoint]]) -> CGRect {
+        let points = strokes.flatMap { $0 }
+        guard let first = points.first else { return .zero }
+        var minX = first.x, maxX = first.x, minY = first.y, maxY = first.y
+        for point in points {
+            minX = min(minX, point.x); maxX = max(maxX, point.x)
+            minY = min(minY, point.y); maxY = max(maxY, point.y)
+        }
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    static func aspectRatio(of strokes: [[CGPoint]]) -> CGFloat {
+        let box = bounds(of: strokes)
+        return box.height > 0 ? box.width / box.height : 1
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let box = Self.bounds(of: strokes)
+        guard box.width > 0, box.height > 0 else { return Path() }
+        let scale = min(rect.width / box.width, rect.height / box.height)
+        let shiftX = rect.midX - box.midX * scale
+        let shiftY = rect.midY - box.midY * scale
+        var path = Path()
+        for stroke in strokes {
+            guard let first = stroke.first else { continue }
+            path.move(to: CGPoint(x: first.x * scale + shiftX, y: first.y * scale + shiftY))
+            for point in stroke.dropFirst() {
+                path.addLine(to: CGPoint(x: point.x * scale + shiftX, y: point.y * scale + shiftY))
+            }
+        }
+        return path
     }
 }
 

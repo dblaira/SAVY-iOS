@@ -30,13 +30,17 @@ Adam, after seeing the first screens: “I was thinking about it having a face j
 
 Adam approved the one-button screens (big button, recording, review, saved) on Nov 20: “Yep,that looks great”. That approves the screens; it is not yet a device check.
 
+Adam chose the Watch's look on Nov 20, looking at his own Watch. In order: “Show me a mock up with the surrounding background color as a light sand brown, instead of navy.” Then: “Yes, but add a navy blue ring (border) around the red button.  And darken the red to maroon.  Use the unique font styling that is used on the SAVY icon.” Then: “perfect. let's add some texture to the edges.  A bit darker around the edges please.” And of those edges: “Yes, keep them”. This look is approved; do not change it without his word.
+
+The look: sand `D8C2A0` that darkens toward `6B4E2E` with paper grain at the edges of the screen, a maroon `7A1428` button inside a navy `08172D` ring, navy words, and “SAVY” at the top left in the icon's own lettering. The icon's lettering is hand-drawn lines, not a font, so the Watch draws its traced pen strokes. All of it is the `theme` block of `watch-capture.json`. The new keys (`ring`, `strongText`, `edge`, `titleStrokes`, `accentOnDark`) are optional, so his other Watch apps keep their look until their own settings ask for them. The complication keeps the brighter crimson, because maroon disappears on a dark watch face.
+
 The Watch is one big record button. One press records and one press stops. The review screen plays the recording back, and one tap saves it: Save as Social, or one tap on Action, Reminder or Calendar. Leaving the screen saves too. The Action Button's “Capture” shortcut opens the app already recording.
 
 watchOS has no speech-to-text, so the iPhone or Mac writes out the words, with his terms (`vocabulary`) as recognizer hints. The recording is kept beside the words as a play row at the top of the entry form. That row is the only change to the frozen form, and it appears only when a recording exists. This audio is his explicit choice. It is separate from the Sept 2 removal of “listen with Cowboyai”.
 
 There is no AWS upload (AWS was cancelled Oct 12), no WatchConnectivity path, no StoreKit 2, and no embedding in the iPhone app yet.
 
-Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 11 `SAVYWatchCaptureTests` pass. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. It is not signed with his team, installed on his Watch, or tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
+Status: written in a cloud session without Xcode or his Macs. On the GitHub `xcode-27` runner (Xcode 27.2), both apps build and all 11 `SAVYWatchCaptureTests` pass. The Watch app runs on an Apple Watch Ultra 3 simulator; screenshots are in `docs/watch/screenshots/`. On Nov 20 it was signed with his team and installed from his Mac Studio on his Apple Watch Ultra 3, where it opens; on that Mac, 19 `SAVYWatchCaptureTests` pass and `watchkit.py files --check` matches. It is not yet tested with a real capture reaching iCloud. Details, setup steps and open questions: [SAVY Watch](docs/watch/savy-watch.md).
 
 ## Generalization theme — November 9, 2026
 

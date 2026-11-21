@@ -81,15 +81,19 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 
 ### Screens, from the real app
 
-Adam, on seeing these four screens: “Yep,that looks great”.
+Adam, on seeing these four screens in their first navy look: “Yep,that looks great”. Later on Nov 20 he chose the look shown here, looking at his own Watch: sand with darker, grainy edges, a maroon button in a navy ring, and “SAVY” in the icon's lettering. Of the sand, maroon, ring and lettering: “perfect”. Of the edges: “Yes, keep them”.
 
-These are an Apple Watch Ultra 3 simulator on Xcode 27.2, launched with `-WatchCaptureDemo` (Debug only). The recording is silent and the words are demo words; nothing was sent anywhere. On the review screen, the words stand in for what the nearby iPhone sends back.
+These are an Apple Watch Series 11 (46mm) simulator on Xcode 27.2 on his Mac, launched with `-WatchCaptureDemo` (Debug only). The recording is silent and the words are demo words; nothing was sent anywhere. On the review screen, the words stand in for what the nearby iPhone sends back.
 
 | Big button | Recording | Review: words back from the iPhone | Saved |
 |---|---|---|---|
 | ![Big button](screenshots/1-big-button.png) | ![Recording](screenshots/2-recording.png) | ![Review](screenshots/3-review.png) | ![Saved](screenshots/4-saved.png) |
 
 On the review screen, Action, Reminder and Calendar sit just below Save; turn the Digital Crown to reach them. A real capture shows “Saved on Watch · sending”, then “· in iCloud”, in place of “Demo · not sent”.
+
+The same build on his Apple Watch Ultra 3, Nov 20, 10:20 PM:
+
+![On his Watch](screenshots/5-on-his-watch.png)
 
 ## Install and set up (needs Adam’s Mac, Watch and iPhone)
 

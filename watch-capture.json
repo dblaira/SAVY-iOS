@@ -26,12 +26,23 @@
   },
   "microphoneUsage": "SAVY records what you say so your iPhone can write out the words.",
   "theme": {
-    "background": "08172D",
-    "accent": "E60E44",
-    "accentAsset": "DC143C",
+    "background": "D8C2A0",
+    "accent": "7A1428",
+    "accentAsset": "7A1428",
+    "accentOnDark": "E60E44",
     "door": "F3EAD5",
     "doorText": "08172D",
-    "text": "F3EAD5"
+    "text": "08172D",
+    "strongText": "08172D",
+    "ring": "08172D",
+    "edge": "6B4E2E",
+    "titleStrokes": [
+      [[300, 408], [201, 243], [118, 528], [303, 476], [170, 746], [85, 598]],
+      [[303, 688], [415, 358], [517, 688]],
+      [[497, 365], [600, 690], [718, 342]],
+      [[923, 320], [785, 778], [716, 597], [793, 593]],
+      [[740, 447], [855, 542]]
+    ]
   },
   "kinds": [
     {

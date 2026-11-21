@@ -93,6 +93,14 @@ def color(hex6):
     return f"Color(red: 0x{h[0:2]} / 255, green: 0x{h[2:4]} / 255, blue: 0x{h[4:6]} / 255)"
 
 
+def strokes(lists):
+    """Pen strokes for hand-drawn title lettering: a list of strokes, each a list of [x, y]."""
+    if not lists:
+        return "[]"
+    rows = ["        [" + ", ".join(f"CGPoint(x: {x}, y: {y})" for x, y in stroke) + "]," for stroke in lists]
+    return "[\n" + "\n".join(rows) + "\n    ]"
+
+
 def kind_switch(cfg, name, doc, kind_type, value):
     lines = [f"    /// {doc}", f"    var {name}: {kind_type} {{", "        switch self {"]
     for kind in cfg["kinds"]:
@@ -151,9 +159,21 @@ def gen_config(cfg):
         "enum WatchTheme {",
         f"    static let background = {color(theme['background'])}",
         f"    static let accent = {color(theme['accent'])}",
+        "    /// The accent on a dark watch face, for the complication.",
+        f"    static let accentOnDark = {color(theme.get('accentOnDark', theme['accent']))}",
         f"    static let door = {color(theme['door'])}",
         f"    static let doorText = {color(theme['doorText'])}",
         f"    static let text = {color(theme['text'])}",
+        "    /// The clock and the written words.",
+        f"    static let strongText = {color(theme.get('strongText', 'FFFFFF'))}",
+        "    /// The border around the record and stop buttons.",
+        f"    static let ring = {color(theme.get('ring', theme['door']))}",
+        "    /// The darker color the background fades into at the screen's edges, with paper grain.",
+        "    /// `nil` leaves the background flat.",
+        f"    static let edge: Color? = {color(theme['edge']) if theme.get('edge') else 'nil'}",
+        "    /// The app's name as the app icon draws it: one inner list per pen stroke, in the icon's",
+        "    /// own grid. Empty shows the name as plain text.",
+        f"    static let titleStrokes: [[CGPoint]] = {strokes(theme.get('titleStrokes', []))}",
         "}",
         "",
     ]

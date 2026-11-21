@@ -46,7 +46,7 @@ struct CaptureDoorView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Label(WatchCaptureConfig.appName, systemImage: "mic.fill")
                     .font(.headline)
-                    .foregroundStyle(WatchTheme.accent)
+                    .foregroundStyle(WatchTheme.accentOnDark)
                     .widgetAccentable()
                 HStack(spacing: 10) {
                     ForEach(WatchCaptureKind.allCases) { kind in
