@@ -347,6 +347,14 @@ final class SAVYPostFormUITests: XCTestCase {
         attach("05 habit prefilled directives")
     }
 
+    func testAuthoredRunTitleSurvivesChangingDecideAnswerToWalk() {
+        assertRunTitleAfterChangingDecideAnswer(authoredTitle: "Run", expectedTitle: "Run")
+    }
+
+    func testGeneratedRunTitleUpdatesWhenDecideAnswerChangesToWalk() {
+        assertRunTitleAfterChangingDecideAnswer(authoredTitle: nil, expectedTitle: "Walk")
+    }
+
     func testStrongYesThemePreservesLabelsQuestionsAndAnswersAfterRelaunch() {
         openPostsPage()
         openNewPost()
@@ -778,6 +786,53 @@ final class SAVYPostFormUITests: XCTestCase {
         app.buttons["Save"].firstMatch.tap()
         XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Save did not return to the post list")
         XCTAssertTrue(app.buttons["Save"].firstMatch.waitForNonExistence(timeout: 8), "Post form did not close after Save")
+    }
+
+    private func assertRunTitleAfterChangingDecideAnswer(authoredTitle: String?, expectedTitle: String) {
+        openPostsPage()
+        openNewPost()
+        appendAnswer("Run", at: 0)
+        let title = element("Title")
+        if let authoredTitle {
+            let done = element("KeyboardRowDone")
+            if done.exists {
+                done.tapOrClick()
+                XCTAssertTrue(done.waitForNonExistence(timeout: 5))
+            }
+            scrollTo(title)
+            XCTAssertTrue(title.isHittable)
+            title.tapOrClick()
+            title.typeText(authoredTitle)
+            XCTAssertEqual(title.value as? String, authoredTitle)
+        }
+        savePost()
+
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "SAVY_UI_TEST_RESET_REMINDERS" }
+        app.launch()
+        dismissSystemPrompt()
+        openPostsPage()
+        let row = postRows.firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+
+        let answer = element("DecideAnswer0")
+        XCTAssertTrue(answer.waitForExistence(timeout: 5))
+        XCTAssertEqual(answer.value as? String, firstPrompt + "\nRun")
+        scrollTo(title)
+        XCTAssertEqual(title.value as? String, "Run")
+        scrollTo(answer, upward: false)
+        answer.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.9)).tap()
+        answer.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Run".count) + "Walk")
+        XCTAssertEqual(answer.value as? String, firstPrompt + "\nWalk")
+        savePost()
+
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        XCTAssertTrue(answer.waitForExistence(timeout: 5))
+        XCTAssertEqual(answer.value as? String, firstPrompt + "\nWalk")
+        scrollTo(title)
+        XCTAssertEqual(title.value as? String, expectedTitle)
     }
 
     private func setPinned(_ pinned: Bool, rowID: String) {

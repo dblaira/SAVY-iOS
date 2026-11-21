@@ -39,9 +39,12 @@ struct ConnectionEntry: Identifiable, Codable, Equatable {
         let current = values.indices.contains(2) ? values[2] : ""
         let title = metadata.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let generic = ["New Connection", "New Reminder"].contains(title)
-        // A name taken from the boxes follows the full answers, so it never shortens them.
-        let boxName = !generic && title == metadata.autoTitle(decideTheme: Self.theme) ? title : ""
-        let authoredTitle = generic || !boxName.isEmpty ? "" : title
+        // Keep legacy card previews as displayed before title origin was stored.
+        // This heuristic only controls preview order and never writes a title.
+        let generated = metadata.titleOrigin.map { $0 == .generated }
+            ?? (generic || title == metadata.autoTitle(decideTheme: Self.theme))
+        let boxName = generated && !generic ? title : ""
+        let authoredTitle = generated ? "" : title
         let text = [current, authoredTitle] + values + [boxName, metadata.notes, "Connection"]
         let headline = text.first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? "Connection"
         return NewsChannelPostPreview(
