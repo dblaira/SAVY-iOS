@@ -227,6 +227,28 @@ final class SAVYWatchCaptureTests: XCTestCase {
         XCTAssertThrowsError(try WatchCaptureInbox.capture(from: moved))
     }
 
+    func testWordsWrittenOutADayLateCountTomorrowFromTheDayTheyWereSaid() throws {
+        // A recording made yesterday and written out today: “tomorrow at 9 AM” is today at 9.
+        let yesterday = Date().addingTimeInterval(-86_400)
+        let capture = WatchCapture(kind: .reminder, words: "Call the vet tomorrow at 9 AM", source: .wrist,
+                                   capturedAt: yesterday)
+        let cue = try XCTUnwrap(capture.cue)
+        XCTAssertTrue(Calendar.current.isDateInToday(cue.start))
+        XCTAssertEqual(Calendar.current.component(.hour, from: cue.start), 9)
+        // Said and written out on the same day, nothing moves.
+        let sameDay = try XCTUnwrap(WatchCapture(kind: .reminder, words: "Call the vet tomorrow at 9 AM",
+                                                 source: .wrist).cue)
+        XCTAssertTrue(Calendar.current.isDateInTomorrow(sameDay.start))
+    }
+
+    func testAFixedDateMeansTheSameDayWheneverItIsWrittenOut() {
+        XCTAssertTrue(WatchTimeCueReader.namesCalendarDate("december 3 at noon"))
+        XCTAssertTrue(WatchTimeCueReader.namesCalendarDate("the 3rd"))
+        XCTAssertFalse(WatchTimeCueReader.namesCalendarDate("tomorrow at 3 pm"))
+        XCTAssertTrue(WatchTimeCueReader.namesWeekday("next friday"))
+        XCTAssertFalse(WatchTimeCueReader.namesWeekday("tomorrow"))
+    }
+
     // MARK: Trail — Adam, Nov 21: “The Apple Watch SAVY app works and doesn't work. It needs a lot of testing.”
 
     private func temporaryTrail() -> WatchCaptureTrailFile {

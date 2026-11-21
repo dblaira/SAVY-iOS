@@ -33,6 +33,7 @@ final class WatchCaptureImporter {
     private static let ledgerKey = "WatchCaptureImporter.importedCaptureIDs"
     private static let claimsKey = "WatchCaptureImporter.claims"
     private static let tokenKey = "WatchCaptureImporter.changeToken"
+    private static let deviceKey = "WatchCaptureImporter.deviceID"
     private static let ledgerLimit = 2_000
     private static let keepClaimedFor: TimeInterval = 14 * 86_400
     private let defaults: UserDefaults
@@ -67,9 +68,21 @@ final class WatchCaptureImporter {
         }
     }
 
-    /// Returns how many new entries were saved.
+    /// This device's name on a claim, so it can tell its own interrupted import from another device's.
+    private var deviceID: String {
+        if let existing = defaults.string(forKey: Self.deviceKey) { return existing }
+        let made = UUID().uuidString.lowercased()
+        defaults.set(made, forKey: Self.deviceKey)
+        return made
+    }
+
+    /// Returns how many new entries were saved. `stillAllowed` is asked again before anything is
+    /// claimed or saved: pass the app's own check that its iCloud sync still belongs to the
+    /// signed-in owner, so an account that changes in the middle of an import stops it.
     @discardableResult
-    func importPending<Destination: WatchCaptureDestination>(into destination: Destination) async -> Int {
+    func importPending<Destination: WatchCaptureDestination>(
+        into destination: Destination, while stillAllowed: @MainActor () -> Bool = { true }
+    ) async -> Int {
         guard !isImporting else { return 0 }
         guard destination.acceptsWatchCaptures else {
             WatchCaptureTrail.fail("import.skip", once: true, "this app's own entries could not be read")
@@ -82,6 +95,8 @@ final class WatchCaptureImporter {
         let database = container.privateCloudDatabase
         var records: [CKRecord] = []
         var token = changeToken
+        var someCouldNotBeFetched = false
+        let owner: CKRecord.ID
         do {
             let account = try await container.accountStatus()
             guard account == .available else {
@@ -89,13 +104,23 @@ final class WatchCaptureImporter {
                                        "iCloud account is not available on this device (status \(account.rawValue))")
                 return 0
             }
+            // The iCloud account this import began under. It is checked again before each save.
+            owner = try await container.userRecordID()
             var moreComing = true
             while moreComing {
                 do {
                     let page = try await database.recordZoneChanges(
                         inZoneWith: WatchCaptureInbox.zoneID, since: token, desiredKeys: nil, resultsLimit: 100)
                     for result in page.modificationResultsByID.values {
-                        if case .success(let modification) = result { records.append(modification.record) }
+                        switch result {
+                        case .success(let modification):
+                            records.append(modification.record)
+                        case .failure(let error):
+                            // The cursor must not move past a capture that was not fetched.
+                            someCouldNotBeFetched = true
+                            WatchCaptureTrail.fail("import.fetch", once: true,
+                                                   "a capture could not be fetched: " + WatchCaptureTrail.reason(error))
+                        }
                     }
                     token = page.changeToken
                     moreComing = page.moreComing
@@ -103,6 +128,7 @@ final class WatchCaptureImporter {
                     // Start over from the beginning; the ledger keeps entries from repeating.
                     token = nil
                     records = []
+                    someCouldNotBeFetched = false
                 }
             }
         } catch let error as CKError where error.code == .zoneNotFound || error.code == .userDeletedZone {
@@ -120,7 +146,8 @@ final class WatchCaptureImporter {
 
         var ledger = importedIDs
         var saved = 0
-        var everythingHandled = true
+        var everythingHandled = !someCouldNotBeFetched
+        let device = deviceID
         let pending = records
             .compactMap { record -> (WatchCapture, CKRecord)? in
                 // A capture from a newer Watch app stays in iCloud for a newer iPhone app.
@@ -134,14 +161,26 @@ final class WatchCaptureImporter {
             .sorted { $0.0.capturedAt < $1.0.capturedAt }
 
         for (capture, record) in pending {
+            // The app's own sync must still belong to the owner, and iCloud must still be the
+            // account this import began under. Otherwise stop before anything is claimed or saved.
+            guard stillAllowed(), destination.acceptsWatchCaptures,
+                  (try? await container.userRecordID()) == owner else {
+                WatchCaptureTrail.fail("import.skip", once: true,
+                                       "stopped: the iCloud account or the app's own sync changed during the import")
+                everythingHandled = false
+                break
+            }
             // Every device keeps the recording, whoever makes the entry.
             var recordingURL: URL? = nil
             if let downloaded = WatchCaptureInbox.audioURL(in: record) {
                 recordingURL = WatchRecordingFiles.keep(downloaded, for: capture)
                 if recordingURL == nil {
+                    // Without the recording there are no words to write out. Leave the capture
+                    // unclaimed and try again, so it never becomes an empty entry.
                     everythingHandled = false
                     WatchCaptureTrail.fail("import.audio", capture: capture.id, once: true,
-                                           "this device could not keep the recording")
+                                           "this device could not keep the recording; it will try again")
+                    continue
                 }
             } else if capture.hasRecording {
                 WatchCaptureTrail.fail("import.audio", capture: capture.id, once: true,
@@ -150,12 +189,16 @@ final class WatchCaptureImporter {
 
             let key = capture.id.uuidString.lowercased()
             let alreadyClaimed = record[WatchCaptureInbox.importedAtKey] != nil
-            if alreadyClaimed || ledger.contains(key) || destination.hasEntry(forWatchCapture: capture.id) {
+            // A claim is not proof of an entry. If this device claimed the capture and was stopped
+            // before the entry was saved, it finishes the import now.
+            let claimedHere = alreadyClaimed && (record[WatchCaptureInbox.importedByKey] as? String) == device
+            let hasEntry = ledger.contains(key) || destination.hasEntry(forWatchCapture: capture.id)
+            if hasEntry || (alreadyClaimed && !claimedHere) {
                 WatchCaptureTrail.note("import.seen", capture: capture.id, once: true,
-                                       alreadyClaimed ? "already claimed in iCloud by an iPhone or Mac"
-                                           : ledger.contains(key) ? "already made into an entry by this device"
-                                           : "its entry is already here")
-                if !ledger.contains(key) { ledger.append(key) }
+                                       ledger.contains(key) ? "already made into an entry by this device"
+                                           : hasEntry ? "its entry is already here"
+                                           : "already claimed in iCloud by another iPhone or Mac")
+                if hasEntry, !ledger.contains(key) { ledger.append(key) }
                 continue
             }
 
@@ -165,9 +208,22 @@ final class WatchCaptureImporter {
                 finished = capture.replacingWords(words)
             }
 
+            // The words can take a while; make sure nothing changed before claiming and saving.
+            guard stillAllowed(), destination.acceptsWatchCaptures else {
+                WatchCaptureTrail.fail("import.skip", once: true,
+                                       "stopped: the app's own sync changed during the import")
+                everythingHandled = false
+                break
+            }
             // Claim it, so the iPhone and the Mac never both make the entry.
-            record[WatchCaptureInbox.importedAtKey] = Date() as NSDate
-            if let error = await save(record, policy: .ifServerRecordUnchanged, in: database) {
+            if claimedHere {
+                WatchCaptureTrail.note("import.claim", capture: capture.id, once: true,
+                                       "finishing an import this device had already claimed")
+            } else {
+                record[WatchCaptureInbox.importedAtKey] = Date() as NSDate
+                record[WatchCaptureInbox.importedByKey] = device as NSString
+            }
+            if !claimedHere, let error = await save(record, policy: .ifServerRecordUnchanged, in: database) {
                 // Another device claimed it first, or iCloud is unreachable: the next refresh
                 // either sees the claim or tries again.
                 let claimedElsewhere = (error as? CKError)?.code == .serverRecordChanged
@@ -177,8 +233,10 @@ final class WatchCaptureImporter {
                 continue
             }
             guard destination.saveEntry(fromWatchCapture: finished) else {
-                // The local write failed: release the claim so this capture is tried again.
+                // The local write failed: release the claim so this capture is tried again. If the
+                // release fails too, the claim is still this device's, and it finishes next time.
                 record[WatchCaptureInbox.importedAtKey] = nil
+                record[WatchCaptureInbox.importedByKey] = nil
                 _ = await save(record, policy: .changedKeys, in: database)
                 WatchCaptureTrail.fail("import.entry", capture: capture.id,
                                        "this device could not save the entry; it will try again")

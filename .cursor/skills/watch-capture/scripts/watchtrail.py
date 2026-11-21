@@ -220,7 +220,8 @@ def attach_recordings(events):
 
 
 def report(events, notes, out=sys.stdout):
-    """Prints the report. Returns the number of captures whose journey has a failed or missing step."""
+    """Prints the report. Returns (stopped, on_their_way): captures with a failed or missing step,
+    and captures with nothing failed that have not become an entry yet."""
     write = lambda text="": print(text, file=out)
     for note in notes:
         write(note)
@@ -228,7 +229,7 @@ def report(events, notes, out=sys.stdout):
         write()
         write("No steps were read. Either no trail file was found, or the apps on the devices were built")
         write("before the trail existed. Install the Watch and iPhone apps from the current Watch branch first.")
-        return 0
+        return 0, 0
     attach_recordings(events)
     sides_seen = {e.get("side") for e in events}
 
@@ -266,6 +267,7 @@ def report(events, notes, out=sys.stdout):
         by_capture[capture].append(event)
 
     troubled = 0
+    unfinished = 0
     first_fix = None
     for capture in order:
         steps = by_capture[capture]
@@ -290,6 +292,9 @@ def report(events, notes, out=sys.stdout):
         if first_bad is not None:
             troubled += 1
             first_fix = first_bad
+        elif rows[-1][1] != "ok":
+            # Nothing failed, but there is no entry yet: it is on its way, not delivered.
+            unfinished += 1
         write("  steps:")
         for event in steps:
             mark = "ok    " if event["ok"] else "FAILED"
@@ -300,14 +305,19 @@ def report(events, notes, out=sys.stdout):
     shown = len([c for c in order if not any(e.get('step') == 'discard' for e in by_capture[c])])
     if shown == 0:
         write("No captures in the trail yet. Make one on the Watch, open the app on the iPhone, then read again.")
-    elif troubled == 0:
+    elif troubled == 0 and unfinished == 0:
         write(f"All {shown} captures made it from the wrist to an entry.")
+    elif troubled == 0:
+        write(f"{shown - unfinished} of {shown} captures made it to an entry. {unfinished} still on the way: "
+              f"nothing failed, and no entry yet. Open the app on the iPhone, then read again.")
     else:
         write(f"{troubled} of {shown} captures stopped somewhere. The newest one, capture {first_fix[0][:8]}, first "
               f"stopped at \"{first_fix[1]}\": {first_fix[2]}")
         if first_fix[3]:
             write(f"What to do: {first_fix[3]}")
-    return troubled
+        if unfinished:
+            write(f"{unfinished} more still on the way, with nothing failed.")
+    return troubled, unfinished
 
 
 # ---------------------------------------------------------------- devices (Adam's Mac only)
@@ -372,10 +382,15 @@ def cmd_pull(args):
         print(f"the Mac app's trail could not be read ({error}); macOS guards other apps' folders")
     print(f"trail files are in {out}")
     events, notes = load(files)
-    return report(events, notes)
+    return exit_code(*report(events, notes))
 
 
 # ---------------------------------------------------------------- selftest
+
+def exit_code(stopped, on_their_way):
+    """0 only when every capture became an entry; 1 when one stopped; 2 when some are still on the way."""
+    return 1 if stopped else 2 if on_their_way else 0
+
 
 def _line(seconds, side, step, ok=True, capture=None, detail=None):
     at = datetime.fromtimestamp(1_795_000_000 + seconds, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -406,9 +421,9 @@ def selftest():
         ]) + "\n")
         text = io.StringIO()
         events, notes = load([watch, Path(folder) / "iphone.jsonl"])
-        troubled = report(events, notes, out=text)
+        troubled, unfinished = report(events, notes, out=text)
         output = text.getvalue()
-        assert troubled == 1, output
+        assert (troubled, unfinished) == (1, 0), output
         assert "iPhone  no trail" in output, output
         assert "ok       Recorded on the Watch" in output, output
         assert "FAILED   Words back on the wrist" in output, output
@@ -438,11 +453,29 @@ def selftest():
         ]) + "\n")
         text = io.StringIO()
         events, notes = load([watch, phone])
-        troubled = report(events, notes, out=text)
+        troubled, unfinished = report(events, notes, out=text)
         output = text.getvalue()
-        assert troubled == 0, output
+        assert (troubled, unfinished) == (0, 0), output
         assert "All 1 captures made it from the wrist to an entry." in output, output
         assert "ok       Entry in the app         on the iphone" in output, output
+
+        # 3. Kept, and the words came back, but it has not been sent or imported yet: on its way,
+        #    not delivered. The report must not say it made it.
+        three = "33333333-aaaa-4bbb-8ccc-000000000003"
+        watch.write_text("\n".join([
+            _line(12, "watch", "keep", capture=three, detail="file=aa11bb22 5.0s 15KB"),
+            _line(13, "watch", "link.ask", capture=three, detail="sent to the iPhone: parts=1 15KB"),
+            _line(18, "watch", "link.words", capture=three, detail="chars=40 after 5.0s"),
+        ]) + "\n")
+        phone.write_text(_line(-50, "iphone", "app.launch", detail="v1.0 (30) speechRecognition=allowed") + "\n")
+        text = io.StringIO()
+        events, notes = load([watch, phone])
+        troubled, unfinished = report(events, notes, out=text)
+        output = text.getvalue()
+        assert (troubled, unfinished) == (0, 1), output
+        assert "made it from the wrist to an entry" not in output, output
+        assert "still on the way" in output, output
+        assert exit_code(troubled, unfinished) == 2
     print("watchtrail selftest passed")
 
 
@@ -462,9 +495,9 @@ def main():
         selftest()
     elif args.command == "read":
         events, notes = load(args.files)
-        sys.exit(1 if report(events, notes) else 0)
+        sys.exit(exit_code(*report(events, notes)))
     else:
-        sys.exit(1 if cmd_pull(args) else 0)
+        sys.exit(cmd_pull(args))
 
 
 if __name__ == "__main__":

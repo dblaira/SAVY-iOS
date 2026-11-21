@@ -205,7 +205,10 @@ struct RootView: View {
                                    "waiting for SAVY's own iCloud sync (status \(documentSync.status))")
             return
         }
-        await WatchCaptureImporter.shared.importPending(into: reminderStore)
+        let sync = documentSync
+        await WatchCaptureImporter.shared.importPending(into: reminderStore) {
+            ["synced", "pending", "fetching"].contains(sync.status)
+        }
     }
 
     var body: some View {

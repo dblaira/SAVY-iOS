@@ -37,15 +37,48 @@ enum WatchTimeCueReader {
               var start = match.date else { return nil }
         let heard = Range(match.range, in: words).map { String(words[$0]) } ?? ""
         let dayOnly = !namesClockTime(heard)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        // The detector counts “tomorrow” and “Friday” from the moment it runs. Words written
+        // out a day or more after they were said are counted from the day they were said.
+        let saidDay = calendar.startOfDay(for: now)
+        let writtenDay = calendar.startOfDay(for: Date())
+        let daysLate = calendar.dateComponents([.day], from: saidDay, to: writtenDay).day ?? 0
+        if daysLate > 0 {
+            let lower = heard.lowercased()
+            if namesWeekday(lower) {
+                // A matching weekday between the saying and the writing out was skipped; use it.
+                while let earlier = calendar.date(byAdding: .day, value: -7, to: start),
+                      calendar.startOfDay(for: earlier) > saidDay, calendar.startOfDay(for: earlier) <= writtenDay {
+                    start = earlier
+                }
+            } else if !namesCalendarDate(lower) {
+                start = calendar.date(byAdding: .day, value: -daysLate, to: start) ?? start
+            }
+        }
         // “at 3 PM” said at 5 PM means tomorrow, unless today was said out loud.
         if !dayOnly, start < now, now.timeIntervalSince(start) < 86_400,
            !heard.lowercased().contains("today") {
-            var calendar = Calendar(identifier: .gregorian)
-            calendar.timeZone = timeZone
             start = calendar.date(byAdding: .day, value: 1, to: start) ?? start
         }
         let duration = match.duration > 0 ? match.duration : nil
         return WatchTimeCue(start: start, duration: duration, isDayOnly: dayOnly, heard: heard)
+    }
+
+    /// A day of the week was spoken: “Friday”, “next Tuesday”.
+    static func namesWeekday(_ lower: String) -> Bool {
+        lower.range(of: #"\b(mon|tues|wednes|thurs|fri|satur|sun)day\b"#, options: .regularExpression) != nil
+    }
+
+    /// A fixed date was spoken: “December 3”, “the 3rd”, “12/3”. It means the same day whenever it is read.
+    static func namesCalendarDate(_ lower: String) -> Bool {
+        let patterns = [
+            #"\b(january|february|march|april|may|june|july|august|september|october|november|december)\b"#,
+            #"\b(jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"#,
+            #"\d{1,2}/\d{1,2}"#,
+            #"\b\d{1,2}(st|nd|rd|th)\b"#,
+        ]
+        return patterns.contains { lower.range(of: $0, options: .regularExpression) != nil }
     }
 
     /// A clock time was spoken: “3 PM”, “3:30”, “at 9”, “noon”, “tonight”.
@@ -159,6 +192,8 @@ enum WatchCaptureInbox {
     static let audioKey = "audio"
     /// Set by the first iPhone or Mac that turns the capture into an entry.
     static let importedAtKey = "importedAt"
+    /// Which device set it, so that device can finish an import it was stopped in the middle of.
+    static let importedByKey = "importedBy"
 
     static func record(for capture: WatchCapture, audioURL: URL? = nil) throws -> CKRecord {
         let record = CKRecord(recordType: recordType, recordID: recordID(for: capture.id))
