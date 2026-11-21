@@ -62,7 +62,7 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertEqual(element("DecideAnswer0").value as? String, firstValue)
         savePost()
         let row = postRows.firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Saved post missing from Social Media Posts")
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Saved post missing from Social")
         row.tap()
         XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10))
         XCTAssertEqual(element("DecideAnswer0").value as? String, firstValue)
@@ -583,12 +583,12 @@ final class SAVYPostFormUITests: XCTestCase {
     func testNewsChannelCardOpensPosts() {
         openPostsPage()
         let header = element("socialMediaPostsHeader")
-        XCTAssertTrue(header.waitForExistence(timeout: 5), "Social Media Posts needs the shared navy header")
-        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Social Media Posts")).count, 1,
+        XCTAssertTrue(header.waitForExistence(timeout: 5), "Social needs the shared navy header")
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Social")).count, 1,
                        "The page title should appear once")
-        XCTAssertFalse(app.staticTexts["SOCIAL MEDIA POSTS"].firstMatch.exists, "The redundant red eyebrow remains")
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label == %@", "SOCIAL")).firstMatch.exists, "The redundant red eyebrow remains")
         XCTAssertFalse(app.buttons["Listen"].exists, "Audio control is still on the page")
-        attach("40 social media posts navy header without duplicate eyebrow")
+        attach("40 social navy header without duplicate eyebrow")
         let back = element("socialMediaPostsBack")
         XCTAssertTrue(back.exists)
         back.tap()
@@ -653,12 +653,12 @@ final class SAVYPostFormUITests: XCTestCase {
 
     private func openPostsPage() {
         let card = element("homeContentSection-news-channel")
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social card missing from Now")
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
         for _ in 0..<8 where !card.isHittable { homeScroll.swipeUp() }
-        XCTAssertTrue(card.isHittable, "Social Media Posts card did not scroll into view")
+        XCTAssertTrue(card.isHittable, "Social card did not scroll into view")
         card.tapOrClick()
-        XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Social Media Posts did not open")
+        XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Social did not open")
     }
 
     private func openNewPost() {

@@ -10,8 +10,8 @@ enum LeverageContent {
 
     static let newsChannel = LeverageSection(
         id: "news-channel",
-        title: "Social Media Posts",
-        eyebrow: "SOCIAL MEDIA POSTS",
+        title: "Social",
+        eyebrow: "SOCIAL",
         headline: "This Week's AI Brief",
         summary: "AI briefings translated into systems, context, and product implications.",
         items: [
