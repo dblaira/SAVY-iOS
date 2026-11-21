@@ -13,9 +13,11 @@ What it does, on a Mac with Xcode (a GitHub runner, or Adam's Mac with no device
      set words, because a build machine has no one to allow Speech Recognition.
   4. Reads both apps' trails and prints, per capture, what worked and what stopped.
 
-It runs twice: with the Watch app installed on its own (how it was on Adam's devices on Nov 21,
-where the link failed with WatchConnectivity 7018), then with the Watch app inside the iPhone app.
-It passes only when the words come back to the Watch in the second run.
+It runs up to three times: with the Watch app inside the iPhone app and both installed; if that
+fails, with only the iPhone app installed, waiting for the system to carry the Watch app across;
+and last with the Watch app installed on its own, which is how it was on Adam's devices on Nov 21,
+where the link failed with WatchConnectivity 7018. It passes only when the words come back to the
+Watch with the Watch app inside the iPhone app.
 
 What a simulator cannot show: his iCloud account, the real microphone and Bluetooth. Those parts
 (recording, iCloud, entry on the iPhone) worked on his own devices on Nov 21.
@@ -105,6 +107,19 @@ def container(udid, bundle):
     return Path(done.stdout.strip()) if done.returncode == 0 and done.stdout.strip() else None
 
 
+def how_installed(udid, bundle):
+    """Prints how the simulator has the app on record (its companion, its type), to explain a pairing."""
+    listing = simctl("listapps", udid, quiet=True).stdout
+    at = listing.find(f'"{bundle}" =')
+    if at < 0:
+        at = listing.find(f"{bundle} =")
+    if at >= 0:
+        block = listing[at:at + 1600]
+        keep = [line.strip() for line in block.splitlines()
+                if any(key in line for key in ("ApplicationType", "Companion", "WK", "CFBundleVersion", "Path ="))]
+        print("on record on the Watch simulator: " + "; ".join(keep)[:700], flush=True)
+
+
 def read_trail(path):
     events = []
     if path and path.exists():
@@ -117,19 +132,34 @@ def read_trail(path):
 
 
 def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out):
-    """Installs, runs the link test once, and returns (words came back, the Watch's last link state)."""
+    """Installs, runs the link test once, and returns (words came back, the Watch's last link state).
+    With `watch_app` None, only the iPhone app is installed and the system has to carry the Watch
+    app across, as it does on real devices."""
     phone_bundle, watch_bundle = cfg["xcode"]["companionBundleID"], cfg["xcode"]["watchBundleID"]
     folder = cfg["storageFolder"]
     print(f"\n===== Link test: Watch app {label} =====", flush=True)
     for udid, bundle in ((watch, watch_bundle), (phone, phone_bundle)):
         simctl("terminate", udid, bundle, quiet=True)
         simctl("uninstall", udid, bundle, quiet=True)
+    time.sleep(5)
     simctl("install", phone, phone_app, check=True)
-    simctl("install", watch, watch_app, check=True)
+    if watch_app is not None:
+        simctl("install", watch, watch_app, check=True)
+    else:
+        arrived = False
+        for _ in range(24):
+            if container(watch, watch_bundle) is not None:
+                arrived = True
+                break
+            time.sleep(5)
+        print(f"the system carried the Watch app across by itself: {'yes' if arrived else 'no'}", flush=True)
+        if not arrived:
+            return False, "the Watch app never arrived on the Watch simulator"
 
     watch_data = container(watch, watch_bundle)
     if watch_data is None:
         sys.exit("the Watch app's data folder was not found after install")
+    how_installed(watch, watch_bundle)
     store = watch_data / "Library/Application Support" / folder
     (store / "Audio").mkdir(parents=True, exist_ok=True)
     shutil.copyfile(recording, store / "Audio" / RECORDING)
@@ -138,10 +168,10 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out):
         watch_trail.unlink()
 
     simctl("launch", phone, phone_bundle, "-WatchCaptureLinkTestWords", WORDS, check=True)
-    time.sleep(8)
+    time.sleep(10)
     simctl("launch", watch, watch_bundle, "-WatchCaptureLinkTest", RECORDING, check=True)
 
-    deadline = time.time() + 200
+    deadline = time.time() + 300
     done = False
     while time.time() < deadline and not done:
         time.sleep(5)
@@ -162,6 +192,11 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out):
         simctl("io", udid, "screenshot", saved / name, quiet=True)
 
     events, notes = watchtrail.load(files)
+    print("--- every step, both simulators ---")
+    for event in events:
+        print(f"  {event['when'].strftime('%H:%M:%S')} {event.get('side', '?'):<6} "
+              f"{'ok    ' if event.get('ok') else 'FAILED'} {event.get('step', ''):<16} "
+              f"{(event.get('capture') or '-')[:8]:<8} {event.get('detail') or ''}")
     watchtrail.report(events, notes)
     words_back = any(e.get("step") == "link.words" and e.get("ok") for e in events)
     state = next((e.get("detail") for e in reversed(events)
@@ -209,16 +244,23 @@ def main():
     boot(watch)
 
     results = []
-    for label, phone_app in (("installed on its own", alone), ("inside the iPhone app", app)):
-        if label == "inside the iPhone app" and not inside:
-            print("\nskipping the second run: this iPhone app does not carry the Watch app")
-            continue
-        results.append((label, *one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out)))
+    if inside:
+        results.append(("inside the iPhone app", *one_run(
+            "inside the iPhone app", phone, watch, app, watch_app, cfg, recording, out)))
+        if not results[-1][1]:
+            results.append(("inside the iPhone app, carried across by the system", *one_run(
+                "inside the iPhone app, carried across by the system", phone, watch, app, None, cfg, recording, out)))
+    else:
+        print("\nthis iPhone app does not carry the Watch app; only the stand-alone run is possible")
+    # How it was on Adam's devices on Nov 21. This run is expected to fail; it shows the test
+    # can tell the difference.
+    results.append(("installed on its own", *one_run(
+        "installed on its own", phone, watch, alone, watch_app, cfg, recording, out)))
 
     print("\n===== Result =====")
     for label, words_back, state in results:
         print(f"Watch app {label}: words back on the Watch: {'YES' if words_back else 'NO'}  ({state})")
-    passed = bool(results) and results[-1][0] == "inside the iPhone app" and results[-1][1]
+    passed = any(words_back for label, words_back, state in results if label.startswith("inside the iPhone app"))
     print("LINK TEST PASSED" if passed else "LINK TEST FAILED")
     sys.exit(0 if passed else 1)
 

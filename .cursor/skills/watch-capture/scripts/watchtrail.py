@@ -48,6 +48,9 @@ STEP_WORDS = {
     "words": "Words written out",
     "link.reply": "Words sent back to the Watch",
     "link.words": "Words back on the wrist",
+    "linktest.start": "Simulator link test started",
+    "linktest.ready": "Simulators see each other as a pair",
+    "linktest.done": "Simulator link test finished",
     "cloud.send": "Sent to iCloud",
     "import.skip": "Import waiting",
     "import.fetch": "Looked in the Watch inbox",
@@ -286,7 +289,10 @@ def report(events, notes, out=sys.stdout):
     first_fix = None
     for capture in order:
         steps = by_capture[capture]
-        if any(e.get("step") == "discard" for e in steps):
+        # A recording he threw away is not shown. The simulator link test throws its own away
+        # when it is done, and that one is the whole point, so it stays.
+        if any(e.get("step") == "discard" for e in steps) and not any(
+                e.get("step", "").startswith("linktest") for e in steps):
             continue
         saved = checkpoint(steps, {"save", "siri"})
         kind = ""
@@ -317,7 +323,8 @@ def report(events, notes, out=sys.stdout):
                   f"{STEP_WORDS.get(event['step'], event['step'])}: {event.get('detail') or ''}")
 
     write()
-    shown = len([c for c in order if not any(e.get('step') == 'discard' for e in by_capture[c])])
+    shown = len([c for c in order if not any(e.get('step') == 'discard' for e in by_capture[c])
+                 or any(e.get('step', '').startswith('linktest') for e in by_capture[c])])
     if shown == 0:
         write("No captures in the trail yet. Make one on the Watch, open the app on the iPhone, then read again.")
     elif troubled == 0 and unfinished == 0:

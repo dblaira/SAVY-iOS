@@ -82,10 +82,12 @@ enum WatchCaptureLinkTest {
         guard let fileName else { return }
         WatchCaptureTrail.note("linktest.start", fileName)
         let link = WatchPhoneLink.shared
-        // Give the two simulators up to a minute to see each other.
-        for _ in 0..<60 where !link.isPhoneNearby {
+        // Give the two simulators up to two minutes to reach each other and to see each other
+        // as a pair; the pairing can settle a little after both apps are installed.
+        for _ in 0..<120 where !(link.isPhoneNearby && link.seesPhoneApp) {
             try? await Task.sleep(for: .seconds(1))
         }
+        WatchCaptureTrail.note("linktest.ready", ok: link.isPhoneNearby && link.seesPhoneApp, link.stateText)
         let store = WatchCaptureStore.shared
         let url = store.linkTestRecordingURL(named: fileName)
         guard FileManager.default.fileExists(atPath: url.path),

@@ -101,6 +101,20 @@ final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
         WatchCaptureTrail.note("link.reach", once: true, Self.state(of: session))
     }
 
+    /// The moment the Watch starts, or stops, seeing the iPhone app as its partner.
+    nonisolated func sessionCompanionAppInstalledDidChange(_ session: WCSession) {
+        WatchCaptureTrail.note("link.state", once: true, Self.state(of: session))
+    }
+
+    /// True once the Watch sees the iPhone app as its partner. Without it, a recording sent to
+    /// the iPhone fails with WatchConnectivity 7018.
+    var seesPhoneApp: Bool {
+        WCSession.isSupported() && WCSession.default.isCompanionAppInstalled
+    }
+
+    /// The link as the Watch sees it right now, in the trail's words.
+    var stateText: String { Self.state(of: WCSession.default) }
+
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         Self.receive(message)
     }
