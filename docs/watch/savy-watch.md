@@ -121,9 +121,9 @@ A capture has to do four things. The first happens on the Watch alone. The other
 
 ### What reading the code found, Nov 21
 
-Nothing here is confirmed on his devices yet. Each is a way the app could work and not work.
+Item 1 was read from his devices. Items 2 to 4 come from reading the code; each is a way the app could work and not work.
 
-1. **The iPhone app may not have the Watch code.** The Watch app was installed from this branch at about 10:20 PM on Nov 20. At 10:43 to 10:58 PM, `main` got three fixes and was merged into `claude/ai-communication-interface-b714f9`, the branch his installed apps are normally built from. That branch has no Watch code. If the iPhone runs that build, the Watch records, saves and reaches iCloud, and steps 2 and 4 never happen.
+1. **The iPhone had the Watch code, and had lost Send to AI.** A cloud session first suspected the iPhone app had no Watch code. The session on his Mac Studio read the devices and found the opposite: the iPhone's SAVY was installed on Nov 20 from this branch at `6eff101`, and it had already made one entry from a Watch capture. That install replaced the Send to AI build, so the iPhone had no Send to AI from Nov 20. The iPhone app must be built from a merge of this branch and `claude/ai-communication-interface-b714f9`.
 2. **Three callbacks could stop the Watch app.** The project builds in Swift 6 mode. Three closures written inside main-thread types were handed to the system as callbacks: the error handler for a recording sent to the iPhone, the background retry, and the microphone permission. If the system calls one from another thread, the app stops. The first fires exactly when the iPhone does not answer. All three are fixed (`@Sendable`, or the `async` form).
 3. **A recording the system cut short was reported as ten minutes long.** The length now comes from the file itself.
 4. **Every failure was silent.** “Sends when online” covered every iCloud failure, including ones that waiting never fixes. An import that waited on SAVY's own sync, a missing Speech Recognition permission, and an iPhone that never answered all left no trace.
