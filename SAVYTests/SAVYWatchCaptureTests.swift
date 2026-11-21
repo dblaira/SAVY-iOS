@@ -1,4 +1,5 @@
 import CloudKit
+import WatchConnectivity
 import XCTest
 @testable import SAVY
 
@@ -209,5 +210,63 @@ final class SAVYWatchCaptureTests: XCTestCase {
         let payload = try XCTUnwrap(record.encryptedValues["payload"] as? Data)
         moved.encryptedValues["payload"] = payload as NSData
         XCTAssertThrowsError(try WatchCaptureInbox.capture(from: moved))
+    }
+
+    // MARK: Trail — Adam, Nov 21: “The Apple Watch SAVY app works and doesn't work. It needs a lot of testing.”
+
+    private func temporaryTrail() -> WatchCaptureTrailFile {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SAVYWatchTrailTests-\(UUID().uuidString)", isDirectory: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: folder) }
+        return WatchCaptureTrailFile(folder: folder)
+    }
+
+    private func step(_ name: String, ok: Bool = true, capture: UUID? = nil, _ detail: String? = nil) -> WatchCaptureTrail.Event {
+        WatchCaptureTrail.Event(at: fixedMoment, side: "watch", step: name, ok: ok,
+                                capture: capture?.uuidString.lowercased(), detail: detail)
+    }
+
+    func testTrailKeepsEachStepInOrderWithItsReason() {
+        let trail = temporaryTrail()
+        let id = UUID()
+        trail.append(step("keep", capture: id, "file=ab12cd34 7.2s 21KB"))
+        trail.append(step("cloud.send", ok: false, capture: id, "CloudKit 9 notAuthenticated"))
+        let events = trail.events()
+        XCTAssertEqual(events.map(\.step), ["keep", "cloud.send"])
+        XCTAssertEqual(events.map(\.ok), [true, false])
+        XCTAssertEqual(events.last?.capture, id.uuidString.lowercased())
+        XCTAssertEqual(events.last?.detail, "CloudKit 9 notAuthenticated")
+        XCTAssertEqual(events.first?.at, fixedMoment)
+    }
+
+    func testTrailWritesARetriedFailureOnce() {
+        let trail = temporaryTrail()
+        let id = UUID()
+        XCTAssertTrue(trail.append(step("cloud.send", ok: false, capture: id, "offline"), once: true))
+        XCTAssertFalse(trail.append(step("cloud.send", ok: false, capture: id, "offline"), once: true))
+        // A different reason, or the same step for another capture, is new.
+        XCTAssertTrue(trail.append(step("cloud.send", capture: id, "in iCloud"), once: true))
+        XCTAssertTrue(trail.append(step("cloud.send", ok: false, capture: UUID(), "offline"), once: true))
+        XCTAssertEqual(trail.events().count, 3)
+    }
+
+    func testTrailStaysSmallAndKeepsTheNewestSteps() {
+        let trail = temporaryTrail()
+        let total = WatchCaptureTrailFile.lineLimit + 10
+        for number in 1...total { trail.append(step("step", "\(number)")) }
+        let events = trail.events()
+        XCTAssertLessThanOrEqual(events.count, WatchCaptureTrailFile.lineLimit)
+        XCTAssertGreaterThanOrEqual(events.count, WatchCaptureTrailFile.keptLines)
+        XCTAssertEqual(events.last?.detail, "\(total)")
+        // A new reader of the same file sees the same lines: nothing is held only in memory.
+        XCTAssertEqual(WatchCaptureTrailFile(folder: trail.fileURL.deletingLastPathComponent()).events(), events)
+    }
+
+    func testTrailReasonNamesTheErrorAndLeavesOutItsDescription() {
+        XCTAssertEqual(WatchCaptureTrail.reason(CKError(.notAuthenticated)), "CloudKit 9 notAuthenticated")
+        XCTAssertEqual(WatchCaptureTrail.reason(CKError(.permissionFailure)), "CloudKit 10 permissionFailure")
+        XCTAssertEqual(WatchCaptureTrail.reason(WCError(.notReachable)), "WatchConnectivity 7007 notReachable")
+        let described = NSError(domain: "Example", code: 7, userInfo: [NSLocalizedDescriptionKey: "what Adam said"])
+        XCTAssertEqual(WatchCaptureTrail.reason(described), "Example 7")
     }
 }

@@ -25,17 +25,37 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
 
     /// Call once at launch, before the first message can arrive.
     func activate() {
+        WatchCaptureTrail.note("app.launch", WatchCaptureTrail.build + " " + WatchCaptureTranscriber.authorizationSummary)
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self
         WCSession.default.activate()
     }
 
+    /// The link as this iPhone sees it right now, for the trail.
+    private static func state(of session: WCSession) -> String {
+        let activation: String
+        switch session.activationState {
+        case .activated: activation = "activated"
+        case .inactive: activation = "inactive"
+        case .notActivated: activation = "notActivated"
+        @unknown default: activation = "unknown"
+        }
+        return "link=\(activation) watchPaired=\(session.isPaired ? "yes" : "no") "
+            + "watchAppInstalled=\(session.isWatchAppInstalled ? "yes" : "no")"
+    }
+
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
                  error: (any Error)?) {
+        WatchCaptureTrail.note("link.activate", ok: activationState == .activated && error == nil,
+                               Self.state(of: session) + (error.map { " " + WatchCaptureTrail.reason($0) } ?? ""))
         // Ask for Speech Recognition while the app is open, so the first recording from the
         // Watch can be written out even when the phone is in a pocket.
         guard activationState == .activated, session.isWatchAppInstalled else { return }
         Task { _ = await WatchCaptureTranscriber.isAuthorized() }
+    }
+
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        WatchCaptureTrail.note("link.state", once: true, Self.state(of: session))
     }
 
     func sessionDidBecomeInactive(_ session: WCSession) {}
@@ -53,31 +73,52 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
               let count = message[WatchLinkMessage.count] as? Int, count > 0, (0..<count).contains(index),
               let data = message[WatchLinkMessage.data] as? Data else { return }
         let fileExtension = (message[WatchLinkMessage.fileExtension] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "m4a"
-        let complete: Data? = lock.withLock {
+        let (isFirst, complete): (Bool, Data?) = lock.withLock {
+            let isFirst = incoming[id] == nil
             var entry = incoming[id] ?? Incoming(count: count, fileExtension: fileExtension)
             entry.parts[index] = data
             guard entry.parts.count == entry.count else {
                 incoming[id] = entry
-                return nil
+                return (isFirst, nil)
             }
             incoming[id] = nil
-            return (0..<entry.count).reduce(into: Data()) { whole, part in whole.append(entry.parts[part] ?? Data()) }
+            return (isFirst, (0..<entry.count).reduce(into: Data()) { whole, part in whole.append(entry.parts[part] ?? Data()) })
+        }
+        if isFirst {
+            WatchCaptureTrail.note("link.wake", capture: id, "first of \(count) parts arrived from the Watch")
         }
         guard let complete else { return }
-        writeOut(id: id, audio: complete, fileExtension: fileExtension)
+        writeOut(id: id, audio: complete, fileExtension: fileExtension, parts: count)
     }
 
-    private func writeOut(id: UUID, audio: Data, fileExtension: String) {
+    private func writeOut(id: UUID, audio: Data, fileExtension: String, parts: Int) {
+        let size = "parts=\(parts) \(audio.count / 1_000)KB"
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("watch-\(id.uuidString.lowercased()).\(fileExtension)")
-        guard (try? audio.write(to: url, options: [.atomic])) != nil else { return }
+        guard (try? audio.write(to: url, options: [.atomic])) != nil else {
+            WatchCaptureTrail.fail("link.receive", capture: id, size + " could not be written to a temporary file")
+            reply(id: id, words: "")
+            return
+        }
         Task {
             #if canImport(UIKit)
-            let backgroundTask = await MainActor.run {
-                UIApplication.shared.beginBackgroundTask(withName: "Watch recording words")
+            let (backgroundTask, appState): (UIBackgroundTaskIdentifier, String) = await MainActor.run {
+                let application = UIApplication.shared
+                let state: String
+                switch application.applicationState {
+                case .active: state = "active"
+                case .inactive: state = "inactive"
+                case .background: state = "background"
+                @unknown default: state = "unknown"
+                }
+                return (application.beginBackgroundTask(withName: "Watch recording words"),
+                        "app=\(state) unlocked=\(application.isProtectedDataAvailable ? "yes" : "no")")
             }
+            WatchCaptureTrail.note("link.receive", capture: id, size + " " + appState)
+            #else
+            WatchCaptureTrail.note("link.receive", capture: id, size)
             #endif
-            let words = await WatchCaptureTranscriber.words(fromRecordingAt: url)
+            let words = await WatchCaptureTranscriber.words(fromRecordingAt: url, capture: id)
             try? FileManager.default.removeItem(at: url)
             reply(id: id, words: words ?? "")
             #if canImport(UIKit)
@@ -92,9 +133,13 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
         let payload = Self.wordsPayload(id: id, words: words)
         guard session.isReachable else {
             session.transferUserInfo(payload)
+            WatchCaptureTrail.note("link.reply", capture: id, "chars=\(words.count) queued: the Watch app is not open")
             return
         }
-        session.sendMessage(payload, replyHandler: nil) { _ in
+        WatchCaptureTrail.note("link.reply", capture: id, "chars=\(words.count) sent live")
+        session.sendMessage(payload, replyHandler: nil) { error in
+            WatchCaptureTrail.fail("link.reply", capture: id,
+                                   "the live reply failed (\(WatchCaptureTrail.reason(error))); queued instead")
             WCSession.default.transferUserInfo(Self.wordsPayload(id: id, words: words))
         }
     }

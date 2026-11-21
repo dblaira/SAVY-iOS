@@ -38,6 +38,9 @@ jobs:
           if [ -f .cursor/skills/watch-capture/scripts/watchkit.py ]; then
             python3 .cursor/skills/watch-capture/scripts/watchkit.py files --config watch-capture.json --check
           fi
+          if [ -f .cursor/skills/watch-capture/scripts/watchtrail.py ]; then
+            python3 .cursor/skills/watch-capture/scripts/watchtrail.py selftest
+          fi
       - name: Use the newest Xcode on the runner
         run: |
           ls -d /Applications/Xcode*.app

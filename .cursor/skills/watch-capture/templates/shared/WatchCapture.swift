@@ -1,5 +1,9 @@
 import CloudKit
 import Foundation
+import os
+#if canImport(WatchConnectivity)
+import WatchConnectivity
+#endif
 
 // Watch capture kit: the same in every app that uses it. App-specific values live in
 // WatchCaptureConfig.swift. Shared by the Watch app and the iPhone/Mac app. The Watch writes
@@ -198,4 +202,200 @@ enum WatchLinkMessage {
     static let count = "count"
     static let fileExtension = "ext"
     static let data = "data"
+}
+
+// MARK: - Trail
+
+/// What happened to each capture, step by step, on this device. A capture that stops on its way
+/// from the wrist to an entry says where it stopped and why, so it can be fixed instead of guessed.
+///
+/// Each line holds a time, the step, whether it worked, the capture's id and a short reason: a
+/// state, a count, or an error's code. It never holds the words, the recording or an account
+/// name. The Watch and the iPhone or Mac each keep their own file; `watchkit.py trail` reads
+/// them together. The same lines go to the system log under the category "WatchCaptureTrail".
+enum WatchCaptureTrail {
+    struct Event: Codable, Equatable, Sendable {
+        var at: Date
+        /// "watch", "iphone" or "mac".
+        var side: String
+        var step: String
+        var ok: Bool
+        var capture: String?
+        var detail: String?
+    }
+
+    #if os(watchOS)
+    static let side = "watch"
+    #elseif targetEnvironment(macCatalyst)
+    static let side = "mac"
+    #else
+    static let side = "iphone"
+    #endif
+
+    static let file = WatchCaptureTrailFile(
+        folder: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(WatchCaptureConfig.storageFolder, isDirectory: true))
+
+    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "WatchCapture", category: "WatchCaptureTrail")
+
+    /// Records one step. `once` skips a line that repeats the last one for the same step and
+    /// capture, so a retry every minute does not fill the file.
+    static func note(_ step: String, capture: UUID? = nil, ok: Bool = true, once: Bool = false, _ detail: String? = nil) {
+        let event = Event(at: Date(), side: side, step: step, ok: ok,
+                          capture: capture?.uuidString.lowercased(), detail: detail)
+        guard file.append(event, once: once) else { return }
+        log.log("\(step, privacy: .public) \(ok ? "ok" : "FAILED", privacy: .public) \(event.capture ?? "-", privacy: .public) \(detail ?? "", privacy: .public)")
+    }
+
+    static func fail(_ step: String, capture: UUID? = nil, once: Bool = false, _ detail: String?) {
+        note(step, capture: capture, ok: false, once: once, detail)
+    }
+
+    /// This app's version and build, for the line written at launch.
+    static var build: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "v\(version) (\(build))"
+    }
+
+    /// An error as its framework, code and name. No description, which could hold a name or a path.
+    static func reason(_ error: any Error) -> String {
+        if let error = error as? CKError {
+            var text = "CloudKit \(error.code.rawValue) \(name(error.code))"
+            if error.code == .partialFailure, let first = error.partialErrorsByItemID?.values.first {
+                text += " (first: \(reason(first)))"
+            }
+            return text
+        }
+        #if canImport(WatchConnectivity)
+        if let error = error as? WCError {
+            return "WatchConnectivity \(error.code.rawValue) \(name(error.code))"
+        }
+        #endif
+        let error = error as NSError
+        return "\(error.domain) \(error.code)"
+    }
+
+    private static func name(_ code: CKError.Code) -> String {
+        switch code {
+        case .internalError: return "internalError"
+        case .partialFailure: return "partialFailure"
+        case .networkUnavailable: return "networkUnavailable"
+        case .networkFailure: return "networkFailure"
+        case .badContainer: return "badContainer"
+        case .serviceUnavailable: return "serviceUnavailable"
+        case .requestRateLimited: return "requestRateLimited"
+        case .missingEntitlement: return "missingEntitlement"
+        case .notAuthenticated: return "notAuthenticated"
+        case .permissionFailure: return "permissionFailure"
+        case .unknownItem: return "unknownItem"
+        case .invalidArguments: return "invalidArguments"
+        case .serverRecordChanged: return "serverRecordChanged"
+        case .serverRejectedRequest: return "serverRejectedRequest"
+        case .assetFileNotFound: return "assetFileNotFound"
+        case .incompatibleVersion: return "incompatibleVersion"
+        case .operationCancelled: return "operationCancelled"
+        case .changeTokenExpired: return "changeTokenExpired"
+        case .batchRequestFailed: return "batchRequestFailed"
+        case .zoneBusy: return "zoneBusy"
+        case .quotaExceeded: return "quotaExceeded"
+        case .zoneNotFound: return "zoneNotFound"
+        case .limitExceeded: return "limitExceeded"
+        case .userDeletedZone: return "userDeletedZone"
+        case .serverResponseLost: return "serverResponseLost"
+        case .accountTemporarilyUnavailable: return "accountTemporarilyUnavailable"
+        default: return "other"
+        }
+    }
+
+    #if canImport(WatchConnectivity)
+    private static func name(_ code: WCError.Code) -> String {
+        switch code {
+        case .genericError: return "genericError"
+        case .sessionMissingDelegate: return "sessionMissingDelegate"
+        case .sessionNotActivated: return "sessionNotActivated"
+        case .deviceNotPaired: return "deviceNotPaired"
+        case .watchAppNotInstalled: return "watchAppNotInstalled"
+        case .notReachable: return "notReachable"
+        case .payloadTooLarge: return "payloadTooLarge"
+        case .payloadUnsupportedTypes: return "payloadUnsupportedTypes"
+        case .messageReplyFailed: return "messageReplyFailed"
+        case .messageReplyTimedOut: return "messageReplyTimedOut"
+        case .deliveryFailed: return "deliveryFailed"
+        case .insufficientSpace: return "insufficientSpace"
+        case .sessionInactive: return "sessionInactive"
+        case .transferTimedOut: return "transferTimedOut"
+        case .companionAppNotInstalled: return "companionAppNotInstalled"
+        default: return "other"
+        }
+    }
+    #endif
+}
+
+/// The trail's file: one JSON line per step, newest last, kept to the last few hundred lines.
+final class WatchCaptureTrailFile: @unchecked Sendable {
+    static let fileName = "trail.jsonl"
+    /// The file is cut back to `keptLines` once it passes `lineLimit`.
+    static let lineLimit = 600
+    static let keptLines = 400
+
+    let fileURL: URL
+    private let lock = NSLock()
+    private var lineCount: Int?
+    private var lastOnce: [String: String] = [:]
+
+    init(folder: URL) {
+        fileURL = folder.appendingPathComponent(Self.fileName)
+    }
+
+    /// Adds one line. Returns false when `once` found it repeats the last line for its step and capture.
+    @discardableResult
+    func append(_ event: WatchCaptureTrail.Event, once: Bool = false) -> Bool {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        guard var line = try? encoder.encode(event) else { return false }
+        line.append(0x0A)
+        return lock.withLock { () -> Bool in
+            let key = event.step + "|" + (event.capture ?? "")
+            let value = (event.ok ? "ok|" : "failed|") + (event.detail ?? "")
+            if once, lastOnce[key] == value { return false }
+            lastOnce[key] = value
+            let manager = FileManager.default
+            try? manager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if lineCount == nil { lineCount = Self.lines(in: fileURL).count }
+            if let handle = try? FileHandle(forWritingTo: fileURL) {
+                defer { try? handle.close() }
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: line)
+            } else {
+                try? line.write(to: fileURL, options: [.atomic])
+            }
+            lineCount = (lineCount ?? 0) + 1
+            if (lineCount ?? 0) > Self.lineLimit {
+                let kept = Self.lines(in: fileURL).suffix(Self.keptLines)
+                var data = Data()
+                for line in kept {
+                    data.append(line)
+                    data.append(0x0A)
+                }
+                try? data.write(to: fileURL, options: [.atomic])
+                lineCount = kept.count
+            }
+            return true
+        }
+    }
+
+    /// Every step still in the file, oldest first.
+    func events() -> [WatchCaptureTrail.Event] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return lock.withLock { Self.lines(in: fileURL) }.compactMap { try? decoder.decode(WatchCaptureTrail.Event.self, from: $0) }
+    }
+
+    private static func lines(in url: URL) -> [Data] {
+        guard let data = try? Data(contentsOf: url) else { return [] }
+        return data.split(separator: 0x0A).map { Data($0) }
+    }
 }

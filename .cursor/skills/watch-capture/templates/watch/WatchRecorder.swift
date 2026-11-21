@@ -24,17 +24,19 @@ final class WatchRecorder: ObservableObject {
     private var recorder: AVAudioRecorder?
     private var fileURL: URL?
     private var meterTask: Task<Void, Never>?
+    private var startedAt: Date?
+    /// Set when the recorder is found stopped before the maximum length: the system cut it short.
+    private var cutShortAt: TimeInterval?
 
     /// Starts recording into `url`. Returns false, with `problem` set, when it cannot.
     @discardableResult
     func start(into url: URL) async -> Bool {
         guard !isRecording else { return true }
         problem = nil
-        let granted = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
-        }
+        let granted = await AVAudioApplication.requestRecordPermission()
         guard granted else {
             problem = "Microphone is off for \(WatchCaptureConfig.appName). Turn it on in Settings, Privacy, Microphone."
+            WatchCaptureTrail.fail("record.start", "microphone is off for this app")
             return false
         }
         do {
@@ -53,10 +55,14 @@ final class WatchRecorder: ObservableObject {
             recorder.isMeteringEnabled = true
             guard recorder.record(forDuration: Self.maximumLength) else {
                 problem = "The Watch could not start recording."
+                WatchCaptureTrail.fail("record.start", "the recorder refused to start")
                 return false
             }
             self.recorder = recorder
             fileURL = url
+            startedAt = Date()
+            cutShortAt = nil
+            WatchCaptureTrail.note("record.start", "file=\(Self.tag(url))")
             elapsed = 0
             levels = Array(repeating: 0, count: Self.levelCount)
             isRecording = true
@@ -70,15 +76,26 @@ final class WatchRecorder: ObservableObject {
             return true
         } catch {
             problem = "The Watch could not start recording."
+            WatchCaptureTrail.fail("record.start", WatchCaptureTrail.reason(error))
             return false
         }
+    }
+
+    /// The first part of a recording's file name, to follow one recording through the trail.
+    nonisolated static func tag(_ url: URL) -> String {
+        String(url.deletingPathExtension().lastPathComponent.prefix(8))
     }
 
     /// Stops and returns the recording, or nil when nothing was recorded.
     func stop() -> (url: URL, duration: TimeInterval)? {
         guard isRecording, let recorder, let fileURL else { return nil }
-        let duration = recorder.currentTime > 0 ? recorder.currentTime : elapsed
+        let tracked = recorder.currentTime > 0 ? recorder.currentTime : elapsed
         recorder.stop()
+        // The file itself says how long the recording really is, even when the system cut it short.
+        let measured = (try? AVAudioPlayer(contentsOf: fileURL))?.duration ?? 0
+        let duration = measured > 0 ? measured : tracked
+        let wall = startedAt.map { Date().timeIntervalSince($0) } ?? 0
+        startedAt = nil
         meterTask?.cancel()
         meterTask = nil
         self.recorder = nil
@@ -86,18 +103,33 @@ final class WatchRecorder: ObservableObject {
         isRecording = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         WKInterfaceDevice.current().play(.stop)
+        let summary = String(format: "file=%@ recorded=%.1fs pressed=%.1fs", Self.tag(fileURL), duration, wall)
         guard duration > 0.3, FileManager.default.fileExists(atPath: fileURL.path) else {
             try? FileManager.default.removeItem(at: fileURL)
+            WatchCaptureTrail.fail("record.stop", summary + " nothing kept")
             return nil
         }
+        // A recording much shorter than the time between the two presses stopped on its own.
+        let reachedLimit = duration >= Self.maximumLength - 1
+        let stoppedEarly = !reachedLimit && (cutShortAt != nil || wall - duration > 3)
+        WatchCaptureTrail.note("record.stop", ok: !stoppedEarly,
+                               summary + (stoppedEarly ? " stopped before the second press" : reachedLimit ? " reached the longest length" : ""))
+        cutShortAt = nil
         return (fileURL, duration)
     }
 
     private func tick() {
         guard let recorder else { return }
-        // The recorder stops itself at the maximum length; keep what it has.
+        // The recorder stops itself at the maximum length; keep what it has. If it is found
+        // stopped earlier than that, the system cut it short: show the time it really reached.
         guard recorder.isRecording else {
-            elapsed = Self.maximumLength
+            if elapsed >= Self.maximumLength - 1 {
+                elapsed = Self.maximumLength
+            } else if cutShortAt == nil {
+                cutShortAt = elapsed
+                WatchCaptureTrail.fail("record.cut", String(format: "file=%@ stopped by the system at %.1fs",
+                                                            fileURL.map(Self.tag) ?? "-", elapsed))
+            }
             return
         }
         recorder.updateMeters()

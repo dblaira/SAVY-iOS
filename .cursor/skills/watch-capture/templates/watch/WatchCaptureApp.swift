@@ -21,6 +21,7 @@ struct WatchCaptureApp: App {
 @MainActor
 final class WatchCaptureAppDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
+        WatchCaptureTrail.note("app.launch", WatchCaptureTrail.build)
         WatchPhoneLink.shared.activate()
     }
 

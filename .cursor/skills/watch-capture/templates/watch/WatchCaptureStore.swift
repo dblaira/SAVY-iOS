@@ -27,7 +27,11 @@ final class WatchCaptureStore: ObservableObject {
 
     enum Problem: Equatable {
         case noICloudAccount
+        /// Offline, or iCloud is busy: it sends by itself later.
         case couldNotSend
+        case iCloudStorageFull
+        /// iCloud answered and said no, with this code. Waiting will not fix it.
+        case iCloudRefused(Int)
         case couldNotSaveOnWatch
     }
 
@@ -81,12 +85,16 @@ final class WatchCaptureStore: ObservableObject {
         let capture = WatchCapture(kind: WatchCaptureKind.saveDefault, words: "", source: .wrist,
                                    audioFileName: url.lastPathComponent, audioDuration: duration)
         items.insert(Item(capture: capture, sentAt: nil, isDraft: true), at: 0)
+        let size = ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int) ?? 0
+        let summary = String(format: "file=%@ %.1fs %ldKB", WatchRecorder.tag(url), duration, size / 1_000)
         guard persist() else {
             items.removeAll { $0.id == capture.id }
             problem = .couldNotSaveOnWatch
             WKInterfaceDevice.current().play(.failure)
+            WatchCaptureTrail.fail("keep", capture: capture.id, summary + " the Watch could not write it")
             return nil
         }
+        WatchCaptureTrail.note("keep", capture: capture.id, ok: size > 0, summary)
         return capture
     }
 
@@ -102,9 +110,11 @@ final class WatchCaptureStore: ObservableObject {
             items[index] = previous
             problem = .couldNotSaveOnWatch
             WKInterfaceDevice.current().play(.failure)
+            WatchCaptureTrail.fail("save", capture: id, "as \(kind.rawValue): the Watch could not write it")
             return false
         }
         WKInterfaceDevice.current().play(.success)
+        WatchCaptureTrail.note("save", capture: id, "as \(kind.rawValue)")
         Task { await sendPending() }
         return true
     }
@@ -125,6 +135,7 @@ final class WatchCaptureStore: ObservableObject {
         if let url = audioURL(for: item.capture) { try? FileManager.default.removeItem(at: url) }
         items.removeAll { $0.id == id }
         _ = persist()
+        WatchCaptureTrail.note("discard", capture: id)
     }
 
     // MARK: Words (Siri and the Action Button phrases)
@@ -140,9 +151,11 @@ final class WatchCaptureStore: ObservableObject {
             items.removeAll { $0.id == capture.id }
             problem = .couldNotSaveOnWatch
             WKInterfaceDevice.current().play(.failure)
+            WatchCaptureTrail.fail("siri", capture: capture.id, "as \(kind.rawValue): the Watch could not write it")
             return nil
         }
         WKInterfaceDevice.current().play(.success)
+        WatchCaptureTrail.note("siri", capture: capture.id, "as \(kind.rawValue) chars=\(capture.words.count)")
         Task { await sendPending() }
         return capture
     }
@@ -168,8 +181,13 @@ final class WatchCaptureStore: ObservableObject {
         let container = CKContainer(identifier: WatchCaptureInbox.containerIdentifier)
         let database = container.privateCloudDatabase
         do {
-            guard try await container.accountStatus() == .available else {
+            let account = try await container.accountStatus()
+            guard account == .available else {
                 problem = .noICloudAccount
+                for item in waiting {
+                    WatchCaptureTrail.fail("cloud.send", capture: item.id, once: true,
+                                           "iCloud account is not available on the Watch (status \(account.rawValue))")
+                }
                 scheduleRetry()
                 return
             }
@@ -184,26 +202,36 @@ final class WatchCaptureStore: ObservableObject {
             // `.allKeys` lets a re-sent capture replace its earlier version in iCloud.
             let result = try await database.modifyRecords(
                 saving: records, deleting: [], savePolicy: .allKeys, atomically: false)
-            var anyFailed = false
+            var firstFailure: Problem?
             for item in waiting {
                 let recordID = WatchCaptureInbox.recordID(for: item.id)
-                guard case .success? = result.saveResults[recordID] else {
-                    anyFailed = true
-                    continue
-                }
-                // A type changed while this send was running is sent next time.
-                if let index = items.firstIndex(where: { $0.id == item.id }), items[index].capture == item.capture {
-                    items[index].sentAt = Date()
+                switch result.saveResults[recordID] {
+                case .success?:
+                    WatchCaptureTrail.note("cloud.send", capture: item.id, once: true,
+                                           item.capture.hasRecording ? "in iCloud, with its recording" : "in iCloud")
+                    // A type changed while this send was running is sent next time.
+                    if let index = items.firstIndex(where: { $0.id == item.id }), items[index].capture == item.capture {
+                        items[index].sentAt = Date()
+                    }
+                case .failure(let error)?:
+                    WatchCaptureTrail.fail("cloud.send", capture: item.id, once: true, WatchCaptureTrail.reason(error))
+                    if firstFailure == nil { firstFailure = Self.problem(for: error) }
+                case nil:
+                    WatchCaptureTrail.fail("cloud.send", capture: item.id, once: true, "iCloud gave no answer for it")
+                    if firstFailure == nil { firstFailure = .couldNotSend }
                 }
             }
             _ = persist()
-            problem = anyFailed ? .couldNotSend : nil
-            if anyFailed { scheduleRetry() }
+            problem = firstFailure
+            if firstFailure != nil { scheduleRetry() }
         } catch {
             if let ckError = error as? CKError, ckError.code == .zoneNotFound || ckError.code == .userDeletedZone {
                 zoneIsReady = false
             }
-            problem = .couldNotSend
+            for item in waiting {
+                WatchCaptureTrail.fail("cloud.send", capture: item.id, once: true, WatchCaptureTrail.reason(error))
+            }
+            problem = Self.problem(for: error)
             scheduleRetry()
         }
         if items.contains(where: { $0.sentAt == nil && !$0.isDraft && !waiting.contains($0) }) {
@@ -211,11 +239,31 @@ final class WatchCaptureStore: ObservableObject {
         }
     }
 
+    /// Sorts an iCloud failure into what the wrist should say. Being offline or a busy iCloud
+    /// passes by itself; a refusal does not, so it is named with its code.
+    static func problem(for error: any Error) -> Problem {
+        guard let error = error as? CKError else { return .couldNotSend }
+        switch error.code {
+        case .networkUnavailable, .networkFailure, .serviceUnavailable, .requestRateLimited, .zoneBusy,
+             .serverResponseLost, .operationCancelled, .accountTemporarilyUnavailable, .zoneNotFound, .userDeletedZone:
+            return .couldNotSend
+        case .notAuthenticated:
+            return .noICloudAccount
+        case .quotaExceeded:
+            return .iCloudStorageFull
+        case .partialFailure:
+            if let first = error.partialErrorsByItemID?.values.first { return problem(for: first) }
+            return .couldNotSend
+        default:
+            return .iCloudRefused(error.code.rawValue)
+        }
+    }
+
     /// Asks watchOS to wake the app later and try again while anything is still waiting.
     func scheduleRetry() {
         guard waitingCount > 0 else { return }
         WKApplication.shared().scheduleBackgroundRefresh(
-            withPreferredDate: Date().addingTimeInterval(15 * 60), userInfo: nil) { _ in }
+            withPreferredDate: Date().addingTimeInterval(15 * 60), userInfo: nil) { @Sendable _ in }
     }
 
     #if DEBUG

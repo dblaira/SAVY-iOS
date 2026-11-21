@@ -42,15 +42,54 @@ enum WatchRecordingFiles {
 /// and his fix list (WatchCaptureConfig.corrections, such as “Kodak” → “Codex”) is applied last.
 /// The recording is kept either way, so any word can be checked.
 enum WatchCaptureTranscriber {
-    static func words(fromRecordingAt url: URL) async -> String? {
+    static func words(fromRecordingAt url: URL, capture: UUID? = nil) async -> String? {
+        let started = Date()
         var text: String? = nil
+        var engine = ""
+        var tried: [String] = []
         if #available(iOS 26.0, *) {
-            text = await analyzerWords(fromRecordingAt: url)
+            let attempt = await analyzerWords(fromRecordingAt: url)
+            text = attempt.text
+            engine = "analyzer"
+            if attempt.text == nil { tried.append("analyzer: " + attempt.why) }
+        } else {
+            tried.append("analyzer: needs iOS 26")
         }
         if text == nil {
-            text = await recognizerWords(fromRecordingAt: url)
+            let attempt = await recognizerWords(fromRecordingAt: url)
+            text = attempt.text
+            engine = "recognizer"
+            if attempt.text == nil { tried.append("recognizer: " + attempt.why) }
+        }
+        let took = String(format: "in %.1fs", Date().timeIntervalSince(started))
+        if let text {
+            WatchCaptureTrail.note("words", capture: capture,
+                                   (["engine=\(engine) chars=\(text.count) \(took)"] + tried).joined(separator: "; "))
+        } else {
+            WatchCaptureTrail.fail("words", capture: capture, (tried + [took]).joined(separator: "; "))
         }
         return text.map(corrected)
+    }
+
+    /// The words, or why there are none.
+    private struct Attempt: Sendable {
+        var text: String?
+        var why: String = ""
+    }
+
+    private static func authorizationName(_ status: SFSpeechRecognizerAuthorizationStatus) -> String {
+        switch status {
+        case .authorized: return "allowed"
+        case .denied: return "turned off in Settings"
+        case .restricted: return "restricted on this device"
+        case .notDetermined: return "never asked"
+        @unknown default: return "unknown"
+        }
+    }
+
+    /// Speech Recognition permission as it stands, for the trail.
+    static var authorizationSummary: String {
+        "speechRecognition=" + authorizationName(SFSpeechRecognizer.authorizationStatus())
     }
 
     /// Whole words from the fix list, matched without regard to case.
@@ -65,9 +104,11 @@ enum WatchCaptureTranscriber {
     }
 
     @available(iOS 26.0, *)
-    private static func analyzerWords(fromRecordingAt url: URL) async -> String? {
-        guard SpeechTranscriber.isAvailable,
-              let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale.current) else { return nil }
+    private static func analyzerWords(fromRecordingAt url: URL) async -> Attempt {
+        guard SpeechTranscriber.isAvailable else { return Attempt(why: "not available on this device") }
+        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale.current) else {
+            return Attempt(why: "no speech model for \(Locale.current.identifier)")
+        }
         let transcriber = SpeechTranscriber(locale: locale, preset: .transcription)
         do {
             if let installation = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
@@ -87,34 +128,39 @@ enum WatchCaptureTranscriber {
                 await analyzer.cancelAndFinishNow()
             }
             let text = String(try await collected.characters).trimmingCharacters(in: .whitespacesAndNewlines)
-            return text.isEmpty ? nil : text
+            return text.isEmpty ? Attempt(why: "heard no words") : Attempt(text: text)
         } catch {
-            return nil
+            return Attempt(why: WatchCaptureTrail.reason(error))
         }
     }
 
-    private static func recognizerWords(fromRecordingAt url: URL) async -> String? {
-        guard await isAuthorized(), let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else { return nil }
+    private static func recognizerWords(fromRecordingAt url: URL) async -> Attempt {
+        guard await isAuthorized() else {
+            return Attempt(why: "Speech Recognition is " + authorizationName(SFSpeechRecognizer.authorizationStatus()))
+        }
+        guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
+            return Attempt(why: "not available right now")
+        }
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.shouldReportPartialResults = false
         request.addsPunctuation = true
         request.contextualStrings = WatchCaptureConfig.vocabulary
         if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
         let once = ResumeOnce()
-        return await withCheckedContinuation { (continuation: CheckedContinuation<String?, Never>) in
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Attempt, Never>) in
             once.set(continuation)
             _ = recognizer.recognitionTask(with: request) { result, error in
                 if let result, result.isFinal {
                     let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
-                    once.resume(text.isEmpty ? nil : text)
-                } else if error != nil {
-                    once.resume(nil)
+                    once.resume(text.isEmpty ? Attempt(why: "heard no words") : Attempt(text: text))
+                } else if let error {
+                    once.resume(Attempt(why: WatchCaptureTrail.reason(error)))
                 }
             }
             // A recognizer that never answers must not hold up the import.
             Task {
                 try? await Task.sleep(for: .seconds(120))
-                once.resume(nil)
+                once.resume(Attempt(why: "no answer in 120s"))
             }
         }
     }
@@ -131,22 +177,22 @@ enum WatchCaptureTranscriber {
             return false
         }
     }
-}
 
-/// Resumes a continuation exactly once, from whichever callback arrives first.
-private final class ResumeOnce: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<String?, Never>?
+    /// Resumes a continuation exactly once, from whichever callback arrives first.
+    private final class ResumeOnce: @unchecked Sendable {
+        private let lock = NSLock()
+        private var continuation: CheckedContinuation<Attempt, Never>?
 
-    func set(_ continuation: CheckedContinuation<String?, Never>) {
-        lock.withLock { self.continuation = continuation }
-    }
-
-    func resume(_ value: String?) {
-        let pending: CheckedContinuation<String?, Never>? = lock.withLock {
-            defer { continuation = nil }
-            return continuation
+        func set(_ continuation: CheckedContinuation<Attempt, Never>) {
+            lock.withLock { self.continuation = continuation }
         }
-        pending?.resume(returning: value)
+
+        func resume(_ value: Attempt) {
+            let pending: CheckedContinuation<Attempt, Never>? = lock.withLock {
+                defer { continuation = nil }
+                return continuation
+            }
+            pending?.resume(returning: value)
+        }
     }
 }

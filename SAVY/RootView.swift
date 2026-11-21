@@ -199,7 +199,12 @@ struct RootView: View {
     /// sync has confirmed this device belongs to the signed-in owner, so another Apple
     /// account's captures never land in this device's entries.
     private func importWatchCaptures() async {
-        guard syncsWithCloud, ["synced", "pending", "fetching"].contains(documentSync.status) else { return }
+        guard syncsWithCloud else { return }
+        guard ["synced", "pending", "fetching"].contains(documentSync.status) else {
+            WatchCaptureTrail.fail("import.skip", once: true,
+                                   "waiting for SAVY's own iCloud sync (status \(documentSync.status))")
+            return
+        }
         await WatchCaptureImporter.shared.importPending(into: reminderStore)
     }
 

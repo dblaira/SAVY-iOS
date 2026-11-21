@@ -611,6 +611,8 @@ extension WatchCaptureStore.Item {
         switch problem {
         case .noICloudAccount: return "Saved on Watch · sign in to iCloud to send"
         case .couldNotSend: return "Saved on Watch · sends when online"
+        case .iCloudStorageFull: return "Saved on Watch · iCloud storage is full"
+        case .iCloudRefused(let code): return "Saved on Watch · iCloud refused it (code \(code))"
         default: return "Saved on Watch · sending"
         }
     }
