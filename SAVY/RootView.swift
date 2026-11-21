@@ -205,9 +205,15 @@ struct RootView: View {
                                    "waiting for SAVY's own iCloud sync (status \(documentSync.status))")
             return
         }
+        // The owner the app's own sync verified, under the account epoch it was verified in.
+        // The pass stops holding the moment the iCloud account changes, before the status does.
         let sync = documentSync
-        await WatchCaptureImporter.shared.importPending(into: reminderStore) {
-            ["synced", "pending", "fetching"].contains(sync.status)
+        guard let pass = sync.ownerPass() else {
+            WatchCaptureTrail.fail("import.skip", once: true, "waiting for SAVY's own iCloud sync to verify the owner")
+            return
+        }
+        await WatchCaptureImporter.shared.importPending(into: reminderStore, expectedOwner: pass.ownerRecordName) {
+            sync.holds(pass) && ["synced", "pending", "fetching"].contains(sync.status)
         }
     }
 

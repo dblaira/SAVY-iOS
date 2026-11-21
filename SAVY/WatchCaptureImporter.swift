@@ -76,12 +76,15 @@ final class WatchCaptureImporter {
         return made
     }
 
-    /// Returns how many new entries were saved. `stillAllowed` is asked again before anything is
-    /// claimed or saved: pass the app's own check that its iCloud sync still belongs to the
-    /// signed-in owner, so an account that changes in the middle of an import stops it.
+    /// Returns how many new entries were saved. `expectedOwner` is the iCloud record name the
+    /// app's own sync verified as the signed-in owner: nothing is imported under any other
+    /// account. `stillAllowed` is asked again before anything is claimed or saved: pass the app's
+    /// own check that the owner is still verified, so an account that changes in the middle of
+    /// an import stops it.
     @discardableResult
     func importPending<Destination: WatchCaptureDestination>(
-        into destination: Destination, while stillAllowed: @MainActor () -> Bool = { true }
+        into destination: Destination, expectedOwner: String? = nil,
+        while stillAllowed: @MainActor () -> Bool = { true }
     ) async -> Int {
         guard !isImporting else { return 0 }
         guard destination.acceptsWatchCaptures else {
@@ -106,6 +109,11 @@ final class WatchCaptureImporter {
             }
             // The iCloud account this import began under. It is checked again before each save.
             owner = try await container.userRecordID()
+            if let expectedOwner, owner.recordName != expectedOwner {
+                WatchCaptureTrail.fail("import.skip", once: true,
+                                       "the iCloud account is not the one the app's own sync verified")
+                return 0
+            }
             var moreComing = true
             while moreComing {
                 do {
