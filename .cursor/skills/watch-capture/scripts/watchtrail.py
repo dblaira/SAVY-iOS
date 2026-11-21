@@ -58,13 +58,16 @@ STEP_WORDS = {
     "import.entry": "Entry saved",
 }
 
+# Seen on Adam's devices on Nov 21, 2026: both apps had the Watch code and a running link, and each
+# said the other was not installed (WatchConnectivity 7018). The Watch app had been installed on its own.
+PAIR_HINT = ("The Watch app and the iPhone app do not see each other as a pair. The iPhone app has to "
+             "carry the Watch app (watchkit.py embed), and the Watch app has to arrive through the iPhone app.")
+
 # What to do about a failure, matched against "<step> <detail>". First match wins.
 HINTS = [
-    ("iPhoneAppInstalled=no", "The Watch does not see the iPhone app as its partner. Install the iPhone app from "
-                              "the branch that has the Watch code."),
-    ("companionAppNotInstalled", "The Watch does not see the iPhone app as its partner. Install the iPhone app "
-                                 "from the branch that has the Watch code."),
-    ("watchAppNotInstalled", "The iPhone does not see the Watch app. Reinstall the Watch app."),
+    ("iPhoneAppInstalled=no", PAIR_HINT),
+    ("companionAppNotInstalled", PAIR_HINT),
+    ("watchAppNotInstalled", PAIR_HINT),
     ("iPhoneReachable=no", "The iPhone was out of reach or its Bluetooth was off. The words are written out "
                            "later, from iCloud."),
     ("notReachable", "The iPhone could not be reached at that moment. The words are written out later, from iCloud."),
@@ -140,9 +143,14 @@ def describe(events, sides_seen):
     """The four things that must happen to one capture: (label, state, detail, event)."""
     rows = []
 
+    # A device whose trail could not be copied is "unread", which is not the same as a step that stopped.
+    watch_read = "watch" in sides_seen
+    unread = "the Watch's trail was not read"
     kept = checkpoint(events, {"keep", "siri"})
     stopped = checkpoint(events, {"record.stop", "record.cut"})
-    if kept is None:
+    if kept is None and not watch_read:
+        rows.append(("Recorded on the Watch", "unread", unread, None))
+    elif kept is None:
         rows.append(("Recorded on the Watch", "missing", "no step from the Watch for this capture", None))
     elif not kept["ok"]:
         rows.append(("Recorded on the Watch", "FAILED", kept.get("detail") or "", kept))
@@ -166,7 +174,9 @@ def describe(events, sides_seen):
             if candidate is not None and not candidate["ok"]:
                 cause = candidate
                 break
-        if cause is None and asked is None:
+        if cause is None and asked is None and not watch_read:
+            rows.append(("Words back on the wrist", "unread", unread, None))
+        elif cause is None and asked is None:
             rows.append(("Words back on the wrist", "missing", "the Watch never tried to send it to the iPhone", None))
         elif cause is None:
             rows.append(("Words back on the wrist", "waiting", "sent to the iPhone; no answer recorded yet", asked))
@@ -174,7 +184,12 @@ def describe(events, sides_seen):
             rows.append(("Words back on the wrist", "FAILED", cause.get("detail") or "", cause))
 
     sent = checkpoint(events, {"cloud.send"})
-    if sent is None:
+    fetched = checkpoint(events, {"import.entry", "import.seen", "import.claim", "import.audio"})
+    if sent is None and fetched is not None:
+        rows.append(("In iCloud", "ok", f"it reached iCloud: the {fetched['side']} fetched it", fetched))
+    elif sent is None and not watch_read:
+        rows.append(("In iCloud", "unread", unread, None))
+    elif sent is None:
         rows.append(("In iCloud", "waiting", "the Watch has not tried to send it (not saved yet, or still a draft)", None))
     else:
         rows.append(("In iCloud", "ok" if sent["ok"] else "FAILED", sent.get("detail") or "", sent))
@@ -196,7 +211,7 @@ def describe(events, sides_seen):
     elif blocker is not None:
         rows.append(("Entry in the app", "FAILED", blocker.get("detail") or "", blocker))
     elif not ({"iphone", "mac"} & sides_seen):
-        rows.append(("Entry in the app", "missing", "no trail from an iPhone or Mac was read", None))
+        rows.append(("Entry in the app", "unread", "no trail from an iPhone or Mac was read", None))
     elif sent is None or not sent["ok"]:
         rows.append(("Entry in the app", "waiting", "it has not reached iCloud yet", None))
     else:
@@ -431,8 +446,8 @@ def selftest():
         assert "ok       Recorded on the Watch" in output, output
         assert "FAILED   Words back on the wrist" in output, output
         assert "ok       In iCloud" in output, output
-        assert "missing  Entry in the app" in output, output
-        assert "Install the iPhone app from the branch that has the Watch code" in output, output
+        assert "unread   Entry in the app" in output, output
+        assert "do not see each other as a pair" in output, output
         assert "Recording stopped: file=ab12cd34" in output, "recording steps join their capture by file tag"
 
         # 2. Everything works: words come back in the pocket, and the iPhone makes the entry.
@@ -479,6 +494,33 @@ def selftest():
         assert "made it from the wrist to an entry" not in output, output
         assert "still on the way" in output, output
         assert exit_code(troubled, unfinished) == 2
+
+        # 4. Only the iPhone's trail could be copied (the Watch was asleep). The entry exists, so
+        #    the capture is delivered; the Watch's steps are unread, not stopped.
+        phone.write_text("\n".join([
+            _line(-50, "iphone", "app.launch", detail="v1.0 (30) speechRecognition=allowed"),
+            _line(93, "iphone", "import.entry", capture=two, detail="entry saved as post chars=64 recording=yes"),
+        ]) + "\n")
+        text = io.StringIO()
+        events, notes = load([Path(folder) / "missing-watch.jsonl", phone])
+        troubled, unfinished = report(events, notes, out=text)
+        output = text.getvalue()
+        assert (troubled, unfinished) == (0, 0), output
+        assert "unread   Recorded on the Watch" in output, output
+        assert "stopped somewhere" not in output, output
+
+        # 5. The Nov 21 failure on Adam's devices names the pairing, not a missing branch.
+        watch.write_text("\n".join([
+            _line(12, "watch", "keep", capture=three, detail="file=aa11bb22 5.0s 15KB"),
+            _line(13, "watch", "link.ask", capture=three, detail="sent to the iPhone: parts=1 15KB"),
+            _line(14, "watch", "link.part", ok=False, capture=three,
+                  detail="WatchConnectivity 7018 companionAppNotInstalled"),
+        ]) + "\n")
+        text = io.StringIO()
+        events, notes = load([watch])
+        report(events, notes, out=text)
+        assert "do not see each other as a pair" in text.getvalue(), text.getvalue()
+        assert "branch that has the Watch code" not in text.getvalue(), text.getvalue()
     print("watchtrail selftest passed")
 
 

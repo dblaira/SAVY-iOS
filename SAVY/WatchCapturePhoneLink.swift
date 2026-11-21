@@ -91,8 +91,28 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
         writeOut(id: id, audio: complete, fileExtension: fileExtension, parts: count)
     }
 
+    #if DEBUG && targetEnvironment(simulator)
+    /// Simulator link test only: `-WatchCaptureLinkTestWords "<words>"` makes this iPhone answer a
+    /// received recording with these words. A simulator on a build machine has no one to allow
+    /// Speech Recognition, and the writing out itself is proven on the real iPhone. Compiled for
+    /// the simulator only.
+    private static var linkTestWords: String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-WatchCaptureLinkTestWords"),
+              arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+    #endif
+
     private func writeOut(id: UUID, audio: Data, fileExtension: String, parts: Int) {
         let size = "parts=\(parts) \(audio.count / 1_000)KB"
+        #if DEBUG && targetEnvironment(simulator)
+        if let words = Self.linkTestWords {
+            WatchCaptureTrail.note("link.receive", capture: id, size + " simulator link test: answering with set words")
+            reply(id: id, words: words)
+            return
+        }
+        #endif
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("watch-\(id.uuidString.lowercased()).\(fileExtension)")
         guard (try? audio.write(to: url, options: [.atomic])) != nil else {

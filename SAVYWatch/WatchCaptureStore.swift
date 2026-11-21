@@ -73,6 +73,14 @@ final class WatchCaptureStore: ObservableObject {
         return audioFolder.appendingPathComponent("\(UUID().uuidString.lowercased()).m4a")
     }
 
+    #if DEBUG && targetEnvironment(simulator)
+    /// Simulator link test only: where the test places its recording.
+    func linkTestRecordingURL(named name: String) -> URL {
+        try? FileManager.default.createDirectory(at: audioFolder, withIntermediateDirectories: true)
+        return audioFolder.appendingPathComponent(name)
+    }
+    #endif
+
     func audioURL(for capture: WatchCapture) -> URL? {
         guard let name = capture.audioFileName else { return nil }
         let url = audioFolder.appendingPathComponent(name)

@@ -122,6 +122,7 @@
 		6D7825D046F38B1AF1C60CC2 /* WatchCaptureConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39C27C09CE412C7ABBC104C /* WatchCaptureConfig.swift */; };
 		2F7C650859C592FBFF305E31 /* SAVYWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6F54AF5D48751EE91318E9E7 /* SAVYWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		66C982EA3E73DA640DBBB842 /* SAVYWatchCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECF98CBBCB2A2536CA55D72D /* SAVYWatchCaptureTests.swift */; };
+		87211893D90EA67829CB27EB /* SAVYWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = BD5660641492CA8D18B1F83D /* SAVYWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -146,6 +147,13 @@
 			remoteGlobalIDString = E02E08923CA5DDC827C85C1C;
 			remoteInfo = SAVYWatchWidgets;
 		};
+		998E2A0BA7C6064FD2739159 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3DA3A1EAB03B2D0873868AC9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9E9098AC8A34F8888E25ACD3;
+			remoteInfo = SAVYWatch;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -158,6 +166,17 @@
 			files = (
 				2F7C650859C592FBFF305E31 /* SAVYWatchWidgets.appex in Embed Foundation Extensions */,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DDB76480418EDB4E9FBF53E6 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				87211893D90EA67829CB27EB /* SAVYWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -557,10 +576,12 @@
 				D55E3BE5696C587E1340EAAF /* Sources */,
 				57FEF98F7A73F4A097EFBCE3 /* Resources */,
 				E3D228C383E38A09A4888AC0 /* Frameworks */,
+				DDB76480418EDB4E9FBF53E6 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				853E455FC25DEB291A89C16C /* PBXTargetDependency */,
 			);
 			name = SAVY;
 			packageProductDependencies = (
@@ -859,6 +880,12 @@
 			isa = PBXTargetDependency;
 			target = E02E08923CA5DDC827C85C1C /* SAVYWatchWidgets */;
 			targetProxy = 7A3554C89782D2AB47562D5B /* PBXContainerItemProxy */;
+		};
+		853E455FC25DEB291A89C16C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = ios;
+			target = 9E9098AC8A34F8888E25ACD3 /* SAVYWatch */;
+			targetProxy = 998E2A0BA7C6064FD2739159 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

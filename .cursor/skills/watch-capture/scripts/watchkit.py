@@ -13,6 +13,12 @@ root of SAVY-iOS) drives everything:
       Adds the Watch app and complication targets, the shared files and the test files to
       the Xcode project, and writes a shared scheme for the Watch app. Refuses to run twice.
 
+  watchkit.py embed  --config watch-capture.json [--repo .]
+      Puts the Watch app inside the iPhone app (an "Embed Watch Content" step, for iOS only, so a
+      Mac Catalyst build is unchanged). The Watch and iPhone apps only recognise each other as a
+      pair when the iPhone app carries the Watch app; without it the live link fails with
+      WatchConnectivity 7018. `wire` runs this too. Safe to run again.
+
   watchkit.py check  --config watch-capture.json [--repo .]
       Parses project.pbxproj and reports dangling references and what each target builds.
 
@@ -733,7 +739,71 @@ def cmd_wire(cfg, repo):
     scheme_path.parent.mkdir(parents=True, exist_ok=True)
     scheme_path.write_text(scheme)
     print(f"wired {W} ({t_watch}) and {G} ({t_widgets}) into {x['project']}; scheme {scheme_path.relative_to(repo)}")
-    report(parse_pbxproj(prj.text))
+    cmd_embed(cfg, repo)
+
+
+def cmd_embed(cfg, repo):
+    """Puts the Watch app inside the iPhone app, for iOS only.
+
+    Found on Adam's devices on Nov 21, 2026: with the Watch app installed on its own, both apps ran
+    the live link and each said the other was not installed (WatchConnectivity 7018), so the words
+    never came back to the wrist. The iPhone app has to carry the Watch app for the two to pair.
+    """
+    x = cfg["xcode"]
+    pbx = repo / x["project"] / "project.pbxproj"
+    W = x["watchTarget"]
+    prj = Project(pbx, f"{W}:embed")
+    if any(v.get("isa") == "PBXCopyFilesBuildPhase" and v.get("name") == "Embed Watch Content"
+           for v in prj.objs.values()):
+        print(f"{W} is already inside {x['appTarget']}")
+        report(prj.root)
+        return
+    apps = prj.find("PBXNativeTarget", name=x["appTarget"])
+    watches = prj.find("PBXNativeTarget", name=W)
+    assert len(apps) == 1 and len(watches) == 1, "app or Watch target not found; run wire first"
+    app, watch = apps[0], watches[0]
+    product = prj.objs[watch]["productReference"]
+    root_id = prj.root["rootObject"]
+    I = prj.new_id
+    build, phase_id, proxy, dep = I("embed:build"), I("embed:phase"), I("embed:proxy"), I("embed:dependency")
+    # `platformFilter = ios` keeps both the copy and the dependency out of a Mac Catalyst build.
+    prj.section_append("PBXBuildFile",
+                       f"\t\t{build} /* {W}.app in Embed Watch Content */ = {{isa = PBXBuildFile; "
+                       f"fileRef = {product} /* {W}.app */; platformFilter = ios; "
+                       f"settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};\n")
+    prj.section_append("PBXCopyFilesBuildPhase", f"""\t\t{phase_id} /* Embed Watch Content */ = {{
+\t\t\tisa = PBXCopyFilesBuildPhase;
+\t\t\tbuildActionMask = 2147483647;
+\t\t\tdstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+\t\t\tdstSubfolderSpec = 16;
+\t\t\tfiles = (
+\t\t\t\t{build} /* {W}.app in Embed Watch Content */,
+\t\t\t);
+\t\t\tname = "Embed Watch Content";
+\t\t\trunOnlyForDeploymentPostprocessing = 0;
+\t\t}};
+""")
+    prj.section_append("PBXContainerItemProxy", f"""\t\t{proxy} /* PBXContainerItemProxy */ = {{
+\t\t\tisa = PBXContainerItemProxy;
+\t\t\tcontainerPortal = {root_id} /* Project object */;
+\t\t\tproxyType = 1;
+\t\t\tremoteGlobalIDString = {watch};
+\t\t\tremoteInfo = {W};
+\t\t}};
+""")
+    prj.section_append("PBXTargetDependency", f"""\t\t{dep} /* PBXTargetDependency */ = {{
+\t\t\tisa = PBXTargetDependency;
+\t\t\tplatformFilter = ios;
+\t\t\ttarget = {watch} /* {W} */;
+\t\t\ttargetProxy = {proxy} /* PBXContainerItemProxy */;
+\t\t}};
+""")
+    prj.list_append(app, "buildPhases", f"{phase_id} /* Embed Watch Content */")
+    prj.list_append(app, "dependencies", f"{dep} /* PBXTargetDependency */")
+    root = parse_pbxproj(prj.text)  # must still parse
+    pbx.write_text(prj.text)
+    print(f"{W} is now inside {x['appTarget']} (Embed Watch Content, iOS only)")
+    report(root)
 
 
 def report(root):
@@ -782,7 +852,7 @@ def cmd_check(cfg, repo):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=["files", "wire", "check", "sync"])
+    parser.add_argument("command", choices=["files", "wire", "embed", "check", "sync"])
     parser.add_argument("--config", required=True)
     parser.add_argument("--repo", default=".")
     parser.add_argument("--check", action="store_true", help="files: compare only, write nothing")
@@ -793,6 +863,8 @@ def main():
         cmd_files(cfg, repo, args.check)
     elif args.command == "wire":
         cmd_wire(cfg, repo)
+    elif args.command == "embed":
+        cmd_embed(cfg, repo)
     elif args.command == "check":
         cmd_check(cfg, repo)
     else:

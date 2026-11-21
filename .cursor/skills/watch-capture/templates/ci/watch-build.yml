@@ -116,7 +116,7 @@ jobs:
           path: build/watch.log
 
   phone:
-    name: iPhone app (iOS Simulator) + Watch capture tests
+    name: iPhone app (iOS Simulator) + Watch capture tests + link test
     runs-on: {{CI_RUNNER}}
     timeout-minutes: 45
     steps:
@@ -151,7 +151,7 @@ jobs:
             -configuration Debug \
             -destination "id=$SIM_UDID" \
             -derivedDataPath build/phone \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
             2>&1 | tee build/phone.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)|TEST BUILD (SUCCEEDED|FAILED)" || true
           grep -E "error:" build/phone.log | sed -E 's/^.*\/([^/]+\.swift)/\1/' | sort -u | head -10 | while IFS= read -r line; do echo "::error::$line"; done || true
           if ! grep -q -E "TEST BUILD SUCCEEDED|BUILD SUCCEEDED" build/phone.log; then
@@ -183,6 +183,27 @@ jobs:
             tail -n 60 build/tests.log
             exit 1
           fi
+      # Adam, Nov 21, 2026: "Do 1000% of your tests on a fucking simulator." A paired iPhone and
+      # Watch simulator send a recording across the live link and check the words come back, once
+      # with the Watch app on its own and once with it inside the iPhone app. No device, no person.
+      - name: Link test in paired iPhone and Watch simulators
+        run: |
+          set -o pipefail
+          APP=$(find build/phone/Build/Products -maxdepth 2 -path "*iphonesimulator*" -name "{{APP_SCHEME}}.app" | head -1)
+          echo "iPhone app: $APP"
+          ls "$APP/Watch" || echo "no Watch folder inside the iPhone app"
+          python3 .cursor/skills/watch-capture/scripts/sim_link_test.py --config watch-capture.json \
+            --app "$APP" --phone "$SIM_UDID" --out build/linktest 2>&1 | tee build/linktest.log
+      - name: Link test screenshots
+        if: always()
+        run: |
+          for f in build/linktest/*/watch.png build/linktest/*/iphone.png; do
+            [ -f "$f" ] || continue
+            name="link-$(basename "$(dirname "$f")")-$(basename "$f")"
+            echo "WATCH-SCREENSHOT-BEGIN $name"
+            base64 -i "$f" | fold -w 76
+            echo "WATCH-SCREENSHOT-END $name"
+          done
       - name: Upload logs
         if: failure()
         uses: actions/upload-artifact@v4

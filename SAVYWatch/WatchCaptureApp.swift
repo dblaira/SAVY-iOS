@@ -23,6 +23,9 @@ final class WatchCaptureAppDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
         WatchCaptureTrail.note("app.launch", WatchCaptureTrail.build)
         WatchPhoneLink.shared.activate()
+        #if DEBUG && targetEnvironment(simulator)
+        Task { await WatchCaptureLinkTest.runIfRequested() }
+        #endif
     }
 
     func applicationDidBecomeActive() {
@@ -59,6 +62,48 @@ final class WatchCaptureLaunch: ObservableObject {
         return true
     }
 }
+
+#if DEBUG && targetEnvironment(simulator)
+/// Simulator link test only. `-WatchCaptureLinkTest <file>` takes a recording the test placed in
+/// the app's Audio folder, keeps it as a draft, and sends it to the paired iPhone simulator for
+/// its words, exactly as a finished recording is sent. The draft is thrown away afterwards, so
+/// nothing is saved or sent to iCloud. Compiled for the simulator only: it cannot exist on a
+/// real Watch. Adam, Nov 21, 2026: “Do 1000% of your tests on a fucking simulator.”
+enum WatchCaptureLinkTest {
+    static var fileName: String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-WatchCaptureLinkTest"),
+              arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+
+    @MainActor
+    static func runIfRequested() async {
+        guard let fileName else { return }
+        WatchCaptureTrail.note("linktest.start", fileName)
+        let link = WatchPhoneLink.shared
+        // Give the two simulators up to a minute to see each other.
+        for _ in 0..<60 where !link.isPhoneNearby {
+            try? await Task.sleep(for: .seconds(1))
+        }
+        let store = WatchCaptureStore.shared
+        let url = store.linkTestRecordingURL(named: fileName)
+        guard FileManager.default.fileExists(atPath: url.path),
+              let capture = store.keepRecording(at: url, duration: 5) else {
+            WatchCaptureTrail.fail("linktest.done", "the test recording was not found in the Audio folder")
+            return
+        }
+        link.askPhoneForWords(capture, audioURL: url)
+        for _ in 0..<70 where link.waiting.contains(capture.id) {
+            try? await Task.sleep(for: .seconds(1))
+        }
+        let words = store.item(id: capture.id)?.capture.words ?? ""
+        WatchCaptureTrail.note("linktest.done", capture: capture.id, ok: !words.isEmpty,
+                               words.isEmpty ? "no words came back" : "words came back: chars=\(words.count)")
+        store.discardDraft(capture.id)
+    }
+}
+#endif
 
 #if DEBUG
 /// Simulator screenshots only: `-WatchCaptureDemo home|recording|review|saved` fills a temporary

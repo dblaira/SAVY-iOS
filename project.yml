@@ -25,6 +25,10 @@ targets:
       Debug: SAVY.xcconfig
       Release: SAVY.xcconfig
     dependencies:
+      # The Watch app rides inside the iPhone app (iOS only), so the two pair for the live link.
+      - target: SAVYWatch
+        embed: true
+        platformFilter: iOS
       - package: Amplify
         product: Amplify
       - package: Amplify
@@ -51,7 +55,8 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_DEBUG_DYLIB: NO
   # Apple Watch capture, Nov 20, 2026 (watch capture kit: .cursor/skills/watch-capture).
-  # Not embedded in the iPhone app yet: run the SAVYWatch scheme to install it on the Watch.
+  # Embedded in the iPhone app since Nov 21, 2026 (`watchkit.py embed`): the Watch and iPhone apps
+  # only pair for the live link when the iPhone app carries the Watch app.
   # The project file was wired by `watchkit.py wire`; these entries mirror it.
   SAVYWatch:
     type: application
