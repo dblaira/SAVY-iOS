@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// Adam, 2026-09-21: questions stay in the entry with the answers, Social Media Posts + opens
 /// that same form, and any number of posts can be pinned. These tests use the app's isolated
@@ -24,6 +25,7 @@ final class SAVYPostFormUITests: XCTestCase {
         "Core Principles Explained", "Debunking Popular Industry Beliefs", "History of the Topic",
         "Alternative Approaches", "Step-by-Step Breakdown", "Checklist for Breakdown",
         "Checklist for Beginners", "Advanced Strategies", "Frequently Misunderstood Concepts",
+        "Correlation → Causation",
     ]
 
     override func setUp() async throws {
@@ -60,7 +62,7 @@ final class SAVYPostFormUITests: XCTestCase {
         XCTAssertEqual(element("DecideAnswer0").value as? String, firstValue)
         savePost()
         let row = postRows.firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Saved post missing from Social Media Posts")
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Saved post missing from Social")
         row.tap()
         XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10))
         XCTAssertEqual(element("DecideAnswer0").value as? String, firstValue)
@@ -175,6 +177,145 @@ final class SAVYPostFormUITests: XCTestCase {
         #endif
     }
 
+    func testCorrelationCausationQuestionsSaveAndReopenWithoutChangingAnExistingEntry() throws {
+        let prompts = [
+            "What two things seem to be connected, and what have I observed?",
+            "Which one might cause the other, and how could that happen?",
+            "What else could explain the connection, or could the cause and effect be reversed?",
+            "What could I compare or test to distinguish these explanations, and what result would change my mind?",
+        ]
+        openPostsPage()
+        let existingID = createPost(answer: "Existing Habit writing stays intact.")
+        openNewPost()
+        selectVisualFormat("Summarize")
+        let visualAnswer = element("VisualAnswer0")
+        scrollTo(visualAnswer)
+        visualAnswer.tapOrClick()
+        visualAnswer.typeText("My chosen Visual stays independent.")
+        dismissWritingKeyboard()
+        selectTheme("Correlation → Causation")
+        XCTAssertEqual(element("VisualFormat").value as? String, "Summarize",
+                       "Choosing a Theme must not choose a different Visual")
+        for (index, prompt) in prompts.enumerated() { assertPrefilledQuestion(prompt, at: index) }
+        XCTAssertFalse(element("DecideAnswer4").exists, "Exactly four question fields")
+        attach("Correlation Causation four native questions")
+
+        let answers = ["An observed connection.", "A possible mechanism.", "A competing explanation.", "A comparison that could change my mind."]
+        var expectedFields = zip(prompts, answers).map { $0 + "\n" + $1 }
+        for (index, answer) in answers.enumerated() {
+            appendAnswer(answer, at: index)
+            XCTAssertEqual(element("DecideAnswer\(index)").value as? String, prompts[index] + "\n" + answer)
+            if index == 0 {
+                // The question is editable text in the same native field. The insertion
+                // point is still after the answer just typed, so replace the complete field.
+                let field = element("DecideAnswer0")
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue,
+                                      count: expectedFields[0].count))
+                XCTAssertEqual(field.value as? String, "")
+                expectedFields[0] = "What connection did I actually observe?\n" + answer
+                field.typeText(expectedFields[0])
+                XCTAssertEqual(field.value as? String, expectedFields[0], "The question must remain editable")
+            }
+            dismissWritingKeyboard()
+        }
+        try assertCorrelationShareContains(expectedFields)
+        savePost()
+        let newRow = postRows.matching(NSPredicate(format: "identifier != %@", existingID)).firstMatch
+        XCTAssertTrue(newRow.waitForExistence(timeout: 10))
+        let newID = newRow.identifier
+
+        // Relaunch with the same isolated store, without resetting its saved entries.
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "SAVY_UI_TEST_RESET_REMINDERS" }
+        app.launch()
+        openPostsPage()
+        let reopened = element(newID)
+        scrollTo(reopened)
+        reopened.tapOrClick()
+        XCTAssertTrue(element("PostTheme").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Correlation → Causation"].firstMatch.exists)
+        for (index, expected) in expectedFields.enumerated() {
+            let field = element("DecideAnswer\(index)")
+            scrollTo(field)
+            XCTAssertEqual(field.value as? String, expected)
+        }
+        scrollTo(element("VisualFormat"))
+        XCTAssertEqual(element("VisualFormat").value as? String, "Summarize")
+        XCTAssertEqual(element("VisualAnswer0").value as? String, "My chosen Visual stays independent.")
+        try assertCorrelationShareContains(expectedFields)
+        attach("Correlation Causation answers reopened after relaunch")
+        app.buttons["Cancel"].firstMatch.tapOrClick()
+        let existing = element(existingID)
+        scrollTo(existing)
+        existing.tapOrClick()
+        XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 10))
+        XCTAssertEqual(element("DecideAnswer0").value as? String, firstPrompt + "\nExisting Habit writing stays intact.")
+        XCTAssertTrue(app.staticTexts["Habit"].firstMatch.exists)
+        for (index, prompt) in ["Make it Easy", "Make it Attractive", "Make it Satisfying"].enumerated() {
+            assertPrefilledQuestion(prompt, at: index + 1)
+        }
+        scrollTo(element("VisualFormat"))
+        XCTAssertEqual(element("VisualFormat").value as? String, "Matrices")
+        app.buttons["Cancel"].firstMatch.tapOrClick()
+    }
+
+    private func selectVisualFormat(_ name: String) {
+        let picker = element("VisualFormat")
+        scrollTo(picker)
+        picker.tapOrClick()
+        let choice = app.buttons[name].firstMatch
+        XCTAssertTrue(choice.waitForExistence(timeout: 5), "The existing Visual choice must be available")
+        choice.tapOrClick()
+        XCTAssertEqual(picker.value as? String, name)
+    }
+
+    private func dismissWritingKeyboard() {
+        let done = element("KeyboardRowDone")
+        if done.exists {
+            done.tapOrClick()
+            XCTAssertTrue(done.waitForNonExistence(timeout: 5))
+        }
+    }
+
+    private func assertCorrelationShareContains(_ fields: [String]) throws {
+        let share = element("shareForm")
+        XCTAssertTrue(share.isHittable)
+        share.tapOrClick()
+        XCTAssertFalse(app.buttons["Delegate only"].exists)
+        XCTAssertFalse(app.buttons["Entire form"].exists)
+        let copy = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label == %@ AND elementType IN %@", "Copy", [
+                XCUIElement.ElementType.cell.rawValue,
+                XCUIElement.ElementType.button.rawValue,
+                XCUIElement.ElementType.menuItem.rawValue,
+            ]
+        )).firstMatch
+        XCTAssertTrue(copy.waitForExistence(timeout: 10), "Native sharing must offer Copy")
+        attach("Correlation Causation native sharing")
+        copy.tapOrClick()
+        XCTAssertTrue(copy.waitForNonExistence(timeout: 5))
+        #if !targetEnvironment(macCatalyst)
+        let clipboardRead = expectation(description: "Read the native Copy result")
+        DispatchQueue.global().async {
+            _ = UIPasteboard.general.string
+            clipboardRead.fulfill()
+        }
+        let allowPaste = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Allow Paste"]
+        if allowPaste.waitForExistence(timeout: 3) { allowPaste.tap() }
+        wait(for: [clipboardRead], timeout: 10)
+        #endif
+        let shared = try XCTUnwrap(UIPasteboard.general.string)
+        XCTAssertTrue(shared.contains("Theme: Correlation → Causation"))
+        XCTAssertTrue(shared.contains("Format: Summarize"))
+        XCTAssertTrue(shared.contains("My chosen Visual stays independent."))
+        var remainder = shared[...]
+        for field in fields {
+            let range = try XCTUnwrap(remainder.range(of: field), "Native Copy must retain each question and answer in order")
+            remainder = remainder[range.upperBound...]
+        }
+        XCTAssertTrue(share.isHittable, "Native sharing must return to the same editor")
+    }
+
     func testThemePickerOffersAdamsNewThemesAndLoadsTheirQuestions() {
         openPostsPage()
         openNewPost()
@@ -204,6 +345,14 @@ final class SAVYPostFormUITests: XCTestCase {
         }
         XCTAssertFalse(element("DecideAnswer4").exists, "Habit asks exactly four directives")
         attach("05 habit prefilled directives")
+    }
+
+    func testAuthoredRunTitleSurvivesChangingDecideAnswerToWalk() {
+        assertRunTitleAfterChangingDecideAnswer(authoredTitle: "Run", expectedTitle: "Run")
+    }
+
+    func testGeneratedRunTitleUpdatesWhenDecideAnswerChangesToWalk() {
+        assertRunTitleAfterChangingDecideAnswer(authoredTitle: nil, expectedTitle: "Walk")
     }
 
     func testStrongYesThemePreservesLabelsQuestionsAndAnswersAfterRelaunch() {
@@ -442,12 +591,12 @@ final class SAVYPostFormUITests: XCTestCase {
     func testNewsChannelCardOpensPosts() {
         openPostsPage()
         let header = element("socialMediaPostsHeader")
-        XCTAssertTrue(header.waitForExistence(timeout: 5), "Social Media Posts needs the shared navy header")
-        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Social Media Posts")).count, 1,
+        XCTAssertTrue(header.waitForExistence(timeout: 5), "Social needs the shared navy header")
+        XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Social")).count, 1,
                        "The page title should appear once")
-        XCTAssertFalse(app.staticTexts["SOCIAL MEDIA POSTS"].firstMatch.exists, "The redundant red eyebrow remains")
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label == %@", "SOCIAL")).firstMatch.exists, "The redundant red eyebrow remains")
         XCTAssertFalse(app.buttons["Listen"].exists, "Audio control is still on the page")
-        attach("40 social media posts navy header without duplicate eyebrow")
+        attach("40 social navy header without duplicate eyebrow")
         let back = element("socialMediaPostsBack")
         XCTAssertTrue(back.exists)
         back.tap()
@@ -512,12 +661,12 @@ final class SAVYPostFormUITests: XCTestCase {
 
     private func openPostsPage() {
         let card = element("homeContentSection-news-channel")
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social Media Posts card missing from Now")
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Social card missing from Now")
         let homeScroll = app.scrollViews["editorialHomeScroll"].firstMatch
         for _ in 0..<8 where !card.isHittable { homeScroll.swipeUp() }
-        XCTAssertTrue(card.isHittable, "Social Media Posts card did not scroll into view")
+        XCTAssertTrue(card.isHittable, "Social card did not scroll into view")
         card.tapOrClick()
-        XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Social Media Posts did not open")
+        XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Social did not open")
     }
 
     private func openNewPost() {
@@ -558,7 +707,17 @@ final class SAVYPostFormUITests: XCTestCase {
     private func selectTheme(_ name: String) {
         let picker = element("PostTheme")
         scrollTo(picker, upward: false)
-        picker.tap()
+        picker.tapOrClick()
+        #if targetEnvironment(macCatalyst)
+        let choices = element("PostThemeChoices")
+        XCTAssertTrue(choices.waitForExistence(timeout: 5))
+        let option = app.buttons[name].firstMatch
+        for _ in 0..<16 where !option.isHittable { choices.swipeUp() }
+        XCTAssertTrue(option.isHittable, "Theme must be reachable in the native Mac menu")
+        option.tapOrClick()
+        XCTAssertTrue(element("DecideAnswer0").waitForExistence(timeout: 5))
+        return
+        #else
         attach("Framework menu with red form icons")
         let menuButtons = app.buttons.matching(NSPredicate(format: "label IN %@", themeNames))
         for _ in 0..<10 {
@@ -607,6 +766,7 @@ final class SAVYPostFormUITests: XCTestCase {
             start.press(forDuration: 0.1, thenDragTo: end)
         }
         XCTFail("\(name) was not reachable in the \(themeNames.count)-theme menu")
+        #endif
     }
 
     @discardableResult
@@ -626,6 +786,53 @@ final class SAVYPostFormUITests: XCTestCase {
         app.buttons["Save"].firstMatch.tap()
         XCTAssertTrue(element("newsChannelPosts").waitForExistence(timeout: 12), "Save did not return to the post list")
         XCTAssertTrue(app.buttons["Save"].firstMatch.waitForNonExistence(timeout: 8), "Post form did not close after Save")
+    }
+
+    private func assertRunTitleAfterChangingDecideAnswer(authoredTitle: String?, expectedTitle: String) {
+        openPostsPage()
+        openNewPost()
+        appendAnswer("Run", at: 0)
+        let title = element("Title")
+        if let authoredTitle {
+            let done = element("KeyboardRowDone")
+            if done.exists {
+                done.tapOrClick()
+                XCTAssertTrue(done.waitForNonExistence(timeout: 5))
+            }
+            scrollTo(title)
+            XCTAssertTrue(title.isHittable)
+            title.tapOrClick()
+            title.typeText(authoredTitle)
+            XCTAssertEqual(title.value as? String, authoredTitle)
+        }
+        savePost()
+
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "SAVY_UI_TEST_RESET_REMINDERS" }
+        app.launch()
+        dismissSystemPrompt()
+        openPostsPage()
+        let row = postRows.firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+
+        let answer = element("DecideAnswer0")
+        XCTAssertTrue(answer.waitForExistence(timeout: 5))
+        XCTAssertEqual(answer.value as? String, firstPrompt + "\nRun")
+        scrollTo(title)
+        XCTAssertEqual(title.value as? String, "Run")
+        scrollTo(answer, upward: false)
+        answer.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.9)).tap()
+        answer.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Run".count) + "Walk")
+        XCTAssertEqual(answer.value as? String, firstPrompt + "\nWalk")
+        savePost()
+
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        XCTAssertTrue(answer.waitForExistence(timeout: 5))
+        XCTAssertEqual(answer.value as? String, firstPrompt + "\nWalk")
+        scrollTo(title)
+        XCTAssertEqual(title.value as? String, expectedTitle)
     }
 
     private func setPinned(_ pinned: Bool, rowID: String) {

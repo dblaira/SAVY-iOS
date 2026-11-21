@@ -487,6 +487,16 @@ enum PostThemeCatalog {
                 PostThemeQuestion(prompt: "What example makes the difference clear?", symbol: "text.quote"),
             ]
         ),
+        PostTheme(
+            id: "correlation-causation",
+            name: "Correlation → Causation",
+            questions: [
+                PostThemeQuestion(prompt: "What two things seem to be connected, and what have I observed?", symbol: "link"),
+                PostThemeQuestion(prompt: "Which one might cause the other, and how could that happen?", symbol: "arrow.right"),
+                PostThemeQuestion(prompt: "What else could explain the connection, or could the cause and effect be reversed?", symbol: "arrow.triangle.branch"),
+                PostThemeQuestion(prompt: "What could I compare or test to distinguish these explanations, and what result would change my mind?", symbol: "magnifyingglass"),
+            ]
+        ),
     ]
 
     /// The theme a fresh entry starts on: the first in the list, so the menu opens on it.

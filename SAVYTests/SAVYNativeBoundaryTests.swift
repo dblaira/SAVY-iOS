@@ -866,7 +866,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
             "Connection",
             "Adam's Ontology",
             "Field Essays",
-            "Social Media Posts"
+            "Social"
         ])
         XCTAssertEqual(HomeLeverageCard.referenceCards.map(\.sectionID), [
             "beliefs",
@@ -960,7 +960,7 @@ final class SAVYNativeBoundaryTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = HomeSectionPinStore(defaults: defaults)
         XCTAssertEqual(store.orderedCards().map(\.sectionID).first, "news-channel")
-        XCTAssertEqual(store.orderedCards().map(\.title).first, "Social Media Posts")
+        XCTAssertEqual(store.orderedCards().map(\.title).first, "Social")
         store.pin("beliefs")
         XCTAssertEqual(store.pinnedSectionIDs, ["beliefs", "news-channel"])
         XCTAssertEqual(store.orderedCards().map(\.sectionID), [

@@ -328,10 +328,13 @@ final class SAVYEntryAutoTitleTests: XCTestCase {
         decide.setAnswer(ConnectionEntry.theme.questions[0].prompt
                          + "\nI believed that talent mattered more than daily repetition over many years.", at: 0)
         decide.apply(to: &metadata)
-        metadata.title = try XCTUnwrap(metadata.autoTitle(decideTheme: ConnectionEntry.theme))
+        metadata.resolveDelegateTitle(entryLabel: "Connection", decideTheme: ConnectionEntry.theme)
         XCTAssertEqual(metadata.title, "I believed that talent mattered more than daily")
         XCTAssertEqual(ConnectionEntry(metadata: metadata).preview.title,
                        "I believed that talent mattered more than daily repetition over many years.")
+
+        metadata.editDelegateTitle(metadata.title)
+        XCTAssertEqual(ConnectionEntry(metadata: metadata).preview.title, metadata.title)
 
         var unanswered = Reminder()
         PostEntryDraft(entry: unanswered, fixedTheme: ConnectionEntry.theme).apply(to: &unanswered)
@@ -340,14 +343,62 @@ final class SAVYEntryAutoTitleTests: XCTestCase {
         XCTAssertEqual(ConnectionEntry(metadata: unanswered).preview.title, "Walking without my phone")
     }
 
-    func testGenericNamesAreRecognizedAndWrittenNamesAreNot() {
-        for name in ["New Reminder", "New Action", "New Event", "New Calendar", "New Social",
-                     "New Post", "New Connection", "  New Reminder\n"] {
-            XCTAssertTrue(EntryAutoTitle.isGenericName(name), name)
+    func testAuthoredRunSurvivesReopeningAndChangingDecideToWalk() throws {
+        var entry = Reminder(kind: .post)
+        entry.editDelegateTitle("Run")
+        setFirstDecideAnswer("Run", on: &entry)
+        entry.resolveDelegateTitle(entryLabel: "Social")
+
+        var reopened = try JSONDecoder().decode(Reminder.self, from: JSONEncoder().encode(entry))
+        setFirstDecideAnswer("Walk", on: &reopened)
+        reopened.resolveDelegateTitle(entryLabel: "Social")
+        XCTAssertEqual(reopened.firstThemeAnswer, "Walk")
+        XCTAssertEqual(reopened.title, "Run")
+        XCTAssertEqual(reopened.titleOrigin, .authored)
+    }
+
+    func testGeneratedRunBecomesWalkWhenItsDecideAnswerChanges() throws {
+        var entry = Reminder(kind: .post)
+        setFirstDecideAnswer("Run", on: &entry)
+        entry.resolveDelegateTitle(entryLabel: "Social")
+        XCTAssertEqual(entry.title, "Run")
+        XCTAssertEqual(entry.titleOrigin, .generated)
+
+        var reopened = try JSONDecoder().decode(Reminder.self, from: JSONEncoder().encode(entry))
+        setFirstDecideAnswer("Walk", on: &reopened)
+        reopened.resolveDelegateTitle(entryLabel: "Social")
+        XCTAssertEqual(reopened.title, "Walk")
+        XCTAssertEqual(reopened.titleOrigin, .generated)
+    }
+
+    func testLegacyTitlesWithoutMetadataArePreservedUntilCleared() throws {
+        for title in ["Run", "  New Reminder\n"] {
+            var legacy = Reminder(title: title)
+            setFirstDecideAnswer("Run", on: &legacy)
+            var reopened = try JSONDecoder().decode(Reminder.self, from: JSONEncoder().encode(legacy))
+            XCTAssertNil(reopened.titleOrigin)
+            setFirstDecideAnswer("Walk", on: &reopened)
+            reopened.resolveDelegateTitle(entryLabel: "Reminder")
+            XCTAssertEqual(reopened.title, title)
+
+            reopened.editDelegateTitle("")
+            reopened.resolveDelegateTitle(entryLabel: "Reminder")
+            XCTAssertEqual(reopened.title, "Walk")
+            XCTAssertEqual(reopened.titleOrigin, .generated)
         }
-        for name in ["New running plan", "Reminder", "", "Run"] {
-            XCTAssertFalse(EntryAutoTitle.isGenericName(name), name)
-        }
+    }
+
+    func testWritingTheSameTitleMakesItAuthoredEvenWhenItLooksGeneric() {
+        var entry = Reminder()
+        entry.resolveDelegateTitle(entryLabel: "Reminder")
+        XCTAssertEqual(entry.title, "New Reminder")
+        XCTAssertEqual(entry.titleOrigin, .generated)
+
+        entry.editDelegateTitle(entry.title)
+        setFirstDecideAnswer("Walk", on: &entry)
+        entry.resolveDelegateTitle(entryLabel: "Reminder")
+        XCTAssertEqual(entry.title, "New Reminder")
+        XCTAssertEqual(entry.titleOrigin, .authored)
     }
 
     func testNamesKeepTheWrittenWordsExactly() {
@@ -357,5 +408,11 @@ final class SAVYEntryAutoTitleTests: XCTestCase {
                        "one two three four five six seven eight")
         XCTAssertEqual(EntryAutoTitle.name(fromFirstWritten: ["", "  ", "Second box", "Third box"]), "Second box")
         XCTAssertNil(EntryAutoTitle.name(fromFirstWritten: []))
+    }
+
+    private func setFirstDecideAnswer(_ answer: String, on entry: inout Reminder) {
+        var decide = PostEntryDraft(entry: entry)
+        decide.setAnswer(decide.theme.questions[0].prompt + "\n" + answer, at: 0)
+        decide.apply(to: &entry)
     }
 }

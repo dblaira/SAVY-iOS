@@ -453,8 +453,8 @@ final class SAVYReminderActionCalendarUITests: XCTestCase {
         let ontology = app.descendants(matching: .any)["homeContentSection-ontology"].firstMatch
         let essays = app.descendants(matching: .any)["homeContentSection-field-essays"].firstMatch
         let news = app.descendants(matching: .any)["homeContentSection-news-channel"].firstMatch
-        XCTAssertTrue(news.waitForExistence(timeout: 5), "Social Media Posts did not begin the vertical content area")
-        XCTAssertTrue(app.staticTexts["Social Media Posts"].waitForExistence(timeout: 5))
+        XCTAssertTrue(news.waitForExistence(timeout: 5), "Social did not begin the vertical content area")
+        XCTAssertTrue(app.staticTexts["Social"].waitForExistence(timeout: 5))
         XCTAssertLessThan(carousel.frame.maxY, news.frame.minY)
         XCTAssertFalse(app.descendants(matching: .any)["homeContentDivider-after-beliefs"].exists)
 

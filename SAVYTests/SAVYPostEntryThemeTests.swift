@@ -94,7 +94,7 @@ final class SAVYPostEntryThemeTests: XCTestCase {
             "Advanced Strategies",
             "Frequently Misunderstood Concepts",
         ]
-        XCTAssertEqual(PostThemeCatalog.themes.count, 34, "8 original themes + Adam's 20 + Mental Model + October additions + Generalization")
+        XCTAssertEqual(PostThemeCatalog.themes.count, 35, "Includes Generalization and Correlation → Causation")
         // The 20th, now Personal Lessons, moved to the top of the list on 2026-10-15.
         // Generalization (2026-11-09) sits seventh, so the September themes start one later.
         let septemberThemes = PostThemeCatalog.themes.dropFirst(15).prefix(19)
@@ -194,6 +194,120 @@ final class SAVYPostEntryThemeTests: XCTestCase {
     }
 
     // MARK: - Complete editable questions and answers
+
+    func testCorrelationCausationHasExactlyFourQuestionsInTheRequestedOrder() throws {
+        let theme = try XCTUnwrap(PostThemeCatalog.theme(id: "correlation-causation"))
+        XCTAssertEqual(theme.name, "Correlation → Causation")
+        XCTAssertEqual(theme.questions.map(\.prompt), [
+            "What two things seem to be connected, and what have I observed?",
+            "Which one might cause the other, and how could that happen?",
+            "What else could explain the connection, or could the cause and effect be reversed?",
+            "What could I compare or test to distinguish these explanations, and what result would change my mind?",
+        ])
+        XCTAssertEqual(PostThemeCatalog.themes.last?.id, theme.id, "The existing menu order stays intact")
+        XCTAssertEqual(PostThemeCatalog.themes.dropLast().map(\.id), [
+            "habit", "a-strong-yes", "pattern-recognition", "inductive-reasoning", "mental-model",
+            "your-personal-take-lessons-learned", "five-ws", "problem-solution", "before-after",
+            "lesson-learned", "how-to", "story-arc", "myth-fact", "the-decision",
+            "frequently-asked-questions", "customer-success-story", "key-challenges-solutions",
+            "myths-vs-facts", "the-ultimate-checklist", "quick-hack-or-shortcut",
+            "recommended-tools-resources", "essential-terminology", "before-after-scenarios",
+            "audience-poll-or-survey-results", "core-principles-explained",
+            "debunking-popular-industry-beliefs", "history-of-the-topic", "alternative-approaches",
+            "step-by-step-breakdown", "checklist-for-breakdown", "checklist-for-beginners",
+            "advanced-strategies", "frequently-misunderstood-concepts",
+        ], "Adding the new theme must preserve all 33 existing IDs and their order")
+        var draft = PostEntryDraft(entry: Reminder())
+        draft.selectTheme(theme.id)
+        XCTAssertEqual(draft.answers, theme.prefilledAnswers)
+        XCTAssertFalse(draft.hasUserContent)
+    }
+
+    func testCorrelationCausationEditedQuestionsAndAnswersSurviveSavingReopeningAndSharing() throws {
+        for kind in ReminderKind.allCases {
+            var entry = Reminder(kind: kind, title: "Existing delegation")
+            entry.createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+            entry.updatedAt = entry.createdAt
+            entry.notes = "Existing hidden notes remain exact.  \n"
+            entry.whenIAm = "Existing context"
+            entry.outcome = "Existing outcome"
+            entry.tags = ["existing", "tags"]
+            entry.priority = .high
+            entry.energy = .medium
+            entry.context = .circle
+            entry.pinned = true
+            entry.postNumber = 17
+            entry.upNextOrder = 3
+            entry.subtasks = [Subtask(title: "Existing step", done: true)]
+            var visual = VisualTemplateDraft()
+            visual.setAnswer("Existing matrix answer.  \n", at: 0)
+            visual.selectFormat("Summarize")
+            visual.setAnswer("Existing summary answer.", at: 2)
+            entry.visualTemplates = visual
+            let original = entry
+            var draft = PostEntryDraft(entry: entry)
+            draft.selectTheme("correlation-causation")
+            let fields = [
+                "My edited observation question?\n  Exact observation.\nSecond paragraph.  ",
+                draft.theme.questions[1].prompt + "\nA possible mechanism, not a conclusion.",
+                draft.theme.questions[2].prompt + "\nA common cause or the reverse direction.",
+                draft.theme.questions[3].prompt + "\nCompare similar conditions; revise if it disappears.",
+            ]
+            for (index, field) in fields.enumerated() { draft.setAnswer(field, at: index) }
+            draft.selectTheme("habit")
+            draft.selectTheme("correlation-causation")
+            XCTAssertEqual(draft.answers, fields)
+            draft.apply(to: &entry)
+            var expected = original
+            expected.postThemeID = "correlation-causation"
+            expected.postThemeName = "Correlation → Causation"
+            expected.postAnswers = fields
+            expected.postAnswersContainQuestions = true
+            XCTAssertEqual(entry, expected, "Applying the theme must change only the Theme and Decide fields")
+            for _ in 0..<3 {
+                entry = try JSONDecoder.recall.decode(Reminder.self, from: JSONEncoder.recall.encode(entry))
+                XCTAssertEqual(entry, expected, "Saving and reopening must preserve every other entry field")
+                XCTAssertEqual(entry.postThemeID, "correlation-causation")
+                XCTAssertEqual(entry.postThemeName, "Correlation → Causation")
+                XCTAssertEqual(entry.kind, kind)
+                XCTAssertEqual(entry.title, "Existing delegation")
+                XCTAssertEqual(PostEntryDraft(entry: entry).answers, fields)
+                XCTAssertEqual(entry.postAnsweredCount, 4)
+            }
+            let shared = EntryShareContent(entry: entry, sourceApp: "SAVY", entryLabel: kind.label, whenIAm: "").entireForm
+            XCTAssertTrue(shared.contains("Theme: Correlation → Causation"))
+            XCTAssertTrue(shared.contains("Format: Summarize"))
+            XCTAssertTrue(shared.contains("Existing summary answer."))
+            XCTAssertTrue(shared.contains("Existing matrix answer.  \n"))
+            var remainder = shared[...]
+            for field in fields {
+                let range = try XCTUnwrap(remainder.range(of: field), "Sharing must retain every field in order")
+                remainder = remainder[range.upperBound...]
+            }
+        }
+    }
+
+    func testExploringCorrelationCausationPreservesEveryExistingThemesSavedWriting() throws {
+        for theme in PostThemeCatalog.themes where theme.id != "correlation-causation" {
+            var entry = Reminder(kind: .post, title: "Keep this entry")
+            entry.postThemeID = theme.id
+            entry.postThemeName = "Original saved name"
+            entry.postAnswersContainQuestions = true
+            entry.postAnswers = theme.questions.indices.map { "Edited question \($0)?\nOriginal answer  \n" }
+            let original = try JSONEncoder.recall.encode(entry)
+            var draft = PostEntryDraft(entry: entry)
+            draft.selectTheme("correlation-causation")
+            draft.setAnswer("Test question?\nSeparate writing", at: 0)
+            draft.selectTheme(theme.id)
+            XCTAssertEqual(draft.answers, entry.postAnswers)
+            XCTAssertEqual(try JSONSerialization.jsonObject(with: JSONEncoder.recall.encode(entry)) as? NSDictionary,
+                           try JSONSerialization.jsonObject(with: original) as? NSDictionary,
+                           "Exploring must not mutate the saved record")
+            let reopened = try JSONDecoder.recall.decode(Reminder.self, from: original)
+            XCTAssertEqual(PostEntryDraft(entry: reopened).answers, entry.postAnswers)
+            XCTAssertEqual(reopened.postThemeName, "Original saved name")
+        }
+    }
 
     func testOpeningEveryTemplatePrefillsQuestionsWithoutAutosaveContent() {
         var draft = PostEntryDraft(entry: Reminder())
