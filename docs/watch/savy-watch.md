@@ -79,6 +79,8 @@ The Social door follows Adam’s own words in the YouTube system doc: “Common 
 - `3ad3920` (one big button, with the nearby iPhone writing out the words): every check passed on Xcode 27.2. The Watch app built and the four screens below were taken, the iPhone app built, and all 19 `SAVYWatchCaptureTests` passed.
 - `b445f22`: every check passed on Xcode 27.2. The saved screen's navy now fills the screen.
 - `8bbc23e` (the sand, maroon and navy look, signed and installed on his Watch from his Mac): every check passed on Xcode 27.2. The Watch app built and its four screens were taken in the new look, the iPhone app built, and all 19 `SAVYWatchCaptureTests` passed.
+- `67c238d`, `c3f1a77`, `acc8505` (the Watch app inside the iPhone app, and the first simulator link tests): both apps built and all 26 `SAVYWatchCaptureTests` passed. The link test failed: GitHub's two simulators did not see the apps as a pair.
+- `2c6ff93` (the iPhone answers the Watch's own request; the link test installs a second time): every check passed on Xcode 27.2. Both apps built, all 26 `SAVYWatchCaptureTests` passed, and the link test passed in a paired iPhone and Apple Watch simulator, with SAVY open and with SAVY closed on the iPhone.
 
 ### Screens, from the real app
 
@@ -158,7 +160,7 @@ What each condition answers:
 | Capture | Words back on the wrist | Answers |
 |---|---|---|
 | SAVY open on the iPhone | Expected within seconds | Does the link work at all? |
-| iPhone locked in a pocket | Unknown | Can iOS write out words while SAVY is in the background? If not, the words arrive when SAVY is next opened. |
+| iPhone locked in a pocket | Unknown | Can iOS write out words while SAVY is in the background? If not, the words arrive when SAVY is next opened. The simulators showed the first half: with SAVY closed, the Watch's message opens it and an answer comes back. Writing out real words there needs his iPhone. |
 | iPhone out of reach | Not expected | Does the capture still reach iCloud and become an entry later? |
 
 For any capture, the `record.stop` line compares the recording's length with the time between the two presses. A recording that stopped when the wrist dropped shows there.
@@ -173,7 +175,20 @@ Adam, Nov 21: “Do 1000% of your tests on a fucking simulator. That's what you 
 python3 .cursor/skills/watch-capture/scripts/sim_link_test.py --config watch-capture.json --app <path to the simulator build of SAVY.app>
 ```
 
-It pairs an iPhone and a Watch simulator, installs both apps, and has the Watch send a spoken recording across the live link. Two hooks make that possible, both compiled for the simulator only: the Watch sends a recording the test placed, and the iPhone answers with set words. It reads both trails and passes only when the words come back with the Watch app inside the iPhone app. It also runs the stand-alone setup, which must fail the way his devices did.
+It pairs an iPhone and a Watch simulator, installs both apps, and has the Watch send a spoken recording across the live link. Two hooks make that possible, both compiled for the simulator only: the Watch sends a recording the test placed, and the iPhone answers with set words. It reads both trails and passes only when the words come back with the Watch app inside the iPhone app, both with SAVY open on the iPhone and with SAVY closed. It also runs the stand-alone setup, which must fail.
+
+What the simulators showed on Nov 21, with no one at a desk:
+
+| Setup | Where | Words back on the Watch |
+|---|---|---|
+| Watch app inside the iPhone app, SAVY open | Adam's Mac (4 of 4) and GitHub (`2c6ff93`) | Yes: 3.1 to 3.5 seconds on his Mac, 18 seconds on GitHub's slower machine |
+| Same, SAVY closed on the iPhone, as in a pocket | GitHub (`2c6ff93`) | Yes, after 24 seconds. The Watch's message opened SAVY on the iPhone by itself |
+| Watch app installed on its own, as on his devices that day | His Mac and GitHub | No. On his Mac, “WatchConnectivity 7018 companionAppNotInstalled”, his devices' failure exactly. On GitHub it failed too: with 7018 in one run, and in another the Watch's link never started |
+
+Two things had to be fixed to get there:
+
+- **The iPhone answered only when it already knew the Watch app was open.** Right after an install it often does not, so it queued the words, and a queued answer did not reach the Watch inside its 45 seconds (1 pass in 3 on his Mac). The Watch now sends one small request for the words after the recording, and the iPhone answers that message itself (`f5ee143`). The older live and queued paths remain as the fallback.
+- **GitHub's simulators start for the first time on every run.** Apps installed then do not see each other, even after the pair is connected: the Watch simulator's own link service logs “App database is out of sync” (ACXErrorDomain 43). The same apps installed again a few minutes later see each other at once. The test now waits for the pair, installs a second time when needed, and prints that reason. On his Mac the first install works.
 
 A simulator cannot use his iCloud account, the real microphone or Bluetooth. Recording, iCloud and the entry on the iPhone were shown on his own devices on Nov 21. GitHub also builds both apps, runs the unit tests and screenshots the Watch screens on every push.
 

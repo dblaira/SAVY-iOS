@@ -20,7 +20,7 @@ that has just started for the first time can need longer; then with the iPhone a
 is in a pocket on a run, so the Watch's message has to open it; and last with the Watch app
 installed on its own, which is how it was on Adam's devices on Nov 21, where the link failed with
 WatchConnectivity 7018. It passes only when the words come back to the Watch with the Watch app
-inside the iPhone app. The closed-iPhone run is reported beside it.
+inside the iPhone app, both with the iPhone app open and with it closed.
 
 What a simulator cannot show: his iCloud account, the real microphone and Bluetooth. Those parts
 (recording, iCloud, entry on the iPhone) worked on his own devices on Nov 21.
@@ -51,7 +51,7 @@ INSIDE = "inside the iPhone app"
 AGAIN = "inside the iPhone app, second install"
 CLOSED = "inside the iPhone app with the iPhone app closed"
 ALONE = "installed on its own"
-DECIDES = {INSIDE, AGAIN}  # the runs that decide the result
+DECIDES = {INSIDE, AGAIN}  # either of these, and the closed-iPhone run, decide the result
 
 
 def run(command, check=False, quiet=False, timeout=300):
@@ -179,20 +179,30 @@ def how_installed(udid, bundle):
         print("on record on the Watch simulator: " + "; ".join(keep)[:700], flush=True)
 
 
+# What a simulator's own link service says when it cannot tell whether the other app is installed.
+# On a pair that has just started for the first time, the Watch's says "App database is out of
+# sync" (ACXErrorDomain 43) until the two systems have exchanged their lists of apps.
+TELLING = ("companion app installed", "out of sync", "acxerrordomain", "counterpart bundle")
+
+
 def system_notes(phone, watch):
-    """When the two apps never saw each other: what each simulator's own WatchConnectivity
-    service logged in the last few minutes, to show why."""
+    """When the two apps never saw each other: what each simulator's own link service logged
+    about it in the last few minutes, to show why."""
     for name, udid in (("iPhone", phone), ("Watch", watch)):
         try:
-            done = simctl("spawn", udid, "log", "show", "--last", "4m", "--style", "compact",
+            done = simctl("spawn", udid, "log", "show", "--last", "6m", "--style", "compact",
                           "--predicate", 'process == "wcd" OR process == "appconduitd"',
                           quiet=True, timeout=180)
         except subprocess.TimeoutExpired:
             print(f"--- {name} simulator: its log took too long to read ---", flush=True)
             continue
-        lines = [line[:300] for line in done.stdout.splitlines() if line.strip()]
-        print(f"--- {name} simulator, WatchConnectivity service, last {min(len(lines), 30)} of {len(lines)} lines ---")
-        for line in lines[-30:]:
+        lines = [line.strip()[:400] for line in done.stdout.splitlines() if line.strip()]
+        telling = [line for line in lines if any(mark in line.lower() for mark in TELLING)]
+        if telling:
+            print(f"--- why, from the {name} simulator's own link service ---")
+        else:
+            print(f"--- {name} simulator's own link service says nothing about the other app; its last lines ---")
+        for line in (telling or lines)[-6:]:
             print("  " + line)
         sys.stdout.flush()
 
@@ -287,7 +297,8 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
         print(f"the Watch's message opened the iPhone app by itself: {'yes' if opened else 'no'}", flush=True)
     words_back = any(e.get("step") == "link.words" and e.get("ok") for e in events)
     state = next((e.get("detail") for e in reversed(events)
-                  if e.get("side") == "watch" and e.get("step") in ("link.activate", "link.reach", "link.state")),
+                  if e.get("side") == "watch"
+                  and e.get("step") in ("link.activate", "link.reach", "link.state", "linktest.ready")),
                  "no link line")
     if not words_back and label != ALONE and "iPhoneAppInstalled=no" in state:
         system_notes(phone, watch)
@@ -354,11 +365,12 @@ def main():
     print("\n===== Result =====")
     for label, words_back, state in results:
         print(f"Watch app {label}: words back on the Watch: {'YES' if words_back else 'NO'}  ({state})")
-    passed = any(words_back for label, words_back, state in results if label in DECIDES)
-    closed = [words_back for label, words_back, state in results if label == CLOSED]
-    if closed and not closed[0]:
-        print("With the iPhone app closed the words did not come back. That run is reported and does "
-              "not decide the result: a simulator may not open the iPhone app the way a real iPhone does.")
+    opened = any(words_back for label, words_back, state in results if label in DECIDES)
+    closed = any(words_back for label, words_back, state in results if label == CLOSED)
+    if opened and not closed:
+        print("With the iPhone app closed the words did not come back: the Watch's message has to open "
+              "the iPhone app, as it does with the iPhone in a pocket.")
+    passed = opened and closed
     print("LINK TEST PASSED" if passed else "LINK TEST FAILED")
     sys.exit(0 if passed else 1)
 
