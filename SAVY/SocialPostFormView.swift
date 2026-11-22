@@ -53,6 +53,7 @@ struct SocialPostFormView: View {
 
                 sourceSection
                 connectionSection
+                AISendToAISection(entry: $post, form: post.aiForm)
                 chooseSection
                 statusSection
             }

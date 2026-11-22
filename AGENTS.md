@@ -1,3 +1,7 @@
+## Creation And Change Date And Time Stamps — November 12, 2026
+
+Adam requested creation and change timestamps for every entry type so agents can understand when entries were made or changed. Implementation and phone/QA evidence: [Creation And Change Date And Time Stamps](<docs/creation and change date and time stamps.md>). Existing writing and historical dates are preserved; share/AI text uses UTC instants. All 180 unit tests and the native repeated-sharing UI regression pass. Both timestamp apps were installed and inspected on the physical phone. After Adam returned, the final Reminder/Connection title-sync build was installed and its native Copy timestamps verified again. Final phone archives preserve all authored content and dates; only CloudKit transport metadata changed. Preserve the installed baseline’s Send to AI and Mac close-button work.
+
 # SAVY iOS Agent Instructions
 
 ## YouTube focus — November 17–18, 2026 (read first)
@@ -90,10 +94,27 @@ The fix on his devices, Nov 21, about 6:57 pm his time. Adam asked the session o
 - The entry appeared on the iPhone 2 minutes 46 seconds after the capture reached iCloud. That is how the import works, not a fault: the iPhone looks for Watch captures when SAVY comes to the front, and every 60 seconds while it stays in front. A check that finds nothing new is written to the trail only once, so the trail does not show each check.
 - Nothing made up was put in his live SAVY or iCloud; the capture was his own sentence.
 - The iPhone has still never asked him for Speech Recognition (“speechRecognition=never asked”). His two Nov 21 recordings were written out without it (engine “analyzer”).
+- Adam, later that evening, to the same session: “Do we need to save this”. To its question “Put both pull requests into main so main matches your iPhone?” he answered “Yes, once checks pass”. Send to AI (pull request 18) was merged into `main`, and `main` was then merged into this branch. From that merge on, this branch has Send to AI and the iPhone app is built from it as it is. The rule above against installing the iPhone app from this branch alone holds only for commits before that merge. The Watch pull request (22) goes into `main` once GitHub's “Watch build” passes on the merge.
 
 Adam, Nov 21, after being kept at his desk for that test: “Do 1000% of your tests on a fucking simulator. That's what you should do. It should work perfectly on a goddamn fucking simulator. Instead of sitting here holding me to this fucking desk.” And: “No, no more testing. I mean, for me to have to be here while you fucking test it, you have to be kidding me.” This is his explicit word for Watch work, and it overrides “No simulator-first workflow” below for testing: prove a change in paired iPhone and Watch simulators first, with no one at a desk, and ask him only for the last look on his own devices. A simulator cannot use his iCloud account or the real microphone; say so plainly when a result depends on them. He also refused further approval prompts that day: a message from a cloud session to the session on his Mac asks him to press Allow each time, and so does each command that Mac session runs while it is set to ask.
 
 Each capture now leaves a trail. Both apps write one line per step, with the reason when a step fails and never the words, to `Application Support/SAVYWatch/trail.jsonl`. On his Mac, `watchtrail.py pull --config watch-capture.json` (in the kit's `scripts/`) copies both files off the devices and prints where each capture stopped; it ran on his Mac on Nov 21. The last look on his devices, when he asks for it, is in [the last look](docs/watch/mac-test.md). See “Testing on the Watch and iPhone” in the SAVY Watch doc. `main` was merged into this branch on Nov 21.
+
+## Mac close button and pinned posts on Home — November 10, 2026
+
+Adam: “On the Mac OS version, whenever I open an entry, in order to close it, I have to save it. I can't press the X in the top left side to close the pop-up window, period.”
+
+The first fix that morning was wrong, and Adam said so: “the macOS does not work. I don't know if you tested it or not, but it doesn't work”. It had been checked with one click right after a relaunch. The X was never the problem. A log added for one build showed the X takes the click, `cancel()` runs, `dismiss()` runs, and the page's sheet item goes to nil, but on macOS 27.3 the form stays on screen until something else redraws the page under it. Saving redraws it, which is why Save closed the form and the X did not. An accessibility press closes it too, which is why earlier agent checks passed.
+
+The fix is in `ReminderFormView`: after `dismiss()`, `closeOnTheMac()` waits 0.3 seconds and, if the form has not left the screen, closes the front sheet through UIKit (`SavyMacSheetCloser.closeTopSheetIfStuck`). It leaves a sheet alone if it is already on its way out; closing one twice left the next form stuck. Mac only. The X is the original toolbar symbol again and the first attempt's `SavyCloseIcon` is removed. The older Social form, the Story form and the AI history pages still call plain `dismiss()`; they were not changed or tested.
+
+Check this with real mouse clicks (a posted mouse event, not an accessibility press), on more than one form in a row, and on existing entries as well as blank ones. Never leave one of Adam's entries open on the Mac while testing: a form that leaves the screen without Cancel saves itself.
+
+Adam: “what I'm asking for is that my social media posts, whenever I add them to the SAVY app and pin them, that they appear in the carousel on the homepage.” Home shows the first four pinned entries in Up Next order, and he had fourteen pinned. Asked whether to show every pin or keep four with the newest pin first, he answered “A. show every pin.”, then “newest first”, then “B.” B was “Keep 4 cards, newest pin first”, and B is built.
+
+Pin on the Social Media Posts page saved the post without `ReminderStore.togglePin`, so it never took the first pinned spot the way a Reminder or Action does. It now calls `togglePin`. Home also leads with any pinned entry that has no place in the order yet, newest first, so posts pinned before this fix show without being pinned again. The four-card limit, card styling, and Up Next order on other pages are unchanged.
+
+Status: 88 unit tests passed on the iPhone 18 Pro simulator, including two new ones in `SAVYReorderTests`. The signed Mac Release with the corrected fix is installed. On it, real mouse clicks on the X closed the form 22 times out of 22: ten existing entries from Home, nine blank new entries, three entries from the Reminders page. No entry was re-saved by the testing, and the recovery drafts stayed empty. Save was not click-tested, because saving would write to Adam's entries. Home showed the newly pinned Social post first. The iPhone has the morning build (pinned-post fix; its X was never broken) and was not updated again: Adam said “no need to touch my phone”.
 
 ## Generalization theme — November 9, 2026
 

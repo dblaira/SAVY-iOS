@@ -38,6 +38,7 @@ struct StoryFormView: View {
             Form {
                 titleSection
                 bodySection
+                AISendToAISection(entry: $story, form: story.aiForm, headerColor: .white.opacity(0.72))
                 if story.hasContent {
                     sendSection
                 }
