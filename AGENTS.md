@@ -48,7 +48,7 @@ What his devices hold, read from them on Nov 21 by the session on his Mac Studio
 
 - The iPhone's SAVY was installed on Nov 20 from this branch at `6eff101`. It has the Watch code, and it has already made one entry from a Watch capture. A cloud session suspected the opposite earlier on Nov 21; that suspicion was wrong.
 - That install replaced the Send to AI build, so his iPhone has had no Send to AI since Nov 20. This branch has no Send to AI. Never install the iPhone app from this branch alone: build it from a merge of this branch and `claude/ai-communication-interface-b714f9`. A merge of the two conflicts only in `AGENTS.md`.
-- The Watch app was installed on Nov 20 from the tree that became `8bbc23e`. Neither device has the Nov 21 fixes or the trail until the next install.
+- The Watch app was installed on Nov 20 from the tree that became `8bbc23e`. Neither device had the Nov 21 fixes or the trail until the installs later that day (below).
 
 Found by reading the code on Nov 21, and fixed:
 
@@ -65,7 +65,7 @@ The cause and the fix were then proven in simulators, with no one at a desk. The
 - Watch app inside the iPhone app, both signed for the simulator, 40 seconds to settle after install: the words came back. The Watch saw the iPhone app, sent the recording in 3 parts, the iPhone answered live, and the Watch had the words 3.5 seconds later.
 - Same apps with the Watch folder taken out of the iPhone app: “WatchConnectivity 7018 companionAppNotInstalled”, his devices' failure exactly.
 
-So the fix is `watchkit.py embed`, applied to SAVY on Nov 21: the iPhone target carries the Watch app, for iOS only. Two things the simulator run also showed: the apps must be signed (an unsigned build's apps are named “SAVY” and “SAVYWatch” in their signatures, not by their bundle IDs, and the system never pairs them), and the pairing needs a moment after install. The fixed build is not on his devices yet. On real devices the Watch app has to arrive through the iPhone app; that install and his last look are what remain.
+So the fix is `watchkit.py embed`, applied to SAVY on Nov 21: the iPhone target carries the Watch app, for iOS only. Two things the simulator run also showed: the apps must be signed (an unsigned build's apps are named “SAVY” and “SAVYWatch” in their signatures, not by their bundle IDs, and the system never pairs them), and the pairing needs a moment after install. On real devices the Watch app has to arrive through the iPhone app. That install was made later on Nov 21, when Adam asked for it (see “The fix on his devices” below); his own look is what remains.
 
 Two more fixes came from the simulators that day, again with no one at a desk:
 
@@ -73,6 +73,15 @@ Two more fixes came from the simulators that day, again with no one at a desk:
 - GitHub's own simulators start for the first time on every run, and apps installed then do not see each other: the Watch simulator's link service logs “App database is out of sync”. The link test now waits for the pair and installs a second time when needed.
 
 GitHub's run on `2c6ff93` passed everything: both apps build, 26 tests pass, and in its paired simulators the words came back to the Watch with SAVY open on the iPhone, and again with SAVY closed, as it is in his pocket on a run. There the Watch's message opened SAVY by itself. The same test with the Watch app on its own failed, as it must. The simulators used set words, so they do not show the iPhone writing out his real words while it is locked; that needs his iPhone.
+
+The fix on his devices, Nov 21, about 6:57 pm his time. Adam asked the session on his Mac Studio to install it, and that session reported:
+
+- iPhone 17 Pro Max: SAVY built from a local merge of this branch at `35f567c` and `claude/ai-communication-interface-b714f9` at `0ebc21e`, signed with his team. The Watch app is inside it, and Send to AI is in it. The merge was not committed or pushed.
+- Apple Watch Ultra 3: the copy from inside that iPhone app. The system was already carrying the Watch app across from the iPhone by itself: the first two installs on the Watch were refused for that reason, and a third, about 40 seconds after the iPhone install, went through. So on his real devices the Watch app does arrive through the iPhone app.
+- Each app now sees the other. Before the install both trails said the other app was not installed. After it, the iPhone's says “watchPaired=yes watchAppInstalled=yes” and the Watch's says “iPhoneReachable=yes iPhoneAppInstalled=yes”.
+- The usual checks were followed: SAVY was on its Home screen with no editor open and the recovery drafts were empty; saved files were backed up to `artifacts/watch-fix-backup-2026-11-21/` first; afterwards 57 files and 61 entries, with only `SAVY/CloudKit/status.json` different.
+- Not proven yet: no recording has been made since the install, so the words coming back to the wrist is still unproven on his devices. That takes one real sentence from him. Nothing made up was put in his live SAVY or iCloud.
+- The iPhone has still never asked him for Speech Recognition (“speechRecognition=never asked”). His two Nov 21 recordings were written out without it (engine “analyzer”).
 
 Adam, Nov 21, after being kept at his desk for that test: “Do 1000% of your tests on a fucking simulator. That's what you should do. It should work perfectly on a goddamn fucking simulator. Instead of sitting here holding me to this fucking desk.” And: “No, no more testing. I mean, for me to have to be here while you fucking test it, you have to be kidding me.” This is his explicit word for Watch work, and it overrides “No simulator-first workflow” below for testing: prove a change in paired iPhone and Watch simulators first, with no one at a desk, and ask him only for the last look on his own devices. A simulator cannot use his iCloud account or the real microphone; say so plainly when a result depends on them. He also refused further approval prompts that day: a message from a cloud session to the session on his Mac asks him to press Allow each time, and so does each command that Mac session runs while it is set to ask.
 
