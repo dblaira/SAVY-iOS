@@ -20,8 +20,19 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
         var parts: [Int: Data] = [:]
     }
 
+    /// The Watch's request for a capture's words, held until the words are written out.
+    private struct Asked {
+        let answer: ([String: Any]) -> Void
+        let at: Date
+    }
+
     private let lock = NSLock()
     private var incoming: [UUID: Incoming] = [:]
+    private var asked: [UUID: Asked] = [:]
+    /// Words written out before the Watch's request for them arrived.
+    private var ready: [UUID: String] = [:]
+    /// An answer older than this may have missed the Watch's wait, so it also goes the older way.
+    private static let answerWindow: TimeInterval = 20
 
     /// Call once at launch, before the first message can arrive.
     func activate() {
@@ -63,6 +74,29 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
     func sessionDidDeactivate(_ session: WCSession) {
         // A different Watch was paired; connect to it.
         session.activate()
+    }
+
+    /// The Watch asks for a capture's words and waits for the answer to this very message. The
+    /// answer travels back on the Watch's own message, so it does not depend on this iPhone
+    /// having noticed that the Watch app is open. Right after an install it often has not.
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any],
+                 replyHandler: @escaping ([String: Any]) -> Void) {
+        guard message[WatchLinkMessage.type] as? String == WatchLinkMessage.wordsRequest,
+              let idString = message[WatchLinkMessage.captureID] as? String,
+              let id = UUID(uuidString: idString) else {
+            // Anything else is handled as a plain message; its sender is not left waiting.
+            self.session(session, didReceiveMessage: message)
+            replyHandler([:])
+            return
+        }
+        let words: String? = lock.withLock {
+            if let words = ready.removeValue(forKey: id) { return words }
+            asked[id] = Asked(answer: replyHandler, at: Date())
+            return nil
+        }
+        guard let words else { return }
+        replyHandler(Self.wordsPayload(id: id, words: words))
+        WatchCaptureTrail.note("link.reply", capture: id, "chars=\(words.count) sent as the answer to the Watch's request")
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
@@ -147,10 +181,23 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
         }
     }
 
-    /// Back to the wrist: a live message if the Watch app is open, otherwise queued for it.
+    /// Back to the wrist. First as the answer to the Watch's own request, when it is waiting for
+    /// one. Otherwise a live message if the Watch app is open, or queued for it.
     private func reply(id: UUID, words: String) {
         let session = WCSession.default
         let payload = Self.wordsPayload(id: id, words: words)
+        let waiting: Asked? = lock.withLock {
+            if let waiting = asked.removeValue(forKey: id) { return waiting }
+            // The request has not arrived yet: keep the words to answer it when it does.
+            if ready.count >= 8 { ready.removeAll() }
+            ready[id] = words
+            return nil
+        }
+        if let waiting {
+            waiting.answer(payload)
+            WatchCaptureTrail.note("link.reply", capture: id, "chars=\(words.count) sent as the answer to the Watch's request")
+            guard Date().timeIntervalSince(waiting.at) > Self.answerWindow else { return }
+        }
         guard session.isReachable else {
             session.transferUserInfo(payload)
             WatchCaptureTrail.note("link.reply", capture: id, "chars=\(words.count) queued: the Watch app is not open")

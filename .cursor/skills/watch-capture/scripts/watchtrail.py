@@ -47,6 +47,7 @@ STEP_WORDS = {
     "link.receive": "Recording received on the iPhone",
     "words": "Words written out",
     "link.reply": "Words sent back to the Watch",
+    "link.answer": "Watch's request for the words was not answered",
     "link.words": "Words back on the wrist",
     "linktest.start": "Simulator link test started",
     "linktest.ready": "Simulators see each other as a pair",

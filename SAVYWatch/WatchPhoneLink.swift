@@ -18,6 +18,8 @@ final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
     @Published private(set) var waiting: Set<UUID> = []
     /// When each recording was sent, to say how long the iPhone took.
     private var askedAt: [UUID: Date] = [:]
+    /// Recordings the iPhone has already answered, so a second copy of the answer is ignored.
+    private var answered: Set<UUID> = []
 
     /// Live messages are small; a recording travels in parts of this many bytes.
     private static let partSize = 48_000
@@ -82,6 +84,19 @@ final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
                 Task { @MainActor in self?.waiting.remove(id) }
             }
         }
+        // Then ask for the words as the answer to a message of the Watch's own. An answer comes
+        // back on that message, so it reaches the wrist even when the iPhone has not yet noticed
+        // that the Watch app is open, which is common right after an install. An iPhone app from
+        // before this request existed does not answer it, and sends the words the older way.
+        let request: [String: Any] = [
+            WatchLinkMessage.type: WatchLinkMessage.wordsRequest,
+            WatchLinkMessage.captureID: idString,
+        ]
+        WCSession.default.sendMessage(request, replyHandler: { @Sendable answer in
+            Self.receive(answer)
+        }, errorHandler: { @Sendable error in
+            WatchCaptureTrail.fail("link.answer", capture: id, once: true, WatchCaptureTrail.reason(error))
+        })
         Task { [weak self] in
             try? await Task.sleep(for: Self.patience)
             guard let self, self.askedAt[id] != nil else { return }
@@ -130,6 +145,8 @@ final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
         let words = (message[WatchLinkMessage.words] as? String) ?? ""
         Task { @MainActor in
             let link = WatchPhoneLink.shared
+            // The same words can arrive twice: as the answer to the request, and the older way.
+            guard link.answered.insert(id).inserted else { return }
             let took = link.askedAt[id].map { String(format: " after %.1fs", Date().timeIntervalSince($0)) } ?? ""
             link.askedAt[id] = nil
             link.waiting.remove(id)

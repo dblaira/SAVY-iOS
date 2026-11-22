@@ -231,6 +231,8 @@ enum WatchCaptureInbox {
 enum WatchLinkMessage {
     static let type = "type"
     static let recordingPart = "recordingPart"
+    /// The Watch asking for a capture's words; the iPhone answers this message itself.
+    static let wordsRequest = "wordsRequest"
     static let words = "words"
     static let captureID = "captureID"
     static let index = "index"
