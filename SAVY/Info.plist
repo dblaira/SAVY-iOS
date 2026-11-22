@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>SAVY writes out the words of your Apple Watch recordings.</string>
 	<key>CFBundleDisplayName</key>
 	<string>SAVY</string>
 	<key>CFBundleExecutable</key>

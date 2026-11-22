@@ -11,3 +11,19 @@ Follow these skills in `.cursor/skills/` on every substantive response:
 - `cognitive-fit` — table = lookup, matrix = cross-reference, node tree = flow, prose = why.
 - `requirement-is-the-test` — Adam's sentence is the acceptance test; no "done" without evidence he can see.
 - `adams-words` / `use-my-words` — quote his exact words; never paraphrase.
+
+## Waiting and length — November 21, 2026
+
+Adam, while a build ran: “What is the value of me sitting here in silence for minutes and minutes at a time with not one fucking check in from you?” Earlier the same day, of a long answer: “I'm looking at a whole fucking novel”.
+
+- Never leave Adam waiting on a build or a check. Before one starts, tell him in one line that he does not need to wait, and what he can do meanwhile, or that there is nothing for him to do.
+- While it runs, say each change of stage in one line when it happens: compiling, tests running, passed, failed. A failure is said at once, with what is being done about it.
+- However long the work took, the answer is the few lines he asked for. The detail goes in the docs, not the reply.
+
+## Test without Adam — November 21, 2026
+
+Adam, after sitting through a device test: “Do 1000% of your tests on a fucking simulator. That's what you should do. It should work perfectly on a goddamn fucking simulator. Instead of sitting here holding me to this fucking desk.” And of the Allow prompts: “What the fuck does auto mean when I have to sit here and press allow over and over and over and over and over again”.
+
+- Prove a change in simulators first, with no one at a desk. For the Watch, that is a paired iPhone and Watch simulator on GitHub. Ask Adam only for the last look on his own devices, and only once the simulator run passes.
+- Before starting anything that will show him an approval prompt, count the prompts. Messages from a cloud session into a session on his Mac prompt him each time. Put the whole request in one message, or leave the instructions in the repo for that session to read.
+- Say what a simulator cannot show (his iCloud account, the real microphone) in one line, not as a reason to bring him back.

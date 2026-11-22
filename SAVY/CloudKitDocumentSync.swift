@@ -663,6 +663,27 @@ final class CloudKitDocumentSync: ObservableObject, CKSyncEngineDelegate {
         setStatus("fetching")
     }
 
+    /// For work outside this sync that must belong to the same verified owner, such as importing
+    /// Apple Watch captures. It names the owner and the account epoch the owner was verified under.
+    struct OwnerPass: Equatable, Sendable {
+        let ownerRecordName: String
+        fileprivate let epoch: UInt64
+    }
+
+    /// Nil until the signed-in owner has been verified under the current account epoch.
+    func ownerPass() -> OwnerPass? {
+        guard enabled, let owner = state?.originalOwner, let verifiedOwnerEpoch,
+              verifiedOwnerEpoch == accountEpoch.current() else { return nil }
+        return OwnerPass(ownerRecordName: owner, epoch: verifiedOwnerEpoch)
+    }
+
+    /// False from the moment the iCloud account changes, even before `status` says so: the
+    /// epoch advances when the change notice is delivered.
+    func holds(_ pass: OwnerPass) -> Bool {
+        verifiedOwnerEpoch == pass.epoch && accountEpoch.current() == pass.epoch
+            && state?.originalOwner == pass.ownerRecordName
+    }
+
     private func isCurrent(_ candidate: CKSyncEngine, generation: UInt64) -> Bool {
         engine === candidate && engineGeneration == generation
             && engineAccountEpoch == accountEpoch.current()
