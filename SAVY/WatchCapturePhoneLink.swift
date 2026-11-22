@@ -128,14 +128,24 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
     #if DEBUG && targetEnvironment(simulator)
     /// Simulator link test only: `-WatchCaptureLinkTestWords "<words>"` makes this iPhone answer a
     /// received recording with these words. A simulator on a build machine has no one to allow
-    /// Speech Recognition, and the writing out itself is proven on the real iPhone. Compiled for
-    /// the simulator only.
+    /// Speech Recognition, and the writing out itself is proven on the real iPhone. When the
+    /// system opens the app by itself for the Watch's message, as it does with the iPhone in a
+    /// pocket, no one can pass that argument, so the test may place the words in a file beside
+    /// the trail instead. Compiled for the simulator only.
     private static var linkTestWords: String? {
         let arguments = ProcessInfo.processInfo.arguments
-        guard let index = arguments.firstIndex(of: "-WatchCaptureLinkTestWords"),
-              arguments.indices.contains(index + 1) else { return nil }
-        return arguments[index + 1]
+        if let index = arguments.firstIndex(of: "-WatchCaptureLinkTestWords"),
+           arguments.indices.contains(index + 1) {
+            return arguments[index + 1]
+        }
+        let placed = WatchCaptureTrail.file.fileURL.deletingLastPathComponent()
+            .appendingPathComponent(linkTestWordsFileName)
+        guard let words = try? String(contentsOf: placed, encoding: .utf8) else { return nil }
+        let trimmed = words.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
+
+    private static let linkTestWordsFileName = "linktest-words.txt"
     #endif
 
     private func writeOut(id: UUID, audio: Data, fileExtension: String, parts: Int) {

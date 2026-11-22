@@ -184,8 +184,9 @@ jobs:
             exit 1
           fi
       # Adam, Nov 21, 2026: "Do 1000% of your tests on a fucking simulator." A paired iPhone and
-      # Watch simulator send a recording across the live link and check the words come back, once
-      # with the Watch app on its own and once with it inside the iPhone app. No device, no person.
+      # Watch simulator send a recording across the live link and check the words come back: with
+      # the Watch app inside the iPhone app, again with the iPhone app closed as it is in a pocket,
+      # and with the Watch app on its own, which must fail. No device, no person.
       - name: Link test in paired iPhone and Watch simulators
         run: |
           set -o pipefail

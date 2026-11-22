@@ -136,7 +136,9 @@ The Watch's status line also says more: “iCloud refused it (code 10)” or “
 
 ### The test
 
-1. On the Mac, build the iPhone app from a branch with all three in it (this branch, `main`, Send to AI) and install it. Install the Watch app from this branch again. The usual checks before touching the iPhone apply: no open editor with unsaved writing, and saved files compared before and after.
+This is the last look on his own devices, and only when he asks for it; the steps for a session on his Mac are in [the last look](mac-test.md). Everything a simulator can show is proven first (see “Test in simulators first” below).
+
+1. On the Mac, build the iPhone app from a branch with all three in it (this branch, `main`, Send to AI) and install it. The Watch app is inside the iPhone app and arrives through it; it is not installed by itself. The usual checks before touching the iPhone apply: no open editor with unsaved writing, and saved files compared before and after.
 2. Adam opens SAVY on the iPhone once, and allows Speech Recognition if it asks.
 3. Adam makes three captures on the Watch, saying anything real, one for each condition:
    - iPhone unlocked with SAVY open;
@@ -149,7 +151,7 @@ The Watch's status line also says more: “iCloud refused it (code 10)” or “
    python3 .cursor/skills/watch-capture/scripts/watchtrail.py pull --config watch-capture.json
    ```
 
-   It copies both trail files off the devices and prints, for each capture, the four results and what to do about the first one that stopped. The device-copy part was written without a Mac and has not run; if it fails, copy `Library/Application Support/SAVYWatch/trail.jsonl` out of each app's container by hand and run `watchtrail.py read` on the two files.
+   It copies both trail files off the devices and prints, for each capture, the four results and what to do about the first one that stopped. The device copy ran on his Mac on Nov 21.
 
 What each condition answers:
 
