@@ -118,7 +118,7 @@ jobs:
   phone:
     name: iPhone app (iOS Simulator) + Watch capture tests + link test
     runs-on: {{CI_RUNNER}}
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Use the newest Xcode on the runner

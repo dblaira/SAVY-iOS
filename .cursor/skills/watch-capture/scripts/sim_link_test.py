@@ -6,19 +6,21 @@ should work perfectly on a goddamn fucking simulator. Instead of sitting here ho
 fucking desk."
 
 What it does, on a Mac with Xcode (a GitHub runner, or Adam's Mac with no device attached):
-  1. Finds or makes a paired iPhone and Apple Watch simulator, and boots both.
+  1. Finds or makes a paired iPhone and Apple Watch simulator, boots both, and waits until the
+     two are connected as a pair. Apps installed before that never see each other.
   2. Installs the iPhone app and the Watch app, and opens both.
   3. A simulator-only hook in the Watch app sends a spoken recording to the iPhone simulator,
      exactly as a finished recording is sent. A simulator-only hook in the iPhone app answers with
      set words, because a build machine has no one to allow Speech Recognition.
   4. Reads both apps' trails and prints, per capture, what worked and what stopped.
 
-It runs up to four times: with the Watch app inside the iPhone app and both installed; if that
-fails, with only the iPhone app installed, waiting for the system to carry the Watch app across;
-then with the iPhone app closed, as it is in a pocket on a run, so the Watch's message has to open
-it; and last with the Watch app installed on its own, which is how it was on Adam's devices on
-Nov 21, where the link failed with WatchConnectivity 7018. It passes only when the words come back
-to the Watch with the Watch app inside the iPhone app. The closed-iPhone run is reported beside it.
+It runs up to four times: with the Watch app inside the iPhone app and both installed; if the
+two apps did not see each other, once more with a second install, because a pair of simulators
+that has just started for the first time can need longer; then with the iPhone app closed, as it
+is in a pocket on a run, so the Watch's message has to open it; and last with the Watch app
+installed on its own, which is how it was on Adam's devices on Nov 21, where the link failed with
+WatchConnectivity 7018. It passes only when the words come back to the Watch with the Watch app
+inside the iPhone app. The closed-iPhone run is reported beside it.
 
 What a simulator cannot show: his iCloud account, the real microphone and Bluetooth. Those parts
 (recording, iCloud, entry on the iPhone) worked on his own devices on Nov 21.
@@ -30,6 +32,7 @@ Standard library only.
 """
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -45,10 +48,10 @@ WORDS_FILE = "linktest-words.txt"  # read by the iPhone app's simulator-only hoo
 TRAIL = "trail.jsonl"
 
 INSIDE = "inside the iPhone app"
-CARRIED = "inside the iPhone app, carried across by the system"
+AGAIN = "inside the iPhone app, second install"
 CLOSED = "inside the iPhone app with the iPhone app closed"
 ALONE = "installed on its own"
-DECIDES = {INSIDE, CARRIED}  # the runs that decide the result
+DECIDES = {INSIDE, AGAIN}  # the runs that decide the result
 
 
 def run(command, check=False, quiet=False, timeout=300):
@@ -111,6 +114,47 @@ def boot(udid):
     simctl("bootstatus", udid, "-b", timeout=600)
 
 
+def pair_state(phone, watch):
+    """How the two simulators stand as a pair, in simctl's words, such as "active, connected"."""
+    listed = simctl("list", "pairs", "-j", quiet=True).stdout
+    try:
+        pairs = json.loads(listed).get("pairs", {})
+    except ValueError:
+        pairs = {}
+    for pair in pairs.values():
+        if pair.get("phone", {}).get("udid") == phone and pair.get("watch", {}).get("udid") == watch:
+            if pair.get("state"):
+                return str(pair["state"]).strip("() ")
+    # Older simctl: read the plain list, where each pair's first line ends with its state.
+    for block in re.split(r"\n(?=\S)", simctl("list", "pairs", quiet=True).stdout):
+        if phone in block and watch in block:
+            found = re.search(r"\(([^()]*)\)\s*$", block.splitlines()[0])
+            return found.group(1).strip() if found else block.splitlines()[0].strip()
+    return "not listed"
+
+
+def is_connected(state):
+    return "connected" in state and "disconnected" not in state
+
+
+def wait_for_pair(phone, watch, limit=420):
+    """Waits until the two simulators are connected as a pair. Apps installed before that never
+    see each other as a pair: on a GitHub runner the pair is new, and it connects a few minutes
+    after both simulators have started."""
+    start, last = time.time(), None
+    while True:
+        state = pair_state(phone, watch)
+        if state != last:
+            print(f"the simulator pair after {int(time.time() - start)}s: {state}", flush=True)
+            last = state
+        if is_connected(state):
+            return True
+        if time.time() - start > limit:
+            print(f"the simulators were not connected as a pair after {limit}s; going on anyway", flush=True)
+            return False
+        time.sleep(10)
+
+
 def container(udid, bundle):
     done = simctl("get_app_container", udid, bundle, "data", quiet=True)
     return Path(done.stdout.strip()) if done.returncode == 0 and done.stdout.strip() else None
@@ -135,6 +179,24 @@ def how_installed(udid, bundle):
         print("on record on the Watch simulator: " + "; ".join(keep)[:700], flush=True)
 
 
+def system_notes(phone, watch):
+    """When the two apps never saw each other: what each simulator's own WatchConnectivity
+    service logged in the last few minutes, to show why."""
+    for name, udid in (("iPhone", phone), ("Watch", watch)):
+        try:
+            done = simctl("spawn", udid, "log", "show", "--last", "4m", "--style", "compact",
+                          "--predicate", 'process == "wcd" OR process == "appconduitd"',
+                          quiet=True, timeout=180)
+        except subprocess.TimeoutExpired:
+            print(f"--- {name} simulator: its log took too long to read ---", flush=True)
+            continue
+        lines = [line[:300] for line in done.stdout.splitlines() if line.strip()]
+        print(f"--- {name} simulator, WatchConnectivity service, last {min(len(lines), 30)} of {len(lines)} lines ---")
+        for line in lines[-30:]:
+            print("  " + line)
+        sys.stdout.flush()
+
+
 def read_trail(path):
     events = []
     if path and path.exists():
@@ -148,10 +210,9 @@ def read_trail(path):
 
 def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, install=True, phone_open=True):
     """Runs the link test once, and returns (words came back, the Watch's last link state).
-    With `watch_app` None, only the iPhone app is installed and the system has to carry the Watch
-    app across, as it does on real devices. With `install` False, the apps stay as the run before
-    left them. With `phone_open` False, the test closes the iPhone app and does not open it again:
-    the Watch's message has to do that, as it does with the iPhone in a pocket."""
+    With `install` False, the apps stay as the run before left them. With `phone_open` False, the
+    test closes the iPhone app and does not open it again: the Watch's message has to do that, as
+    it does with the iPhone in a pocket."""
     phone_bundle, watch_bundle = cfg["xcode"]["companionBundleID"], cfg["xcode"]["watchBundleID"]
     folder = cfg["storageFolder"]
     print(f"\n===== Link test: Watch app {label} =====", flush=True)
@@ -160,20 +221,12 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
         if install:
             simctl("uninstall", udid, bundle, quiet=True)
     time.sleep(5)
+    print(f"the simulator pair: {pair_state(phone, watch)}", flush=True)
     if install:
         simctl("install", phone, phone_app, check=True)
-        if watch_app is not None:
-            simctl("install", watch, watch_app, check=True)
-        else:
-            arrived = False
-            for _ in range(24):
-                if container(watch, watch_bundle) is not None:
-                    arrived = True
-                    break
-                time.sleep(5)
-            print(f"the system carried the Watch app across by itself: {'yes' if arrived else 'no'}", flush=True)
-            if not arrived:
-                return False, "the Watch app never arrived on the Watch simulator"
+        simctl("install", watch, watch_app, check=True)
+        # Give the two systems a moment to tell each other what was installed.
+        time.sleep(20)
 
     store = store_folder(watch, watch_bundle, folder)
     if store is None:
@@ -234,7 +287,10 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
         print(f"the Watch's message opened the iPhone app by itself: {'yes' if opened else 'no'}", flush=True)
     words_back = any(e.get("step") == "link.words" and e.get("ok") for e in events)
     state = next((e.get("detail") for e in reversed(events)
-                  if e.get("side") == "watch" and e.get("step") in ("link.activate", "link.reach")), "no link line")
+                  if e.get("side") == "watch" and e.get("step") in ("link.activate", "link.reach", "link.state")),
+                 "no link line")
+    if not words_back and label != ALONE and "iPhoneAppInstalled=no" in state:
+        system_notes(phone, watch)
     return words_back, state
 
 
@@ -273,11 +329,16 @@ def main():
     boot(phone)
     boot(watch)
 
+    wait_for_pair(phone, watch)
+    time.sleep(30)
+
     results = []
     if inside:
         results.append((INSIDE, *one_run(INSIDE, phone, watch, app, watch_app, cfg, recording, out)))
-        if not results[-1][1]:
-            results.append((CARRIED, *one_run(CARRIED, phone, watch, app, None, cfg, recording, out)))
+        if not results[-1][1] and "iPhoneAppInstalled=no" in results[-1][2]:
+            # The two apps never saw each other. A pair of simulators that has just started for
+            # the first time can need longer; install once more now that it has been up a while.
+            results.append((AGAIN, *one_run(AGAIN, phone, watch, app, watch_app, cfg, recording, out)))
         if results[-1][1]:
             # Adam: "Common scenario is that I am out for a run and have an idea hit me." The
             # iPhone app is closed then. The same install, with the iPhone app closed and left
