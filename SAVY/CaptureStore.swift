@@ -62,6 +62,8 @@ struct TechnicalCaptureFlags: Codable, Equatable, Sendable {
 
 struct TechnicalCaptureMetadata: Codable, Equatable, Sendable {
     var kind: ReminderKind
+    var createdAt: Date?
+    var updatedAt: Date?
     var priority: Priority
     var energy: Energy
     var flags: TechnicalCaptureFlags
@@ -83,6 +85,8 @@ struct TechnicalCaptureMetadata: Codable, Equatable, Sendable {
 
     init(reminder: Reminder) {
         self.kind = reminder.kind
+        self.createdAt = reminder.createdAt
+        self.updatedAt = reminder.updatedAt
         self.postThemeID = reminder.postThemeID
         self.postThemeName = reminder.postThemeName
         self.postAnswers = reminder.postAnswers != nil ? reminder.postQuestionAndAnswers : nil
@@ -145,6 +149,8 @@ enum TechnicalCapturePromptBuilder {
 
         Metadata
         Kind: \(metadata.kind.rawValue)
+        Created: \(metadata.createdAt.map(isoString(from:)) ?? "Unknown")
+        Changed: \(metadata.updatedAt.map(isoString(from:)) ?? "Unknown")
         Priority: \(metadata.priority.rawValue)
         Energy: \(metadata.energy.rawValue)
         Success Flags: clear_sign=\(metadata.flags.isClearSignOfSuccess) compound=\(metadata.flags.isCompound)

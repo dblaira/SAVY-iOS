@@ -25,6 +25,9 @@ final class MetadataEntryStore: ObservableObject {
 
     func save(_ entry: MetadataEntry) throws {
         guard !entry.title.isEmpty else { return }
+        var entry = entry
+        entry.createdAt = entries.first { $0.id == entry.id }?.createdAt ?? entry.createdAt
+        entry.updatedAt = Date()
         entries.removeAll { $0.id == entry.id }
         entries.insert(entry, at: 0)
         try persist()

@@ -67,6 +67,7 @@ final class EntrySharingUITests: XCTestCase {
         XCTAssertTrue(repeated.contains("\nDecide\n"))
         XCTAssertTrue(repeated.contains("My exact done statement. Updated before sharing again."))
         assertDelegationAndMetadata(repeated)
+        reveal(outcome)
         XCTAssertEqual(outcome.value as? String, "My exact done statement. Updated before sharing again.")
         attach("Editor remains intact after repeated whole-form sharing")
 
@@ -114,22 +115,44 @@ final class EntrySharingUITests: XCTestCase {
         attach("Entire form opens directly in the native share sheet")
         copy.tap()
         XCTAssertTrue(copy.waitForNonExistence(timeout: 5))
-        // The runner is a separate app. Keep its UI automation available while
-        // iOS asks permission to read the text just copied from the app under test.
-        let clipboardRead = expectation(description: "Read the native Copy result")
-        DispatchQueue.global().async {
-            _ = UIPasteboard.general.string
-            clipboardRead.fulfill()
+        // Read the actual clipboard through a user-initiated Paste in the isolated
+        // app. iOS 27 denies cross-process reads from the UI-test runner.
+        let reader = element(isSavy ? "DecideAnswer0" : "themeAnswer0")
+        // The lazy form removes offscreen fields. Return toward its top before
+        // using the general reveal helper, which normally searches downward.
+        for _ in 0..<10 {
+            if reader.exists { break }
+            let point = app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.3))
+            point.press(forDuration: 0.05, thenDragTo: point.withOffset(CGVector(dx: 0, dy: 350)))
         }
-        let allowPaste = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Allow Paste"]
-        if allowPaste.waitForExistence(timeout: 3) { allowPaste.tap() }
-        wait(for: [clipboardRead], timeout: 10)
-        return UIPasteboard.general.string ?? ""
+        reveal(reader)
+        let original = reader.value as? String ?? ""
+        reader.tap()
+        reader.typeKey("a", modifierFlags: .command)
+        reader.typeKey("v", modifierFlags: .command)
+        let populated = expectation(for: NSPredicate(format: "value CONTAINS %@", "Metadata"), evaluatedWith: reader)
+        wait(for: [populated], timeout: 5)
+        let copied = reader.value as? String ?? ""
+        let exported = XCTAttachment(string: copied)
+        exported.name = "Actual native Copy output"
+        exported.lifetime = .keepAlways
+        add(exported)
+        XCTAssertTrue(copied.hasPrefix(isSavy ? "SAVY ·" : "Understood ·"), "Clipboard must belong to this app; run sharing tests serially across simulators")
+        reader.typeKey("a", modifierFlags: .command)
+        reader.typeText(original)
+        XCTAssertEqual(reader.value as? String, original, "The isolated draft must be restored after reading the clipboard")
+        dismissKeyboard()
+        return copied
     }
 
     private func assertDelegationAndMetadata(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        for label in ["Created: ", "Changed: "] {
+            let lineText = text.components(separatedBy: "\n").first { $0.hasPrefix(label) }
+            let value = lineText.map { String($0.dropFirst(label.count)) } ?? ""
+            XCTAssertNotNil(ISO8601DateFormatter().date(from: value), "Copied timestamp must include an absolute date, time, and timezone", file: file, line: line)
+        }
         for expected in ["Current unsaved delegation.", "My unchanged context.", "My exact done statement.",
-                         "Metadata", "Theme: Habit", "Status: Active"] {
+                         "Metadata", "Theme: Habit", "Status: Active", "Created: ", "Changed: ", "Unsaved draft"] {
             XCTAssertTrue(text.contains(expected), "Copied text missing \(expected)", file: file, line: line)
         }
     }

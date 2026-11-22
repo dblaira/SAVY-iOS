@@ -222,9 +222,10 @@ struct NewsChannelPostsGroup: View {
             })
         }
         list.append(SavySwipeAction(title: entry.pinned ? "Unpin" : "Pin", icon: "pin", bg: Brand.tileBlue) {
-            guard var updated = reminderStore.reminders.first(where: { $0.id == entry.id }) else { return }
-            updated.pinned.toggle()
-            reminderStore.save(updated)
+            // Adam, 2026-11-10: "my social media posts, whenever I add them to the SAVY app and
+            // pin them, that they appear in the carousel on the homepage." Pinning here now takes
+            // the first pinned spot, the same as pinning a Reminder or an Action.
+            reminderStore.togglePin(entry)
         })
         list.append(SavySwipeAction(title: "Delete", icon: "trash", bg: Color(hex: 0xB00124)) {
             reminderStore.delete(entry)

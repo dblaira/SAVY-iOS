@@ -5,7 +5,7 @@ struct EntryShareContent {
     let entireForm: String
 
     init(entry: Reminder, sourceApp: String, entryLabel: String, whenIAm: String,
-         scheduleMetadata: [String]? = nil, additionalMetadata: [String] = []) {
+         scheduleMetadata: [String]? = nil, additionalMetadata: [String] = [], isDraft: Bool = false) {
         let heading = "\(sourceApp) · \(entryLabel)"
         let delegation = """
         Delegate
@@ -24,6 +24,9 @@ struct EntryShareContent {
             guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             metadata.append("\(label): \(value)")
         }
+        field("Created", Self.timestamp(entry.createdAt))
+        field("Changed", Self.timestamp(entry.updatedAt))
+        if isDraft { field("Entry", "Unsaved draft; timestamps refer to the entry, not these unsaved edits") }
         field("Theme", entry.postThemeName ?? "")
         if entry.context != .none { field("Pattern", entry.context.label) }
         field("Lift", entry.listName)
@@ -87,6 +90,11 @@ struct EntryShareContent {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "#", with: "")
         return tag.isEmpty || saved.contains(tag) ? saved : saved + [tag]
+    }
+
+    /// An absolute instant, including seconds and UTC, independent of locale or event schedule.
+    static func timestamp(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
     }
 
     static func dateText(_ date: Date, includesTime: Bool = true, timeZone: TimeZone = .current) -> String {

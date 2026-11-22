@@ -90,6 +90,37 @@ final class SAVYReorderTests: XCTestCase {
     }
 
     @MainActor
+    func testHomeCarouselLeadsWithAPinThatHasNoPlaceInTheOrderYet() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let first = item("First pinned reminder", kind: .reminder, pinned: true, rank: 0, createdAt: 100)
+        let second = item("Second pinned action", kind: .action, pinned: true, rank: 1, createdAt: 200)
+        let newPost = item("New pinned post", kind: .post, pinned: true, createdAt: 300)
+        let store = try makeStore(directory, records: [first, second, newPost])
+
+        let rows = HomeFeedRow.rows(reminderStore: store, leverageStore: LeverageDataStore(), limit: 2)
+
+        XCTAssertEqual(rows.map(\.id), [newPost.id.uuidString, first.id.uuidString])
+    }
+
+    @MainActor
+    func testPinningASavedPostTakesTheFirstPinnedSpot() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pinnedReminder = item("Pinned reminder", kind: .reminder, pinned: true, rank: 0, createdAt: 100)
+        let post = item("Saved post", kind: .post, createdAt: 200)
+        let store = try makeStore(directory, records: [pinnedReminder, post])
+
+        store.togglePin(post)
+
+        let rows = HomeFeedRow.rows(reminderStore: store, leverageStore: LeverageDataStore(), limit: 4)
+        XCTAssertEqual(rows.prefix(2).map(\.id), [post.id.uuidString, pinnedReminder.id.uuidString])
+        XCTAssertEqual(store.reminders.first { $0.id == pinnedReminder.id }?.updatedAt, pinnedReminder.updatedAt,
+                       "Shifting a neighbor card's rank during pin must not overwrite its last-edited timestamp")
+        XCTAssertEqual(store.reminders.first { $0.id == pinnedReminder.id }?.createdAt, pinnedReminder.createdAt)
+    }
+
+    @MainActor
     func testPinAndUnpinPersistWhenTheOnlyCardAlreadyHasRankZero() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

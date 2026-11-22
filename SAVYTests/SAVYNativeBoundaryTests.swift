@@ -351,6 +351,8 @@ final class SAVYNativeBoundaryTests: XCTestCase {
             tags: ["focus", "native"]
         )
         reminder.context = .clearSign
+        reminder.createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+        reminder.updatedAt = Date(timeIntervalSince1970: 1_700_086_400)
 
         let capture = TechnicalCapture.from(reminder: reminder)
 
@@ -368,6 +370,8 @@ final class SAVYNativeBoundaryTests: XCTestCase {
 
             Metadata
             Kind: action
+            Created: 2023-11-14T22:13:20Z
+            Changed: 2023-11-15T22:13:20Z
             Priority: high
             Energy: medium
             Success Flags: clear_sign=true compound=false
@@ -908,7 +912,10 @@ final class SAVYNativeBoundaryTests: XCTestCase {
 
         let reloadedStore = try MetadataEntryStore(fileURL: fileURL)
 
-        XCTAssertEqual(reloadedStore.entries, [entry])
+        var expected = entry
+        expected.updatedAt = try XCTUnwrap(store.entries.first?.updatedAt)
+        XCTAssertGreaterThanOrEqual(expected.updatedAt, entry.updatedAt)
+        XCTAssertEqual(reloadedStore.entries, [expected])
     }
 
     func testNavigationStateDeclaresLeverageSectionsInsteadOfProductivityTabs() {
