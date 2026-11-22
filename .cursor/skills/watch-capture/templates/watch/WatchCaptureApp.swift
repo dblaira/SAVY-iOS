@@ -96,7 +96,9 @@ enum WatchCaptureLinkTest {
             return
         }
         link.askPhoneForWords(capture, audioURL: url)
-        for _ in 0..<70 where link.waiting.contains(capture.id) {
+        // Longer than the link's own wait under this test (150 seconds), so the link's own line
+        // in the trail says how it ended.
+        for _ in 0..<170 where link.waiting.contains(capture.id) {
             try? await Task.sleep(for: .seconds(1))
         }
         let words = store.item(id: capture.id)?.capture.words ?? ""

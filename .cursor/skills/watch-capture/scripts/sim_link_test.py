@@ -263,7 +263,8 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
         print("the iPhone app is closed and the test does not open it", flush=True)
     simctl("launch", watch, watch_bundle, "-WatchCaptureLinkTest", RECORDING, check=True)
 
-    deadline = time.time() + 300
+    # The Watch app waits up to 120 seconds for the pair and up to 170 for the words.
+    deadline = time.time() + 360
     done = False
     while time.time() < deadline and not done:
         time.sleep(5)

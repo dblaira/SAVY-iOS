@@ -24,7 +24,15 @@ final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
     /// Live messages are small; a recording travels in parts of this many bytes.
     private static let partSize = 48_000
     /// How long the wrist shows “writing out” before leaving it to the iPhone's later import.
-    private static let patience: Duration = .seconds(45)
+    private static var patience: Duration {
+        #if DEBUG && targetEnvironment(simulator)
+        // The simulator link test only. On a build machine a message between the two simulators
+        // can take twenty seconds each way, where real devices take about one, so the test
+        // waits longer than the wrist does.
+        if WatchCaptureLinkTest.fileName != nil { return .seconds(150) }
+        #endif
+        return .seconds(45)
+    }
 
     func activate() {
         guard WCSession.isSupported() else { return }
