@@ -190,7 +190,18 @@ Two things had to be fixed to get there:
 - **The iPhone answered only when it already knew the Watch app was open.** Right after an install it often does not, so it queued the words, and a queued answer did not reach the Watch inside its 45 seconds (1 pass in 3 on his Mac). The Watch now sends one small request for the words after the recording, and the iPhone answers that message itself (`f5ee143`). The older live and queued paths remain as the fallback.
 - **GitHub's simulators start for the first time on every run.** Apps installed then do not see each other, even after the pair is connected: the Watch simulator's own link service logs “App database is out of sync” (ACXErrorDomain 43). The same apps installed again a few minutes later see each other at once. The test now waits for the pair, installs a second time when needed, and prints that reason. On his Mac the first install works.
 
-**On his devices since Nov 21, about 6:57 pm his time.** Adam asked the session on his Mac Studio to install the fix. The iPhone app (this branch at `35f567c` merged with Send to AI) carries the Watch app, and the system carried it across to the Watch by itself. Each app now sees the other: the iPhone's trail says “watchAppInstalled=yes” and the Watch's says “iPhoneAppInstalled=yes”, where both said no before. No recording has been made since, so the words coming back to the wrist is still unproven there; it takes one real sentence from him.
+**On his devices since Nov 21, about 6:57 pm his time.** Adam asked the session on his Mac Studio to install the fix. The iPhone app (this branch at `35f567c` merged with Send to AI) carries the Watch app, and the system carried it across to the Watch by itself. Each app now sees the other: the iPhone's trail says “watchAppInstalled=yes” and the Watch's says “iPhoneAppInstalled=yes”, where both said no before. Then he recorded one real sentence (capture `202546d1`):
+
+| Step | Result on his devices |
+|---|---|
+| Recorded on the Watch | 8.0 seconds, 49 KB |
+| Words back on the wrist | 62 characters, 1.4 seconds after he stopped. The iPhone wrote them out in 0.7 seconds and answered the Watch's own request |
+| In iCloud | Saved as Social, sent with its recording |
+| Entry in SAVY | Made on the iPhone with the words and the recording |
+
+SAVY was open and unlocked on the iPhone for that capture. Not shown yet on his devices: the iPhone locked in a pocket with SAVY closed, the iPhone out of reach, and a recording that continues after the wrist drops.
+
+The entry appeared 2 minutes 46 seconds after the capture reached iCloud. The iPhone looks for Watch captures when SAVY comes to the front, and every 60 seconds while it stays in front; a check that finds nothing new is written to the trail only once.
 
 A simulator cannot use his iCloud account, the real microphone or Bluetooth. Recording, iCloud and the entry on the iPhone were shown on his own devices on Nov 21. GitHub also builds both apps, runs the unit tests and screenshots the Watch screens on every push.
 

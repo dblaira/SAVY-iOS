@@ -4,9 +4,11 @@ Only when Adam asks for it. Adam, Nov 21: “No, no more testing. I mean, for me
 
 Everything a simulator can show is proven on GitHub first; see “Test in simulators first” in [SAVY Watch](savy-watch.md). What is left needs his own iPhone and Watch: his iCloud account, the real microphone, and the words written out from his voice.
 
-What his devices hold: the fixed build, installed on Nov 21 at about 6:57 pm his time, when he asked the session on his Mac Studio for it. The iPhone app is this branch at `35f567c` merged with Send to AI, with the Watch app inside it, and the Watch has the copy from inside that iPhone app. Each app now sees the other (“watchAppInstalled=yes”, “iPhoneAppInstalled=yes” in the two trails). No recording has been made since, so the words coming back to the wrist is still unproven on his devices.
+What his devices hold: the fixed build, installed on Nov 21 at about 6:57 pm his time, when he asked the session on his Mac Studio for it. The iPhone app is this branch at `35f567c` merged with Send to AI, with the Watch app inside it, and the Watch has the copy from inside that iPhone app.
 
-What remains is his own look: one real sentence recorded on the Watch. The words should show on the review screen a few seconds after he stops. Steps 5 to 7 below read the result; steps 1 to 4 are for the next install.
+His own look, that evening: he recorded one sentence on the Watch and the words were on his wrist 1.4 seconds after he stopped. The capture then reached iCloud and became a Social entry on the iPhone, with the words and the recording. SAVY was open and unlocked on the iPhone.
+
+Still not shown on his devices: the iPhone locked in a pocket with SAVY closed, the iPhone out of reach, and a recording that continues after the wrist drops. The steps below are for the next install, or for reading those cases when he chooses to try them.
 
 When he asks, a Claude session on his Mac Studio, which can reach his iPhone and Apple Watch Ultra 3:
 
