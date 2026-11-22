@@ -8,7 +8,9 @@ What his devices hold: the fixed build, installed on Nov 21 at about 6:57 pm his
 
 His own look, that evening: he recorded one sentence on the Watch and the words were on his wrist 1.4 seconds after he stopped. The capture then reached iCloud and became a Social entry on the iPhone, with the words and the recording. SAVY was open and unlocked on the iPhone.
 
-Still not shown on his devices: the iPhone locked in a pocket with SAVY closed, the iPhone out of reach, and a recording that continues after the wrist drops. The steps below are for the next install, or for reading those cases when he chooses to try them.
+Then he asked: “test it with the iPhone locked in my pocket”. Both pocket cases passed, each with the words on his wrist 2.1 seconds after he stopped: the iPhone locked with SAVY in the background, and the iPhone locked with SAVY not running, where the Watch's message opened SAVY by itself.
+
+Still not shown on his devices: the iPhone out of reach, and a recording that continues after the wrist drops. The steps below are for the next install, or for reading those cases when he chooses to try them.
 
 When he asks, a Claude session on his Mac Studio, which can reach his iPhone and Apple Watch Ultra 3:
 

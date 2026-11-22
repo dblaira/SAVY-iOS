@@ -160,7 +160,7 @@ What each condition answers:
 | Capture | Words back on the wrist | Answers |
 |---|---|---|
 | SAVY open on the iPhone | Expected within seconds | Does the link work at all? |
-| iPhone locked in a pocket | Unknown | Can iOS write out words while SAVY is in the background? If not, the words arrive when SAVY is next opened. The simulators showed the first half: with SAVY closed, the Watch's message opens it and an answer comes back. Writing out real words there needs his iPhone. |
+| iPhone locked in a pocket | Yes: 2.1 seconds on his devices on Nov 21, with SAVY in the background and with SAVY not running | Can iOS write out words while SAVY is in the background? It can. The entry itself is made when SAVY next runs. |
 | iPhone out of reach | Not expected | Does the capture still reach iCloud and become an entry later? |
 
 For any capture, the `record.stop` line compares the recording's length with the time between the two presses. A recording that stopped when the wrist dropped shows there.
@@ -199,7 +199,16 @@ Two things had to be fixed to get there:
 | In iCloud | Saved as Social, sent with its recording |
 | Entry in SAVY | Made on the iPhone with the words and the recording |
 
-SAVY was open and unlocked on the iPhone for that capture. Not shown yet on his devices: the iPhone locked in a pocket with SAVY closed, the iPhone out of reach, and a recording that continues after the wrist drops.
+SAVY was open and unlocked on the iPhone for that capture. He then asked: “test it with the iPhone locked in my pocket”.
+
+| iPhone | Words back on the wrist | What the iPhone's trail says |
+|---|---|---|
+| Locked, SAVY in the background (capture `2d7967a8`) | 93 characters, 2.1 seconds after he stopped | Woken by the Watch; “app=background unlocked=no”; wrote out the words in 0.7 seconds |
+| Locked, SAVY not running (capture `e8da182e`) | 97 characters, 2.1 seconds after he stopped | The Watch's message opened SAVY by itself; wrote out the words in 0.5 seconds |
+
+So iOS does write out his words with the iPhone locked, and the words reach his wrist with the iPhone in his pocket. Not shown yet on his devices: the iPhone out of reach, and a recording that continues after the wrist drops.
+
+On the locked iPhone the entry is made when SAVY next runs, not when the capture reaches iCloud: `2d7967a8` became an entry about six minutes after it reached iCloud, when the Watch's next message opened SAVY.
 
 The entry appeared 2 minutes 46 seconds after the capture reached iCloud. The iPhone looks for Watch captures when SAVY comes to the front, and every 60 seconds while it stays in front; a check that finds nothing new is written to the trail only once.
 
@@ -208,7 +217,7 @@ A simulator cannot use his iCloud account, the real microphone or Bluetooth. Rec
 ## Open questions for Adam
 
 1. Does a recording keep going when your wrist drops mid-run? It should, with the audio background mode, but it has to be tried on the Ultra 3.
-2. Do the words come back to the wrist with the iPhone in your pocket? This relies on iOS letting SAVY write out words in the background. Older reports say the older recognizer can't. SAVY tries iOS 26's on-device SpeechAnalyzer first. If the words don't come back in your pocket, they still arrive on the iPhone when SAVY opens.
+2. ~~Do the words come back to the wrist with the iPhone in your pocket?~~ Yes. On Nov 21, on his devices, with the iPhone locked: 2.1 seconds, with SAVY in the background and with SAVY not running.
 3. Should the complication also open straight into recording, like the Action Button?
 4. Are there more words it keeps mishearing? Add them to `vocabulary` (hints) or `corrections` (fixes) in `watch-capture.json`.
 
