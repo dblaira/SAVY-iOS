@@ -22,6 +22,9 @@ struct WatchCaptureApp: App {
 final class WatchCaptureAppDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
         WatchCaptureTrail.note("app.launch", WatchCaptureTrail.build)
+// [route iphone]
+        WatchCaptureTrail.note("route", "iphone")
+// [route end]
         WatchPhoneLink.shared.activate()
         #if DEBUG && targetEnvironment(simulator)
         Task { await WatchCaptureLinkTest.runIfRequested() }
@@ -66,9 +69,16 @@ final class WatchCaptureLaunch: ObservableObject {
 #if DEBUG && targetEnvironment(simulator)
 /// Simulator link test only. `-WatchCaptureLinkTest <file>` takes a recording the test placed in
 /// the app's Audio folder, keeps it as a draft, and sends it to the paired iPhone simulator for
+// [route icloud]
 /// its words, exactly as a finished recording is sent. The draft is thrown away afterwards, so
 /// nothing is saved or sent to iCloud. Compiled for the simulator only: it cannot exist on a
 /// real Watch. Adam, Nov 21, 2026: “Do 1000% of your tests on a fucking simulator.”
+// [route iphone]
+/// its words, exactly as a finished recording is sent. It then saves the capture, as Save does,
+/// and waits for the iPhone to say its entry is saved. The test runs the iPhone app on a test
+/// store of its own. Compiled for the simulator only: it cannot exist on a real Watch.
+/// Adam, Nov 21, 2026: “Do 1000% of your tests on a fucking simulator.”
+// [route end]
 enum WatchCaptureLinkTest {
     static var fileName: String? {
         let arguments = ProcessInfo.processInfo.arguments
@@ -102,9 +112,25 @@ enum WatchCaptureLinkTest {
             try? await Task.sleep(for: .seconds(1))
         }
         let words = store.item(id: capture.id)?.capture.words ?? ""
+// [route icloud]
         WatchCaptureTrail.note("linktest.done", capture: capture.id, ok: !words.isEmpty,
                                words.isEmpty ? "no words came back" : "words came back: chars=\(words.count)")
         store.discardDraft(capture.id)
+// [route iphone]
+        // On this route the iPhone makes the entry. Save the capture as Save does, and wait for
+        // the iPhone to say its entry is saved. Without words the link is not working, so the
+        // wait is short.
+        store.save(capture.id, as: WatchCaptureKind.saveDefault)
+        for second in 0..<(words.isEmpty ? 15 : 120) where store.item(id: capture.id)?.sentAt == nil {
+            if second > 0, second % 20 == 0 { await store.sendPending() }
+            try? await Task.sleep(for: .seconds(1))
+        }
+        let saved = store.item(id: capture.id)?.sentAt != nil
+        WatchCaptureTrail.note("linktest.entry", capture: capture.id, ok: saved,
+                               saved ? "the iPhone said the entry is saved" : "the iPhone did not say the entry is saved")
+        WatchCaptureTrail.note("linktest.done", capture: capture.id, ok: !words.isEmpty && saved,
+                               words.isEmpty ? "no words came back" : "words came back: chars=\(words.count)")
+// [route end]
     }
 }
 #endif

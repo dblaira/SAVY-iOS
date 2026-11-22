@@ -19,6 +19,9 @@ from pathlib import Path
 
 def gh(path):
     out = subprocess.run(["gh", "api", path], capture_output=True, text=True)
+    if out.returncode != 0 and "--allow-escape-sequences" in out.stderr:
+        # A newer gh will not print a job log that holds terminal color codes unless told to.
+        out = subprocess.run(["gh", "api", "--allow-escape-sequences", path], capture_output=True, text=True)
     if out.returncode != 0:
         sys.exit(f"gh api {path} failed: {out.stderr.strip()}")
     return out.stdout

@@ -1,8 +1,14 @@
 # Watch capture kit. Compiles {{APP_NAME}} Watch and {{APP_NAME}} for iPhone on a GitHub macOS
 # runner ({{CI_RUNNER}}) for the simulators; runs the Watch capture unit tests; and screenshots the Watch app in a
+# [route icloud]
 # Watch simulator with demo words. The Watch build is signed to run locally so its iCloud
 # entitlement is present (without it, opening iCloud ends the app). Nothing is signed with
 # Adam's team, installed on a device or published.
+# [route iphone]
+# Watch simulator with demo words. Both builds are signed to run locally, so a paired iPhone and
+# Watch simulator see the two apps as a pair. Nothing is signed with Adam's team, installed on a
+# device or published.
+# [route end]
 # Written by watchkit.py; change the kit template, not this file.
 name: Watch build
 
@@ -14,6 +20,7 @@ on:
       - "{{WIDGETS}}/**"
       - "{{TEST_DIR}}/**"
       - "{{PROJECT}}/**"
+{{EXTRA_PATHS}}
       - ".cursor/skills/watch-capture/**"
       - "watch-capture.json"
       - ".github/workflows/watch-build.yml"
@@ -52,8 +59,8 @@ jobs:
           set -o pipefail
           mkdir -p build
           xcodebuild build \
-            -project {{PROJECT}} \
-            -scheme {{WATCH_SCHEME}} \
+            -project {{PROJECT_ARG}} \
+            -scheme {{WATCH_SCHEME_ARG}} \
             -configuration Debug \
             -destination 'generic/platform=watchOS Simulator' \
             -derivedDataPath build/watch \
@@ -146,8 +153,8 @@ jobs:
           set -o pipefail
           mkdir -p build
           xcodebuild build-for-testing \
-            -project {{PROJECT}} \
-            -scheme {{APP_SCHEME}} \
+            -project {{PROJECT_ARG}} \
+            -scheme {{APP_SCHEME_ARG}} \
             -configuration Debug \
             -destination "id=$SIM_UDID" \
             -derivedDataPath build/phone \
@@ -167,8 +174,8 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild test-without-building \
-            -project {{PROJECT}} \
-            -scheme {{APP_SCHEME}} \
+            -project {{PROJECT_ARG}} \
+            -scheme {{APP_SCHEME_ARG}} \
             -destination "id=$SIM_UDID" \
             -derivedDataPath build/phone \
             {{TEST_FILTER}} \
@@ -183,10 +190,20 @@ jobs:
             tail -n 60 build/tests.log
             exit 1
           fi
+      # [route icloud]
       # Adam, Nov 21, 2026: "Do 1000% of your tests on a fucking simulator." A paired iPhone and
       # Watch simulator send a recording across the live link and check the words come back: with
       # the Watch app inside the iPhone app, again with the iPhone app closed as it is in a pocket,
       # and with the Watch app on its own, which must fail. No device, no person.
+      # [route iphone]
+      # Adam, Nov 21, 2026: "Do 1000% of your tests on a fucking simulator." A paired iPhone and
+      # Watch simulator send a recording across the live link. The test passes only when the words
+      # come back to the Watch and the entry is in the iPhone app's own test store: with the Watch
+      # app inside the iPhone app, and again with the iPhone app closed as it is in a pocket. Then
+      # the iPhone simulator is turned off while a capture is saved, and on again: the capture has
+      # to wait on the Watch and then become the entry. Last, the Watch app on its own, which must
+      # fail. No device, no person.
+      # [route end]
       - name: Link test in paired iPhone and Watch simulators
         run: |
           set -o pipefail

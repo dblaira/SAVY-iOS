@@ -8,7 +8,14 @@ import WatchKit
 // should be able to intervene or show me the text.” Right after a recording stops, the Watch sends
 // it to the iPhone in its pocket. A live message wakes the iPhone app in the background, the
 // iPhone writes out the words, and sends them back to the wrist. When the iPhone is out of reach,
+// [route icloud]
 // nothing changes: the words are written out on the iPhone later, from iCloud.
+// [route iphone]
+// the capture waits on the Watch, and the iPhone writes out the words when the capture reaches it.
+//
+// On this route the link also hands each saved capture to the iPhone, which makes the entry and
+// answers once it is saved. See `deliver`, at the end of this file.
+// [route end]
 
 @MainActor
 final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
@@ -122,6 +129,11 @@ final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         WatchCaptureTrail.note("link.reach", once: true, Self.state(of: session))
+// [route iphone]
+        // The iPhone is close again: hand it what has been waiting.
+        guard session.isReachable else { return }
+        Task { @MainActor in await WatchCaptureStore.shared.sendPending() }
+// [route end]
     }
 
     /// The moment the Watch starts, or stops, seeing the iPhone app as its partner.
@@ -147,6 +159,13 @@ final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     nonisolated private static func receive(_ message: [String: Any]) {
+// [route iphone]
+        // The iPhone's answer to a capture the system delivered for the Watch.
+        if let answer = WatchCaptureDelivery.answer(in: message) {
+            Task { @MainActor in WatchPhoneLink.shared.heard(answer) }
+            return
+        }
+// [route end]
         guard message[WatchLinkMessage.type] as? String == WatchLinkMessage.words,
               let idString = message[WatchLinkMessage.captureID] as? String,
               let id = UUID(uuidString: idString) else { return }
@@ -167,3 +186,171 @@ final class WatchPhoneLink: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 }
+// [route iphone]
+
+// MARK: - Handing saved captures to the iPhone
+
+extension WatchPhoneLink {
+    enum Delivery: Equatable {
+        /// The iPhone has saved the entry.
+        case saved
+        /// The iPhone could not be reached. The system holds the capture and sends it when the
+        /// iPhone is close.
+        case outOfReach
+        /// The iPhone answered, and could not save the entry.
+        case couldNotSave
+    }
+
+    /// Hands one saved capture to the iPhone and waits for it to say the entry is saved. The
+    /// iPhone usually has the recording already, from writing out its words; when it does not,
+    /// it asks, and the recording goes first.
+    func deliver(_ capture: WatchCapture, audioURL: URL?) async -> Delivery {
+        guard WCSession.isSupported() else { return .outOfReach }
+        let id = capture.id
+        guard let message = try? WatchCaptureDelivery.message(for: capture) else {
+            WatchCaptureTrail.fail("phone.send", capture: id, once: true, "the Watch could not prepare it")
+            return .couldNotSave
+        }
+        guard isPhoneNearby else {
+            WatchCaptureTrail.note("phone.wait", capture: id, once: true, "the iPhone is out of reach: " + stateText)
+            leaveWithSystem(capture, message: message, audioURL: audioURL)
+            return .outOfReach
+        }
+        // Twice at most: once to hand it over, and once more after a recording the iPhone asked for.
+        for attempt in 1...2 {
+            guard let answer = await ask(message, capture: id) else {
+                leaveWithSystem(capture, message: message, audioURL: audioURL)
+                return .outOfReach
+            }
+            switch answer.outcome {
+            case .saved:
+                WatchCaptureTrail.note("phone.send", capture: id, once: true,
+                                       capture.hasRecording ? "on the iPhone, with its recording" : "on the iPhone")
+                return .saved
+            case .failed:
+                WatchCaptureTrail.fail("phone.send", capture: id, once: true,
+                                       "the iPhone could not save it: " + (answer.detail ?? "no reason given"))
+                return .couldNotSave
+            case .needsRecording:
+                guard attempt == 1, let audioURL, let data = try? Data(contentsOf: audioURL), !data.isEmpty else {
+                    WatchCaptureTrail.fail("phone.send", capture: id, once: true,
+                                           attempt == 1 ? "the iPhone asked for the recording, and it is no longer on the Watch"
+                                               : "the iPhone asked for the recording a second time")
+                    return .couldNotSave
+                }
+                guard await sendRecording(data, fileExtension: audioURL.pathExtension, for: id) else {
+                    leaveWithSystem(capture, message: message, audioURL: audioURL)
+                    return .outOfReach
+                }
+            }
+        }
+        return .couldNotSave
+    }
+
+    /// Sends one message and waits for the iPhone's answer to it. Nil when it did not get through,
+    /// or when the iPhone app is one from before captures travelled this way.
+    private func ask(_ message: [String: Any], capture id: UUID) async -> WatchCaptureDelivery.Answer? {
+        await withCheckedContinuation { (continuation: CheckedContinuation<WatchCaptureDelivery.Answer?, Never>) in
+            // The system calls these off the main thread; `@Sendable` keeps them from being tied to it.
+            WCSession.default.sendMessage(message, replyHandler: { @Sendable reply in
+                let answer = WatchCaptureDelivery.answer(in: reply)
+                if answer == nil {
+                    WatchCaptureTrail.fail("phone.send", capture: id, once: true, "the iPhone app did not answer as expected")
+                }
+                continuation.resume(returning: answer)
+            }, errorHandler: { @Sendable error in
+                WatchCaptureTrail.fail("phone.send", capture: id, once: true, WatchCaptureTrail.reason(error))
+                continuation.resume(returning: nil)
+            })
+        }
+    }
+
+    /// Sends a recording in parts, as live messages. True once the iPhone has taken the last part.
+    private func sendRecording(_ data: Data, fileExtension: String, for id: UUID) async -> Bool {
+        let count = (data.count + Self.partSize - 1) / Self.partSize
+        WatchCaptureTrail.note("phone.recording", capture: id,
+                               "the iPhone asked for the recording: parts=\(count) \(data.count / 1_000)KB")
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            for index in 0..<count {
+                let part = data.subdata(in: (index * Self.partSize)..<min(data.count, (index + 1) * Self.partSize))
+                let message: [String: Any] = [
+                    WatchLinkMessage.type: WatchLinkMessage.recordingPart,
+                    WatchLinkMessage.captureID: id.uuidString,
+                    WatchLinkMessage.index: index,
+                    WatchLinkMessage.count: count,
+                    WatchLinkMessage.fileExtension: fileExtension,
+                    WatchLinkMessage.data: part,
+                ]
+                guard index == count - 1 else {
+                    WCSession.default.sendMessage(message, replyHandler: nil) { @Sendable error in
+                        WatchCaptureTrail.fail("link.part", capture: id, once: true, WatchCaptureTrail.reason(error))
+                    }
+                    continue
+                }
+                // The iPhone answers the last part once it has taken it, and all those before it.
+                WCSession.default.sendMessage(message, replyHandler: { @Sendable _ in
+                    continuation.resume(returning: true)
+                }, errorHandler: { @Sendable error in
+                    WatchCaptureTrail.fail("link.part", capture: id, once: true, WatchCaptureTrail.reason(error))
+                    continuation.resume(returning: false)
+                })
+            }
+        }
+    }
+
+    /// Leaves a capture with the system, which sends it when the iPhone is close again, even when
+    /// this app is not open then. The iPhone's answer comes back the same way (`heard`).
+    private func leaveWithSystem(_ capture: WatchCapture, message: [String: Any], audioURL: URL?) {
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        let key = capture.id.uuidString
+        if let audioURL {
+            guard !session.outstandingFileTransfers.contains(where: {
+                $0.file.metadata?[WatchLinkMessage.captureID] as? String == key
+            }) else { return }
+            session.transferFile(audioURL, metadata: message)
+        } else {
+            guard !session.outstandingUserInfoTransfers.contains(where: {
+                $0.userInfo[WatchLinkMessage.captureID] as? String == key
+            }) else { return }
+            session.transferUserInfo(message)
+        }
+        WatchCaptureTrail.note("phone.queue", capture: capture.id, once: true,
+                               "left with the system, to send when the iPhone is close")
+    }
+
+    /// The iPhone has the entry, so nothing more of this capture needs to travel.
+    func withdraw(_ id: UUID) {
+        guard WCSession.isSupported() else { return }
+        let key = id.uuidString
+        for transfer in WCSession.default.outstandingFileTransfers
+        where transfer.file.metadata?[WatchLinkMessage.captureID] as? String == key {
+            transfer.cancel()
+        }
+        for transfer in WCSession.default.outstandingUserInfoTransfers
+        where transfer.userInfo[WatchLinkMessage.captureID] as? String == key {
+            transfer.cancel()
+        }
+    }
+
+    /// The iPhone's answer to a capture the system delivered for the Watch.
+    fileprivate func heard(_ answer: WatchCaptureDelivery.Answer) {
+        guard answer.outcome == .saved else {
+            // It stays in the queue, and goes again when this app is open with the iPhone close.
+            WatchCaptureTrail.fail("phone.send", capture: answer.id, once: true,
+                                   "the iPhone could not save what the system delivered: "
+                                       + (answer.detail ?? answer.outcome.rawValue))
+            return
+        }
+        WatchCaptureTrail.note("phone.send", capture: answer.id, once: true, "on the iPhone; it answered later")
+        WatchCaptureStore.shared.confirmDelivered(answer.id)
+    }
+
+    nonisolated func session(_ session: WCSession, didFinish fileTransfer: WCSessionFileTransfer, error: (any Error)?) {
+        guard let error,
+              let id = (fileTransfer.file.metadata?[WatchLinkMessage.captureID] as? String).flatMap(UUID.init(uuidString:))
+        else { return }
+        WatchCaptureTrail.fail("phone.queue", capture: id, once: true, WatchCaptureTrail.reason(error))
+    }
+}
+// [route end]

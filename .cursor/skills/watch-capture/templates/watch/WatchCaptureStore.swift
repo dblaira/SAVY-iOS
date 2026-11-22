@@ -1,4 +1,6 @@
+// [route icloud]
 import CloudKit
+// [route end]
 import Foundation
 import WatchKit
 
@@ -6,8 +8,14 @@ import WatchKit
 
 /// Every capture is written to the Watch first, so nothing is lost on a trail with no signal.
 /// A recording is kept the moment it stops, as a draft, until Save or until the Watch leaves
+// [route icloud]
 /// the screen; either way it is saved. Sending to iCloud follows; Watch cellular, known Wi-Fi,
 /// or the iPhone in a pocket all work.
+// [route iphone]
+/// the screen; either way it is saved. It then goes to the iPhone, which makes the entry, and it
+/// stays in this queue until the iPhone says the entry is saved. A capture made with the iPhone
+/// out of reach waits here until the iPhone is close.
+// [route end]
 @MainActor
 final class WatchCaptureStore: ObservableObject {
     #if DEBUG
@@ -16,6 +24,7 @@ final class WatchCaptureStore: ObservableObject {
     static let shared = WatchCaptureStore()
     #endif
 
+// [route icloud]
     struct Item: Codable, Equatable, Identifiable {
         var capture: WatchCapture
         /// When iCloud confirmed the latest version. Nil while waiting to send.
@@ -34,6 +43,18 @@ final class WatchCaptureStore: ObservableObject {
         case iCloudRefused(Int)
         case couldNotSaveOnWatch
     }
+// [route iphone]
+    /// One capture, and when the iPhone said its entry is saved (WatchCaptureDelivery.swift).
+    typealias Item = WatchQueuedCapture
+
+    enum Problem: Equatable {
+        /// The iPhone is out of reach. The capture waits and goes when the iPhone is close.
+        case phoneOutOfReach
+        /// The iPhone answered, and could not save the entry. It is sent again.
+        case phoneCouldNotSave
+        case couldNotSaveOnWatch
+    }
+// [route end]
 
     @Published private(set) var items: [Item] = []
     @Published private(set) var problem: Problem?
@@ -42,7 +63,9 @@ final class WatchCaptureStore: ObservableObject {
     private var fileURL: URL { folder.appendingPathComponent("captures.json") }
     private var audioFolder: URL { folder.appendingPathComponent("Audio", isDirectory: true) }
     private var isSending = false
+// [route icloud]
     private var zoneIsReady = false
+// [route end]
     /// Sent captures stay on the Watch this long as proof, then make room.
     private static let keepSentFor: TimeInterval = 7 * 86_400
 
@@ -127,9 +150,15 @@ final class WatchCaptureStore: ObservableObject {
         return true
     }
 
+// [route icloud]
     /// The words the nearby iPhone wrote out. A capture still on the Watch sends them with it;
     /// one already in iCloud keeps them for the wrist only, because the iPhone writes them out
     /// again when it makes the entry.
+// [route iphone]
+    /// The words the nearby iPhone wrote out. A capture not yet handed to the iPhone takes them
+    /// with it. For one already handed over they are for the wrist only: the iPhone wrote the
+    /// words out itself when it made the entry.
+// [route end]
     func applyWordsFromPhone(_ words: String, to id: UUID) {
         guard let index = items.firstIndex(where: { $0.id == id }), items[index].capture.words.isEmpty else { return }
         items[index].capture = items[index].capture.replacingWords(words)
@@ -170,6 +199,7 @@ final class WatchCaptureStore: ObservableObject {
 
     // MARK: Sending
 
+// [route icloud]
     /// Sends every saved capture still waiting. Safe to call often; a second call while one is
     /// running returns at once.
     func sendPending() async {
@@ -267,6 +297,52 @@ final class WatchCaptureStore: ObservableObject {
         }
     }
 
+// [route iphone]
+    /// Hands every saved capture still waiting to the iPhone, oldest first. Safe to call often; a
+    /// second call while one is running returns at once.
+    func sendPending() async {
+        #if DEBUG
+        // Demo captures never leave the Watch, so they can never become entries.
+        if WatchCaptureDemo.screen != nil { return }
+        #endif
+        guard !isSending else { return }
+        let waiting = WatchCaptureQueue.waiting(in: items)
+        guard !waiting.isEmpty else {
+            pruneOldSent()
+            return
+        }
+        isSending = true
+        defer { isSending = false }
+
+        var firstFailure: Problem?
+        for item in waiting {
+            switch await WatchPhoneLink.shared.deliver(item.capture, audioURL: audioURL(for: item.capture)) {
+            case .saved:
+                confirmDelivered(item.id)
+            case .outOfReach:
+                if firstFailure == nil { firstFailure = .phoneOutOfReach }
+            case .couldNotSave:
+                if firstFailure == nil { firstFailure = .phoneCouldNotSave }
+            }
+        }
+        problem = firstFailure
+        if firstFailure != nil { scheduleRetry() }
+        // A capture saved, or given its words, while this was running goes next.
+        if WatchCaptureQueue.waiting(in: items).contains(where: { !waiting.contains($0) }) {
+            Task { await sendPending() }
+        }
+    }
+
+    /// The iPhone said this capture's entry is saved. It leaves the waiting line, and stays on the
+    /// Watch for a week as proof.
+    func confirmDelivered(_ id: UUID) {
+        guard WatchCaptureQueue.confirm(id, in: &items) else { return }
+        _ = persist()
+        WatchPhoneLink.shared.withdraw(id)
+        if waitingCount == 0, problem != .couldNotSaveOnWatch { problem = nil }
+    }
+
+// [route end]
     /// Asks watchOS to wake the app later and try again while anything is still waiting.
     func scheduleRetry() {
         guard waitingCount > 0 else { return }

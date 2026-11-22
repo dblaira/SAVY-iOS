@@ -8,8 +8,14 @@ import UIKit
 //
 // Adam, Nov 20, 2026: “If I do [have my phone with me], then the phone should be able to intervene
 // or show me the text.” The Watch's live message wakes this app in the background. It collects the
+// [route icloud]
 // recording's parts, writes out the words and sends them back to the wrist. It never makes the
 // entry: that still happens once, through WatchCaptureImporter, so nothing is ever doubled.
+// [route iphone]
+// recording's parts, writes out the words and sends them back to the wrist. The saved capture
+// follows on the same link, and WatchCaptureReceiver makes its entry: once, however many times
+// the capture arrives.
+// [route end]
 
 final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Sendable {
     static let shared = WatchCapturePhoneLink()
@@ -34,6 +40,19 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
     /// An answer older than this may have missed the Watch's wait, so it also goes the older way.
     private static let answerWindow: TimeInterval = 20
 
+// [route iphone]
+    /// Call once at launch, before the first message can arrive. `destination` gives the app's own
+    /// store, which makes the entries. It is asked again for each capture, because the Watch's
+    /// message can launch the app in the background before the store is open.
+    @MainActor
+    func activate(into destination: @escaping @MainActor () -> (any WatchCaptureDestination)?) {
+        WatchCaptureReceiver.shared.destination = destination
+        WatchIncomingRecordings.shared.removeOld()
+        WatchCaptureTrail.note("route", "iphone")
+        activate()
+    }
+
+// [route end]
     /// Call once at launch, before the first message can arrive.
     func activate() {
         WatchCaptureTrail.note("app.launch", WatchCaptureTrail.build + " " + WatchCaptureTranscriber.authorizationSummary)
@@ -81,6 +100,10 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
     /// having noticed that the Watch app is open. Right after an install it often has not.
     func session(_ session: WCSession, didReceiveMessage message: [String: Any],
                  replyHandler: @escaping ([String: Any]) -> Void) {
+// [route iphone]
+        // A saved capture: the receiver makes its entry and answers this message.
+        if WatchCaptureReceiver.take(message, replyHandler: replyHandler) { return }
+// [route end]
         guard message[WatchLinkMessage.type] as? String == WatchLinkMessage.wordsRequest,
               let idString = message[WatchLinkMessage.captureID] as? String,
               let id = UUID(uuidString: idString) else {
@@ -122,8 +145,25 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
             WatchCaptureTrail.note("link.wake", capture: id, "first of \(count) parts arrived from the Watch")
         }
         guard let complete else { return }
+// [route iphone]
+        // On this route the iPhone also makes the entry, so it keeps the recording for the capture
+        // that follows.
+        WatchIncomingRecordings.shared.hold(complete, for: id, fileExtension: fileExtension)
+// [route end]
         writeOut(id: id, audio: complete, fileExtension: fileExtension, parts: count)
     }
+// [route iphone]
+
+    /// A capture the system held until this iPhone was close again. A recording arrives as a file
+    /// with its capture beside it; a capture made of words arrives by itself.
+    func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        WatchCaptureReceiver.take(queued: file.metadata ?? [:], recordingAt: file.fileURL)
+    }
+
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        WatchCaptureReceiver.take(queued: userInfo, recordingAt: nil)
+    }
+// [route end]
 
     #if DEBUG && targetEnvironment(simulator)
     /// Simulator link test only: `-WatchCaptureLinkTestWords "<words>"` makes this iPhone answer a
@@ -194,6 +234,10 @@ final class WatchCapturePhoneLink: NSObject, WCSessionDelegate, @unchecked Senda
     /// Back to the wrist. First as the answer to the Watch's own request, when it is waiting for
     /// one. Otherwise a live message if the Watch app is open, or queued for it.
     private func reply(id: UUID, words: String) {
+// [route iphone]
+        // The capture that follows can use these words, so they are not written out twice.
+        WatchIncomingRecordings.shared.remember(words: words, for: id)
+// [route end]
         let session = WCSession.default
         let payload = Self.wordsPayload(id: id, words: words)
         let waiting: Asked? = lock.withLock {

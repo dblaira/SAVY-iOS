@@ -1,4 +1,6 @@
+// [route icloud]
 import CloudKit
+// [route end]
 import Foundation
 import os
 #if canImport(WatchConnectivity)
@@ -6,9 +8,15 @@ import WatchConnectivity
 #endif
 
 // Watch capture kit: the same in every app that uses it. App-specific values live in
+// [route icloud]
 // WatchCaptureConfig.swift. Shared by the Watch app and the iPhone/Mac app. The Watch writes
 // captures into their own iCloud zone; the iPhone or Mac turns each one into a normal entry.
 // The Watch never writes into the app's main sync zone, so a capture cannot disturb it.
+// [route iphone]
+// WatchCaptureConfig.swift. Shared by the Watch app and the iPhone app. The Watch hands each
+// capture to the iPhone over the link between them (WatchCaptureDelivery.swift), and the iPhone
+// turns it into a normal entry. Nothing here uses iCloud.
+// [route end]
 
 /// A day or hour heard in the words, such as “tomorrow at 3 PM”.
 struct WatchTimeCue: Codable, Equatable, Sendable {
@@ -106,7 +114,11 @@ struct WatchCapture: Codable, Equatable, Identifiable, Sendable {
     var id: UUID
     var kind: WatchCaptureKind
     /// The words exactly as heard, without leading or trailing spaces. Empty for a recording
+// [route icloud]
     /// until the iPhone or Mac writes it out.
+// [route iphone]
+    /// until the iPhone writes it out.
+// [route end]
     var words: String
     var capturedAt: Date
     var timeZoneIdentifier: String
@@ -168,6 +180,7 @@ struct WatchCapture: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+// [route icloud]
 /// The Watch's own iCloud zone in the app's existing container. Payloads use CloudKit's
 /// encrypted fields.
 enum WatchCaptureInbox {
@@ -226,6 +239,7 @@ enum WatchCaptureInbox {
     }
 }
 
+// [route end]
 /// The live messages between the Watch and the nearby iPhone: the recording in parts one way,
 /// the written-out words the other. Kept here so both sides agree.
 enum WatchLinkMessage {
@@ -248,8 +262,13 @@ enum WatchLinkMessage {
 ///
 /// Each line holds a time, the step, whether it worked, the capture's id and a short reason: a
 /// state, a count, or an error's code. It never holds the words, the recording or an account
+// [route icloud]
 /// name. The Watch and the iPhone or Mac each keep their own file; `watchkit.py trail` reads
 /// them together. The same lines go to the system log under the category "WatchCaptureTrail".
+// [route iphone]
+/// name. The Watch and the iPhone each keep their own file; `watchtrail.py` reads them together.
+/// The same lines go to the system log under the category "WatchCaptureTrail".
+// [route end]
 enum WatchCaptureTrail {
     struct Event: Codable, Equatable, Sendable {
         var at: Date
@@ -298,6 +317,7 @@ enum WatchCaptureTrail {
 
     /// An error as its framework, code and name. No description, which could hold a name or a path.
     static func reason(_ error: any Error) -> String {
+// [route icloud]
         if let error = error as? CKError {
             var text = "CloudKit \(error.code.rawValue) \(name(error.code))"
             if error.code == .partialFailure, let first = error.partialErrorsByItemID?.values.first {
@@ -305,6 +325,7 @@ enum WatchCaptureTrail {
             }
             return text
         }
+// [route end]
         #if canImport(WatchConnectivity)
         if let error = error as? WCError {
             return "WatchConnectivity \(error.code.rawValue) \(name(error.code))"
@@ -314,6 +335,7 @@ enum WatchCaptureTrail {
         return "\(error.domain) \(error.code)"
     }
 
+// [route icloud]
     private static func name(_ code: CKError.Code) -> String {
         switch code {
         case .internalError: return "internalError"
@@ -346,6 +368,7 @@ enum WatchCaptureTrail {
         }
     }
 
+// [route end]
     #if canImport(WatchConnectivity)
     private static func name(_ code: WCError.Code) -> String {
         switch code {

@@ -62,7 +62,11 @@ struct CaptureHomeView: View {
                         .multilineTextAlignment(.center)
                 }
                 if store.problem != nil, store.waitingCount > 0 {
+// [route icloud]
                     Label("\(store.waitingCount) waiting to send", systemImage: "icloud.slash")
+// [route iphone]
+                    Label("\(store.waitingCount) waiting for your iPhone", systemImage: "iphone.slash")
+// [route end]
                         .font(.footnote)
                         .foregroundStyle(WatchTheme.text)
                 }
@@ -339,7 +343,11 @@ struct ReviewView: View {
     }
 }
 
+// [route icloud]
 /// A saved capture from the recent list: what it is, whether iCloud has it, and playback.
+// [route iphone]
+/// A saved capture from the recent list: what it is, whether the iPhone has it, and playback.
+// [route end]
 struct CaptureProofView: View {
     let captureID: UUID
     @EnvironmentObject private var store: WatchCaptureStore
@@ -361,7 +369,12 @@ struct CaptureProofView: View {
     }
 }
 
+// [route icloud]
 /// Proof that it saved: the check, the type, the words or the recording, and the iCloud status.
+// [route iphone]
+/// Proof that it saved: the check, the type, the words or the recording, and whether the iPhone
+/// has made its entry.
+// [route end]
 struct CaptureProofContent: View {
     let item: WatchCaptureStore.Item
     @ObservedObject var player: WatchRecordingPlayer
@@ -599,6 +612,7 @@ extension WatchCapture {
 }
 
 extension WatchCaptureStore.Item {
+// [route icloud]
     var statusSymbol: String {
         if isDemo { return "icloud.slash" }
         if isDraft { return "pencil.circle" }
@@ -616,6 +630,23 @@ extension WatchCaptureStore.Item {
         default: return "Saved on Watch · sending"
         }
     }
+// [route iphone]
+    var statusSymbol: String {
+        if isDemo { return "iphone.slash" }
+        if isDraft { return "pencil.circle" }
+        return sentAt == nil ? "arrow.up.circle" : "checkmark.circle"
+    }
+
+    func statusText(problem: WatchCaptureStore.Problem?) -> String {
+        if isDemo { return "Demo · not sent" }
+        if sentAt != nil { return "Saved on Watch · on your iPhone" }
+        switch problem {
+        case .phoneOutOfReach: return "Saved on Watch · waits until your iPhone is close"
+        case .phoneCouldNotSave: return "Saved on Watch · your iPhone could not save it yet"
+        default: return "Saved on Watch · sending to your iPhone"
+        }
+    }
+// [route end]
 
     private var isDemo: Bool {
         #if DEBUG

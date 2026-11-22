@@ -100,6 +100,16 @@ Adam, Nov 21, after being kept at his desk for that test: “Do 1000% of your te
 
 Each capture now leaves a trail. Both apps write one line per step, with the reason when a step fails and never the words, to `Application Support/SAVYWatch/trail.jsonl`. On his Mac, `watchtrail.py pull --config watch-capture.json` (in the kit's `scripts/`) copies both files off the devices and prints where each capture stopped; it ran on his Mac on Nov 21. The last look on his devices, when he asks for it, is in [the last look](docs/watch/mac-test.md). See “Testing on the Watch and iPhone” in the SAVY Watch doc. `main` was merged into this branch on Nov 21.
 
+Nov 22, 2026: the kit has a second route, Watch to iPhone with no iCloud. Adam, Nov 20: “I'm gonna put the same type of iPhone Apple Watch app on for three or four of my other apps”. Think Bigger was the second app built from the kit. It makes no iCloud calls, and Adam chose “Watch to iPhone (Recommended)”. On that route the Watch hands each saved capture to the iPhone, the iPhone makes the entry, and the Watch keeps the capture until the iPhone says the entry is saved. The route was written in Think Bigger's copy of the kit (`dblaira/Think-Bigger`, branch `claude/apple-watch-app-ad1c5b`, `0473ac7`) and carried here, the kit's home, the same day, so his next Watch apps start from one kit.
+
+The settings that turn it on are all in an app's `watch-capture.json`, and all are off unless the app sets them:
+
+- `"route": "iphone"` chooses the route. The default is `"icloud"`. A `"linkTest"` block goes with it; it tells the link test how to give the iPhone app a test store of its own.
+- `"generator": "xcodegen"` in the `xcode` block is for a project made by XcodeGen. The default is `"pbxproj"`. `watchkit.py xcodegen` prints what goes in `project.yml`; `wire` and `embed` refuse on such a project.
+- `xcode.testClasses` names the test classes when a test file is not named after its class. `xcode.ciPaths` lists more folders whose changes start the build check.
+
+SAVY sets none of them. SAVY still uses iCloud, and its Watch look, behaviour and files are unchanged: the old kit and the new kit write every SAVY file the same, byte for byte, and wire a project with no Watch app into the same project file. Each kit template now holds both routes, between `// [route icloud]`, `// [route iphone]` and `// [route end]` lines (`#` in the build check). `watchkit.py files` writes an app only its own route's lines, and `watchkit.py sync` puts SAVY's changes back and keeps the other route's lines. A change to lines both routes share reaches the other app the next time `files` runs there. The two new templates, `WatchCaptureDelivery.swift` and `WatchCaptureReceiver.swift`, are for the iPhone route only; SAVY does not get them. The full account is “Two settings for an app that is not like SAVY” in the kit's `SKILL.md`.
+
 ## Mac close button and pinned posts on Home — November 10, 2026
 
 Adam: “On the Mac OS version, whenever I open an entry, in order to close it, I have to save it. I can't press the X in the top left side to close the pop-up window, period.”
