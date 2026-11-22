@@ -14,13 +14,14 @@ What it does, on a Mac with Xcode (a GitHub runner, or Adam's Mac with no device
      set words, because a build machine has no one to allow Speech Recognition.
   4. Reads both apps' trails and prints, per capture, what worked and what stopped.
 
-It runs up to four times: with the Watch app inside the iPhone app and both installed; if the
-two apps did not see each other, once more with a second install, because a pair of simulators
-that has just started for the first time can need longer; then with the iPhone app closed, as it
-is in a pocket on a run, so the Watch's message has to open it; and last with the Watch app
-installed on its own, which is how it was on Adam's devices on Nov 21, where the link failed with
-WatchConnectivity 7018. It passes only when the words come back to the Watch with the Watch app
-inside the iPhone app, both with the iPhone app open and with it closed.
+Its runs: with the Watch app inside the iPhone app and both installed, up to three times with a
+fresh install each time, because a pair of simulators that has just started for the first time
+often fails its first try (the apps do not see each other yet, or the Watch cannot reach the
+iPhone yet); then with the iPhone app closed, as it is in a pocket on a run, so the Watch's
+message has to open it; and last with the Watch app installed on its own, which is how it was on
+Adam's devices on Nov 21, where the link failed with WatchConnectivity 7018. It passes only when
+the words come back to the Watch with the Watch app inside the iPhone app, both with the iPhone
+app open and with it closed. Every try is printed, passed or failed.
 
 What a simulator cannot show: his iCloud account, the real microphone and Bluetooth. Those parts
 (recording, iCloud, entry on the iPhone) worked on his own devices on Nov 21.
@@ -49,9 +50,12 @@ TRAIL = "trail.jsonl"
 
 INSIDE = "inside the iPhone app"
 AGAIN = "inside the iPhone app, second install"
+THIRD = "inside the iPhone app, third install"
 CLOSED = "inside the iPhone app with the iPhone app closed"
+CLOSED_AGAIN = "inside the iPhone app with the iPhone app closed, second try"
 ALONE = "installed on its own"
-DECIDES = {INSIDE, AGAIN}  # either of these, and the closed-iPhone run, decide the result
+OPEN_TRIES = (INSIDE, AGAIN, THIRD)      # one of these has to pass,
+CLOSED_TRIES = (CLOSED, CLOSED_AGAIN)    # and one of these
 
 
 def run(command, check=False, quiet=False, timeout=300):
@@ -301,7 +305,7 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
                   if e.get("side") == "watch"
                   and e.get("step") in ("link.activate", "link.reach", "link.state", "linktest.ready")),
                  "no link line")
-    if not words_back and label != ALONE and "iPhoneAppInstalled=no" in state:
+    if not words_back and label != ALONE:
         system_notes(phone, watch)
     return words_back, state
 
@@ -346,17 +350,22 @@ def main():
 
     results = []
     if inside:
-        results.append((INSIDE, *one_run(INSIDE, phone, watch, app, watch_app, cfg, recording, out)))
-        if not results[-1][1] and "iPhoneAppInstalled=no" in results[-1][2]:
-            # The two apps never saw each other. A pair of simulators that has just started for
-            # the first time can need longer; install once more now that it has been up a while.
-            results.append((AGAIN, *one_run(AGAIN, phone, watch, app, watch_app, cfg, recording, out)))
+        # A pair of simulators that has just started for the first time often fails its first
+        # try: the two apps do not see each other yet ("App database is out of sync"), or the
+        # Watch cannot reach the iPhone yet. Install again and try again, three tries at most.
+        for label in OPEN_TRIES:
+            results.append((label, *one_run(label, phone, watch, app, watch_app, cfg, recording, out)))
+            if results[-1][1]:
+                break
         if results[-1][1]:
             # Adam: "Common scenario is that I am out for a run and have an idea hit me." The
             # iPhone app is closed then. The same install, with the iPhone app closed and left
             # closed: the Watch's message has to open it.
-            results.append((CLOSED, *one_run(CLOSED, phone, watch, app, watch_app, cfg, recording, out,
-                                             install=False, phone_open=False)))
+            for label in CLOSED_TRIES:
+                results.append((label, *one_run(label, phone, watch, app, watch_app, cfg, recording, out,
+                                                install=False, phone_open=False)))
+                if results[-1][1]:
+                    break
     else:
         print("\nthis iPhone app does not carry the Watch app; only the stand-alone run is possible")
     # How it was on Adam's devices on Nov 21. This run is expected to fail; it shows the test
@@ -366,8 +375,8 @@ def main():
     print("\n===== Result =====")
     for label, words_back, state in results:
         print(f"Watch app {label}: words back on the Watch: {'YES' if words_back else 'NO'}  ({state})")
-    opened = any(words_back for label, words_back, state in results if label in DECIDES)
-    closed = any(words_back for label, words_back, state in results if label == CLOSED)
+    opened = any(words_back for label, words_back, state in results if label in OPEN_TRIES)
+    closed = any(words_back for label, words_back, state in results if label in CLOSED_TRIES)
     if opened and not closed:
         print("With the iPhone app closed the words did not come back: the Watch's message has to open "
               "the iPhone app, as it does with the iPhone in a pocket.")
