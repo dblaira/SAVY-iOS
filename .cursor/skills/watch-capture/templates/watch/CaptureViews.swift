@@ -527,14 +527,19 @@ struct WatchGrainRandom {
     }
 }
 
-/// The app's name at the top of the first screen. An app with its own lettering gives the pen
-/// strokes in `WatchTheme.titleStrokes` and gets them drawn; an app without keeps the plain title.
+/// The app's name at the top left of the first screen, on the clock's line. An app with its own
+/// lettering gives the pen strokes in `WatchTheme.titleStrokes` and gets them drawn; an app without
+/// gets its name in plain lettering in the same place.
 struct WatchTitleBar: ViewModifier {
     let hidden: Bool
 
     func body(content: Content) -> some View {
         if WatchTheme.titleStrokes.isEmpty {
-            content.navigationTitle(hidden ? "" : WatchCaptureConfig.appName)
+            content.toolbar {
+                if !hidden {
+                    ToolbarItem(placement: .topBarLeading) { WatchPlainTitle() }
+                }
+            }
         } else {
             content.toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -542,6 +547,19 @@ struct WatchTitleBar: ViewModifier {
                 }
             }
         }
+    }
+}
+
+/// The app's name in plain lettering, for an app with no lettering of its own.
+struct WatchPlainTitle: View {
+    var body: some View {
+        Text(WatchCaptureConfig.appName)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(WatchTheme.strongText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("WatchTitle")
     }
 }
 
