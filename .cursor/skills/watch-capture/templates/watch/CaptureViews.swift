@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 
 // Watch capture kit: the same in every app that uses it.
 //
@@ -62,7 +63,11 @@ struct CaptureHomeView: View {
                         .multilineTextAlignment(.center)
                 }
                 if store.problem != nil, store.waitingCount > 0 {
+// [route icloud]
                     Label("\(store.waitingCount) waiting to send", systemImage: "icloud.slash")
+// [route iphone]
+                    Label("\(store.waitingCount) waiting for your iPhone", systemImage: "iphone.slash")
+// [route end]
                         .font(.footnote)
                         .foregroundStyle(WatchTheme.text)
                 }
@@ -339,7 +344,11 @@ struct ReviewView: View {
     }
 }
 
+// [route icloud]
 /// A saved capture from the recent list: what it is, whether iCloud has it, and playback.
+// [route iphone]
+/// A saved capture from the recent list: what it is, whether the iPhone has it, and playback.
+// [route end]
 struct CaptureProofView: View {
     let captureID: UUID
     @EnvironmentObject private var store: WatchCaptureStore
@@ -361,7 +370,12 @@ struct CaptureProofView: View {
     }
 }
 
+// [route icloud]
 /// Proof that it saved: the check, the type, the words or the recording, and the iCloud status.
+// [route iphone]
+/// Proof that it saved: the check, the type, the words or the recording, and whether the iPhone
+/// has made its entry.
+// [route end]
 struct CaptureProofContent: View {
     let item: WatchCaptureStore.Item
     @ObservedObject var player: WatchRecordingPlayer
@@ -514,14 +528,22 @@ struct WatchGrainRandom {
     }
 }
 
-/// The app's name at the top of the first screen. An app with its own lettering gives the pen
-/// strokes in `WatchTheme.titleStrokes` and gets them drawn; an app without keeps the plain title.
+/// The app's name at the top left of the first screen, on the clock's line. An app with its own
+/// lettering gives it in `WatchTheme.titleStrokes` and gets it drawn: pen strokes, or with
+/// `titleFilled` the outlines of a typeset name. An app without gets its name in plain lettering
+/// in the same place.
 struct WatchTitleBar: ViewModifier {
     let hidden: Bool
 
     func body(content: Content) -> some View {
-        if WatchTheme.titleStrokes.isEmpty {
-            content.navigationTitle(hidden ? "" : WatchCaptureConfig.appName)
+        if WatchTheme.titleStrokes.isEmpty || WatchTheme.titleFilled {
+            content.toolbar {
+                if !hidden {
+                    ToolbarItem(placement: .topBarLeading) {
+                        if WatchTheme.titleStrokes.isEmpty { WatchPlainTitle() } else { WatchTitle() }
+                    }
+                }
+            }
         } else {
             content.toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -532,18 +554,44 @@ struct WatchTitleBar: ViewModifier {
     }
 }
 
-/// The app's name in its own hand-drawn lettering.
+/// The app's name in plain lettering, for an app with no lettering of its own.
+struct WatchPlainTitle: View {
+    var body: some View {
+        Text(WatchCaptureConfig.appName)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(WatchTheme.strongText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("WatchTitle")
+    }
+}
+
+/// The app's name in its own lettering: hand-drawn pen strokes, or, with `WatchTheme.titleFilled`,
+/// the filled outlines of a typeset name.
 struct WatchTitle: View {
     var body: some View {
-        WatchTitleMark(strokes: WatchTheme.titleStrokes)
-            .stroke(WatchTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-            .aspectRatio(WatchTitleMark.aspectRatio(of: WatchTheme.titleStrokes), contentMode: .fit)
-            .padding(1.5)
-            .frame(height: 28)
+        lettering
             .accessibilityElement()
             .accessibilityLabel(WatchCaptureConfig.appName)
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("WatchTitle")
+    }
+
+    @ViewBuilder private var lettering: some View {
+        let mark = WatchTitleMark(strokes: WatchTheme.titleStrokes)
+        let shape = WatchTitleMark.aspectRatio(of: WatchTheme.titleStrokes)
+        if WatchTheme.titleFilled {
+            // A typeset name is wide: it takes the room beside the clock and no more.
+            let width = WKInterfaceDevice.current().screenBounds.width * 0.58
+            mark.fill(WatchTheme.strongText)
+                .frame(width: width, height: width / max(shape, 1))
+        } else {
+            mark.stroke(WatchTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .aspectRatio(shape, contentMode: .fit)
+                .padding(1.5)
+                .frame(height: 28)
+        }
     }
 }
 
@@ -599,6 +647,7 @@ extension WatchCapture {
 }
 
 extension WatchCaptureStore.Item {
+// [route icloud]
     var statusSymbol: String {
         if isDemo { return "icloud.slash" }
         if isDraft { return "pencil.circle" }
@@ -616,6 +665,23 @@ extension WatchCaptureStore.Item {
         default: return "Saved on Watch · sending"
         }
     }
+// [route iphone]
+    var statusSymbol: String {
+        if isDemo { return "iphone.slash" }
+        if isDraft { return "pencil.circle" }
+        return sentAt == nil ? "arrow.up.circle" : "checkmark.circle"
+    }
+
+    func statusText(problem: WatchCaptureStore.Problem?) -> String {
+        if isDemo { return "Demo · not sent" }
+        if sentAt != nil { return "Saved on Watch · on your iPhone" }
+        switch problem {
+        case .phoneOutOfReach: return "Saved on Watch · waits until your iPhone is close"
+        case .phoneCouldNotSave: return "Saved on Watch · your iPhone could not save it yet"
+        default: return "Saved on Watch · sending to your iPhone"
+        }
+    }
+// [route end]
 
     private var isDemo: Bool {
         #if DEBUG

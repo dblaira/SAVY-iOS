@@ -26,6 +26,27 @@ app open and with it closed. Every try is printed, passed or failed.
 What a simulator cannot show: his iCloud account, the real microphone and Bluetooth. Those parts
 (recording, iCloud, entry on the iPhone) worked on his own devices on Nov 21.
 
+For an app on the iPhone route ("route": "iphone" in the config, no iCloud) the iPhone app makes
+the entry, so the test asks for more. The Watch app saves the test capture as Save does, and a run
+passes only when the words come back to the Watch AND the entry is in the iPhone app's own test
+store. The config's "linkTest" block says how the iPhone app is given a test store of its own
+("{run}" stands for a new id each run):
+  "phoneArguments"    arguments the test opens the iPhone app with
+  "phoneEnvironment"  environment values it opens the iPhone app with
+  "phoneFiles"        files placed in the iPhone app's data folder first; these also reach an
+                      iPhone app the Watch's message opens by itself, which gets no arguments
+  "entryStore"        the file in the iPhone app's data folder that holds its test store's entries
+On this route the run with the Watch app installed on its own has to fail. If it passes, the test
+can no longer tell a working link from a broken one, and the whole test fails.
+
+This route has one more run, which also has to pass: the iPhone out of reach, then close again.
+The test turns the iPhone simulator off, and the Watch app saves a capture. The capture has to
+wait on the Watch, with no entry made. Then the test turns the iPhone simulator on again and
+never opens the iPhone app. The capture has to become the entry in the iPhone app's test store,
+and the Watch has to be told. A simulator that is off stands in for an iPhone out of Bluetooth
+range; it is not the same thing.
+When the test ends, both apps are removed from the simulators, so nothing of the test stays.
+
   sim_link_test.py --config watch-capture.json --app build/.../SAVY.app [--watch-app .../SAVYWatch.app]
                    [--phone UDID] [--out build/linktest]
 
@@ -33,11 +54,13 @@ Standard library only.
 """
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -53,15 +76,19 @@ AGAIN = "inside the iPhone app, second install"
 THIRD = "inside the iPhone app, third install"
 CLOSED = "inside the iPhone app with the iPhone app closed"
 CLOSED_AGAIN = "inside the iPhone app with the iPhone app closed, second try"
+AWAY = "inside the iPhone app with the iPhone out of reach, then close again"
+AWAY_AGAIN = "inside the iPhone app with the iPhone out of reach, then close again, second try"
 ALONE = "installed on its own"
 OPEN_TRIES = (INSIDE, AGAIN, THIRD)      # one of these has to pass,
-CLOSED_TRIES = (CLOSED, CLOSED_AGAIN)    # and one of these
+CLOSED_TRIES = (CLOSED, CLOSED_AGAIN)    # and one of these,
+AWAY_TRIES = (AWAY, AWAY_AGAIN)          # and on the iPhone route one of these
+QUEUE = "captures.json"  # the Watch app's own list of captures, with when the iPhone confirmed each
 
 
-def run(command, check=False, quiet=False, timeout=300):
+def run(command, check=False, quiet=False, timeout=300, env=None):
     if not quiet:
         print("$", " ".join(str(c) for c in command), flush=True)
-    done = subprocess.run([str(c) for c in command], capture_output=True, text=True, timeout=timeout)
+    done = subprocess.run([str(c) for c in command], capture_output=True, text=True, timeout=timeout, env=env)
     if done.returncode != 0 and not quiet:
         print((done.stderr or done.stdout).strip()[:600], flush=True)
     if check and done.returncode != 0:
@@ -211,6 +238,33 @@ def system_notes(phone, watch):
         sys.stdout.flush()
 
 
+def by_iphone(cfg):
+    """True for an app on the iPhone route: no iCloud, and the iPhone app makes the entry."""
+    return cfg.get("route", "icloud") == "iphone"
+
+
+def strings_in(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from strings_in(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from strings_in(item)
+
+
+def entry_in_store(path, capture, words):
+    """True when the iPhone app's test store holds an entry with the capture's id and the words."""
+    if not capture or path is None or not path.exists():
+        return False
+    try:
+        found = list(strings_in(json.loads(path.read_text(errors="replace"))))
+    except ValueError:
+        return False
+    return any(text.lower() == capture.lower() for text in found) and any(words in text for text in found)
+
+
 def read_trail(path):
     events = []
     if path and path.exists():
@@ -229,6 +283,10 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
     it does with the iPhone in a pocket."""
     phone_bundle, watch_bundle = cfg["xcode"]["companionBundleID"], cfg["xcode"]["watchBundleID"]
     folder = cfg["storageFolder"]
+    # On the iPhone route, each run gives the iPhone app a new test store of its own.
+    test = cfg.get("linkTest", {}) if by_iphone(cfg) else {}
+    run_id = str(uuid.uuid4()).upper()
+    fill = lambda text: text.replace("{run}", run_id)
     print(f"\n===== Link test: Watch app {label} =====", flush=True)
     for udid, bundle in ((watch, watch_bundle), (phone, phone_bundle)):
         simctl("terminate", udid, bundle, quiet=True)
@@ -254,8 +312,21 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
         watch_trail.unlink()
 
     phone_store = store_folder(phone, phone_bundle, folder)
+    phone_data = container(phone, phone_bundle)
+    staged = []
+    for name, content in test.get("phoneFiles", {}).items():
+        if phone_data is None:
+            return False, "the iPhone app's data folder was not found"
+        staged.append(phone_data / fill(name))
+        staged[-1].parent.mkdir(parents=True, exist_ok=True)
+        staged[-1].write_text(fill(content))
     if phone_open:
-        simctl("launch", phone, phone_bundle, "-WatchCaptureLinkTestWords", WORDS, check=True)
+        environment = None
+        if test.get("phoneEnvironment"):
+            environment = dict(os.environ)
+            environment.update({"SIMCTL_CHILD_" + key: fill(value) for key, value in test["phoneEnvironment"].items()})
+        simctl("launch", phone, phone_bundle, *test.get("phoneArguments", []),
+               "-WatchCaptureLinkTestWords", WORDS, check=True, env=environment)
         time.sleep(10)
     else:
         if phone_store is None:
@@ -267,8 +338,9 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
         print("the iPhone app is closed and the test does not open it", flush=True)
     simctl("launch", watch, watch_bundle, "-WatchCaptureLinkTest", RECORDING, check=True)
 
-    # The Watch app waits up to 120 seconds for the pair and up to 170 for the words.
-    deadline = time.time() + 360
+    # The Watch app waits up to 120 seconds for the pair and up to 170 for the words. On the
+    # iPhone route it then waits up to 120 more for the iPhone to say the entry is saved.
+    deadline = time.time() + (490 if by_iphone(cfg) else 360)
     done = False
     while time.time() < deadline and not done:
         time.sleep(5)
@@ -289,6 +361,9 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
         simctl("io", udid, "screenshot", saved / name, quiet=True)
     if not phone_open and phone_store and (phone_store / WORDS_FILE).exists():
         (phone_store / WORDS_FILE).unlink()
+    for path in staged:
+        if path.exists():
+            path.unlink()
 
     events, notes = watchtrail.load(files)
     print("--- every step, both simulators ---")
@@ -307,7 +382,142 @@ def one_run(label, phone, watch, phone_app, watch_app, cfg, recording, out, inst
                  "no link line")
     if not words_back and label != ALONE:
         system_notes(phone, watch)
+    if by_iphone(cfg):
+        # The words alone are not enough here: the entry has to be in the iPhone app's test store.
+        capture = next((e.get("capture") for e in events if e.get("step") == "linktest.done"), None)
+        store_file = phone_data / fill(test["entryStore"]) if phone_data and test.get("entryStore") else None
+        entry = entry_in_store(store_file, capture, WORDS)
+        told = any(e.get("step") == "linktest.entry" and e.get("ok") for e in events)
+        print(f"words back on the Watch: {'yes' if words_back else 'no'}; "
+              f"entry in the iPhone app's test store: {'yes' if entry else 'no'}; "
+              f"the Watch was told the entry is saved: {'yes' if told else 'no'}", flush=True)
+        if store_file is not None and store_file.exists():
+            shutil.copyfile(store_file, saved / "iphone-test-store.json")
+        state += f"; entry in the iPhone app's test store: {'YES' if entry else 'NO'}"
+        return words_back and entry and told, state
     return words_back, state
+
+
+def queued_on_watch(path, capture):
+    """The capture's line in the Watch app's own queue, or None when it is not there."""
+    try:
+        items = json.loads(path.read_text(errors="replace"))
+    except (OSError, ValueError):
+        return None
+    for item in items if isinstance(items, list) else []:
+        if str(item.get("capture", {}).get("id", "")).lower() == str(capture).lower():
+            return item
+    return None
+
+
+def show_new(path, side, seen):
+    """Prints the trail lines written since the last look, and returns how many there are now."""
+    events = read_trail(path)
+    for event in events[seen:]:
+        print(f"  {side:<6} {'ok    ' if event.get('ok') else 'FAILED'} {event.get('step', ''):<16} "
+              f"{(event.get('capture') or '-')[:8]:<8} {event.get('detail') or ''}", flush=True)
+    return len(events)
+
+
+def away_run(label, phone, watch, cfg, recording, out):
+    """The iPhone route only: the iPhone is out of reach when a capture is saved, then close again.
+
+    The apps stay as the run before left them. The test turns the iPhone simulator off, and the
+    Watch app saves a capture. It passes only when the capture waits on the Watch while the iPhone
+    is away, with no entry made, and then, after the iPhone simulator is on again, becomes the
+    entry in the iPhone app's test store with the Watch told. The test never opens the iPhone app.
+    Returns (passed, what happened)."""
+    phone_bundle, watch_bundle = cfg["xcode"]["companionBundleID"], cfg["xcode"]["watchBundleID"]
+    folder = cfg["storageFolder"]
+    test = cfg.get("linkTest", {})
+    run_id = str(uuid.uuid4()).upper()
+    fill = lambda text: text.replace("{run}", run_id)
+    print(f"\n===== Link test: Watch app {label} =====", flush=True)
+    for udid, bundle in ((watch, watch_bundle), (phone, phone_bundle)):
+        simctl("terminate", udid, bundle, quiet=True)
+    time.sleep(5)
+
+    # Everything the iPhone app needs is put in place while its simulator is still on.
+    store = store_folder(watch, watch_bundle, folder)
+    phone_data = container(phone, phone_bundle)
+    if store is None or phone_data is None or not test.get("entryStore"):
+        return False, "the apps' data folders were not found"
+    (store / "Audio").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(recording, store / "Audio" / RECORDING)
+    watch_trail, queue = store / TRAIL, store / QUEUE
+    if watch_trail.exists():
+        watch_trail.unlink()
+    staged = []
+    for name, content in test.get("phoneFiles", {}).items():
+        staged.append(phone_data / fill(name))
+        staged[-1].parent.mkdir(parents=True, exist_ok=True)
+        staged[-1].write_text(fill(content))
+    phone_store = phone_data / "Library/Application Support" / folder
+    phone_store.mkdir(parents=True, exist_ok=True)
+    (phone_store / WORDS_FILE).write_text(WORDS)
+    phone_trail = phone_store / TRAIL
+    if phone_trail.exists():
+        phone_trail.unlink()
+    entries = phone_data / fill(test["entryStore"])
+
+    print("turning the iPhone simulator off: the iPhone is out of reach", flush=True)
+    simctl("shutdown", phone, check=True)
+    time.sleep(5)
+    print(f"the simulator pair: {pair_state(phone, watch)}", flush=True)
+    simctl("launch", watch, watch_bundle, "-WatchCaptureLinkTest", RECORDING, check=True)
+    # The Watch app waits up to 120 seconds for the pair, up to 170 for the words, and 15 more.
+    seen, deadline = 0, time.time() + 340
+    while time.time() < deadline:
+        time.sleep(5)
+        seen = show_new(watch_trail, "watch", seen)
+        if any(e.get("step") == "linktest.done" for e in read_trail(watch_trail)):
+            break
+    capture = next((e.get("capture") for e in read_trail(watch_trail) if e.get("step") == "linktest.done"), None)
+    item = queued_on_watch(queue, capture)
+    waited = item is not None and not item.get("sentAt") and not entry_in_store(entries, capture, WORDS)
+    print(f"with the iPhone away: the capture waits on the Watch: {'yes' if waited else 'no'}; "
+          f"entry in the iPhone app's test store: {'yes' if entry_in_store(entries, capture, WORDS) else 'no'}", flush=True)
+
+    print("turning the iPhone simulator on again: the iPhone is close; the test does not open the iPhone app", flush=True)
+    boot(phone)
+    wait_for_pair(phone, watch, limit=300)
+    start, phone_seen, arrived, reopened = time.time(), 0, False, False
+    while waited and time.time() - start < 300:
+        time.sleep(5)
+        seen = show_new(watch_trail, "watch", seen)
+        phone_seen = show_new(phone_trail, "iphone", phone_seen)
+        item = queued_on_watch(queue, capture)
+        if entry_in_store(entries, capture, WORDS) and item is not None and item.get("sentAt"):
+            arrived = True
+            break
+        if not reopened and time.time() - start > 120:
+            # The Watch tries again whenever its app is opened, as it is at the next look at the wrist.
+            print("not there yet; opening the Watch app again, as a look at the wrist does", flush=True)
+            simctl("terminate", watch, watch_bundle, quiet=True)
+            simctl("launch", watch, watch_bundle, check=True)
+            reopened = True
+    after = int(time.time() - start)
+
+    saved = out / label.replace(",", "").replace(" ", "-")
+    saved.mkdir(parents=True, exist_ok=True)
+    for name, path in (("watch-trail.jsonl", watch_trail), ("iphone-trail.jsonl", phone_trail),
+                       ("iphone-test-store.json", entries), ("watch-queue.json", queue)):
+        if path.exists():
+            shutil.copyfile(path, saved / name)
+    for udid, name in ((watch, "watch.png"), (phone, "iphone.png")):
+        simctl("io", udid, "screenshot", saved / name, quiet=True)
+    opened = any(e.get("step") == "app.launch" for e in read_trail(phone_trail))
+    for path in staged + [phone_store / WORDS_FILE]:
+        if path.exists():
+            path.unlink()
+    print(f"after the iPhone came back: entry in the iPhone app's test store and the Watch told: "
+          f"{'yes' if arrived else 'no'} (after {after}s; the Watch app opened again by the test: "
+          f"{'yes' if reopened else 'no'}; the iPhone app opened by itself: {'yes' if opened else 'no'})", flush=True)
+    if not arrived:
+        system_notes(phone, watch)
+    state = (f"waited on the Watch while the iPhone was away: {'YES' if waited else 'NO'}; "
+             f"entry in the iPhone app's test store after it came back: {'YES' if arrived else 'NO'}")
+    return waited and arrived, state
 
 
 def main():
@@ -366,21 +576,45 @@ def main():
                                                 install=False, phone_open=False)))
                 if results[-1][1]:
                     break
+            if by_iphone(cfg) and results[-1][1]:
+                # A capture made with the iPhone out of reach waits on the Watch until the iPhone
+                # is close. The same install; the iPhone simulator is turned off, then on again.
+                for label in AWAY_TRIES:
+                    results.append((label, *away_run(label, phone, watch, cfg, recording, out)))
+                    if results[-1][1]:
+                        break
     else:
         print("\nthis iPhone app does not carry the Watch app; only the stand-alone run is possible")
     # How it was on Adam's devices on Nov 21. This run is expected to fail; it shows the test
     # can tell the difference.
     results.append((ALONE, *one_run(ALONE, phone, watch, alone, watch_app, cfg, recording, out)))
 
+    if by_iphone(cfg):
+        # Nothing of the test stays behind: no test capture on the Watch, no test store on the iPhone.
+        for udid, bundle in ((watch, cfg["xcode"]["watchBundleID"]), (phone, cfg["xcode"]["companionBundleID"])):
+            simctl("terminate", udid, bundle, quiet=True)
+            simctl("uninstall", udid, bundle, quiet=True)
+
     print("\n===== Result =====")
+    what = "words back on the Watch and the entry on the iPhone" if by_iphone(cfg) else "words back on the Watch"
     for label, words_back, state in results:
-        print(f"Watch app {label}: words back on the Watch: {'YES' if words_back else 'NO'}  ({state})")
+        if label in AWAY_TRIES:
+            print(f"Watch app {label}: {'YES' if words_back else 'NO'}  ({state})")
+        else:
+            print(f"Watch app {label}: {what}: {'YES' if words_back else 'NO'}  ({state})")
     opened = any(words_back for label, words_back, state in results if label in OPEN_TRIES)
     closed = any(words_back for label, words_back, state in results if label in CLOSED_TRIES)
     if opened and not closed:
         print("With the iPhone app closed the words did not come back: the Watch's message has to open "
               "the iPhone app, as it does with the iPhone in a pocket.")
     passed = opened and closed
+    if by_iphone(cfg) and opened and closed and not any(ok for label, ok, state in results if label in AWAY_TRIES):
+        print("With the iPhone out of reach and then close again, the capture did not become an entry.")
+        passed = False
+    if by_iphone(cfg) and any(words_back for label, words_back, state in results if label == ALONE):
+        print("The Watch app installed on its own was counted as working. That run has to fail, "
+              "so this test cannot tell a working link from a broken one.")
+        passed = False
     print("LINK TEST PASSED" if passed else "LINK TEST FAILED")
     sys.exit(0 if passed else 1)
 

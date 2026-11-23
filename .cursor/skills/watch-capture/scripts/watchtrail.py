@@ -17,7 +17,11 @@ holds the words or the recording.
       Mac, so the device commands are untested: each one is printed before it runs.
 
   watchtrail.py selftest
-      Checks the reader against two made-up trails. Needs no device.
+      Checks the reader against made-up trails. Needs no device.
+
+An app on the iPhone route ("route": "iphone" in its config, no iCloud) writes a "route" step when
+it opens. For its trails the third thing is "Handed to the iPhone" in place of "In iCloud": the
+Watch hands each capture to the iPhone, which makes the entry.
 
 Standard library only.
 """
@@ -60,6 +64,17 @@ STEP_WORDS = {
     "import.seen": "Already an entry",
     "import.claim": "Claimed in iCloud",
     "import.entry": "Entry saved",
+    "route": "How captures travel",
+    "phone.wait": "Waiting for the iPhone",
+    "phone.queue": "Left with the system for the iPhone",
+    "phone.recording": "Recording sent because the iPhone asked",
+    "phone.send": "Handed to the iPhone",
+    "phone.arrive": "Capture delivered by the system",
+    "phone.ask": "iPhone asked for the recording",
+    "phone.read": "Capture read on the iPhone",
+    "phone.seen": "Already an entry",
+    "phone.entry": "Entry saved",
+    "linktest.entry": "Simulator link test: the iPhone's answer",
 }
 
 # Seen on Adam's devices on Nov 21, 2026: both apps had the Watch code and a running link, and each
@@ -129,9 +144,33 @@ def local(when):
     return when.astimezone().strftime("%a %b %-d %-I:%M:%S %p")
 
 
-def hint_for(event):
+# The iPhone route has no iCloud to fall back on: a capture waits on the Watch for the iPhone.
+PHONE_HINTS = [
+    ("iPhoneAppInstalled=no", PAIR_HINT),
+    ("companionAppNotInstalled", PAIR_HINT),
+    ("watchAppNotInstalled", PAIR_HINT),
+    ("iPhoneReachable=no", "The iPhone was out of reach or its Bluetooth was off. The capture waits on the Watch "
+                           "and goes when the iPhone is close."),
+    ("notReachable", "The iPhone could not be reached at that moment. The capture waits on the Watch and goes "
+                     "when the iPhone is close."),
+    ("no answer from the iPhone", "The iPhone did not answer. Its trail shows whether the recording arrived and "
+                                  "whether the words could be written out. The capture still goes to the iPhone."),
+    ("entries could not be read", "The iPhone app could not open its own entries, so it saved nothing. Open the "
+                                  "app on the iPhone and look at what it says."),
+    ("did not answer as expected", "The iPhone app is one from before captures travelled this way. Install the "
+                                   "iPhone app that carries this Watch app."),
+]
+
+
+def on_iphone_route(events):
+    """True for trails from an app on the iPhone route (no iCloud)."""
+    return any(e.get("step") == "route" and (e.get("detail") or "").startswith("iphone")
+               or e.get("step", "").startswith("phone.") for e in events)
+
+
+def hint_for(event, phone_route=False):
     text = f"{event.get('step', '')} {event.get('detail') or ''}"
-    for needle, hint in HINTS:
+    for needle, hint in (PHONE_HINTS if phone_route else []) + HINTS:
         if needle in text:
             return hint
     return None
@@ -143,7 +182,47 @@ def checkpoint(events, steps, sides=None):
     return found[-1] if found else None
 
 
-def describe(events, sides_seen):
+def describe_handover(events, sides_seen, watch_read, unread):
+    """The iPhone route's last two things: handed to the iPhone, and its entry there."""
+    rows = []
+    sent = checkpoint(events, {"phone.send"})
+    line = checkpoint(events, {"phone.wait", "phone.queue"})
+    there = checkpoint(events, {"phone.entry", "phone.seen", "phone.arrive", "phone.ask"}, {"iphone"})
+    if sent is not None and sent["ok"]:
+        rows.append(("Handed to the iPhone", "ok", sent.get("detail") or "", sent))
+    elif there is not None:
+        rows.append(("Handed to the iPhone", "ok", "it reached the iPhone", there))
+    elif sent is not None and line is not None and line["when"] >= sent["when"]:
+        rows.append(("Handed to the iPhone", "waiting", line.get("detail") or "", line))
+    elif sent is not None:
+        rows.append(("Handed to the iPhone", "FAILED", sent.get("detail") or "", sent))
+    elif line is not None:
+        rows.append(("Handed to the iPhone", "waiting" if line["ok"] else "FAILED", line.get("detail") or "", line))
+    elif not watch_read:
+        rows.append(("Handed to the iPhone", "unread", unread, None))
+    else:
+        rows.append(("Handed to the iPhone", "waiting",
+                     "the Watch has not tried to hand it over (not saved yet, or still a draft)", None))
+
+    entry = checkpoint(events, {"phone.entry"})
+    seen = checkpoint(events, {"phone.seen"})
+    unreadable = checkpoint(events, {"phone.read"})
+    if entry is not None and entry["ok"]:
+        rows.append(("Entry in the app", "ok", f"on the {entry['side']}: {entry.get('detail') or ''}", entry))
+    elif seen is not None:
+        rows.append(("Entry in the app", "ok", f"{seen.get('detail') or ''} (seen on the {seen['side']})", seen))
+    elif entry is not None:
+        rows.append(("Entry in the app", "FAILED", entry.get("detail") or "", entry))
+    elif unreadable is not None and not unreadable["ok"]:
+        rows.append(("Entry in the app", "FAILED", unreadable.get("detail") or "", unreadable))
+    elif "iphone" not in sides_seen:
+        rows.append(("Entry in the app", "unread", "no trail from the iPhone was read", None))
+    else:
+        rows.append(("Entry in the app", "waiting", "it has not reached the iPhone yet", None))
+    return rows
+
+
+def describe(events, sides_seen, phone_route=False):
     """The four things that must happen to one capture: (label, state, detail, event)."""
     rows = []
 
@@ -186,6 +265,9 @@ def describe(events, sides_seen):
             rows.append(("Words back on the wrist", "waiting", "sent to the iPhone; no answer recorded yet", asked))
         else:
             rows.append(("Words back on the wrist", "FAILED", cause.get("detail") or "", cause))
+
+    if phone_route:
+        return rows + describe_handover(events, sides_seen, watch_read, unread)
 
     sent = checkpoint(events, {"cloud.send"})
     fetched = checkpoint(events, {"import.entry", "import.seen", "import.claim", "import.audio"})
@@ -251,6 +333,7 @@ def report(events, notes, out=sys.stdout):
         return 0, 0
     attach_recordings(events)
     sides_seen = {e.get("side") for e in events}
+    phone_route = on_iphone_route(events)
 
     write()
     write("Devices")
@@ -301,12 +384,12 @@ def report(events, notes, out=sys.stdout):
             kind = ", saved as " + (saved["detail"].split()[1].rstrip(":"))
         write()
         write(f"Capture {capture[:8]}  {local(steps[0]['when'])}{kind}")
-        rows = describe(steps, sides_seen)
+        rows = describe(steps, sides_seen, phone_route)
         first_bad = None
         for label, state, detail, event in rows:
             write(f"  {state:<8} {label:<24} {detail}")
             if state in ("FAILED", "missing"):
-                hint = hint_for(event) if event else None
+                hint = hint_for(event, phone_route) if event else None
                 if hint:
                     write(f"           {'':<24} -> {hint}")
                 if first_bad is None:
@@ -330,6 +413,9 @@ def report(events, notes, out=sys.stdout):
         write("No captures in the trail yet. Make one on the Watch, open the app on the iPhone, then read again.")
     elif troubled == 0 and unfinished == 0:
         write(f"All {shown} captures made it from the wrist to an entry.")
+    elif troubled == 0 and phone_route:
+        write(f"{shown - unfinished} of {shown} captures made it to an entry. {unfinished} still on the way: "
+              f"nothing failed, and no entry yet. Bring the iPhone close and open the app on the Watch, then read again.")
     elif troubled == 0:
         write(f"{shown - unfinished} of {shown} captures made it to an entry. {unfinished} still on the way: "
               f"nothing failed, and no entry yet. Open the app on the iPhone, then read again.")
@@ -529,6 +615,55 @@ def selftest():
         report(events, notes, out=text)
         assert "do not see each other as a pair" in text.getvalue(), text.getvalue()
         assert "branch that has the Watch code" not in text.getvalue(), text.getvalue()
+
+        # 6. The iPhone route (no iCloud): the Watch hands the capture to the iPhone, the iPhone
+        #    makes the entry and says so. Nothing is said about iCloud.
+        four = "44444444-aaaa-4bbb-8ccc-000000000004"
+        watch.write_text("\n".join([
+            _line(0, "watch", "app.launch", detail="v1.0 (1)"),
+            _line(0, "watch", "route", detail="iphone"),
+            _line(12, "watch", "keep", capture=four, detail="file=cd34ef56 7.0s 21KB"),
+            _line(13, "watch", "link.ask", capture=four, detail="sent to the iPhone: parts=1 21KB"),
+            _line(15, "watch", "link.words", capture=four, detail="chars=41 after 2.1s"),
+            _line(20, "watch", "save", capture=four, detail="as social"),
+            _line(21, "watch", "phone.send", capture=four, detail="on the iPhone, with its recording"),
+        ]) + "\n")
+        phone.write_text("\n".join([
+            _line(-50, "iphone", "app.launch", detail="v1.0 (1) speechRecognition=allowed"),
+            _line(-50, "iphone", "route", detail="iphone"),
+            _line(14, "iphone", "link.receive", capture=four, detail="parts=1 21KB app=background unlocked=no"),
+            _line(21, "iphone", "phone.entry", capture=four, detail="entry saved as social chars=41 recording=yes"),
+        ]) + "\n")
+        text = io.StringIO()
+        events, notes = load([watch, phone])
+        troubled, unfinished = report(events, notes, out=text)
+        output = text.getvalue()
+        assert (troubled, unfinished) == (0, 0), output
+        assert "ok       Handed to the iPhone     on the iPhone, with its recording" in output, output
+        assert "ok       Entry in the app         on the iphone" in output, output
+        assert "iCloud" not in output, output
+
+        # 7. The iPhone route with the iPhone out of reach: the capture waits on the Watch. That is
+        #    waiting, not a failure, and the report says how it gets going again.
+        watch.write_text("\n".join([
+            _line(0, "watch", "route", detail="iphone"),
+            _line(12, "watch", "keep", capture=four, detail="file=cd34ef56 7.0s 21KB"),
+            _line(13, "watch", "link.ask", ok=False, capture=four,
+                  detail="not sent to the iPhone: link=activated iPhoneReachable=no iPhoneAppInstalled=yes"),
+            _line(20, "watch", "save", capture=four, detail="as social"),
+            _line(21, "watch", "phone.wait", capture=four,
+                  detail="the iPhone is out of reach: link=activated iPhoneReachable=no iPhoneAppInstalled=yes"),
+            _line(21, "watch", "phone.queue", capture=four, detail="left with the system, to send when the iPhone is close"),
+        ]) + "\n")
+        phone.write_text(_line(-50, "iphone", "route", detail="iphone") + "\n")
+        text = io.StringIO()
+        events, notes = load([watch, phone])
+        troubled, unfinished = report(events, notes, out=text)
+        output = text.getvalue()
+        assert "waiting  Handed to the iPhone" in output, output
+        assert "waiting  Entry in the app         it has not reached the iPhone yet" in output, output
+        assert "goes when the iPhone is close" in output, output
+        assert "iCloud" not in output, output
     print("watchtrail selftest passed")
 
 

@@ -3,7 +3,7 @@ title: watch-capture
 type: skill
 tags: [skills, ios, watchos, build]
 created: 2026-11-20
-updated: 2026-11-21
+updated: 2026-11-22
 summary: Adds the SAVY-style Apple Watch capture app (one big record button) to another of Adam's iPhone/Mac apps. Load when Adam says any of: "add the watch app to", "put the Apple Watch capture on", "same type of iPhone Apple Watch app", "save the watch workflow", "watch capture kit"
 deployed_to: ["SAVY-iOS/.cursor/skills/watch-capture/SKILL.md", "SAVY-iOS/.claude/skills/watch-capture/SKILL.md (pointer)"]
 related: ["[[Skills Hub]]", "SAVY-iOS docs/watch/savy-watch.md"]
@@ -30,11 +30,52 @@ What one run produces in an app:
 
 SAVY was the first app; its build record is `docs/watch/savy-watch.md` in SAVY-iOS.
 
+Think Bigger was the second, on Nov 22, 2026, and the first with no iCloud. It added two settings to `watch-capture.json`. Both are off unless the config sets them, and with both off every file the kit writes is the same as before, byte for byte.
+
+## Two settings for an app that is not like SAVY
+
+### `"route": "iphone"`: an app that makes no iCloud calls
+
+The default is `"icloud"`: everything in this document as written for SAVY. With `"iphone"`:
+
+- **The Watch hands each saved capture to the iPhone, and the iPhone makes the entry.** No iCloud inbox, no importer, no owner check, no `import CloudKit`, no iCloud entitlement, and `containerIdentifier`, `inboxZoneName` and `recordType` are not needed in the config.
+- **The Watch keeps a capture in its queue until the iPhone says the entry is saved.** A capture made with the iPhone out of reach waits on the Watch until the iPhone is close.
+- **One capture makes one entry, however many times it is sent.** The entry's id is the capture's id. The iPhone answers “saved” again for a capture whose entry it already has, also one Adam has deleted since.
+- **Two ways to travel.** With the iPhone in reach and the Watch app open, a live message carries the capture, and the iPhone's answer comes back on that same message. It wakes the iPhone app in the background, as the words path does. Otherwise the Watch leaves the capture with the system (`transferFile` for a recording, `transferUserInfo` for Siri's words), which sends it when the iPhone is close, even when the Watch app is not open. The iPhone's answer then comes back the same way.
+- **The recording usually travels once.** The iPhone keeps the recording it was sent for writing out the words, for the capture that follows. When it does not have it, it asks, and the Watch sends it.
+- **The words are written out on the iPhone or not at all.** The older recognizer runs only on the device on this route; it never sends a recording to Apple.
+- **The Mac does not take part.** The iPhone's entry reaches other devices through the app's own sync.
+- **The Watch's status says iPhone, not iCloud:** “Saved on Watch · on your iPhone”, “· sending to your iPhone”, “· waits until your iPhone is close”.
+
+What changes in the steps below:
+
+- Step 3: add `"route": "iphone"` and a `"linkTest"` block (see `sim_link_test.py`'s own text), which tells the link test how to give the iPhone app a test store of its own.
+- Step 5: conform the app's store to `WatchCaptureDestination` as before. Call `WatchCapturePhoneLink.shared.activate(into: { ... })` at launch, giving it the store. It is asked again for each capture, because the Watch's message can launch the app in the background before any screen exists.
+- Step 6 does not apply: there is no import to hook.
+- Step 7: also test the queue and the receiver (`WatchCaptureQueue`, `WatchCaptureReceiver.receive`). Think Bigger's are in `Tests/ThinkBiggerWatchCaptureTests.swift`.
+- The link test passes only when the words come back to the Watch and the entry is in the iPhone app's test store, with the iPhone app open and again with it closed. The run with the Watch app installed on its own has to fail; if that run passes, the whole test fails.
+- The link test has one more run on this route, and it has to pass: the iPhone out of reach, then close again. The test turns the iPhone simulator off while the Watch app saves a capture, and the capture has to wait on the Watch with no entry made. Then it turns the iPhone simulator on again and never opens the iPhone app. The capture has to become the entry, and the Watch has to be told. This is also the only run where the iPhone asks the Watch for the recording.
+- The trail's steps are `phone.send`, `phone.wait`, `phone.queue` on the Watch and `phone.entry`, `phone.seen`, `phone.ask` on the iPhone. `watchtrail.py` reads them as “Handed to the iPhone” and “Entry in the app”.
+
+Not shown in a simulator: Bluetooth range. A simulator that is turned off stands in for an iPhone out of reach, and the Watch simulator goes on saying it can reach it. So the capture the system itself delivers later (`transferFile`, `transferUserInfo`) is not what the out-of-reach run proves; it proves the capture waits and arrives once the iPhone is back. `wire` has not been run for this route; Think Bigger uses XcodeGen.
+
+### `"generator": "xcodegen"` in the `xcode` block: a project generated by XcodeGen
+
+`wire` and `embed` edit `project.pbxproj`, and the next `xcodegen generate` would overwrite them, so they refuse. Instead:
+
+1. `watchkit.py xcodegen --config watch-capture.json` prints the two Watch targets, the line that puts the Watch app inside the iPhone app, and the Watch scheme. Put them in `project.yml`.
+2. `xcodegen generate`, and commit the generated project.
+3. `watchkit.py check --config watch-capture.json` shows what each target builds. The iPhone target must build every file in `xcode.sharedFolder`, and must show “Embed Watch Content”.
+
+Choose `xcode.sharedFolder` so that only the iPhone target builds it. In Think Bigger the Mac app is its own target and builds `Sources/Shared` and `Sources/App`, so the kit's shared files are in `Sources/Watch`.
+
+Smaller settings, also off by default: `xcode.testClasses` names the test classes when a test file is not named after its class; `xcode.ciPaths` lists more folders whose changes start the build check. Names with spaces, such as `Think Bigger.xcodeproj`, are quoted in the build check.
+
 ## What is in the kit
 
 | Path | What it is |
 |---|---|
-| `scripts/watchkit.py` | `files` writes the code and settings; `wire` adds the targets to the Xcode project and ends with `embed`; `embed` puts the Watch app inside the iPhone app (safe to run again); `check` reports the project; `sync` refreshes templates from SAVY |
+| `scripts/watchkit.py` | `files` writes the code and settings; `wire` adds the targets to the Xcode project and ends with `embed`; `embed` puts the Watch app inside the iPhone app (safe to run again); `xcodegen` prints the same for a project generated by XcodeGen; `check` reports the project; `sync` refreshes templates from SAVY |
 | `scripts/sim_link_test.py` | Tests the Watch-to-iPhone link in a paired iPhone and Watch simulator, with no one at a desk: installs both apps and sends a spoken recording from the Watch app. It passes only when the words come back to the Watch, both with the iPhone app open and with it closed, where the Watch's message has to open it. Also runs the Watch app outside the iPhone app, which must fail |
 | `scripts/watchtrail.py` | Reads the capture trail: for each capture, whether it was recorded, got its words back on the wrist, reached iCloud and became an entry, and the first step that stopped. `pull` copies the trail files off the Watch and iPhone on Adam's Mac; `read` reads files; `selftest` needs no device |
 | `scripts/ci_results.py` | Reads a CI run from its job logs: each job's result, the compiler crash and failure lines, and the Watch screenshots saved as PNG files |
@@ -42,6 +83,7 @@ SAVY was the first app; its build record is `docs/watch/savy-watch.md` in SAVY-i
 | `templates/watch/` | Watch app, recorder and player, phone link, local queue and sender, big button, review and proof screens. The same in every app |
 | `templates/widgets/` | Complication. The same in every app |
 | `templates/ci/` | GitHub Actions build check and the Watch scheme |
+| `templates/shared/WatchCaptureDelivery.swift`, `WatchCaptureReceiver.swift` | The iPhone route only. `WatchCaptureDelivery.swift` is built by the Watch too: the message that carries a capture, the iPhone's answer, and the rules of the Watch's queue. `WatchCaptureReceiver.swift` is the iPhone's side: it makes the entry once and answers. They replace `WatchCaptureImporter.swift` |
 | `watch-capture.json` at the SAVY-iOS root | The worked example of an app config |
 
 Generated per app from the config: `WatchCaptureConfig.swift` (names, iCloud zone, kinds, default kind, vocabulary, colors), `CaptureIntents.swift` (Siri phrases; App Shortcut phrases must be literals), the Watch `Info.plist` (microphone text, audio background mode), entitlements, asset catalog and the CI workflow. Written by hand per app: the destination file, the recording row's place in the entry form, the speech recognition text in the app's Info.plist, and the tests.
@@ -133,3 +175,7 @@ Generated per app from the config: `WatchCaptureConfig.swift` (names, iCloud zon
 ## Keeping the kit current
 
 Improve the code in SAVY first and verify it in CI. Then run `watchkit.py sync --config watch-capture.json` in SAVY-iOS to copy SAVY's files into `templates/`. SAVY's CI step “Kit files match watch-capture.json” fails whenever SAVY and the kit drift apart.
+
+A template holds both routes. A line `// [route icloud]` or `// [route iphone]` (`#` in the build check) starts lines for that route only, and `// [route end]` ends them. `files` writes an app the lines for its route and none of the marker lines, so a template with markers is not Swift that compiles by itself. `sync` puts an app's changes back into the template at the lines they came from and keeps the other route's lines. A new line right beside a route block may land on the wrong side of its marker; look at those by hand. A change to lines both routes share reaches the other app the next time `files` runs there.
+
+To prove SAVY is untouched after a kit change made in another app: copy SAVY-iOS to a scratch folder, lay the changed kit over its `.cursor/skills/watch-capture/`, and run `watchkit.py files --config watch-capture.json --check` there. It must say “all kit files match”.

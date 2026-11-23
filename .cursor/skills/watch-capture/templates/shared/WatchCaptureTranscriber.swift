@@ -145,7 +145,16 @@ enum WatchCaptureTranscriber {
         request.shouldReportPartialResults = false
         request.addsPunctuation = true
         request.contextualStrings = WatchCaptureConfig.vocabulary
+// [route icloud]
         if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
+// [route iphone]
+        // An app on this route sends nothing off Adam's devices: the words are written out on
+        // this iPhone, or not at all.
+        guard recognizer.supportsOnDeviceRecognition else {
+            return Attempt(why: "not available on this iPhone without sending the recording to Apple")
+        }
+        request.requiresOnDeviceRecognition = true
+// [route end]
         let once = ResumeOnce()
         return await withCheckedContinuation { (continuation: CheckedContinuation<Attempt, Never>) in
             once.set(continuation)
