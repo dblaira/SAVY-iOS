@@ -99,4 +99,7 @@ enum WatchTheme {
         [CGPoint(x: 923, y: 320), CGPoint(x: 785, y: 778), CGPoint(x: 716, y: 597), CGPoint(x: 793, y: 593)],
         [CGPoint(x: 740, y: 447), CGPoint(x: 855, y: 542)],
     ]
+    /// True when `titleStrokes` are the outlines of a typeset name, to be filled in the text
+    /// color, not pen strokes to be drawn.
+    static let titleFilled = false
 }

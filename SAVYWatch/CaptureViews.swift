@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 
 // Watch capture kit: the same in every app that uses it.
 //
@@ -515,16 +516,19 @@ struct WatchGrainRandom {
 }
 
 /// The app's name at the top left of the first screen, on the clock's line. An app with its own
-/// lettering gives the pen strokes in `WatchTheme.titleStrokes` and gets them drawn; an app without
-/// gets its name in plain lettering in the same place.
+/// lettering gives it in `WatchTheme.titleStrokes` and gets it drawn: pen strokes, or with
+/// `titleFilled` the outlines of a typeset name. An app without gets its name in plain lettering
+/// in the same place.
 struct WatchTitleBar: ViewModifier {
     let hidden: Bool
 
     func body(content: Content) -> some View {
-        if WatchTheme.titleStrokes.isEmpty {
+        if WatchTheme.titleStrokes.isEmpty || WatchTheme.titleFilled {
             content.toolbar {
                 if !hidden {
-                    ToolbarItem(placement: .topBarLeading) { WatchPlainTitle() }
+                    ToolbarItem(placement: .topBarLeading) {
+                        if WatchTheme.titleStrokes.isEmpty { WatchPlainTitle() } else { WatchTitle() }
+                    }
                 }
             }
         } else {
@@ -550,18 +554,31 @@ struct WatchPlainTitle: View {
     }
 }
 
-/// The app's name in its own hand-drawn lettering.
+/// The app's name in its own lettering: hand-drawn pen strokes, or, with `WatchTheme.titleFilled`,
+/// the filled outlines of a typeset name.
 struct WatchTitle: View {
     var body: some View {
-        WatchTitleMark(strokes: WatchTheme.titleStrokes)
-            .stroke(WatchTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-            .aspectRatio(WatchTitleMark.aspectRatio(of: WatchTheme.titleStrokes), contentMode: .fit)
-            .padding(1.5)
-            .frame(height: 28)
+        lettering
             .accessibilityElement()
             .accessibilityLabel(WatchCaptureConfig.appName)
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("WatchTitle")
+    }
+
+    @ViewBuilder private var lettering: some View {
+        let mark = WatchTitleMark(strokes: WatchTheme.titleStrokes)
+        let shape = WatchTitleMark.aspectRatio(of: WatchTheme.titleStrokes)
+        if WatchTheme.titleFilled {
+            // A typeset name is wide: it takes the room beside the clock and no more.
+            let width = WKInterfaceDevice.current().screenBounds.width * 0.58
+            mark.fill(WatchTheme.strongText)
+                .frame(width: width, height: width / max(shape, 1))
+        } else {
+            mark.stroke(WatchTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .aspectRatio(shape, contentMode: .fit)
+                .padding(1.5)
+                .frame(height: 28)
+        }
     }
 }
 

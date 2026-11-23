@@ -272,6 +272,9 @@ def gen_config(cfg):
         "    /// The app's name as the app icon draws it: one inner list per pen stroke, in the icon's",
         "    /// own grid. Empty shows the name as plain text.",
         f"    static let titleStrokes: [[CGPoint]] = {strokes(theme.get('titleStrokes', []))}",
+        "    /// True when `titleStrokes` are the outlines of a typeset name, to be filled in the text",
+        "    /// color, not pen strokes to be drawn.",
+        f"    static let titleFilled = {'true' if theme.get('titleFill') else 'false'}",
         "}",
         "",
     ]
